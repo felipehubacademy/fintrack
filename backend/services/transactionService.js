@@ -1,12 +1,25 @@
-import { supabase } from './supabase.js';
+import { createClient } from '@supabase/supabase-js';
 
 class TransactionService {
+  constructor() {
+    // Inicializar Supabase client
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('❌ SUPABASE_URL e SUPABASE_KEY são obrigatórios!');
+      throw new Error('Supabase credentials not configured');
+    }
+    
+    this.supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('✅ TransactionService: Supabase initialized');
+  }
   /**
    * Salva transação inicial com status pending
    */
   async saveTransaction(transaction) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('expenses')
         .insert({
           pluggy_transaction_id: transaction.id,
@@ -36,7 +49,7 @@ class TransactionService {
    */
   async confirmTransaction(pluggyTransactionId, owner, whatsappMessageId) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('expenses')
         .update({
           owner: owner,
@@ -64,7 +77,7 @@ class TransactionService {
    */
   async ignoreTransaction(pluggyTransactionId, whatsappMessageId) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('expenses')
         .update({
           status: 'ignored',
@@ -93,7 +106,7 @@ class TransactionService {
       const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
       const endOfMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0);
 
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('expenses')
         .select('amount, owner')
         .eq('status', 'confirmed')
@@ -138,7 +151,7 @@ class TransactionService {
    */
   async getTransactionByWhatsAppId(whatsappMessageId) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('expenses')
         .select('*')
         .eq('whatsapp_message_id', whatsappMessageId)
