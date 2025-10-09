@@ -2,8 +2,8 @@ name: Check Transactions
 
 on:
   schedule:
-    # Run every 10 minutes
-    - cron: "*/10 * * * *"
+    # Run every minute
+    - cron: "* * * * *"
   workflow_dispatch: # Allow manual trigger
 
 jobs:

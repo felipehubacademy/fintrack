@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conectar Itaú - FinTrack</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+        .success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        .error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        .loading {
+            text-align: center;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏦 Conectar Conta Itaú</h1>
+        
+        <form id="connect-form">
+            <div class="form-group">
+                <label for="agency">Agência:</label>
+                <input type="text" id="agency" value="6493" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="account">Conta:</label>
+                <input type="text" id="account" value="47186-3" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" value="852369" required>
+            </div>
+            
+            <button type="submit" id="connect-button">
+                🔗 Conectar Conta do Itaú
+            </button>
+        </form>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        const CLIENT_ID = '9d28c3cd-8fa2-44cb-80e6-97eaea3c5c8c';
+        const CLIENT_SECRET = '42df22aa-031f-4dd7-be1b-c139c87f0755';
+        
+        document.getElementById('connect-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const button = document.getElementById('connect-button');
+            const result = document.getElementById('result');
+            
+            button.disabled = true;
+            button.textContent = '⏳ Conectando...';
+            result.style.display = 'none';
+            
+            try {
+                console.log('🔐 Autenticando...');
+                
+                // 1. Autenticar
+                const authResponse = await fetch('https://api.pluggy.ai/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: CLIENT_ID,
+                        clientSecret: CLIENT_SECRET,
+                    }),
+                });
+                
+                if (!authResponse.ok) {
+                    throw new Error('Erro na autenticação');
+                }
+                
+                const authData = await authResponse.json();
+                const apiKey = authData.apiKey;
+                console.log('✅ Autenticado!');
+                
+                // 2. Criar conexão
+                console.log('🏦 Criando conexão com Itaú...');
+                
+                const connectionResponse = await fetch('https://api.pluggy.ai/items', {
+                    method: 'POST',
+                    headers: { 
+                        'X-API-KEY': apiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        connectorId: 201, // Itaú
+                        parameters: {
+                            agency: document.getElementById('agency').value,
+                            account: document.getElementById('account').value,
+                            password: document.getElementById('password').value
+                        }
+                    })
+                });
+                
+                if (connectionResponse.ok) {
+                    const connectionData = await connectionResponse.json();
+                    console.log('✅ Conexão criada!', connectionData);
+                    
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <h3>✅ Conexão criada com sucesso!</h3>
+                        <p><strong>ID:</strong> ${connectionData.id}</p>
+                        <p><strong>Status:</strong> ${connectionData.status}</p>
+                        <p><strong>Instituição:</strong> ${connectionData.connector?.name}</p>
+                        <br>
+                        <p>💡 Aguarde alguns minutos para sincronização...</p>
+                        <p>💡 Verifique o status no dashboard do Pluggy</p>
+                    `;
+                    result.style.display = 'block';
+                    
+                    button.textContent = '✅ Conectado!';
+                    
+                } else {
+                    const errorData = await connectionResponse.json();
+                    throw new Error(`Erro ao criar conexão: ${JSON.stringify(errorData)}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h3>❌ Erro na conexão</h3>
+                    <p>${error.message}</p>
+                    <br>
+                    <p>💡 Verifique suas credenciais</p>
+                    <p>💡 Tente novamente em alguns minutos</p>
+                `;
+                result.style.display = 'block';
+                
+                button.disabled = false;
+                button.textContent = '🔗 Conectar Conta do Itaú';
+            }
+        });
+    </script>
+</body>
+</html>

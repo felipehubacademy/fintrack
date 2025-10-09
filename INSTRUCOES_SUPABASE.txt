@@ -1,0 +1,35 @@
+🔧 INSTRUÇÕES PARA ATUALIZAR SUPABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Acesse: https://supabase.com/dashboard
+2. Selecione seu projeto FinTrack
+3. No menu lateral, clique em "SQL Editor"
+4. Clique em "New Query"
+5. Cole o conteúdo do arquivo: docs/SUPABASE_UPDATE.sql
+6. Clique em "Run" (ou Ctrl+Enter)
+7. Aguarde a confirmação: "Success. No rows returned"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 O que será criado:
+
+✅ Novos campos na tabela expenses:
+   • pluggy_transaction_id (TEXT) - ID único do Pluggy
+   • category (TEXT) - Categoria da transação
+   • status (TEXT) - pending/confirmed/ignored
+   • whatsapp_message_id (TEXT) - ID da mensagem WhatsApp
+   • confirmed_at (TIMESTAMP) - Quando foi confirmado
+
+✅ Nova view: individual_totals
+   • Calcula automaticamente os totais individuais
+   • Considera compartilhado como 50% para cada
+
+✅ Nova função: get_individual_total(owner, month)
+   • Retorna o total individual de um owner em um mês específico
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANTE: Execute este SQL ANTES de rodar o teste!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+

@@ -15,9 +15,31 @@ class TransactionService {
     console.log('✅ TransactionService: Supabase initialized');
   }
   /**
+   * Verifica se transação já existe no Supabase
+   */
+  async transactionExists(pluggyTransactionId) {
+    try {
+      const { data, error } = await this.supabase
+        .from('expenses')
+        .select('id')
+        .eq('pluggy_transaction_id', pluggyTransactionId)
+        .single();
+
+      return !!data;
+    } catch (error) {
+      // Se erro for "não encontrado", retorna false
+      if (error.code === 'PGRST116') {
+        return false;
+      }
+      console.error('❌ Erro ao verificar transação:', error);
+      return false;
+    }
+  }
+
+  /**
    * Salva transação inicial com status pending
    */
-  async saveTransaction(transaction) {
+  async saveTransaction(transaction, whatsappMessageId = null) {
     try {
       const { data, error } = await this.supabase
         .from('expenses')
@@ -27,9 +49,9 @@ class TransactionService {
           description: transaction.description,
           amount: Math.abs(transaction.amount),
           category: transaction.category,
-          source: 'pluggy',
+          source: transaction.source || 'pluggy',
           status: 'pending',
-          whatsapp_message_id: transaction.whatsapp_message_id || null,
+          whatsapp_message_id: whatsappMessageId,
         })
         .select()
         .single();
@@ -47,7 +69,7 @@ class TransactionService {
   /**
    * Atualiza transação com owner (Felipe/Leticia/Compartilhado)
    */
-  async confirmTransaction(pluggyTransactionId, owner, whatsappMessageId) {
+  async confirmTransaction(id, owner) {
     try {
       const { data, error } = await this.supabase
         .from('expenses')
@@ -57,8 +79,7 @@ class TransactionService {
           status: 'confirmed',
           confirmed_at: new Date().toISOString(),
         })
-        .eq('pluggy_transaction_id', pluggyTransactionId)
-        .eq('whatsapp_message_id', whatsappMessageId)
+        .eq('id', id)
         .select()
         .single();
 
