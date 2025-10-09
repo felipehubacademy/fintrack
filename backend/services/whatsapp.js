@@ -21,7 +21,7 @@ export async function sendTransactionNotification(transaction) {
     template: {
       name: 'fintrack_despesa_cartao',
       language: {
-        code: 'pt_BR'
+        code: 'en'
       },
       components: [
         {
