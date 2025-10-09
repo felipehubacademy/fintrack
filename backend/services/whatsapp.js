@@ -97,21 +97,75 @@ export async function sendTextMessage(text) {
 }
 
 /**
- * Send confirmation message with monthly total
+ * Send confirmation message using approved template
  */
 export async function sendConfirmationMessage(owner, transaction, monthlyTotal) {
-  const text = `✅ Despesa confirmada!
+  const phoneId = process.env.PHONE_ID;
+  const token = process.env.WHATSAPP_TOKEN;
+  const userPhone = process.env.USER_PHONE;
 
-💰 R$ ${transaction.amount} registrado para ${owner}
-📅 ${new Date(transaction.date).toLocaleDateString('pt-BR')}
-🏷️ ${transaction.description}
+  // Format date
+  const date = new Date(transaction.date);
+  const formattedDate = date.toLocaleDateString('pt-BR');
 
-📊 Total de ${owner} em ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}:
-• Gastos próprios: R$ ${monthlyTotal.ownTotal}
-• Compartilhado (50%): R$ ${monthlyTotal.sharedIndividual}
-• TOTAL: R$ ${monthlyTotal.individualTotal}`;
+  const message = {
+    messaging_product: 'whatsapp',
+    to: userPhone,
+    type: 'template',
+    template: {
+      name: 'fintrack_confirmacao',
+      language: {
+        code: 'en'
+      },
+      components: [
+        {
+          type: 'body',
+          parameters: [
+            {
+              type: 'text',
+              text: transaction.amount.toString()
+            },
+            {
+              type: 'text',
+              text: owner
+            },
+            {
+              type: 'text',
+              text: formattedDate
+            },
+            {
+              type: 'text',
+              text: monthlyTotal.ownTotal
+            },
+            {
+              type: 'text',
+              text: monthlyTotal.sharedIndividual
+            },
+            {
+              type: 'text',
+              text: monthlyTotal.individualTotal
+            }
+          ]
+        }
+      ]
+    }
+  };
 
-  return await sendTextMessage(text);
+  const response = await fetch(`${WHATSAPP_API_URL}/${phoneId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(message),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`WhatsApp API error: ${errorText}`);
+  }
+
+  return await response.json();
 }
 
 /**
