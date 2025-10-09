@@ -8,6 +8,7 @@ const transactionService = new TransactionService();
 
 /**
  * Vercel Serverless Function for WhatsApp Webhook
+ * Updated: 2025-10-09 with detailed logging
  */
 export default function handler(req, res) {
   // Enable CORS
