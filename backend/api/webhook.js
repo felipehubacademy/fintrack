@@ -109,8 +109,20 @@ async function processWebhookAsync(body) {
     console.log(`💰 Totais mock: ${JSON.stringify(monthlyTotal)}`);
     console.log('📱 Enviando confirmação WhatsApp...');
     
-    // Enviar mensagem de confirmação
-    await sendConfirmationMessage(buttonReply.owner, confirmedTransaction, monthlyTotal);
+    // Enviar mensagem de confirmação com timeout
+    try {
+      const confirmPromise = sendConfirmationMessage(buttonReply.owner, confirmedTransaction, monthlyTotal);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('WhatsApp confirmation timeout (8s)')), 8000)
+      );
+      
+      await Promise.race([confirmPromise, timeoutPromise]);
+      console.log(`✅ Confirmação enviada com sucesso!`);
+    } catch (whatsappError) {
+      console.error('❌ ERRO ao enviar confirmação WhatsApp:', whatsappError.message);
+      console.error('Stack:', whatsappError.stack);
+      // Não lançar erro - já processamos a transação
+    }
     
     console.log(`✅ Transação processada com sucesso para ${buttonReply.owner}`);
     
