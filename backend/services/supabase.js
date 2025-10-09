@@ -1,9 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+let supabase = null;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+try {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_KEY;
+  
+  if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('✅ Supabase client initialized');
+  } else {
+    console.log('⚠️ Supabase credentials not found');
+  }
+} catch (error) {
+  console.log('⚠️ Supabase initialization failed:', error.message);
+}
+
+export { supabase };
 
 /**
  * Save a new expense to Supabase
