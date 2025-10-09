@@ -152,12 +152,22 @@ class TransactionService {
   async getTransactionByWhatsAppId(whatsappMessageId) {
     try {
       console.log(`🔍 Buscando transação com Message ID: ${whatsappMessageId}`);
+      console.log(`🔌 Supabase client exists: ${!!this.supabase}`);
+      
+      if (!this.supabase) {
+        console.error('❌ SUPABASE CLIENT IS NULL!');
+        return null;
+      }
+      
+      console.log('📡 Fazendo query no Supabase...');
       
       const { data, error } = await this.supabase
         .from('expenses')
         .select('*')
         .eq('whatsapp_message_id', whatsappMessageId)
         .single();
+      
+      console.log('📥 Query concluída!');
 
       if (error) {
         console.error('❌ Erro Supabase:', error);
