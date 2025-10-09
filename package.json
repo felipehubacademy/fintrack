@@ -1,0 +1,32 @@
+{
+  "name": "fintrack",
+  "version": "1.0.0",
+  "description": "Full-stack personal finance tracker with Pluggy, Supabase, and WhatsApp",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "web"
+  ],
+  "scripts": {
+    "backend": "cd backend && npm start",
+    "backend:dev": "cd backend && npm run dev",
+    "web": "cd web && npm run dev",
+    "web:build": "cd web && npm run build",
+    "web:start": "cd web && npm start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/fintrack"
+  },
+  "keywords": [
+    "finance",
+    "tracker",
+    "pluggy",
+    "supabase",
+    "whatsapp",
+    "nextjs"
+  ],
+  "author": "Felipe Xavier",
+  "license": "MIT"
+}
+

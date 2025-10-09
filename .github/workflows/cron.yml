@@ -1,0 +1,21 @@
+name: Check Transactions
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: "*/10 * * * *"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  run-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check for new transactions
+        run: |
+          curl -X GET ${{ secrets.BACKEND_URL }}/check
+        continue-on-error: true
+
+      - name: Log status
+        run: echo "Transaction check completed at $(date)"
+
