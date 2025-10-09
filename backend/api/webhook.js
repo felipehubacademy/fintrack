@@ -68,12 +68,20 @@ async function processWebhookAsync(body) {
     console.log(`📧 Message ID: ${buttonReply.messageId}`);
     
     console.log('🔍 Buscando transação no Supabase...');
+    console.log(`   Message ID para buscar: ${buttonReply.messageId}`);
     
     // Buscar a transação pelo WhatsApp Message ID
-    const transaction = await transactionService.getTransactionByWhatsAppId(buttonReply.messageId);
+    let transaction;
+    try {
+      transaction = await transactionService.getTransactionByWhatsAppId(buttonReply.messageId);
+    } catch (error) {
+      console.error('❌ ERRO ao buscar transação:', error);
+      return;
+    }
     
     if (!transaction) {
       console.log('⚠️ Transação não encontrada para esse Message ID');
+      console.log('💡 Verifique se a transação foi salva no Supabase com esse Message ID');
       return;
     }
 

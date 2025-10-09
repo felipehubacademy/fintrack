@@ -151,16 +151,29 @@ class TransactionService {
    */
   async getTransactionByWhatsAppId(whatsappMessageId) {
     try {
+      console.log(`🔍 Buscando transação com Message ID: ${whatsappMessageId}`);
+      
       const { data, error } = await this.supabase
         .from('expenses')
         .select('*')
         .eq('whatsapp_message_id', whatsappMessageId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro Supabase:', error);
+        throw error;
+      }
+      
+      if (data) {
+        console.log(`✅ Transação encontrada: ID ${data.id}, Descrição: ${data.description}`);
+      } else {
+        console.log('⚠️ Nenhuma transação encontrada');
+      }
+      
       return data;
     } catch (error) {
-      console.error('❌ Erro ao buscar transação:', error);
+      console.error('❌ Erro ao buscar transação:', error.message);
+      console.error('Stack:', error.stack);
       return null;
     }
   }
