@@ -1,6 +1,10 @@
 import dotenv from 'dotenv';
+import { parseButtonReply, sendConfirmationMessage } from '../services/whatsapp.js';
+import TransactionService from '../services/transactionService.js';
 
 dotenv.config();
+
+const transactionService = new TransactionService();
 
 /**
  * Vercel Serverless Function for WhatsApp Webhook
@@ -30,70 +34,64 @@ export default function handler(req, res) {
 
   if (req.method === 'POST') {
     // Webhook event handler
-    try {
-      const body = req.body;
-      console.log('📩 Received webhook:', JSON.stringify(body, null, 2));
-      
-      // Quickly respond to WhatsApp to avoid timeout
-      res.status(200).send('OK');
-      
-      // Process webhook data asynchronously
-      if (body.entry && body.entry[0] && body.entry[0].changes && body.entry[0].changes[0]) {
-        const change = body.entry[0].changes[0];
-        
-        if (change.value && change.value.messages && change.value.messages[0]) {
-          const message = change.value.messages[0];
-          const from = message.from;
-          const messageType = message.type;
-          
-          console.log(`📱 Message from ${from}, type: ${messageType}`);
-          
-          // Handle text messages (user responses)
-          if (messageType === 'text') {
-            const text = message.text.body.toLowerCase();
-            console.log(`💬 Text received: ${text}`);
-            
-            // Process user response
-            if (text.includes('confirmar')) {
-              console.log('✅ User confirmed transaction');
-              // TODO: Update transaction as confirmed in Supabase
-            } else if (text.includes('ignorar')) {
-              console.log('❌ User ignored transaction');
-              // TODO: Mark transaction as ignored in Supabase
-            } else if (text.includes('editar')) {
-              console.log('✏️ User wants to edit transaction');
-              // TODO: Send category options to user
-            } else {
-              console.log('❓ Unknown response:', text);
-            }
-          }
-          
-          // Handle button replies (when template is approved)
-          if (messageType === 'interactive') {
-            const buttonReply = message.interactive.button_reply;
-            console.log(`🔘 Button clicked: ${buttonReply.title}`);
-            
-            // Process button response
-            if (buttonReply.title === 'Confirmar') {
-              console.log('✅ User confirmed transaction via button');
-              // TODO: Update transaction as confirmed in Supabase
-            } else if (buttonReply.title === 'Ignorar') {
-              console.log('❌ User ignored transaction via button');
-              // TODO: Mark transaction as ignored in Supabase
-            } else if (buttonReply.title === 'Editar') {
-              console.log('✏️ User wants to edit transaction via button');
-              // TODO: Send category options to user
-            }
-          }
-        }
-      }
-      
-    } catch (error) {
-      console.error('❌ Error processing webhook:', error);
-      // Don't send error response as we already responded with 200
-    }
+    const body = req.body;
+    console.log('📩 Received webhook:', JSON.stringify(body, null, 2));
+    
+    // Quickly respond to WhatsApp to avoid timeout
+    res.status(200).send('OK');
+    
+    // Process webhook data asynchronously
+    processWebhookAsync(body).catch(error => {
+      console.error('❌ Error processing webhook async:', error);
+    });
   } else {
     res.status(405).send('Method Not Allowed');
+  }
+}
+
+/**
+ * Process webhook asynchronously
+ */
+async function processWebhookAsync(body) {
+  try {
+    const buttonReply = parseButtonReply(body);
+    
+    if (!buttonReply || !buttonReply.owner) {
+      console.log('⚠️ No valid button reply found');
+      return;
+    }
+
+    console.log(`🔘 Button clicked: ${buttonReply.buttonText} → Owner: ${buttonReply.owner}`);
+    console.log(`📧 Message ID: ${buttonReply.messageId}`);
+    
+    // Buscar a transação pelo WhatsApp Message ID
+    const transaction = await transactionService.getTransactionByWhatsAppId(buttonReply.messageId);
+    
+    if (!transaction) {
+      console.log('⚠️ Transação não encontrada para esse Message ID');
+      return;
+    }
+
+    console.log(`💰 Transação encontrada: ${transaction.description} - R$ ${transaction.amount}`);
+    
+    // Confirmar transação com o owner
+    await transactionService.confirmTransaction(
+      transaction.pluggy_transaction_id,
+      buttonReply.owner,
+      buttonReply.messageId
+    );
+    
+    // Buscar totais mensais
+    const monthlyTotal = await transactionService.getMonthlyTotal(buttonReply.owner);
+    
+    // Enviar mensagem de confirmação
+    await sendConfirmationMessage(buttonReply.owner, transaction, monthlyTotal);
+    
+    console.log(`✅ Transação processada com sucesso para ${buttonReply.owner}`);
+    
+  } catch (error) {
+    console.error('❌ Error in processWebhookAsync:', error);
+    throw error;
   }
 }
 
