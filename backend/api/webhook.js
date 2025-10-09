@@ -54,6 +54,8 @@ export default function handler(req, res) {
  */
 async function processWebhookAsync(body) {
   try {
+    console.log('🔄 Starting processWebhookAsync...');
+    
     const buttonReply = parseButtonReply(body);
     
     if (!buttonReply || !buttonReply.owner) {
@@ -63,6 +65,8 @@ async function processWebhookAsync(body) {
 
     console.log(`🔘 Button clicked: ${buttonReply.buttonText} → Owner: ${buttonReply.owner}`);
     console.log(`📧 Message ID: ${buttonReply.messageId}`);
+    
+    console.log('🔍 Buscando transação no Supabase...');
     
     // Buscar a transação pelo WhatsApp Message ID
     const transaction = await transactionService.getTransactionByWhatsAppId(buttonReply.messageId);
@@ -74,23 +78,32 @@ async function processWebhookAsync(body) {
 
     console.log(`💰 Transação encontrada: ${transaction.description} - R$ ${transaction.amount}`);
     
+    console.log('💾 Confirmando transação...');
+    
     // Confirmar transação com o owner
-    await transactionService.confirmTransaction(
+    const confirmedTransaction = await transactionService.confirmTransaction(
       transaction.pluggy_transaction_id,
       buttonReply.owner,
       buttonReply.messageId
     );
     
+    console.log('✅ Transação confirmada!');
+    console.log('📊 Calculando totais mensais...');
+    
     // Buscar totais mensais
     const monthlyTotal = await transactionService.getMonthlyTotal(buttonReply.owner);
     
+    console.log(`💰 Totais: ${JSON.stringify(monthlyTotal)}`);
+    console.log('📱 Enviando confirmação WhatsApp...');
+    
     // Enviar mensagem de confirmação
-    await sendConfirmationMessage(buttonReply.owner, transaction, monthlyTotal);
+    await sendConfirmationMessage(buttonReply.owner, confirmedTransaction, monthlyTotal);
     
     console.log(`✅ Transação processada com sucesso para ${buttonReply.owner}`);
     
   } catch (error) {
     console.error('❌ Error in processWebhookAsync:', error);
+    console.error('Stack trace:', error.stack);
     throw error;
   }
 }
