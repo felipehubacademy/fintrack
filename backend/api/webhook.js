@@ -38,13 +38,16 @@ export default function handler(req, res) {
     const body = req.body;
     console.log('📩 Received webhook:', JSON.stringify(body, null, 2));
     
-    // Quickly respond to WhatsApp to avoid timeout
-    res.status(200).send('OK');
-    
-    // Process webhook data asynchronously
-    processWebhookAsync(body).catch(error => {
-      console.error('❌ Error processing webhook async:', error);
-    });
+    // Process webhook data BEFORE responding (Vercel kills connection after response!)
+    processWebhookAsync(body)
+      .then(() => {
+        console.log('✅ Webhook processed successfully');
+        res.status(200).send('OK');
+      })
+      .catch(error => {
+        console.error('❌ Error processing webhook:', error);
+        res.status(200).send('OK'); // Still respond OK to avoid retries
+      });
   } else {
     res.status(405).send('Method Not Allowed');
   }
