@@ -100,9 +100,16 @@ export async function sendTextMessage(text) {
  * Send confirmation message using approved template
  */
 export async function sendConfirmationMessage(owner, transaction, monthlyTotal) {
-  const phoneId = process.env.PHONE_ID;
+  console.log('📱 Iniciando envio de confirmação WhatsApp...');
+  
+  // FORÇAR Phone ID correto (Vercel tem um diferente!)
+  const phoneId = '280543888475181'; // Phone ID correto que funciona
   const token = process.env.WHATSAPP_TOKEN;
   const userPhone = process.env.USER_PHONE;
+  
+  console.log(`📞 Phone ID: ${phoneId} (FORÇADO)`);
+  console.log(`📱 Para: ${userPhone}`);
+  console.log(`👤 Owner: ${owner}`);
 
   // Format date
   const date = new Date(transaction.date);
