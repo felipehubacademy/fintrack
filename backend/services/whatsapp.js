@@ -1,4 +1,5 @@
-// Use native fetch (Node 18+) instead of node-fetch to avoid Vercel SSL issues
+import axios from 'axios';
+
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
 /**
@@ -157,29 +158,33 @@ export async function sendConfirmationMessage(owner, transaction, monthlyTotal) 
     }
   };
 
-  console.log('🌐 Fazendo requisição para WhatsApp API...');
+  console.log('🌐 Fazendo requisição para WhatsApp API com axios...');
   console.log(`   URL: ${WHATSAPP_API_URL}/${phoneId}/messages`);
   
-  const response = await fetch(`${WHATSAPP_API_URL}/${phoneId}/messages`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(message),
-  });
+  try {
+    const response = await axios.post(
+      `${WHATSAPP_API_URL}/${phoneId}/messages`,
+      message,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 7000, // 7 segundos
+      }
+    );
 
-  console.log(`📡 Resposta recebida: ${response.status} ${response.statusText}`);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`❌ Erro WhatsApp API: ${errorText}`);
-    throw new Error(`WhatsApp API error: ${errorText}`);
+    console.log(`📡 Resposta recebida: ${response.status} ${response.statusText}`);
+    console.log('✅ Resposta JSON parseada com sucesso');
+    return response.data;
+  } catch (error) {
+    console.error('❌ ERRO na requisição axios:', error.message);
+    if (error.response) {
+      console.error(`   Status: ${error.response.status}`);
+      console.error(`   Data: ${JSON.stringify(error.response.data)}`);
+    }
+    throw error;
   }
-
-  const result = await response.json();
-  console.log('✅ Resposta JSON parseada com sucesso');
-  return result;
 }
 
 /**
