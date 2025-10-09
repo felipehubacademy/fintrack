@@ -1,5 +1,4 @@
-import fetch from 'node-fetch';
-
+// Use native fetch (Node 18+) instead of node-fetch to avoid Vercel SSL issues
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
 /**
@@ -158,6 +157,9 @@ export async function sendConfirmationMessage(owner, transaction, monthlyTotal) 
     }
   };
 
+  console.log('🌐 Fazendo requisição para WhatsApp API...');
+  console.log(`   URL: ${WHATSAPP_API_URL}/${phoneId}/messages`);
+  
   const response = await fetch(`${WHATSAPP_API_URL}/${phoneId}/messages`, {
     method: 'POST',
     headers: {
@@ -167,12 +169,17 @@ export async function sendConfirmationMessage(owner, transaction, monthlyTotal) 
     body: JSON.stringify(message),
   });
 
+  console.log(`📡 Resposta recebida: ${response.status} ${response.statusText}`);
+
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`❌ Erro WhatsApp API: ${errorText}`);
     throw new Error(`WhatsApp API error: ${errorText}`);
   }
 
-  return await response.json();
+  const result = await response.json();
+  console.log('✅ Resposta JSON parseada com sucesso');
+  return result;
 }
 
 /**
