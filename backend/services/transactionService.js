@@ -161,7 +161,17 @@ class TransactionService {
       
       console.log('📡 Fazendo query no Supabase...');
       
-      // Add timeout
+      // Test simple query first
+      console.log('🧪 Testando query simples...');
+      const { data: allData, error: allError } = await this.supabase
+        .from('expenses')
+        .select('id, whatsapp_message_id')
+        .limit(5);
+      
+      console.log('📊 Query simples resultado:', allData?.length || 0, 'registros');
+      
+      // Now try the specific query
+      console.log('🔍 Buscando transação específica...');
       const queryPromise = this.supabase
         .from('expenses')
         .select('*')
