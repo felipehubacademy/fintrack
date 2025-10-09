@@ -6,8 +6,12 @@
       "destination": "/api/webhook"
     },
     {
-      "source": "/(.*)",
-      "destination": "/api/$1"
+      "source": "/latam/(.*)",
+      "destination": "/api/latam/$1"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/health"
     }
   ]
 }
