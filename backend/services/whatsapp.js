@@ -14,6 +14,12 @@ export async function sendTransactionNotification(transaction) {
   const date = new Date(transaction.date);
   const formattedDate = date.toLocaleDateString('pt-BR');
 
+  // Clean description (remove newlines, tabs, multiple spaces)
+  const cleanDescription = transaction.description
+    .replace(/[\n\r\t]/g, ' ')  // Remove newlines and tabs
+    .replace(/\s{2,}/g, ' ')     // Replace multiple spaces with single space
+    .trim();
+
   const message = {
     messaging_product: 'whatsapp',
     to: userPhone,
@@ -29,7 +35,7 @@ export async function sendTransactionNotification(transaction) {
           parameters: [
             {
               type: 'text',
-              text: transaction.description
+              text: cleanDescription
             },
             {
               type: 'text',
