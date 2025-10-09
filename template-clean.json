@@ -1,0 +1,37 @@
+{
+  "name": "fintrack_transaction_alert",
+  "category": "UTILITY",
+  "language": "pt_BR",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "TEXT",
+      "text": "Nova Transacao Detectada"
+    },
+    {
+      "type": "BODY",
+      "text": "Ola! Detectamos uma nova transacao no seu cartao LATAM:\n\nDescricao: {{1}}\nValor: R$ {{2}}\nData: {{3}}\n\nDeseja categorizar esta transacao?"
+    },
+    {
+      "type": "FOOTER",
+      "text": "FinTrack - Controle Financeiro"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Confirmar"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Ignorar"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Editar"
+        }
+      ]
+    }
+  ]
+}

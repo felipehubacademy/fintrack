@@ -37,7 +37,56 @@ export default function handler(req, res) {
       // Quickly respond to WhatsApp to avoid timeout
       res.status(200).send('OK');
       
-      // TODO: Process webhook data (parse button reply, update expense, etc.)
+      // Process webhook data asynchronously
+      if (body.entry && body.entry[0] && body.entry[0].changes && body.entry[0].changes[0]) {
+        const change = body.entry[0].changes[0];
+        
+        if (change.value && change.value.messages && change.value.messages[0]) {
+          const message = change.value.messages[0];
+          const from = message.from;
+          const messageType = message.type;
+          
+          console.log(`📱 Message from ${from}, type: ${messageType}`);
+          
+          // Handle text messages (user responses)
+          if (messageType === 'text') {
+            const text = message.text.body.toLowerCase();
+            console.log(`💬 Text received: ${text}`);
+            
+            // Process user response
+            if (text.includes('confirmar')) {
+              console.log('✅ User confirmed transaction');
+              // TODO: Update transaction as confirmed in Supabase
+            } else if (text.includes('ignorar')) {
+              console.log('❌ User ignored transaction');
+              // TODO: Mark transaction as ignored in Supabase
+            } else if (text.includes('editar')) {
+              console.log('✏️ User wants to edit transaction');
+              // TODO: Send category options to user
+            } else {
+              console.log('❓ Unknown response:', text);
+            }
+          }
+          
+          // Handle button replies (when template is approved)
+          if (messageType === 'interactive') {
+            const buttonReply = message.interactive.button_reply;
+            console.log(`🔘 Button clicked: ${buttonReply.title}`);
+            
+            // Process button response
+            if (buttonReply.title === 'Confirmar') {
+              console.log('✅ User confirmed transaction via button');
+              // TODO: Update transaction as confirmed in Supabase
+            } else if (buttonReply.title === 'Ignorar') {
+              console.log('❌ User ignored transaction via button');
+              // TODO: Mark transaction as ignored in Supabase
+            } else if (buttonReply.title === 'Editar') {
+              console.log('✏️ User wants to edit transaction via button');
+              // TODO: Send category options to user
+            }
+          }
+        }
+      }
       
     } catch (error) {
       console.error('❌ Error processing webhook:', error);
