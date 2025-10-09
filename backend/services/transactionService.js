@@ -161,11 +161,18 @@ class TransactionService {
       
       console.log('📡 Fazendo query no Supabase...');
       
-      const { data, error } = await this.supabase
+      // Add timeout
+      const queryPromise = this.supabase
         .from('expenses')
         .select('*')
         .eq('whatsapp_message_id', whatsappMessageId)
         .single();
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Supabase query timeout')), 5000)
+      );
+      
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
       
       console.log('📥 Query concluída!');
 
