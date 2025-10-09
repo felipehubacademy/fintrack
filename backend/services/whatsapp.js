@@ -183,10 +183,14 @@ export function parseButtonReply(webhookBody) {
       const buttonText = message.button?.text;
       const messageId = message.context?.id; // ID da mensagem template original
       
+      console.log(`🔘 Button text received: "${buttonText}"`);
+      
       let owner = null;
       if (buttonText === 'Felipe') owner = 'Felipe';
-      else if (buttonText === 'Leticia') owner = 'Leticia';
+      else if (buttonText === 'Leticia' || buttonText === 'Letícia') owner = 'Leticia';
       else if (buttonText === 'Compartilhado') owner = 'Compartilhado';
+      
+      console.log(`👤 Owner parsed: ${owner}`);
       
       return {
         owner,
