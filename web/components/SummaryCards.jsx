@@ -1,89 +1,110 @@
 export default function SummaryCards({ expenses }) {
   // Calculate totals
-  const totalFelipe = expenses
-    .filter((e) => e.owner === 'Felipe')
-    .reduce((sum, e) => sum + e.amount, 0);
+  const calculateTotals = () => {
+    const felipeTotal = expenses
+      .filter(e => e.status === 'confirmed' && (e.owner === 'Felipe' || e.owner === 'Compartilhado'))
+      .reduce((sum, e) => {
+        if (e.owner === 'Compartilhado') {
+          return sum + (parseFloat(e.amount) / 2);
+        }
+        return sum + parseFloat(e.amount);
+      }, 0);
 
-  const totalLeticia = expenses
-    .filter((e) => e.owner === 'Letícia')
-    .reduce((sum, e) => sum + e.amount, 0);
+    const leticiaTotal = expenses
+      .filter(e => e.status === 'confirmed' && (e.owner === 'Leticia' || e.owner === 'Compartilhado'))
+      .reduce((sum, e) => {
+        if (e.owner === 'Compartilhado') {
+          return sum + (parseFloat(e.amount) / 2);
+        }
+        return sum + parseFloat(e.amount);
+      }, 0);
 
-  const totalShared = expenses
-    .filter((e) => e.owner === 'Compartilhado')
-    .reduce((sum, e) => sum + e.amount, 0);
+    const totalConfirmed = expenses
+      .filter(e => e.status === 'confirmed')
+      .reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
-  const totalUnassigned = expenses
-    .filter((e) => !e.owner)
-    .reduce((sum, e) => sum + e.amount, 0);
+    const totalPending = expenses
+      .filter(e => e.status === 'pending')
+      .reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
-  const totalAll = expenses.reduce((sum, e) => sum + e.amount, 0);
+    return {
+      felipe: felipeTotal,
+      leticia: leticiaTotal,
+      confirmed: totalConfirmed,
+      pending: totalPending,
+      total: totalConfirmed + totalPending
+    };
+  };
+
+  const totals = calculateTotals();
 
   const cards = [
     {
-      title: 'Total Geral',
-      amount: totalAll,
-      color: 'bg-gradient-to-br from-gray-500 to-gray-700',
-      icon: '💰',
-    },
-    {
       title: 'Felipe',
-      amount: totalFelipe,
-      color: 'bg-gradient-to-br from-blue-500 to-blue-700',
-      icon: '👨',
+      value: `R$ ${totals.felipe.toFixed(2)}`,
+      description: 'Gastos individuais + 50% compartilhado',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      ),
+      color: 'from-blue-500 to-blue-600'
     },
     {
       title: 'Letícia',
-      amount: totalLeticia,
-      color: 'bg-gradient-to-br from-pink-500 to-pink-700',
-      icon: '👩',
+      value: `R$ ${totals.leticia.toFixed(2)}`,
+      description: 'Gastos individuais + 50% compartilhado',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      ),
+      color: 'from-pink-500 to-pink-600'
     },
     {
-      title: 'Compartilhado',
-      amount: totalShared,
-      color: 'bg-gradient-to-br from-purple-500 to-purple-700',
-      icon: '🤝',
+      title: 'Confirmado',
+      value: `R$ ${totals.confirmed.toFixed(2)}`,
+      description: `${expenses.filter(e => e.status === 'confirmed').length} transações`,
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      color: 'from-green-500 to-green-600'
     },
+    {
+      title: 'Pendente',
+      value: `R$ ${totals.pending.toFixed(2)}`,
+      description: `${expenses.filter(e => e.status === 'pending').length} transações`,
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      color: 'from-yellow-500 to-yellow-600'
+    }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
       {cards.map((card, index) => (
-        <div
-          key={index}
-          className={`${card.color} rounded-lg shadow-lg p-6 text-white`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold">{card.title}</h3>
-            <span className="text-2xl">{card.icon}</span>
+        <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
+          <div className={`bg-gradient-to-r ${card.color} p-4`}>
+            <div className="flex items-center justify-between text-white">
+              <div>
+                <p className="text-sm font-medium opacity-90">{card.title}</p>
+                <p className="text-2xl font-bold mt-1">{card.value}</p>
+              </div>
+              <div className="bg-white bg-opacity-30 rounded-full p-3">
+                {card.icon}
+              </div>
+            </div>
           </div>
-          <p className="text-3xl font-bold">
-            R$ {card.amount.toFixed(2)}
-          </p>
-          <p className="text-sm opacity-80 mt-2">
-            {expenses.filter((e) => 
-              card.title === 'Total Geral' ? true :
-              card.title === 'Compartilhado' ? e.owner === 'Compartilhado' :
-              e.owner === card.title
-            ).length} transações
-          </p>
+          <div className="px-4 py-3">
+            <p className="text-sm text-gray-600">{card.description}</p>
+          </div>
         </div>
       ))}
-      
-      {totalUnassigned > 0 && (
-        <div className="bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-lg shadow-lg p-6 text-white">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold">Não Atribuído</h3>
-            <span className="text-2xl">⚠️</span>
-          </div>
-          <p className="text-3xl font-bold">
-            R$ {totalUnassigned.toFixed(2)}
-          </p>
-          <p className="text-sm opacity-80 mt-2">
-            {expenses.filter((e) => !e.owner).length} transações
-          </p>
-        </div>
-      )}
     </div>
   );
 }
-
