@@ -10,8 +10,37 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Função para calcular o ciclo de compras (dia 9 do mês anterior até dia 8 do mês atual)
+  const getBillingCycle = (date = new Date()) => {
+    const currentMonth = date.getMonth();
+    const currentYear = date.getFullYear();
+    const currentDay = date.getDate();
+    
+    // Se estamos no dia 9 ou depois, o ciclo atual é do dia 9 do mês passado até dia 8 deste mês
+    if (currentDay >= 9) {
+      const startDate = new Date(currentYear, currentMonth - 1, 9);
+      const endDate = new Date(currentYear, currentMonth, 8);
+      return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        month: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`
+      };
+    } else {
+      // Se estamos antes do dia 9, o ciclo atual é do dia 9 de dois meses atrás até dia 8 do mês passado
+      const startDate = new Date(currentYear, currentMonth - 2, 9);
+      const endDate = new Date(currentYear, currentMonth - 1, 8);
+      return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        month: `${currentYear}-${String(currentMonth).padStart(2, '0')}`
+      };
+    }
+  };
+
+  const billingCycle = getBillingCycle();
+  
   const [filter, setFilter] = useState({
-    month: new Date().toISOString().slice(0, 7), // YYYY-MM
+    month: billingCycle.month, // Ciclo de compras
     owner: 'all',
     category: 'all'
   });
@@ -34,12 +63,16 @@ export default function Dashboard() {
   }, [router]);
 
   const checkUser = async () => {
+    console.log('🔍 checkUser iniciado');
     const { data: { session } } = await supabase.auth.getSession();
+    console.log('🔍 Session:', session?.user?.email || 'Nenhum usuário');
     
     if (session?.user) {
       setUser(session.user);
+      console.log('🔍 Usuário definido, chamando fetchExpenses');
       fetchExpenses();
     } else {
+      console.log('🔍 Nenhum usuário, redirecionando');
       router.push('/');
     }
   };
@@ -47,43 +80,57 @@ export default function Dashboard() {
   // Fetch expenses
   const fetchExpenses = async () => {
     try {
+      console.log('🔍 fetchExpenses iniciado');
       setLoading(true);
       
       let query = supabase
         .from('expenses')
         .select('*')
         .order('date', { ascending: false });
+      
+      console.log('🔍 Query base criada');
 
-      // Filter by month
+      // Filter by billing cycle
       if (filter.month) {
-        const startOfMonth = `${filter.month}-01`;
-        const endOfMonth = new Date(filter.month + '-01');
-        endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-        endOfMonth.setDate(0);
+        const cycleDates = getBillingCycle(new Date(filter.month + '-15')); // Use dia 15 como referência
+        
+        console.log('🔍 Filtro do ciclo de compras:', { 
+          filterMonth: filter.month, 
+          startDate: cycleDates.startDate, 
+          endDate: cycleDates.endDate 
+        });
         
         query = query
-          .gte('date', startOfMonth)
-          .lte('date', endOfMonth.toISOString().split('T')[0]);
+          .gte('date', cycleDates.startDate)
+          .lte('date', cycleDates.endDate);
+        
+        console.log('🔍 Query com filtro de ciclo aplicado');
       }
 
       // Filter by owner
       if (filter.owner !== 'all') {
+        console.log('🔍 Filtro de owner:', filter.owner);
         query = query.eq('owner', filter.owner);
       }
 
       // Filter by category
       if (filter.category !== 'all') {
+        console.log('🔍 Filtro de categoria:', filter.category);
         query = query.eq('category', filter.category);
       }
 
+      console.log('🔍 Executando query...');
       const { data, error } = await query;
+      console.log('🔍 Query resultado:', { data, error });
 
       if (error) throw error;
+      console.log('🔍 Setando expenses:', data?.length || 0, 'transações');
       setExpenses(data || []);
     } catch (error) {
-      console.error('Error fetching expenses:', error);
+      console.error('❌ Error fetching expenses:', error);
     } finally {
       setLoading(false);
+      console.log('🔍 Loading finalizado');
     }
   };
 
@@ -140,15 +187,18 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-white rounded-lg shadow p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Month Filter */}
+            {/* Billing Cycle Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mês</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ciclo de Compras</label>
               <input
                 type="month"
                 value={filter.month}
                 onChange={(e) => setFilter({ ...filter, month: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Ciclo: dia 9 até dia 8 • Vencimento: dia 15
+              </p>
             </div>
 
             {/* Owner Filter */}
