@@ -225,6 +225,37 @@ class TransactionService {
       return null;
     }
   }
+
+  /**
+   * Busca a última transação pendente (fallback para múltiplos Message IDs)
+   */
+  async getLastPendingTransaction() {
+    try {
+      console.log('🔍 Buscando última transação pendente...');
+      
+      const { data, error } = await this.supabase
+        .from('expenses')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.log('⚠️ Nenhuma transação pendente');
+          return null;
+        }
+        throw error;
+      }
+      
+      console.log(`✅ Última pendente: ${data.description}`);
+      return data;
+    } catch (error) {
+      console.error('❌ Erro ao buscar última pendente:', error.message);
+      return null;
+    }
+  }
 }
 
 export default TransactionService;

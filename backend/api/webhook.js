@@ -71,14 +71,22 @@ async function processWebhookAsync(body) {
     console.log(`📧 Message ID: ${buttonReply.messageId}`);
     
     console.log('🔍 Buscando transação no Supabase...');
-    console.log(`   Message ID para buscar: ${buttonReply.messageId}`);
+    console.log(`   Message ID recebido: ${buttonReply.messageId}`);
     
     // Buscar transação real no Supabase
-    const transaction = await transactionService.getTransactionByWhatsAppId(buttonReply.messageId);
+    // Tentamos primeiro por Message ID (Felipe), se não achar, pega a última pendente
+    let transaction = await transactionService.getTransactionByWhatsAppId(buttonReply.messageId);
     
     if (!transaction) {
-      console.log('⚠️ Transação não encontrada para esse Message ID');
-      return;
+      console.log('⚠️ Message ID não encontrado, buscando última transação pendente...');
+      transaction = await transactionService.getLastPendingTransaction();
+      
+      if (!transaction) {
+        console.log('❌ Nenhuma transação pendente encontrada');
+        return;
+      }
+      
+      console.log(`✅ Usando última pendente: ${transaction.description}`);
     }
 
     console.log(`💰 Transação encontrada: ${transaction.description} - R$ ${transaction.amount}`);
