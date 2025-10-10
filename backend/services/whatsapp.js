@@ -8,7 +8,12 @@ const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 export async function sendTransactionNotification(transaction) {
   const phoneId = process.env.PHONE_ID;
   const token = process.env.WHATSAPP_TOKEN;
-  const userPhone = process.env.USER_PHONE;
+  
+  // Números dos dois usuários
+  const phones = [
+    process.env.USER_PHONE || '+5511978229898', // Felipe
+    '+5511971919241' // Letícia
+  ];
 
   // Format date
   const date = new Date(transaction.date);
@@ -20,52 +25,66 @@ export async function sendTransactionNotification(transaction) {
     .replace(/\s{2,}/g, ' ')     // Replace multiple spaces with single space
     .trim();
 
-  const message = {
-    messaging_product: 'whatsapp',
-    to: userPhone,
-    type: 'template',
-    template: {
-      name: 'fintrack_despesa_cartao',
-      language: {
-        code: 'en'
+  const results = [];
+
+  // Enviar para os dois números
+  for (const userPhone of phones) {
+    const message = {
+      messaging_product: 'whatsapp',
+      to: userPhone,
+      type: 'template',
+      template: {
+        name: 'fintrack_despesa_cartao',
+        language: {
+          code: 'en'
+        },
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              {
+                type: 'text',
+                text: cleanDescription
+              },
+              {
+                type: 'text',
+                text: Math.abs(transaction.amount).toFixed(2)
+              },
+              {
+                type: 'text',
+                text: formattedDate
+              }
+            ]
+          }
+        ]
+      }
+    };
+
+    const response = await fetch(`${WHATSAPP_API_URL}/${phoneId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-      components: [
-        {
-          type: 'body',
-          parameters: [
-            {
-              type: 'text',
-              text: cleanDescription
-            },
-            {
-              type: 'text',
-              text: Math.abs(transaction.amount).toFixed(2)
-            },
-            {
-              type: 'text',
-              text: formattedDate
-            }
-          ]
-        }
-      ]
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Erro ao enviar para ${userPhone}:`, errorText);
+      // Continua para tentar enviar para o próximo número
+    } else {
+      const result = await response.json();
+      results.push({
+        phone: userPhone,
+        messageId: result.messages[0].id
+      });
+      console.log(`✅ Mensagem enviada para ${userPhone}`);
     }
-  };
-
-  const response = await fetch(`${WHATSAPP_API_URL}/${phoneId}/messages`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(message),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`WhatsApp API error: ${errorText}`);
   }
 
-  return await response.json();
+  // Retorna o primeiro resultado (compatibilidade)
+  return { messages: [{ id: results[0]?.messageId }] };
 }
 
 /**
@@ -111,86 +130,100 @@ export async function sendConfirmationMessage(owner, transaction, monthlyTotal) 
   // FORÇAR Phone ID correto (Vercel tem um diferente!)
   const phoneId = '280543888475181'; // Phone ID correto que funciona
   const token = process.env.WHATSAPP_TOKEN;
-  const userPhone = process.env.USER_PHONE;
+  
+  // Números dos dois usuários
+  const phones = [
+    process.env.USER_PHONE || '+5511978229898', // Felipe
+    '+5511971919241' // Letícia
+  ];
   
   console.log(`📞 Phone ID: ${phoneId} (FORÇADO)`);
-  console.log(`📱 Para: ${userPhone}`);
+  console.log(`📱 Para: ${phones.join(', ')}`);
   console.log(`👤 Owner: ${owner}`);
 
   // Format date
   const date = new Date(transaction.date);
   const formattedDate = date.toLocaleDateString('pt-BR');
 
-  const message = {
-    messaging_product: 'whatsapp',
-    to: userPhone,
-    type: 'template',
-    template: {
-      name: 'fintrack_confirmacao',
-      language: {
-        code: 'en'
-      },
-      components: [
-        {
-          type: 'body',
-          parameters: [
-            {
-              type: 'text',
-              text: transaction.amount.toString()
-            },
-            {
-              type: 'text',
-              text: owner
-            },
-            {
-              type: 'text',
-              text: formattedDate
-            },
-            {
-              type: 'text',
-              text: monthlyTotal.ownTotal
-            },
-            {
-              type: 'text',
-              text: monthlyTotal.sharedIndividual
-            },
-            {
-              type: 'text',
-              text: monthlyTotal.individualTotal
-            }
-          ]
-        }
-      ]
-    }
-  };
+  const results = [];
 
-  console.log('🌐 Fazendo requisição para WhatsApp API com axios...');
-  console.log(`   URL: ${WHATSAPP_API_URL}/${phoneId}/messages`);
-  
-  try {
-    const response = await axios.post(
-      `${WHATSAPP_API_URL}/${phoneId}/messages`,
-      message,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+  // Enviar para os dois números
+  for (const userPhone of phones) {
+    const message = {
+      messaging_product: 'whatsapp',
+      to: userPhone,
+      type: 'template',
+      template: {
+        name: 'fintrack_confirmacao',
+        language: {
+          code: 'en'
         },
-        timeout: 7000, // 7 segundos
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              {
+                type: 'text',
+                text: transaction.amount.toString()
+              },
+              {
+                type: 'text',
+                text: owner
+              },
+              {
+                type: 'text',
+                text: formattedDate
+              },
+              {
+                type: 'text',
+                text: monthlyTotal.ownTotal
+              },
+              {
+                type: 'text',
+                text: monthlyTotal.sharedIndividual
+              },
+              {
+                type: 'text',
+                text: monthlyTotal.individualTotal
+              }
+            ]
+          }
+        ]
       }
-    );
+    };
 
-    console.log(`📡 Resposta recebida: ${response.status} ${response.statusText}`);
-    console.log('✅ Resposta JSON parseada com sucesso');
-    return response.data;
-  } catch (error) {
-    console.error('❌ ERRO na requisição axios:', error.message);
-    if (error.response) {
-      console.error(`   Status: ${error.response.status}`);
-      console.error(`   Data: ${JSON.stringify(error.response.data)}`);
+    console.log(`🌐 Enviando confirmação para ${userPhone}...`);
+    
+    try {
+      const response = await axios.post(
+        `${WHATSAPP_API_URL}/${phoneId}/messages`,
+        message,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 7000, // 7 segundos
+        }
+      );
+
+      console.log(`📡 Confirmação enviada para ${userPhone}: ${response.status}`);
+      results.push({
+        phone: userPhone,
+        status: response.status
+      });
+    } catch (error) {
+      console.error(`❌ ERRO ao enviar confirmação para ${userPhone}:`, error.message);
+      if (error.response) {
+        console.error(`   Status: ${error.response.status}`);
+        console.error(`   Data: ${JSON.stringify(error.response.data)}`);
+      }
+      // Continua para o próximo número
     }
-    throw error;
   }
+
+  console.log(`✅ Confirmações enviadas: ${results.length}/${phones.length}`);
+  return { results };
 }
 
 /**
