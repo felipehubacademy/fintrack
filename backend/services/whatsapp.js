@@ -9,11 +9,11 @@ export async function sendTransactionNotification(transaction) {
   const phoneId = process.env.PHONE_ID;
   const token = process.env.WHATSAPP_TOKEN;
   
-  // Números dos dois usuários
+  // Números dos usuários (variáveis de ambiente - escalável)
   const phones = [
-    process.env.USER_PHONE || '+5511978229898', // Felipe
-    '+5511971919241' // Letícia
-  ];
+    process.env.USER_PHONE_FELIPE || process.env.USER_PHONE,
+    process.env.USER_PHONE_LETICIA
+  ].filter(Boolean); // Remove undefined/null
 
   // Format date
   const date = new Date(transaction.date);
@@ -131,11 +131,11 @@ export async function sendConfirmationMessage(owner, transaction, monthlyTotal) 
   const phoneId = '280543888475181'; // Phone ID correto que funciona
   const token = process.env.WHATSAPP_TOKEN;
   
-  // Números dos dois usuários
+  // Números dos usuários (variáveis de ambiente - escalável)
   const phones = [
-    process.env.USER_PHONE || '+5511978229898', // Felipe
-    '+5511971919241' // Letícia
-  ];
+    process.env.USER_PHONE_FELIPE || process.env.USER_PHONE,
+    process.env.USER_PHONE_LETICIA
+  ].filter(Boolean); // Remove undefined/null
   
   console.log(`📞 Phone ID: ${phoneId} (FORÇADO)`);
   console.log(`📱 Para: ${phones.join(', ')}`);
