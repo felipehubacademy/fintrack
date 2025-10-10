@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Check for new transactions
+      - name: Force Pluggy sync and check transactions
         run: |
-          curl -X GET ${{ secrets.BACKEND_URL }}/check
+          curl -X POST ${{ secrets.BACKEND_URL }}/sync
         continue-on-error: true
 
       - name: Log status
-        run: echo "Transaction check completed at $(date)"
+        run: echo "Sync and check completed at $(date)"
 

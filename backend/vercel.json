@@ -14,6 +14,10 @@
       "destination": "/api/check"
     },
     {
+      "source": "/sync",
+      "destination": "/api/sync"
+    },
+    {
       "source": "/latam/(.*)",
       "destination": "/api/latam/$1"
     },
