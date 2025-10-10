@@ -15,6 +15,7 @@ export default function Login() {
       setLoading(true);
       setMessage('');
       
+      // Verificar se email é permitido (validação no backend via RLS)
       const { error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
@@ -22,18 +23,26 @@ export default function Login() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Se o email não estiver na lista de permitidos, o RLS vai bloquear
+        throw error;
+      }
       
       setMessage('✅ Link mágico enviado! Verifique seu email.');
+      setMessage('📧 Enviamos um link de acesso para seu email. Verifique sua caixa de entrada!');
     } catch (error) {
-      setMessage(`❌ Erro: ${error.message}`);
+      if (error.message.includes('not authorized')) {
+        setMessage('❌ Email não autorizado. Entre em contato com o administrador.');
+      } else {
+        setMessage(`❌ Erro: ${error.message}`);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
