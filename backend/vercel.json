@@ -6,6 +6,10 @@
       "destination": "/api/webhook"
     },
     {
+      "source": "/webhook/pluggy",
+      "destination": "/api/webhook/pluggy"
+    },
+    {
       "source": "/check",
       "destination": "/api/check"
     },

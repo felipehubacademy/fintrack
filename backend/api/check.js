@@ -21,10 +21,24 @@ export default async function handler(req, res) {
     const latamTransactions = await latamService.getLatamTransactions();
     console.log(`✅ Found ${latamTransactions.length} LATAM transactions`);
     
-    // 2. Verificar quais são novas (não existem no Supabase)
+    // 2. Filtrar apenas transações do MÊS ATUAL (ignorar parcelas futuras)
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const currentMonthTransactions = latamTransactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate.getMonth() === currentMonth && 
+             transactionDate.getFullYear() === currentYear;
+    });
+    
+    console.log(`📅 Found ${currentMonthTransactions.length} transactions for current month`);
+    console.log(`⏭️ Skipped ${latamTransactions.length - currentMonthTransactions.length} future parcels`);
+    
+    // 3. Verificar quais são novas (não existem no Supabase)
     const newTransactions = [];
     
-    for (const transaction of latamTransactions) {
+    for (const transaction of currentMonthTransactions) {
       const exists = await transactionService.transactionExists(transaction.id);
       
       if (!exists) {
