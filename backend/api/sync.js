@@ -24,21 +24,29 @@ export default async function handler(req, res) {
     });
     const apiKey = authResponse.data.apiKey;
 
-    // 2. Forçar update da conexão
-    console.log('📡 Chamando POST /items/{id}/update...');
-    const updateResponse = await axios.post(
-      `${PLUGGY_BASE_URL}/items/${process.env.PLUGGY_CONNECTION_ID}/update`,
-      {},
-      {
-        headers: { 'X-API-KEY': apiKey },
-      }
-    );
+    // 2. Tentar forçar update da conexão (pode falhar no Freemium)
+    let updateStatus = 'not_available';
+    try {
+      console.log('📡 Tentando POST /items/{id}/update...');
+      const updateResponse = await axios.post(
+        `${PLUGGY_BASE_URL}/items/${process.env.PLUGGY_CONNECTION_ID}/update`,
+        {},
+        {
+          headers: { 'X-API-KEY': apiKey },
+        }
+      );
 
-    console.log(`✅ Update iniciado: ${updateResponse.data.status}`);
+      updateStatus = updateResponse.data.status;
+      console.log(`✅ Update iniciado: ${updateStatus}`);
 
-    // 3. Aguardar 10 segundos para o banco processar
-    console.log('⏳ Aguardando 10s para sincronização...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
+      // 3. Aguardar 10 segundos para o banco processar
+      console.log('⏳ Aguardando 10s para sincronização...');
+      await new Promise(resolve => setTimeout(resolve, 10000));
+    } catch (updateError) {
+      console.log(`⚠️ Update não disponível (${updateError.response?.status}): ${updateError.message}`);
+      console.log('📊 Continuando para buscar transações existentes...');
+      // Continua mesmo sem update
+    }
 
     // 4. Chamar /check para processar novas transações
     console.log('📊 Chamando /check para processar transações...');
@@ -50,9 +58,11 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      update_status: updateResponse.data.status,
+      update_status: updateStatus,
       check_result: checkResponse.data,
-      message: 'Sincronização forçada com sucesso!'
+      message: updateStatus === 'not_available' 
+        ? 'Update não disponível no plano Freemium, mas transações foram buscadas!'
+        : 'Sincronização forçada com sucesso!'
     });
 
   } catch (error) {
