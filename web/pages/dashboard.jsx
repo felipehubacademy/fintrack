@@ -245,7 +245,7 @@ export default function Dashboard() {
         </div>
 
         {/* Expense Table */}
-        <ExpenseTable expenses={expenses} loading={loading} />
+        <ExpenseTable expenses={expenses} loading={loading} onUpdate={fetchExpenses} />
       </div>
     </div>
   );

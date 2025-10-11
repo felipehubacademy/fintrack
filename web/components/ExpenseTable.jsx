@@ -1,4 +1,10 @@
-export default function ExpenseTable({ expenses, loading }) {
+import { useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+
+export default function ExpenseTable({ expenses, loading, onUpdate }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editOwner, setEditOwner] = useState('');
+  const [saving, setSaving] = useState(false);
   const getStatusBadge = (status) => {
     const styles = {
       confirmed: 'bg-green-100 text-green-800',
@@ -33,6 +39,51 @@ export default function ExpenseTable({ expenses, loading }) {
         {owner}
       </span>
     );
+  };
+
+  const handleEdit = (expense) => {
+    setEditingId(expense.id);
+    setEditOwner(expense.owner || '');
+  };
+
+  const handleSave = async () => {
+    if (!editOwner) {
+      alert('Selecione um responsável');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({
+          owner: editOwner,
+          status: 'confirmed',
+          split: editOwner === 'Compartilhado',
+          confirmed_at: new Date().toISOString()
+        })
+        .eq('id', editingId);
+
+      if (error) throw error;
+
+      // Fechar modal
+      setEditingId(null);
+      setEditOwner('');
+
+      // Atualizar lista
+      if (onUpdate) onUpdate();
+
+    } catch (error) {
+      console.error('Erro ao atualizar:', error);
+      alert('Erro ao atualizar despesa');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setEditOwner('');
   };
 
   if (loading) {
@@ -88,6 +139,9 @@ export default function ExpenseTable({ expenses, loading }) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Ações
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -113,11 +167,61 @@ export default function ExpenseTable({ expenses, loading }) {
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getStatusBadge(expense.status)}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <button
+                    onClick={() => handleEdit(expense)}
+                    className="text-purple-600 hover:text-purple-900 font-medium"
+                  >
+                    Editar
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Modal de edição */}
+      {editingId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Editar Responsável</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Responsável
+              </label>
+              <select
+                value={editOwner}
+                onChange={(e) => setEditOwner(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="">Selecione...</option>
+                <option value="Felipe">Felipe</option>
+                <option value="Leticia">Letícia</option>
+                <option value="Compartilhado">Compartilhado</option>
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
