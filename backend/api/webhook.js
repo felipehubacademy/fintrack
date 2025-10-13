@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import SmartConversation from '../services/smartConversation.js';
 
 dotenv.config();
 
@@ -59,7 +58,7 @@ async function processSmartWebhook(body) {
     // Process messages
     if (value?.messages) {
       for (const message of value.messages) {
-        await processMessage(message);
+        console.log(`📱 Message from ${message.from}: ${message.type}`);
       }
     }
     
@@ -76,40 +75,4 @@ async function processSmartWebhook(body) {
   }
 }
 
-/**
- * Process individual message
- */
-async function processMessage(message) {
-  try {
-    const from = message.from;
-    const messageType = message.type;
-    
-    console.log(`📱 Message from ${from}: ${messageType}`);
-    
-    // Process text messages
-    if (messageType === 'text') {
-      const text = message.text.body;
-      console.log(`💬 Text: "${text}"`);
-      
-      const conversation = new SmartConversation();
-      await conversation.handleMessage(text, from);
-    }
-    
-    // Process button replies
-    else if (messageType === 'interactive' && message.interactive?.type === 'button_reply') {
-      const buttonText = message.interactive.button_reply.title;
-      console.log(`🔘 Button: "${buttonText}"`);
-      
-      // TODO: Handle button replies for incomplete info
-      // This would continue the conversation flow
-    }
-    
-    // Process other message types
-    else {
-      console.log(`⚠️ Unsupported message type: ${messageType}`);
-    }
-    
-  } catch (error) {
-    console.error('❌ Error processing message:', error);
-  }
-}
+// Simplified webhook - just logs messages for now
