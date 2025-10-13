@@ -10,7 +10,7 @@ export default function DashboardV2() {
   const [costCenters, setCostCenters] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState('2025-04');
 
   // Check authentication
   useEffect(() => {
