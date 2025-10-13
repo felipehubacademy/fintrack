@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -51,8 +52,8 @@ export default function Login() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">FinTrack</h1>
-          <p className="text-gray-600">Controle suas finanças de forma inteligente</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">FinTrack V2</h1>
+          <p className="text-gray-600">Controle financeiro multi-usuário via WhatsApp</p>
         </div>
 
         {/* Login Form */}
@@ -101,6 +102,53 @@ export default function Login() {
             <p className="text-sm text-center">{message}</p>
           </div>
         )}
+
+        {/* Divider */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">ou</span>
+          </div>
+        </div>
+
+        {/* Organization Options */}
+        <div className="space-y-3">
+          <Link
+            href="/create-organization"
+            className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-all font-medium text-center block"
+          >
+            🏠 Criar Nova Organização
+          </Link>
+          
+          <div className="text-center">
+            <p className="text-sm text-gray-600 mb-2">Já tem um código de convite?</p>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                placeholder="Código de convite"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-center font-mono"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && e.target.value) {
+                    window.location.href = `/invite/${e.target.value}`;
+                  }
+                }}
+              />
+              <button
+                onClick={(e) => {
+                  const code = e.target.previousElementSibling.value;
+                  if (code) {
+                    window.location.href = `/invite/${code}`;
+                  }
+                }}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all"
+              >
+                Entrar
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Info */}
         <div className="mt-8 text-center">

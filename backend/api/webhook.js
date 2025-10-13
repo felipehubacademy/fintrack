@@ -1,16 +1,11 @@
 import dotenv from 'dotenv';
-import { parseButtonReply, sendConfirmationMessage } from '../services/whatsapp.js';
-import TransactionService from '../services/transactionService.js';
-import WhatsAppConversation from '../services/whatsappConversation.js';
+import SmartConversation from '../services/smartConversation.js';
 
 dotenv.config();
 
-const transactionService = new TransactionService();
-const whatsappConversation = new WhatsAppConversation();
-
 /**
- * Vercel Serverless Function for WhatsApp Webhook
- * Updated: 2025-10-09 21:00 with template confirmation
+ * Webhook inteligente para FinTrack V2
+ * Processa mensagens WhatsApp com análise automática
  */
 export default function handler(req, res) {
   // Enable CORS
@@ -20,35 +15,30 @@ export default function handler(req, res) {
 
   if (req.method === 'GET') {
     // Webhook verification
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-
-    const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'fintrack_whatsapp_2024';
-
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('✅ Webhook verified');
+    const challenge = req.query.challenge;
+    
+    if (challenge) {
+      console.log('✅ Smart webhook verified');
       return res.status(200).send(challenge);
     } else {
-      console.log('❌ Webhook verification failed');
-      return res.status(403).send('Forbidden');
+      return res.status(400).send('Bad Request');
     }
   }
 
   if (req.method === 'POST') {
     // Webhook event handler
     const body = req.body;
-    console.log('📩 Received webhook:', JSON.stringify(body, null, 2));
+    console.log('📩 Received smart webhook:', JSON.stringify(body, null, 2));
     
-    // Process webhook data BEFORE responding (Vercel kills connection after response!)
-    processWebhookAsync(body)
+    // Process webhook BEFORE responding
+    processSmartWebhook(body)
       .then(() => {
-        console.log('✅ Webhook processed successfully');
+        console.log('✅ Smart webhook processed successfully');
         res.status(200).send('OK');
       })
       .catch(error => {
-        console.error('❌ Error processing webhook:', error);
-        res.status(200).send('OK'); // Still respond OK to avoid retries
+        console.error('❌ Error processing smart webhook:', error);
+        res.status(200).send('OK'); // Still respond OK
       });
   } else {
     res.status(405).send('Method Not Allowed');
@@ -56,93 +46,70 @@ export default function handler(req, res) {
 }
 
 /**
- * Process webhook asynchronously
+ * Process smart webhook asynchronously
  */
-async function processWebhookAsync(body) {
+async function processSmartWebhook(body) {
   try {
-    console.log('🔄 Starting processWebhookAsync...');
+    console.log('🔄 Processing smart webhook...');
     
-    // Extrair mensagem
     const entry = body.entry?.[0];
     const change = entry?.changes?.[0];
-    const message = change?.value?.messages?.[0];
+    const value = change?.value;
     
-    // Se for mensagem de texto (nova conversa para despesas gerais)
-    if (message?.type === 'text' && message.text?.body) {
-      console.log('📝 Text message detected, checking for expense...');
-      await whatsappConversation.handleIncomingMessage(message);
-      return;
-    }
-    
-    // Se for button reply (confirmação de cartão)
-    const buttonReply = parseButtonReply(body);
-    
-    if (!buttonReply || !buttonReply.owner) {
-      console.log('⚠️ No valid button reply or expense input found');
-      return;
-    }
-
-    console.log(`🔘 Button clicked: ${buttonReply.buttonText} → Owner: ${buttonReply.owner}`);
-    console.log(`📧 Message ID: ${buttonReply.messageId}`);
-    
-    console.log('🔍 Buscando transação no Supabase...');
-    console.log(`   Message ID recebido: ${buttonReply.messageId}`);
-    
-    // Buscar transação real no Supabase
-    // Tentamos primeiro por Message ID (Felipe), se não achar, pega a última pendente
-    let transaction = await transactionService.getTransactionByWhatsAppId(buttonReply.messageId);
-    
-    if (!transaction) {
-      console.log('⚠️ Message ID não encontrado, buscando última transação pendente...');
-      transaction = await transactionService.getLastPendingTransaction();
-      
-      if (!transaction) {
-        console.log('❌ Nenhuma transação pendente encontrada');
-        return;
+    // Process messages
+    if (value?.messages) {
+      for (const message of value.messages) {
+        await processMessage(message);
       }
-      
-      console.log(`✅ Usando última pendente: ${transaction.description}`);
-    }
-
-    console.log(`💰 Transação encontrada: ${transaction.description} - R$ ${transaction.amount}`);
-    
-    // Confirmar transação no Supabase
-    console.log('💾 Confirmando transação no Supabase...');
-    const confirmedTransaction = await transactionService.confirmTransaction(
-      transaction.id,
-      buttonReply.owner
-    );
-    
-    console.log('✅ Transação confirmada no Supabase!');
-    console.log('📊 Calculando totais do mês...');
-    
-    // Calcular totais reais do mês
-    const monthlyTotal = await transactionService.getMonthlyTotal(buttonReply.owner);
-    
-    console.log(`💰 Totais calculados: ${JSON.stringify(monthlyTotal)}`);
-    console.log('📱 Enviando confirmação WhatsApp...');
-    
-    // Enviar mensagem de confirmação com timeout
-    try {
-      const confirmPromise = sendConfirmationMessage(buttonReply.owner, confirmedTransaction, monthlyTotal);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('WhatsApp confirmation timeout (8s)')), 8000)
-      );
-      
-      await Promise.race([confirmPromise, timeoutPromise]);
-      console.log(`✅ Confirmação enviada com sucesso!`);
-    } catch (whatsappError) {
-      console.error('❌ ERRO ao enviar confirmação WhatsApp:', whatsappError.message);
-      console.error('Stack:', whatsappError.stack);
-      // Não lançar erro - já processamos a transação
     }
     
-    console.log(`✅ Transação processada com sucesso para ${buttonReply.owner}`);
+    // Process status updates
+    if (value?.statuses) {
+      for (const status of value.statuses) {
+        console.log(`📊 Message status: ${status.status} for ${status.id}`);
+      }
+    }
     
   } catch (error) {
-    console.error('❌ Error in processWebhookAsync:', error);
-    console.error('Stack trace:', error.stack);
+    console.error('❌ Error in processSmartWebhook:', error);
     throw error;
   }
 }
 
+/**
+ * Process individual message
+ */
+async function processMessage(message) {
+  try {
+    const from = message.from;
+    const messageType = message.type;
+    
+    console.log(`📱 Message from ${from}: ${messageType}`);
+    
+    // Process text messages
+    if (messageType === 'text') {
+      const text = message.text.body;
+      console.log(`💬 Text: "${text}"`);
+      
+      const conversation = new SmartConversation();
+      await conversation.handleMessage(text, from);
+    }
+    
+    // Process button replies
+    else if (messageType === 'interactive' && message.interactive?.type === 'button_reply') {
+      const buttonText = message.interactive.button_reply.title;
+      console.log(`🔘 Button: "${buttonText}"`);
+      
+      // TODO: Handle button replies for incomplete info
+      // This would continue the conversation flow
+    }
+    
+    // Process other message types
+    else {
+      console.log(`⚠️ Unsupported message type: ${messageType}`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error processing message:', error);
+  }
+}
