@@ -117,10 +117,10 @@ export default function DashboardHome() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (orgUser) {
       fetchAllExpenses();
     }
-  }, [selectedMonth, user]);
+  }, [selectedMonth, orgUser]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
