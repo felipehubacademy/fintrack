@@ -10,7 +10,8 @@ export default function DashboardV2() {
   const [costCenters, setCostCenters] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState('2025-04');
+  const [error, setError] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
   // Check authentication
   useEffect(() => {
@@ -24,25 +25,30 @@ export default function DashboardV2() {
       router.push('/');
     } else {
       setUser(user);
-      await fetchUserData(user.id);
+      await fetchUserData(user.email);
     }
   };
 
-  const fetchUserData = async (userId) => {
+  const fetchUserData = async (userEmail) => {
     try {
       setLoading(true);
       
-      // Buscar usuário com organização
+      // Buscar usuário com organização pelo EMAIL
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select(`
           *,
           organization:organizations(*)
         `)
-        .eq('id', userId)
+        .eq('email', userEmail)
         .single();
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('❌ Erro ao buscar usuário:', userError);
+        setError('Organização não encontrada. Você precisa ser convidado para uma organização.');
+        setLoading(false);
+        return;
+      }
       
       setOrganization(userData.organization);
       
