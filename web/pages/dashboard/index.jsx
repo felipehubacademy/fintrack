@@ -4,45 +4,40 @@ import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 import MonthCharts from '../../components/MonthCharts';
 import MonthlyComparison from '../../components/MonthlyComparison';
+import { useOrganization } from '../../hooks/useOrganization';
 
 export default function DashboardHome() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { organization, user: orgUser, costCenters, budgetCategories, loading: orgLoading, error: orgError } = useOrganization();
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [cardExpenses, setCardExpenses] = useState([]);
   const [cashExpenses, setCashExpenses] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
 
   useEffect(() => {
-    checkUser();
-  }, []);
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session?.user) {
-      setUser(session.user);
-      await fetchAllExpenses();
-    } else {
+    if (!orgLoading && !orgError && organization) {
+      fetchAllExpenses();
+    } else if (!orgLoading && orgError) {
       router.push('/');
     }
-  };
+  }, [orgLoading, orgError, organization, selectedMonth]);
 
   const fetchAllExpenses = async () => {
+    if (!organization) return;
+    
     try {
-      setLoading(true);
-      
-      // Buscar todas as despesas confirmadas do mês
+      // Buscar todas as despesas confirmadas do mês da organização
       const startOfMonth = `${selectedMonth}-01`;
       const endOfMonth = new Date(selectedMonth + '-01');
       endOfMonth.setMonth(endOfMonth.getMonth() + 1);
       endOfMonth.setDate(0);
 
+      // Buscar despesas usando a view all_expenses ou filtrando por organização
       const { data, error } = await supabase
         .from('expenses')
         .select('*')
         .eq('status', 'confirmed')
+        .eq('organization_id', organization.id) // Filtro V2
         .gte('date', startOfMonth)
         .lte('date', endOfMonth.toISOString().split('T')[0])
         .order('date', { ascending: false });
@@ -60,8 +55,6 @@ export default function DashboardHome() {
       await fetchMonthlyData();
     } catch (error) {
       console.error('Error fetching expenses:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -83,6 +76,7 @@ export default function DashboardHome() {
           .from('expenses')
           .select('*')
           .eq('status', 'confirmed')
+          .eq('organization_id', organization.id) // Filtro V2
           .gte('date', startOfMonth)
           .lte('date', endOfMonthStr);
 
@@ -120,14 +114,25 @@ export default function DashboardHome() {
     router.push('/');
   };
 
-  // Calcular totais
+  // Calcular totais usando centros de custo V2
   const calculateTotals = (expenses) => {
-    const felipe = expenses.filter(e => e.owner === 'Felipe').reduce((sum, e) => sum + e.amount, 0);
-    const leticia = expenses.filter(e => e.owner === 'Leticia' || e.owner === 'Letícia').reduce((sum, e) => sum + e.amount, 0);
-    const shared = expenses.filter(e => e.owner === 'Compartilhado').reduce((sum, e) => sum + e.amount, 0);
-    const total = felipe + leticia + shared;
-
-    return { felipe, leticia, shared, total };
+    const totals = {};
+    
+    // Inicializar totais para cada centro de custo
+    costCenters.forEach(center => {
+      totals[center.name] = 0;
+    });
+    
+    // Somar despesas por centro de custo
+    expenses.forEach(expense => {
+      if (expense.owner && totals[expense.owner] !== undefined) {
+        totals[expense.owner] += parseFloat(expense.amount);
+      }
+    });
+    
+    const total = Object.values(totals).reduce((sum, value) => sum + value, 0);
+    
+    return { ...totals, total };
   };
 
   const cardTotals = calculateTotals(cardExpenses);
@@ -135,12 +140,29 @@ export default function DashboardHome() {
   const allExpenses = [...cardExpenses, ...cashExpenses];
   const grandTotal = cardTotals.total + cashTotals.total;
 
-  if (loading) {
+  if (orgLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando dashboard...</p>
+          <p className="mt-4 text-gray-600">Carregando organização...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (orgError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
+          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"
+          >
+            Voltar ao início
+          </button>
         </div>
       </div>
     );
@@ -153,8 +175,10 @@ export default function DashboardHome() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">💰 FinTrack - Dashboard Consolidado</h1>
-              <p className="text-sm text-gray-600">Visão geral das finanças</p>
+              <h1 className="text-2xl font-bold text-gray-900">💰 {organization?.name || 'FinTrack'} - Dashboard</h1>
+              <p className="text-sm text-gray-600">
+                {orgUser?.role === 'admin' ? '👑 Administrador' : '👤 Membro'} • {orgUser?.name}
+              </p>
             </div>
             <button
               onClick={handleLogout}
@@ -169,7 +193,7 @@ export default function DashboardHome() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Cards Consolidados */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Card: Cartões */}
           <Link href="/dashboard/card">
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white cursor-pointer hover:shadow-xl transition-all">
@@ -201,17 +225,33 @@ export default function DashboardHome() {
           </Link>
 
           {/* Card: Total Geral */}
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white col-span-2">
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm font-medium">📊 Total Geral</p>
-                <p className="text-4xl font-bold mt-2">R$ {grandTotal.toFixed(2)}</p>
+                <p className="text-3xl font-bold mt-2">R$ {grandTotal.toFixed(2)}</p>
                 <p className="text-purple-200 text-sm mt-2">
-                  {allExpenses.length} despesas confirmadas
+                  {allExpenses.length} despesas
                 </p>
               </div>
-              <svg className="w-16 h-16 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Card: Centros de Custo */}
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100 text-sm font-medium">👥 Centros de Custo</p>
+                <p className="text-2xl font-bold mt-2">{costCenters.length}</p>
+                <p className="text-orange-200 text-sm mt-2">
+                  {costCenters.map(c => c.name).join(', ')}
+                </p>
+              </div>
+              <svg className="w-12 h-12 text-orange-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
@@ -221,18 +261,12 @@ export default function DashboardHome() {
         <div className="grid grid-cols-1 gap-6 mb-8">
           {/* Month Charts (Pie Charts) */}
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="mb-4">
               <h2 className="text-xl font-semibold text-gray-900">
                 📊 Análise do Mês
               </h2>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
             </div>
-            <MonthCharts expenses={allExpenses} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
+            <MonthCharts expenses={allExpenses} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} />
           </div>
 
           {/* Monthly Comparison (Stacked Bar Chart) */}

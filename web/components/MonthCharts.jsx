@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
-export default function MonthCharts({ expenses, selectedMonth, onMonthChange }) {
+export default function MonthCharts({ expenses, selectedMonth, onMonthChange, costCenters = [] }) {
   // Pizza 1: Divisão por Tipo (Cartão vs A Vista)
   const paymentTypeData = [
     {
@@ -17,31 +17,25 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange }) 
     }
   ].filter(item => item.value > 0);
 
-  // Pizza 2: Divisão por Owner (consolidado)
-  const ownerData = [
-    {
-      name: 'Felipe',
-      value: expenses
-        .filter(e => e.owner === 'Felipe' || e.owner === 'Compartilhado')
-        .reduce((sum, e) => {
-          if (e.owner === 'Compartilhado') {
-            return sum + (parseFloat(e.amount) / 2);
-          }
-          return sum + parseFloat(e.amount);
-        }, 0)
-    },
-    {
-      name: 'Letícia',
-      value: expenses
-        .filter(e => e.owner === 'Leticia' || e.owner === 'Compartilhado')
-        .reduce((sum, e) => {
-          if (e.owner === 'Compartilhado') {
-            return sum + (parseFloat(e.amount) / 2);
-          }
-          return sum + parseFloat(e.amount);
-        }, 0)
+  // Pizza 2: Divisão por Centros de Custo (V2)
+  const ownerData = costCenters.map(center => {
+    const sharedExpenses = expenses.filter(e => e.owner === 'Compartilhado');
+    const individualExpenses = expenses.filter(e => e.owner === center.name);
+    
+    let total = individualExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    
+    // Adicionar parte compartilhada se for centro individual
+    if (center.type === 'individual' && center.name !== 'Compartilhado') {
+      const sharedTotal = sharedExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+      total += sharedTotal * (center.split_percentage || 50) / 100;
     }
-  ].filter(item => item.value > 0);
+    
+    return {
+      name: center.name,
+      value: total,
+      color: center.color
+    };
+  }).filter(item => item.value > 0);
 
   const COLORS_TYPE = ['#3B82F6', '#10B981']; // Azul (Cartão), Verde (A Vista)
   const COLORS_OWNER = ['#3B82F6', '#EC4899']; // Azul (Felipe), Rosa (Letícia)
@@ -125,7 +119,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange }) 
                 dataKey="value"
               >
                 {ownerData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS_OWNER[index % COLORS_OWNER.length]} />
+                  <Cell key={`cell-${index}`} fill={entry.color || COLORS_OWNER[index % COLORS_OWNER.length]} />
                 ))}
               </Pie>
               <Tooltip 
