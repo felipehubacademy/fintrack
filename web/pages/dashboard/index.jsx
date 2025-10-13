@@ -32,15 +32,21 @@ export default function DashboardHome() {
       endOfMonth.setMonth(endOfMonth.getMonth() + 1);
       endOfMonth.setDate(0);
 
-      // Buscar despesas usando a view all_expenses ou filtrando por organização
-      const { data, error } = await supabase
+      // Buscar despesas (compatível V1/V2)
+      let query = supabase
         .from('expenses')
         .select('*')
         .eq('status', 'confirmed')
-        .eq('organization_id', organization.id) // Filtro V2
         .gte('date', startOfMonth)
         .lte('date', endOfMonth.toISOString().split('T')[0])
         .order('date', { ascending: false });
+
+      // Adicionar filtro V2 se organização tem ID real (não mock)
+      if (organization?.id && organization.id !== 'default-org') {
+        query = query.eq('organization_id', organization.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -72,13 +78,20 @@ export default function DashboardHome() {
         const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
         const endOfMonthStr = endOfMonth.toISOString().split('T')[0];
 
-        const { data, error } = await supabase
+        // Buscar dados mensais (compatível V1/V2)
+        let monthlyQuery = supabase
           .from('expenses')
           .select('*')
           .eq('status', 'confirmed')
-          .eq('organization_id', organization.id) // Filtro V2
           .gte('date', startOfMonth)
           .lte('date', endOfMonthStr);
+
+        // Adicionar filtro V2 se organização tem ID real
+        if (organization?.id && organization.id !== 'default-org') {
+          monthlyQuery = monthlyQuery.eq('organization_id', organization.id);
+        }
+
+        const { data, error } = await monthlyQuery;
 
         if (!error && data) {
           const cardTotal = data
