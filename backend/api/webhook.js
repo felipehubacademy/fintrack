@@ -1,10 +1,12 @@
 import dotenv from 'dotenv';
 import { parseButtonReply, sendConfirmationMessage } from '../services/whatsapp.js';
 import TransactionService from '../services/transactionService.js';
+import WhatsAppConversation from '../services/whatsappConversation.js';
 
 dotenv.config();
 
 const transactionService = new TransactionService();
+const whatsappConversation = new WhatsAppConversation();
 
 /**
  * Vercel Serverless Function for WhatsApp Webhook
@@ -60,10 +62,23 @@ async function processWebhookAsync(body) {
   try {
     console.log('🔄 Starting processWebhookAsync...');
     
+    // Extrair mensagem
+    const entry = body.entry?.[0];
+    const change = entry?.changes?.[0];
+    const message = change?.value?.messages?.[0];
+    
+    // Se for mensagem de texto (nova conversa para despesas gerais)
+    if (message?.type === 'text' && message.text?.body) {
+      console.log('📝 Text message detected, checking for expense...');
+      await whatsappConversation.handleIncomingMessage(message);
+      return;
+    }
+    
+    // Se for button reply (confirmação de cartão)
     const buttonReply = parseButtonReply(body);
     
     if (!buttonReply || !buttonReply.owner) {
-      console.log('⚠️ No valid button reply found');
+      console.log('⚠️ No valid button reply or expense input found');
       return;
     }
 

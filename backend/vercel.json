@@ -10,6 +10,10 @@
       "destination": "/api/webhook/pluggy"
     },
     {
+      "source": "/webhook/smart",
+      "destination": "/api/webhook/smart"
+    },
+    {
       "source": "/check",
       "destination": "/api/check"
     },
@@ -24,6 +28,22 @@
     {
       "source": "/health",
       "destination": "/api/health"
+    },
+    {
+      "source": "/expenses/general",
+      "destination": "/api/expenses/general"
+    },
+    {
+      "source": "/expenses/summary",
+      "destination": "/api/expenses/summary"
+    },
+    {
+      "source": "/organizations",
+      "destination": "/api/organizations"
+    },
+    {
+      "source": "/organizations/(.*)",
+      "destination": "/api/organizations/$1"
     }
   ]
 }
