@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../../lib/supabaseClient';
-import SummaryCards from '../../components/SummaryCards';
-import ExpenseTable from '../../components/ExpenseTable';
-import Chart from '../../components/Chart';
+import { supabase } from '../lib/supabaseClient';
+import SummaryCards from '../components/SummaryCards';
+import ExpenseTable from '../components/ExpenseTable';
+import Chart from '../components/Chart';
 
 export default function Dashboard() {
   const router = useRouter();
