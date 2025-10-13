@@ -42,8 +42,9 @@ export default function FinanceDashboard() {
       setLoading(true);
       
       let query = supabase
-        .from('expenses_general')
+        .from('expenses')
         .select('*')
+        .eq('status', 'confirmed')
         .order('date', { ascending: false });
 
       if (filter.month) {
@@ -61,7 +62,14 @@ export default function FinanceDashboard() {
       }
 
       if (filter.payment_method !== 'all') {
-        query = query.eq('payment_method', filter.payment_method);
+        if (filter.payment_method === 'credit_card') {
+          query = query.eq('payment_method', 'credit_card');
+        } else {
+          query = query.neq('payment_method', 'credit_card');
+        }
+      } else {
+        // Por padrão, mostrar apenas despesas que NÃO são de cartão
+        query = query.neq('payment_method', 'credit_card');
       }
 
       const { data, error } = await query;
@@ -90,7 +98,7 @@ export default function FinanceDashboard() {
     setSaving(true);
     try {
       const { error } = await supabase
-        .from('expenses_general')
+        .from('expenses')
         .update({
           owner: editOwner,
           status: 'confirmed',

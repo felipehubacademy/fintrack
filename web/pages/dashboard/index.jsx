@@ -12,6 +12,7 @@ export default function DashboardHome() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [cardExpenses, setCardExpenses] = useState([]);
   const [cashExpenses, setCashExpenses] = useState([]);
+  const [monthlyData, setMonthlyData] = useState([]);
 
   useEffect(() => {
     checkUser();
@@ -54,10 +55,57 @@ export default function DashboardHome() {
 
       setCardExpenses(card);
       setCashExpenses(cash);
+      
+      // Buscar dados dos últimos 6 meses para comparação
+      await fetchMonthlyData();
     } catch (error) {
       console.error('Error fetching expenses:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMonthlyData = async () => {
+    try {
+      const months = [];
+      const currentDate = new Date();
+      
+      // Gerar últimos 6 meses
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        const monthStr = date.toISOString().slice(0, 7);
+        
+        const startOfMonth = `${monthStr}-01`;
+        const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        const endOfMonthStr = endOfMonth.toISOString().split('T')[0];
+
+        const { data, error } = await supabase
+          .from('expenses')
+          .select('*')
+          .eq('status', 'confirmed')
+          .gte('date', startOfMonth)
+          .lte('date', endOfMonthStr);
+
+        if (!error && data) {
+          const cardTotal = data
+            .filter(e => e.payment_method === 'credit_card')
+            .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+            
+          const cashTotal = data
+            .filter(e => e.payment_method !== 'credit_card')
+            .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+          months.push({
+            month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+            cartoes: cardTotal,
+            despesas: cashTotal
+          });
+        }
+      }
+      
+      setMonthlyData(months);
+    } catch (error) {
+      console.error('Error fetching monthly data:', error);
     }
   };
 
@@ -184,7 +232,7 @@ export default function DashboardHome() {
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
-            <MonthCharts expenses={allExpenses} selectedMonth={selectedMonth} />
+            <MonthCharts expenses={allExpenses} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
           </div>
 
           {/* Monthly Comparison (Stacked Bar Chart) */}
@@ -192,7 +240,7 @@ export default function DashboardHome() {
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
               📈 Comparativo Mensal (Últimos 6 meses)
             </h2>
-            <MonthlyComparison />
+            <MonthlyComparison monthlyData={monthlyData} />
           </div>
         </div>
       </main>
