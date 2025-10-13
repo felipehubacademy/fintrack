@@ -4,7 +4,21 @@ import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 import MonthCharts from '../../components/MonthCharts';
 import MonthlyComparison from '../../components/MonthlyComparison';
+import StatsCards from '../../components/dashboard/StatsCards';
+import QuickActions from '../../components/dashboard/QuickActions';
+import RecentActivity from '../../components/dashboard/RecentActivity';
 import { useOrganization } from '../../hooks/useOrganization';
+import { Button } from '../../components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { 
+  LogOut, 
+  Settings, 
+  Bell, 
+  Search,
+  Calendar,
+  TrendingUp,
+  Users
+} from 'lucide-react';
 
 export default function DashboardHome() {
   const router = useRouter();
@@ -182,112 +196,134 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">💰 {organization?.name || 'FinTrack'} - Dashboard</h1>
-              <p className="text-sm text-gray-600">
-                {orgUser?.role === 'admin' ? '👑 Administrador' : '👤 Membro'} • {orgUser?.name}
-              </p>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
+                <TrendingUp className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{organization?.name || 'FinTrack'}</h1>
+                <p className="text-sm text-gray-600 flex items-center space-x-2">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    orgUser?.role === 'admin' 
+                      ? 'bg-purple-100 text-purple-800' 
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {orgUser?.role === 'admin' ? '👑 Administrador' : '👤 Membro'}
+                  </span>
+                  <span>•</span>
+                  <span>{orgUser?.name || 'Usuário'}</span>
+                </p>
+              </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Sair
-            </button>
+            
+            <div className="flex items-center space-x-3">
+              <Button variant="ghost" size="icon">
+                <Search className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Bell className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon">
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Summary Cards Consolidados */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Card: Cartões */}
-          <Link href="/dashboard/card">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white cursor-pointer hover:shadow-xl transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm font-medium">💳 Cartões</p>
-                  <p className="text-3xl font-bold mt-2">R$ {cardTotals.total.toFixed(2)}</p>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Stats Cards */}
+        <StatsCards 
+          cardExpenses={cardTotals.total}
+          cashExpenses={cashTotals.total}
+          totalExpenses={grandTotal}
+          costCenters={costCenters}
+          budgets={[]}
+          monthlyGrowth={12}
+        />
+
+        {/* Quick Actions */}
+        <QuickActions userRole={orgUser?.role} />
+
+        {/* Charts and Activity Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Charts */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Month Charts */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+                    <Calendar className="h-4 w-4 text-white" />
+                  </div>
+                  <span>Análise do Mês</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MonthCharts expenses={allExpenses} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} />
+              </CardContent>
+            </Card>
+
+            {/* Monthly Comparison */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-white" />
+                  </div>
+                  <span>Comparativo Mensal</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MonthlyComparison monthlyData={monthlyData} />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Recent Activity */}
+          <div className="space-y-6">
+            <RecentActivity expenses={allExpenses} />
+            
+            {/* Quick Stats */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <div className="p-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg">
+                    <Users className="h-4 w-4 text-white" />
+                  </div>
+                  <span>Resumo Rápido</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Despesas este mês</span>
+                  <span className="font-semibold text-gray-900">{allExpenses.length}</span>
                 </div>
-                <svg className="w-12 h-12 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
-            </div>
-          </Link>
-
-          {/* Card: A Vista */}
-          <Link href="/dashboard/finance">
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white cursor-pointer hover:shadow-xl transition-all">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm font-medium">💵 Dinheiro/PIX</p>
-                  <p className="text-3xl font-bold mt-2">R$ {cashTotals.total.toFixed(2)}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Centros de custo</span>
+                  <span className="font-semibold text-gray-900">{costCenters.length}</span>
                 </div>
-                <svg className="w-12 h-12 text-green-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-            </div>
-          </Link>
-
-          {/* Card: Total Geral */}
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm font-medium">📊 Total Geral</p>
-                <p className="text-3xl font-bold mt-2">R$ {grandTotal.toFixed(2)}</p>
-                <p className="text-purple-200 text-sm mt-2">
-                  {allExpenses.length} despesas
-                </p>
-              </div>
-              <svg className="w-12 h-12 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Card: Centros de Custo */}
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 text-sm font-medium">👥 Centros de Custo</p>
-                <p className="text-2xl font-bold mt-2">{costCenters.length}</p>
-                <p className="text-orange-200 text-sm mt-2">
-                  {costCenters.map(c => c.name).join(', ')}
-                </p>
-              </div>
-              <svg className="w-12 h-12 text-orange-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 gap-6 mb-8">
-          {/* Month Charts (Pie Charts) */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                📊 Análise do Mês
-              </h2>
-            </div>
-            <MonthCharts expenses={allExpenses} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} />
-          </div>
-
-          {/* Monthly Comparison (Stacked Bar Chart) */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              📈 Comparativo Mensal (Últimos 6 meses)
-            </h2>
-            <MonthlyComparison monthlyData={monthlyData} />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Categorias</span>
+                  <span className="font-semibold text-gray-900">{budgetCategories.length}</span>
+                </div>
+                <div className="pt-4 border-t">
+                  <Button variant="outline" className="w-full">
+                    Ver Relatório Completo
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
