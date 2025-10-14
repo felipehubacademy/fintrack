@@ -60,7 +60,7 @@ Se a mensagem NÃO for sobre despesas, retorne: {"erro": "Mensagem não é sobre
 
 Retorne APENAS JSON:`;
 
-      const completion = await this.openai.openai.chat.completions.create({
+      const completion = await this.openai.client.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: prompt },
@@ -430,7 +430,7 @@ CAMPOS POSSÍVEIS:
 Retorne APENAS JSON com o campo atualizado:
 {"${field}": "valor_identificado"}`;
 
-      const completion = await this.openai.openai.chat.completions.create({
+      const completion = await this.openai.client.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
