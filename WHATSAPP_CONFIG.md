@@ -20,7 +20,7 @@ WHATSAPP_VERIFY_TOKEN=fintrack_verify_token
 
 ### 2. Webhook URL
 
-**URL do Webhook:** `https://fintrack-backend-theta.vercel.app/webhook`
+**URL do Webhook:** `https://fintrack-backend-theta.vercel.app/api/webhook`
 
 **Token de Verificação:** `fintrack_verify_token`
 
@@ -90,5 +90,5 @@ curl -X POST "https://fintrack-backend.vercel.app/webhook" \
 ---
 
 **📞 Número do WhatsApp:** `801805679687987` (+55 11 5192-8551)  
-**🔗 Webhook:** `https://fintrack-backend-theta.vercel.app/webhook`  
+**🔗 Webhook:** `https://fintrack-backend-theta.vercel.app/api/webhook`  
 **🔑 Token:** `fintrack_verify_token`
