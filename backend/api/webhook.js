@@ -14,14 +14,21 @@ export default function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'GET') {
-    // Webhook verification
-    const challenge = req.query.challenge;
+    // Webhook verification (Meta format)
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
     
-    if (challenge) {
-      console.log('✅ Smart webhook verified');
+    if (mode === 'subscribe' && token === 'fintrack_verify_token') {
+      console.log('✅ Webhook verified');
       return res.status(200).send(challenge);
+    } else if (req.query.challenge) {
+      // Fallback for simple challenge
+      console.log('✅ Webhook verified (simple)');
+      return res.status(200).send(req.query.challenge);
     } else {
-      return res.status(400).send('Bad Request');
+      console.log('❌ Webhook verification failed');
+      return res.status(403).send('Forbidden');
     }
   }
 
