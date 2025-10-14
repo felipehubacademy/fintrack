@@ -1,3 +1,18 @@
 {
-  "version": 2
+  "version": 2,
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "@vercel/node@3.0.7"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/webhook",
+      "destination": "/api/webhook"
+    },
+    {
+      "source": "/hello",
+      "destination": "/api/hello"
+    }
+  ]
 }
