@@ -9,7 +9,7 @@
   "routes": [
     {
       "src": "/webhook/smart",
-      "dest": "/backend/api/webhook/smart.js"
+      "dest": "/backend/api/webhook-smart.js"
     },
     {
       "src": "/webhook/pluggy",
