@@ -1,4 +1,4 @@
-import SmartConversation from '../backend/services/smartConversation.js';
+import SmartConversation from './_smartConversation.js';
 
 /**
  * Webhook FinTrack V2 - Processamento Inteligente
