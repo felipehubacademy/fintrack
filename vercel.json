@@ -12,6 +12,10 @@
       "dest": "/backend/api/webhook.js"
     },
     {
+      "src": "/webhook/smart",
+      "dest": "/backend/api/webhook/smart.js"
+    },
+    {
       "src": "/webhook/pluggy",
       "dest": "/backend/api/webhook/pluggy.js"
     },
