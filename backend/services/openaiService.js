@@ -218,7 +218,7 @@ Use emoji relevante. Seja brasileiro e informal. Máximo 50 caracteres.`;
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
+        temperature: 0.3,
         max_tokens: 50
       });
       

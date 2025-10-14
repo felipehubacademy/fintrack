@@ -8,7 +8,8 @@ import {
   Settings, 
   Share2,
   BarChart3,
-  Receipt
+  Receipt,
+  FolderOpen
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -53,6 +54,15 @@ export default function QuickActions({ userRole = 'member' }) {
       icon: Settings,
       href: "/dashboard/cost-centers",
       color: "bg-gray-500 hover:bg-gray-600",
+      textColor: "text-white",
+      adminOnly: true
+    },
+    {
+      title: "Categorias",
+      description: "Personalizar categorias",
+      icon: FolderOpen,
+      href: "/dashboard/categories",
+      color: "bg-emerald-500 hover:bg-emerald-600",
       textColor: "text-white",
       adminOnly: true
     },

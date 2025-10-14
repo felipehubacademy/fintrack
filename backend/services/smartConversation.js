@@ -28,26 +28,37 @@ class SmartConversation {
     try {
       console.log(`🧠 Analisando mensagem: "${text}"`);
       
-      const prompt = `Analise a seguinte mensagem sobre uma despesa e extraia as informações disponíveis.
+      // Buscar usuário para obter categorias da organização
+      const user = await this.getUserByPhone(userPhone);
+      const categories = user ? await this.getBudgetCategories(user.organization_id) : [];
+      const categoryNames = categories.map(cat => cat.name).join(', ');
       
-      INFORMAÇÕES A EXTRAIR:
-      - valor: número em reais (ex: 50.00, 150.50)
-      - descricao: o que foi comprado/onde
-      - categoria: Alimentação, Transporte, Saúde, Lazer, Contas, Casa, Educação, Investimentos, Outros
-      - metodo_pagamento: credit_card, debit_card, pix, cash, other
-      - responsavel: nome da pessoa (Felipe, Letícia, João, Maria, etc.) ou "compartilhado"
-      - data: data da compra (hoje, ontem, ou data específica)
-      - confianca: nível de confiança (0.0 a 1.0)
-      - precisa_confirmar: true se alguma informação crucial estiver faltando
-      
-      EXEMPLOS:
-      "Gastei 50 no mercado no débito" → {valor: 50, descricao: "mercado", categoria: "Alimentação", metodo_pagamento: "debit_card", responsavel: null, data: "hoje", confianca: 0.9, precisa_confirmar: true}
-      
-      "Gastei 50 no mercado no débito para o Felipe" → {valor: 50, descricao: "mercado", categoria: "Alimentação", metodo_pagamento: "debit_card", responsavel: "Felipe", data: "hoje", confianca: 0.95, precisa_confirmar: false}
-      
-      "Paguei 30 na farmácia ontem" → {valor: 30, descricao: "farmácia", categoria: "Saúde", metodo_pagamento: null, responsavel: null, data: "ontem", confianca: 0.8, precisa_confirmar: true}
-      
-      Retorne APENAS um JSON válido:`;
+      const prompt = `Você é um assistente financeiro especializado APENAS em processar despesas do FinTrack.
+
+REGRAS RÍGIDAS:
+1. Processe APENAS mensagens sobre gastos/despesas
+2. Ignore completamente qualquer outro assunto
+3. Seja extremamente preciso com valores monetários
+4. Use APENAS as categorias da organização do usuário
+5. Retorne APENAS JSON válido
+6. NUNCA use "Outros" como primeira opção - tente identificar a categoria correta
+
+CATEGORIAS DISPONÍVEIS PARA ESTA ORGANIZAÇÃO:
+${categoryNames}
+
+MÉTODOS DE PAGAMENTO: credit_card, debit_card, pix, cash, other
+RESPONSÁVEIS: Felipe, Letícia, Compartilhado (ou null se não especificado)
+
+EXEMPLOS:
+"Gastei 50" → {"valor": 50, "descricao": "gasto não especificado", "categoria": "${categories[0]?.name || 'Outros'}", "metodo_pagamento": null, "responsavel": null, "data": "hoje", "confianca": 0.3, "precisa_confirmar": true}
+
+"Gastei 50 no mercado" → {"valor": 50, "descricao": "mercado", "categoria": "Alimentação", "metodo_pagamento": null, "responsavel": null, "data": "hoje", "confianca": 0.9, "precisa_confirmar": true}
+
+"Paguei 30 na farmácia" → {"valor": 30, "descricao": "farmácia", "categoria": "Saúde", "metodo_pagamento": null, "responsavel": null, "data": "hoje", "confianca": 0.95, "precisa_confirmar": true}
+
+Se a mensagem NÃO for sobre despesas, retorne: {"erro": "Mensagem não é sobre despesas"}
+
+Retorne APENAS JSON:`;
 
       const completion = await this.openai.openai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -55,7 +66,8 @@ class SmartConversation {
           { role: 'system', content: prompt },
           { role: 'user', content: text }
         ],
-        temperature: 0.2,
+        temperature: 0.1,
+        max_tokens: 300,
         response_format: { type: 'json_object' }
       });
 
@@ -75,19 +87,35 @@ class SmartConversation {
    */
   async getUserByPhone(phone) {
     try {
-      const { data, error } = await supabase
+      // Buscar usuário primeiro
+      const { data: user, error: userError } = await supabase
         .from('users')
-        .select(`
-          *,
-          organization:organizations(*),
-          cost_centers:cost_centers(*)
-        `)
+        .select('*')
         .eq('phone', phone)
         .eq('is_active', true)
         .single();
 
-      if (error) throw error;
-      return data;
+      if (userError) throw userError;
+      
+      // Buscar organização separadamente
+      const { data: organization } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', user.organization_id)
+        .single();
+
+      // Buscar centros de custo separadamente
+      const { data: costCenters } = await supabase
+        .from('cost_centers')
+        .select('*')
+        .eq('organization_id', user.organization_id)
+        .eq('is_active', true);
+
+      return {
+        ...user,
+        organization,
+        cost_centers: costCenters || []
+      };
     } catch (error) {
       console.error('❌ Erro ao buscar usuário:', error);
       return null;
@@ -140,6 +168,11 @@ class SmartConversation {
     const phoneId = process.env.PHONE_ID;
     const token = process.env.WHATSAPP_TOKEN;
 
+    if (!phoneId || !token) {
+      console.error('❌ Credenciais WhatsApp não configuradas');
+      return;
+    }
+
     const message = {
       messaging_product: 'whatsapp',
       to: to,
@@ -150,16 +183,19 @@ class SmartConversation {
     };
 
     try {
-      await axios.post(`${WHATSAPP_API_URL}/${phoneId}/messages`, message, {
+      const response = await axios.post(`${WHATSAPP_API_URL}/${phoneId}/messages`, message, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        timeout: 7000,
+        timeout: 10000,
       });
-      console.log(`✅ Mensagem enviada para ${to}`);
+      console.log(`✅ Mensagem enviada para ${to}:`, response.data);
     } catch (error) {
       console.error(`❌ Erro ao enviar mensagem:`, error.message);
+      if (error.response) {
+        console.error('📄 Detalhes do erro:', error.response.data);
+      }
     }
   }
 
@@ -170,6 +206,11 @@ class SmartConversation {
     const phoneId = process.env.PHONE_ID;
     const token = process.env.WHATSAPP_TOKEN;
 
+    if (!phoneId || !token) {
+      console.error('❌ Credenciais WhatsApp não configuradas');
+      return;
+    }
+
     const message = {
       messaging_product: 'whatsapp',
       to: to,
@@ -180,16 +221,19 @@ class SmartConversation {
     };
 
     try {
-      await axios.post(`${WHATSAPP_API_URL}/${phoneId}/messages`, message, {
+      const response = await axios.post(`${WHATSAPP_API_URL}/${phoneId}/messages`, message, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        timeout: 7000,
+        timeout: 10000,
       });
-      console.log(`✅ Mensagem conversacional enviada para ${to}`);
+      console.log(`✅ Mensagem conversacional enviada para ${to}:`, response.data);
     } catch (error) {
       console.error(`❌ Erro ao enviar mensagem:`, error.message);
+      if (error.response) {
+        console.error('📄 Detalhes do erro:', error.response.data);
+      }
     }
   }
 
@@ -228,7 +272,14 @@ class SmartConversation {
         return;
       }
 
-      // 2. Analisar mensagem
+      // 2. Verificar se há uma conversa em andamento
+      const ongoingConversation = await this.getOngoingConversation(userPhone);
+      if (ongoingConversation) {
+        await this.continueConversation(user, ongoingConversation, text);
+        return;
+      }
+
+      // 3. Analisar nova mensagem
       const analysis = await this.analyzeExpenseMessage(text, userPhone);
       if (!analysis) {
         await this.sendWhatsAppMessage(userPhone, 
@@ -237,7 +288,20 @@ class SmartConversation {
         return;
       }
 
-      // 3. Verificar se precisa de confirmação
+      // 4. Verificar se é uma mensagem sobre despesas
+      if (analysis.erro === "Mensagem não é sobre despesas") {
+        await this.sendWhatsAppMessage(userPhone, 
+          "💰 Olá! Eu sou o assistente do FinTrack.\n\n" +
+          "📝 Para registrar uma despesa, envie uma mensagem como:\n" +
+          "• 'Gastei 50 no mercado'\n" +
+          "• 'Paguei 30 na farmácia'\n" +
+          "• 'R$ 25 no posto de gasolina'\n\n" +
+          "🎯 Foco apenas em gastos e despesas!"
+        );
+        return;
+      }
+
+      // 5. Verificar se precisa de confirmação
       if (analysis.precisa_confirmar) {
         await this.handleIncompleteInfo(user, analysis);
       } else {
@@ -253,28 +317,276 @@ class SmartConversation {
   }
 
   /**
+   * Buscar conversa em andamento
+   */
+  async getOngoingConversation(userPhone) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('whatsapp_message_id', userPhone)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    } catch (error) {
+      console.error('❌ Erro ao buscar conversa em andamento:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Continuar conversa em andamento
+   */
+  async continueConversation(user, ongoingConversation, userResponse) {
+    try {
+      console.log(`🔄 Continuando conversa para ${user.phone}`);
+      
+      const conversationState = ongoingConversation.conversation_state || {};
+      const missingFields = conversationState.missing_fields || [];
+      
+      if (missingFields.length === 0) {
+        // Sem campos faltando, finalizar
+        await this.finalizeExpense(ongoingConversation, user);
+        return;
+      }
+
+      // Processar resposta do usuário
+      const nextField = missingFields[0];
+      const updatedAnalysis = await this.processUserResponse(nextField, userResponse, ongoingConversation);
+      
+      if (updatedAnalysis) {
+        // Atualizar estado da conversa
+        const newMissingFields = missingFields.slice(1);
+        const updatedState = {
+          ...conversationState,
+          missing_fields: newMissingFields,
+          [nextField]: updatedAnalysis[nextField]
+        };
+
+        await supabase
+          .from('expenses')
+          .update({ 
+            conversation_state: updatedState,
+            amount: updatedAnalysis.valor,
+            description: updatedAnalysis.descricao,
+            category: updatedAnalysis.categoria,
+            payment_method: updatedAnalysis.metodo_pagamento,
+            date: this.parseDate(updatedAnalysis.data)
+          })
+          .eq('id', ongoingConversation.id);
+
+        // Se ainda há campos faltando, perguntar o próximo
+        if (newMissingFields.length > 0) {
+          await this.askNextQuestion(user, newMissingFields[0]);
+        } else {
+          // Todos os campos preenchidos, finalizar
+          await this.finalizeExpense(ongoingConversation, user);
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao continuar conversa:', error);
+      await this.sendWhatsAppMessage(user.phone, 
+        "❌ Ocorreu um erro. Vou cancelar esta conversa."
+      );
+      await this.cancelConversation(ongoingConversation.id);
+    }
+  }
+
+  /**
+   * Processar resposta do usuário para um campo específico
+   */
+  async processUserResponse(field, userResponse, ongoingConversation) {
+    try {
+      // Buscar categorias da organização para validação
+      const { data: expenseData } = await supabase
+        .from('expenses')
+        .select('organization_id')
+        .eq('id', ongoingConversation.id)
+        .single();
+
+      let categories = [];
+      if (expenseData) {
+        categories = await this.getBudgetCategories(expenseData.organization_id);
+      }
+      
+      const categoryNames = categories.map(cat => cat.name).join(', ');
+
+      const prompt = `Analise a resposta do usuário para completar o campo "${field}":
+
+RESPOSTA: "${userResponse}"
+
+CONTEXTO: ${JSON.stringify(ongoingConversation)}
+
+CAMPOS POSSÍVEIS:
+- metodo_pagamento: credit_card, debit_card, pix, cash, other
+- responsavel: Felipe, Letícia, Compartilhado
+- categoria: ${categoryNames}
+
+Retorne APENAS JSON com o campo atualizado:
+{"${field}": "valor_identificado"}`;
+
+      const completion = await this.openai.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 100,
+        response_format: { type: 'json_object' }
+      });
+
+      const result = JSON.parse(completion.choices[0].message.content);
+      
+      // Combinar com análise anterior
+      const fullAnalysis = {
+        valor: ongoingConversation.amount,
+        descricao: ongoingConversation.description,
+        categoria: ongoingConversation.category,
+        data: ongoingConversation.date,
+        ...result
+      };
+
+      return fullAnalysis;
+
+    } catch (error) {
+      console.error('❌ Erro ao processar resposta:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Perguntar próxima questão
+   */
+  async askNextQuestion(user, field) {
+    const costCenters = await this.getCostCenters(user.organization_id);
+    const costCenterNames = costCenters.map(cc => cc.name);
+    
+    let message = '';
+    
+    switch (field) {
+      case 'metodo_pagamento':
+        message = '💳 Método de pagamento: Débito, Crédito, PIX ou Dinheiro?';
+        break;
+      case 'responsavel':
+        message = `👤 Responsável: ${costCenterNames.join(', ')} ou Compartilhado?`;
+        break;
+      case 'categoria':
+        const categories = await this.getBudgetCategories(user.organization_id);
+        const categoryNames = categories.map(cat => cat.name).join(', ');
+        message = `📂 Categoria: ${categoryNames}?`;
+        break;
+      default:
+        message = `❓ Por favor, forneça: ${field}`;
+    }
+
+    await this.sendConversationalMessage(user.phone, message);
+  }
+
+  /**
+   * Finalizar despesa
+   */
+  async finalizeExpense(expense, user) {
+    try {
+      const costCenters = await this.getCostCenters(user.organization_id);
+      const costCenter = costCenters.find(cc => 
+        cc.name.toLowerCase() === expense.responsavel?.toLowerCase()
+      );
+
+      if (!costCenter) {
+        await this.sendWhatsAppMessage(user.phone, 
+          `❌ Centro de custo "${expense.responsavel}" não encontrado.`
+        );
+        return;
+      }
+
+      // Atualizar despesa como confirmada
+      const expenseData = {
+        organization_id: user.organization_id,
+        user_id: user.id,
+        cost_center_id: costCenter.id,
+        status: 'confirmed',
+        confirmed_at: new Date().toISOString(),
+        confirmed_by: user.id,
+        whatsapp_message_id: `msg_${Date.now()}`
+      };
+
+      await supabase
+        .from('expenses')
+        .update(expenseData)
+        .eq('id', expense.id);
+
+      // Enviar confirmação
+      const confirmationMessage = `✅ Despesa registrada!\n\n` +
+        `💰 R$ ${expense.amount.toFixed(2)} - ${expense.description}\n` +
+        `📂 ${expense.category} - ${expense.responsavel}\n` +
+        `💳 ${this.getPaymentMethodName(expense.payment_method)}\n` +
+        `📅 ${new Date(expense.date).toLocaleDateString('pt-BR')}`;
+
+      await this.sendWhatsAppMessage(user.phone, confirmationMessage);
+
+    } catch (error) {
+      console.error('❌ Erro ao finalizar despesa:', error);
+    }
+  }
+
+  /**
+   * Cancelar conversa
+   */
+  async cancelConversation(expenseId) {
+    try {
+      await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', expenseId);
+    } catch (error) {
+      console.error('❌ Erro ao cancelar conversa:', error);
+    }
+  }
+
+  /**
    * Lidar com informação incompleta
    */
   async handleIncompleteInfo(user, analysis) {
     const costCenters = await this.getCostCenters(user.organization_id);
     const costCenterNames = costCenters.map(cc => cc.name);
 
-    let message = `💰 R$ ${analysis.valor.toFixed(2)} - ${analysis.descricao} (${analysis.categoria})`;
-    
-    // Perguntar o que está faltando de forma conversacional
-    const missingInfo = [];
-    if (!analysis.metodo_pagamento) missingInfo.push('método de pagamento');
-    if (!analysis.responsavel) missingInfo.push('responsável');
+    // Determinar campos faltando
+    const missingFields = [];
+    if (!analysis.metodo_pagamento) missingFields.push('metodo_pagamento');
+    if (!analysis.responsavel) missingFields.push('responsavel');
+    if (analysis.categoria === 'Outros' && analysis.confianca < 0.5) missingFields.push('categoria');
 
-    if (missingInfo.length > 0) {
-      message += `\n\nPreciso saber: ${missingInfo.join(' e ')}`;
-      
-      if (!analysis.metodo_pagamento) {
-        message += `\n\nMétodo de pagamento: Débito, Crédito, PIX ou Dinheiro?`;
-      } else if (!analysis.responsavel) {
-        message += `\n\nResponsável: ${costCenterNames.join(', ')} ou Compartilhado?`;
-      }
-      
+    if (missingFields.length > 0) {
+      // Criar despesa pendente
+      const expenseData = {
+        organization_id: user.organization_id,
+        user_id: user.id,
+        amount: analysis.valor,
+        description: analysis.descricao,
+        category: analysis.categoria,
+        date: this.parseDate(analysis.data),
+        status: 'pending',
+        conversation_state: {
+          missing_fields: missingFields,
+          metodo_pagamento: analysis.metodo_pagamento,
+          responsavel: analysis.responsavel
+        },
+        whatsapp_message_id: user.phone // Usar telefone como ID temporário
+      };
+
+      const { data: pendingExpense } = await supabase
+        .from('expenses')
+        .insert(expenseData)
+        .select()
+        .single();
+
+      // Perguntar primeiro campo faltando
+      await this.askNextQuestion(user, missingFields[0]);
+
+      let message = `💰 R$ ${analysis.valor.toFixed(2)} - ${analysis.descricao} (${analysis.categoria})`;
       await this.sendConversationalMessage(user.phone, message);
     }
   }

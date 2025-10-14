@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 
 export default function ExpenseTable({ expenses, loading, onUpdate }) {
+  const router = useRouter();
   const [editingId, setEditingId] = useState(null);
   const [editOwner, setEditOwner] = useState('');
   const [saving, setSaving] = useState(false);
@@ -168,12 +170,20 @@ export default function ExpenseTable({ expenses, loading, onUpdate }) {
                   {getStatusBadge(expense.status)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => handleEdit(expense)}
-                    className="text-purple-600 hover:text-purple-900 font-medium"
-                  >
-                    Editar
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEdit(expense)}
+                      className="text-purple-600 hover:text-purple-900 font-medium"
+                    >
+                      Responsável
+                    </button>
+                    <button
+                      onClick={() => router.push(`/dashboard/edit-expense?id=${expense.id}`)}
+                      className="text-blue-600 hover:text-blue-900 font-medium"
+                    >
+                      Completo
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
