@@ -1,7 +1,7 @@
-import dotenv from 'dotenv';
-import SmartConversation from '../backend/services/smartConversation.js';
-
-dotenv.config();
+// Webhook simples para teste
+// import dotenv from 'dotenv';
+// import SmartConversation from '../backend/services/smartConversation.js';
+// dotenv.config();
 
 /**
  * Webhook inteligente para FinTrack V2
@@ -98,17 +98,15 @@ async function processMessage(message) {
       const text = message.text.body;
       console.log(`💬 Text: "${text}"`);
       
-      const conversation = new SmartConversation();
-      await conversation.handleMessage(text, from);
+      // TODO: Integrar SmartConversation quando dependências estiverem prontas
+      // const conversation = new SmartConversation();
+      // await conversation.handleMessage(text, from);
     }
     
     // Process button replies
     else if (messageType === 'interactive' && message.interactive?.type === 'button_reply') {
       const buttonText = message.interactive.button_reply.title;
       console.log(`🔘 Button: "${buttonText}"`);
-      
-      // TODO: Handle button replies for incomplete info
-      // This would continue the conversation flow
     }
     
     // Process other message types
