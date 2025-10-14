@@ -2,7 +2,8 @@
 
 ## ✅ NÚMERO APROVADO
 
-**Phone Number ID:** `1305894714600979`  
+**WhatsApp Business Account ID:** `1305894714600979`  
+**Phone Number ID:** `1305894714600979` ✅  
 **Número:** `+55 11 5192-8551`
 
 ## 🔧 CONFIGURAÇÃO NECESSÁRIA
@@ -72,7 +73,7 @@ curl -X POST "https://fintrack-backend.vercel.app/webhook" \
 
 ## 📋 CHECKLIST DE CONFIGURAÇÃO
 
-- [ ] Phone Number ID atualizado: `1305894714600979`
+- [x] Phone Number ID atualizado: `1305894714600979`
 - [ ] Webhook URL configurado no Facebook Developer
 - [ ] Token de verificação configurado: `fintrack_verify_token`
 - [ ] Eventos do WhatsApp ativados
