@@ -120,7 +120,7 @@ PLUGGY_CLIENT_ID=your-client-id
 PLUGGY_CLIENT_SECRET=your-client-secret
 PLUGGY_CONNECTION_ID=your-connection-id
 WHATSAPP_TOKEN=your-access-token
-PHONE_ID=your-phone-id
+PHONE_ID=787122227826364
 USER_PHONE=+5511999999999
 PORT=3000
 ```
