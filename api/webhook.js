@@ -1,5 +1,5 @@
 /**
- * Webhook FinTrack V2 - Versão Mínima que FUNCIONA
+ * Webhook FinTrack V2 - Versão Mínima que FUNCIONA - DEPLOY TEST
  */
 export default function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
