@@ -4,12 +4,16 @@
     {
       "src": "backend/api/*.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/*.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/webhook/smart",
-      "dest": "/backend/api/webhook-smart.js"
+      "dest": "/api/webhook-smart.js"
     },
     {
       "src": "/webhook/pluggy",
