@@ -2,42 +2,8 @@
   "version": 2,
   "builds": [
     {
-      "src": "backend/api/*.js",
+      "src": "api/*.js",
       "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/webhook",
-      "dest": "/backend/api/webhook.js"
-    },
-    {
-      "src": "/webhook/pluggy",
-      "dest": "/backend/api/webhook/pluggy.js"
-    },
-    {
-      "src": "/organizations",
-      "dest": "/backend/api/organizations.js"
-    },
-    {
-      "src": "/check",
-      "dest": "/backend/api/check.js"
-    },
-    {
-      "src": "/sync",
-      "dest": "/backend/api/sync.js"
-    },
-    {
-      "src": "/health",
-      "dest": "/backend/api/health.js"
-    },
-    {
-      "src": "/expenses/general",
-      "dest": "/backend/api/expenses/general.js"
-    },
-    {
-      "src": "/expenses/summary",
-      "dest": "/backend/api/expenses/summary.js"
     }
   ]
 }
