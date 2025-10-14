@@ -1,7 +1,1 @@
-{
-  "rewrites": [
-    { "source": "/webhook", "destination": "/backend/api/webhook" },
-    { "source": "/organizations", "destination": "/backend/api/organizations" },
-    { "source": "/health", "destination": "/backend/api/health" }
-  ]
-}
+{}
