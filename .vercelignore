@@ -1,0 +1,9 @@
+web/
+backend/
+docs/
+scripts/
+*.md
+.git/
+.github/
+node_modules/
+
