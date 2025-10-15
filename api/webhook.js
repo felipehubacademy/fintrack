@@ -1,7 +1,8 @@
 /**
- * Webhook FinTrack V2 - Versão Mínima que FUNCIONA
+ * Webhook FinTrack V2 - Copiado do health.js que funciona
  */
 export default function handler(req, res) {
+  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -18,18 +19,18 @@ export default function handler(req, res) {
       console.log('✅ Webhook verified (simple)');
       return res.status(200).send(challenge);
     } else {
-      console.log('❌ Webhook verification failed');
-      return res.status(403).send('Forbidden');
+      res.status(200).json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        service: 'FinTrack Backend',
+        version: '1.0.0'
+      });
     }
-  }
-
-  if (req.method === 'POST') {
+  } else if (req.method === 'POST') {
     const body = req.body;
     console.log('📩 Received webhook:', JSON.stringify(body, null, 2));
-    
-    // TODO: Process with SmartConversation after confirming webhook works
     return res.status(200).send('OK');
+  } else {
+    res.status(405).send('Method Not Allowed');
   }
-
-  return res.status(405).send('Method Not Allowed');
 }
