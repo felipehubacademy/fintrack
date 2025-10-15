@@ -258,3 +258,4 @@ Built with ❤️ using Next.js, Supabase, Pluggy, and WhatsApp Cloud API
 
 # Deploy test Tue Oct 14 20:16:31 -03 2025
 # Force deploy Tue Oct 14 20:23:21 -03 2025
+# Deploy clean Tue Oct 14 21:58:39 -03 2025
