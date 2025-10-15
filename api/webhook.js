@@ -4,27 +4,49 @@
 
 // Process webhook asynchronously
 async function processWebhook(body) {
+  console.log('🔄 [DEBUG] Starting processWebhook...');
   try {
     const entry = body.entry?.[0];
+    console.log('🔄 [DEBUG] Entry:', entry ? 'found' : 'not found');
+    
     const change = entry?.changes?.[0];
+    console.log('🔄 [DEBUG] Change:', change ? 'found' : 'not found');
+    
     const value = change?.value;
+    console.log('🔄 [DEBUG] Value:', value ? 'found' : 'not found');
 
     // Process messages
     if (value?.messages) {
+      console.log('🔄 [DEBUG] Messages found:', value.messages.length);
       for (const message of value.messages) {
+        console.log('🔄 [DEBUG] Message type:', message.type);
         if (message.type === 'text') {
           console.log(`📱 Processing message from ${message.from}: "${message.text.body}"`);
           
-          // Import SmartConversation dynamically to reduce cold start
-          const { SmartConversation } = await import('./_smartConversation.js');
-          const smartConversation = new SmartConversation();
-          
-          // Process the message with SmartConversation
-          await smartConversation.handleMessage(message.from, message.text.body);
-          
-          console.log('💬 Message processed successfully');
+          try {
+            console.log('🔄 [DEBUG] Importing SmartConversation...');
+            // Import SmartConversation dynamically to reduce cold start
+            const { SmartConversation } = await import('./_smartConversation.js');
+            console.log('🔄 [DEBUG] SmartConversation imported successfully');
+            
+            console.log('🔄 [DEBUG] Creating SmartConversation instance...');
+            const smartConversation = new SmartConversation();
+            console.log('🔄 [DEBUG] SmartConversation instance created');
+            
+            console.log('🔄 [DEBUG] Calling handleMessage...');
+            // Process the message with SmartConversation
+            await smartConversation.handleMessage(message.from, message.text.body);
+            console.log('🔄 [DEBUG] handleMessage completed');
+            
+            console.log('💬 Message processed successfully');
+          } catch (smartError) {
+            console.error('❌ [DEBUG] Error in SmartConversation:', smartError);
+            console.error('❌ [DEBUG] Error stack:', smartError.stack);
+          }
         }
       }
+    } else {
+      console.log('🔄 [DEBUG] No messages found in value');
     }
 
     // Process status updates
@@ -36,7 +58,9 @@ async function processWebhook(body) {
 
   } catch (error) {
     console.error('❌ Error processing webhook:', error);
+    console.error('❌ Error stack:', error.stack);
   }
+  console.log('🔄 [DEBUG] processWebhook completed');
 }
 
 export default function handler(req, res) {
