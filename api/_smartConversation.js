@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 import dotenv from 'dotenv';
-import OpenAIService from './openaiService.js';
+import OpenAIService from './_openaiService.js';
 
 dotenv.config();
 
