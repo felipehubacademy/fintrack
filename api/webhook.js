@@ -15,8 +15,13 @@ async function processWebhook(body) {
         if (message.type === 'text') {
           console.log(`📱 Processing message from ${message.from}: "${message.text.body}"`);
           
-          // TODO: Integrate SmartConversation here
-          // For now, just log the message
+          // Import SmartConversation dynamically to reduce cold start
+          const { SmartConversation } = await import('./_smartConversation.js');
+          const smartConversation = new SmartConversation();
+          
+          // Process the message with SmartConversation
+          await smartConversation.handleMessage(message.from, message.text.body);
+          
           console.log('💬 Message processed successfully');
         }
       }
