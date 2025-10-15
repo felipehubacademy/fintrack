@@ -83,18 +83,28 @@ export default function handler(req, res) {
   }
 
   if (req.method === 'POST') {
+    console.log('🚀 [WEBHOOK] POST received - VERSION 2.0');
     try {
       console.log('📩 Received webhook:', JSON.stringify(req.body, null, 2));
       
+      console.log('🔄 [WEBHOOK] About to call processWebhook...');
+      
       // Process webhook asynchronously (don't await to avoid timeout)
-      Promise.resolve().then(() => processWebhook(req.body)).catch(err => {
+      Promise.resolve().then(() => {
+        console.log('🔄 [WEBHOOK] Inside Promise.then, calling processWebhook...');
+        return processWebhook(req.body);
+      }).catch(err => {
         console.error('❌ Async webhook processing error:', err);
+        console.error('❌ Error stack:', err?.stack);
       });
       
       console.log('✅ Webhook accepted, processing in background...');
     } catch (error) {
       console.error('❌ Webhook error:', error);
+      console.error('❌ Error stack:', error?.stack);
     }
+    
+    console.log('📤 [WEBHOOK] Returning 200 OK');
     return res.status(200).send('OK');
   }
 
