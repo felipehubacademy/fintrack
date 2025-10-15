@@ -86,8 +86,12 @@ export default function handler(req, res) {
     try {
       console.log('📩 Received webhook:', JSON.stringify(req.body, null, 2));
       
-      // Process webhook asynchronously
-      processWebhook(req.body);
+      // Process webhook asynchronously (don't await to avoid timeout)
+      Promise.resolve().then(() => processWebhook(req.body)).catch(err => {
+        console.error('❌ Async webhook processing error:', err);
+      });
+      
+      console.log('✅ Webhook accepted, processing in background...');
     } catch (error) {
       console.error('❌ Webhook error:', error);
     }
