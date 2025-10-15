@@ -88,7 +88,7 @@ export default async function handler(req, res) {
       console.log('📩 Received webhook:', JSON.stringify(req.body, null, 2));
 
       // Dispatch to background function to avoid being killed after 200 OK
-      const bgUrl = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/webhook-process.background`;
+      const bgUrl = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/webhook-process`;
       await fetch(bgUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
