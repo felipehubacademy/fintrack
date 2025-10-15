@@ -63,7 +63,7 @@ async function processWebhook(body) {
   console.log('🔄 [DEBUG] processWebhook completed');
 }
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -83,29 +83,25 @@ export default function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    console.log('🚀 [WEBHOOK] POST received - VERSION 2.0');
+    console.log('🚀 [WEBHOOK] POST received - VERSION 2.1 (AWAIT)');
+    
+    // Return 200 immediately to WhatsApp
+    res.status(200).send('OK');
+    
+    // Process webhook after response is sent
     try {
       console.log('📩 Received webhook:', JSON.stringify(req.body, null, 2));
-      
       console.log('🔄 [WEBHOOK] About to call processWebhook...');
       
-      // Process webhook asynchronously (don't await to avoid timeout)
-      Promise.resolve().then(() => {
-        console.log('🔄 [WEBHOOK] Inside Promise.then, calling processWebhook...');
-        return processWebhook(req.body);
-      }).catch(err => {
-        console.error('❌ Async webhook processing error:', err);
-        console.error('❌ Error stack:', err?.stack);
-      });
+      await processWebhook(req.body);
       
-      console.log('✅ Webhook accepted, processing in background...');
+      console.log('✅ Webhook processing completed');
     } catch (error) {
       console.error('❌ Webhook error:', error);
       console.error('❌ Error stack:', error?.stack);
     }
     
-    console.log('📤 [WEBHOOK] Returning 200 OK');
-    return res.status(200).send('OK');
+    return;
   }
 
   return res.status(405).send('Method Not Allowed');
