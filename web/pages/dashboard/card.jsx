@@ -178,7 +178,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">Cartões de Crédito</h1>
-                <p className="text-sm text-gray-600">LATAM PASS Itaú Visa Infinite</p>
+                <p className="text-sm text-gray-600">Cartões vinculados pelo usuário</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">

@@ -497,6 +497,7 @@ CAMPOS POSSÍVEIS:
 - metodo_pagamento: credit_card, debit_card, pix, cash, other
 - responsavel: Felipe, Letícia, Compartilhado
 - categoria: ${categoryNames}
+- descricao: texto curto e direto (padaria, farmácia, mercado, restaurante, etc.)
 
 Retorne APENAS JSON com o campo atualizado:
 {"${field}": "valor_identificado"}`;
@@ -549,6 +550,9 @@ Retorne APENAS JSON com o campo atualizado:
             ? `👤 Responsável: ${list}?`
             : `👤 Responsável: ${list} ou Compartilhado?`;
         }
+        break;
+      case 'descricao':
+        message = '📝 Qual a descrição? (ex.: padaria, farmácia, mercado, etc.)';
         break;
       case 'categoria':
         const categories = await this.getBudgetCategories(user.organization_id);
@@ -604,8 +608,9 @@ Retorne APENAS JSON com o campo atualizado:
       const dateVal = expense.date ?? this.parseDate(expense.conversation_state?.data);
 
       const confirmationMessage = `✅ Despesa registrada!\n\n` +
-        `💰 R$ ${Number(amount).toFixed(2)} - ${description}\n` +
-        `📂 ${category} - ${responsibleName}\n` +
+        `💰 R$ ${Number(amount).toFixed(2)} - ${description || 'gasto não especificado'}\n` +
+        `📂 ${category || '-'}\n` +
+        `👤 ${responsibleName || '-'}\n` +
         `💳 ${this.getPaymentMethodName(paymentMethod)}\n` +
         `📅 ${new Date(dateVal).toLocaleDateString('pt-BR')}`;
 
@@ -641,6 +646,10 @@ Retorne APENAS JSON com o campo atualizado:
     const missingFields = [];
     if (!analysis.metodo_pagamento) missingFields.push('metodo_pagamento');
     if (!analysis.responsavel) missingFields.push('responsavel');
+    // Perguntar descrição se ausente ou genérica
+    if (!analysis.descricao || /nao especificado|não especificado/i.test(String(analysis.descricao))) {
+      missingFields.push('descricao');
+    }
     // Perguntar sobre categoria se confiança baixa OU se for "Outros" ou similar
     if (analysis.confianca < 0.7 || !analysis.categoria || analysis.categoria === 'Outros') {
       missingFields.push('categoria');
@@ -661,6 +670,7 @@ Retorne APENAS JSON com o campo atualizado:
           metodo_pagamento: analysis.metodo_pagamento,
           responsavel: analysis.responsavel
         },
+        source: 'whatsapp',
         whatsapp_message_id: user.phone // Usar telefone como ID temporário
       };
 

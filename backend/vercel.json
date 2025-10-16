@@ -6,24 +6,8 @@
       "destination": "/api/webhook"
     },
     {
-      "source": "/webhook/pluggy",
-      "destination": "/api/webhook/pluggy"
-    },
-    {
       "source": "/webhook/smart",
       "destination": "/api/webhook/smart"
-    },
-    {
-      "source": "/check",
-      "destination": "/api/check"
-    },
-    {
-      "source": "/sync",
-      "destination": "/api/sync"
-    },
-    {
-      "source": "/latam/(.*)",
-      "destination": "/api/latam/$1"
     },
     {
       "source": "/health",

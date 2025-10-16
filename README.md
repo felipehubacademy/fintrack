@@ -1,10 +1,10 @@
 # 💰 FinTrack - Personal Finance Tracker
 
-Full-stack personal finance tracker that automatically fetches transactions from Pluggy (Itaú), stores them in Supabase, sends WhatsApp notifications, and displays everything on a beautiful dashboard.
+Full-stack personal finance tracker that stores user-initiated WhatsApp transactions in Supabase and displays everything on a beautiful dashboard.
 
 ## 🚀 Features
 
-- **Automatic Transaction Sync**: Fetches transactions from Pluggy every 10 minutes
+- **WhatsApp-first Input**: Registre despesas via conversa no WhatsApp
 - **WhatsApp Notifications**: Receive instant notifications for new transactions
 - **Interactive Attribution**: Assign expenses to Felipe, Letícia, or Shared via WhatsApp buttons
 - **Real-time Dashboard**: Beautiful Next.js dashboard with charts and filters
@@ -18,10 +18,10 @@ FinTrack/
 ├── backend/              # Node.js + Express API
 │   ├── index.js         # Server entry point
 │   ├── routes/          # API routes
-│   │   ├── pluggy.js    # Pluggy integration endpoints
+│   │   ├── (removido Pluggy)
 │   │   └── whatsapp.js  # WhatsApp webhook handlers
 │   └── services/        # Business logic
-│       ├── pluggy.js    # Pluggy API client
+│       ├── (removido Pluggy)
 │       ├── supabase.js  # Database operations
 │       └── whatsapp.js  # WhatsApp Cloud API client
 │
@@ -48,8 +48,7 @@ FinTrack/
    - Create a project at [supabase.com](https://supabase.com)
    - Get your `SUPABASE_URL` and `SUPABASE_KEY`
 
-2. **Pluggy Account**
-   - Sign up at [pluggy.ai](https://pluggy.ai)
+2. **WhatsApp Cloud API**
    - Create API credentials
    - Connect your Itaú account and get the `CONNECTION_ID`
 
@@ -70,7 +69,7 @@ CREATE TABLE expenses (
   amount DECIMAL(10,2) NOT NULL,
   owner TEXT,
   split BOOLEAN DEFAULT FALSE,
-  source TEXT DEFAULT 'pluggy',
+  source TEXT DEFAULT 'manual',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -116,9 +115,7 @@ npm run dev
 ```bash
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_KEY=your-service-role-key
-PLUGGY_CLIENT_ID=your-client-id
-PLUGGY_CLIENT_SECRET=your-client-secret
-PLUGGY_CONNECTION_ID=your-connection-id
+# Pluggy removido
 WHATSAPP_TOKEN=your-access-token
 PHONE_ID=787122227826364
 USER_PHONE=+5511999999999
@@ -136,8 +133,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 ### Backend Routes
 
-- `GET /check` - Fetch new Pluggy transactions and save to Supabase
-- `POST /auth` - Test Pluggy authentication
+// Pluggy removido
 - `POST /webhook` - WhatsApp webhook for button responses
 - `GET /webhook` - WhatsApp webhook verification
 - `GET /health` - Health check
@@ -178,7 +174,7 @@ vercel
 ## 💡 Usage Flow
 
 1. **Automatic Sync**: GitHub Actions calls `/check` every 10 minutes
-2. **New Transaction**: Backend fetches from Pluggy and saves to Supabase
+2. **New Transaction**: WhatsApp message saves expense to Supabase
 3. **WhatsApp Notification**: User receives message with buttons [Felipe] [Letícia] [Compartilhado]
 4. **User Responds**: Clicks a button to assign the expense
 5. **Database Update**: Backend updates the owner field
@@ -228,9 +224,8 @@ MIT License - feel free to use this project for personal or commercial purposes.
 
 ## 🆘 Troubleshooting
 
-### Backend not connecting to Pluggy
-- Check your `PLUGGY_CLIENT_ID` and `PLUGGY_CLIENT_SECRET`
-- Verify your connection is active in Pluggy dashboard
+### Webhook/WhatsApp Issues
+// ...
 - Test with `POST /auth` endpoint
 
 ### WhatsApp not sending messages
@@ -254,7 +249,7 @@ For issues or questions, please open a GitHub issue.
 
 ---
 
-Built with ❤️ using Next.js, Supabase, Pluggy, and WhatsApp Cloud API
+Built with ❤️ using Next.js, Supabase, and WhatsApp Cloud API
 
 # Deploy test Tue Oct 14 20:16:31 -03 2025
 # Force deploy Tue Oct 14 20:23:21 -03 2025

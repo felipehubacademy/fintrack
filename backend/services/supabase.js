@@ -29,7 +29,7 @@ export async function saveExpense(expense) {
         date: expense.date,
         description: expense.description,
         amount: expense.amount,
-        source: expense.source || 'pluggy',
+        source: expense.source || 'manual',
         owner: expense.owner || null,
         split: expense.split || false,
       },

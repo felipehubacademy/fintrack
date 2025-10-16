@@ -44,12 +44,12 @@ class TransactionService {
       const { data, error } = await this.supabase
         .from('expenses')
         .insert({
-          pluggy_transaction_id: transaction.id,
+          // pluggy_transaction_id removido
           date: transaction.date,
           description: transaction.description,
           amount: Math.abs(transaction.amount),
           category: transaction.category,
-          source: transaction.source || 'pluggy',
+          source: transaction.source || 'manual',
           status: 'pending',
           whatsapp_message_id: whatsappMessageId,
         })

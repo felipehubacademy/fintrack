@@ -6,13 +6,13 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
     {
       name: 'Cartões',
       value: expenses
-        .filter(e => e.payment_method === 'credit_card' || e.source === 'pluggy')
+        .filter(e => e.payment_method === 'credit_card')
         .reduce((sum, e) => sum + parseFloat(e.amount), 0)
     },
     {
-      name: 'A Vista',
+      name: 'À vista',
       value: expenses
-        .filter(e => e.payment_method !== 'credit_card' && e.source !== 'pluggy')
+        .filter(e => e.payment_method !== 'credit_card')
         .reduce((sum, e) => sum + parseFloat(e.amount), 0)
     }
   ].filter(item => item.value > 0);
