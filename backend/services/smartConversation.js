@@ -22,6 +22,18 @@ class SmartConversation {
   }
 
   /**
+   * Heurística simples para detectar início de nova despesa
+   */
+  isLikelyNewExpenseMessage(text) {
+    if (!text) return false;
+    const t = String(text).toLowerCase();
+    // palavras-gatilho comuns e presença de número/valor
+    const hasTrigger = /(gastei|paguei|comprei|r\$)/.test(t);
+    const hasNumber = /\d+[\.,]?\d*/.test(t);
+    return hasTrigger && hasNumber;
+  }
+
+  /**
    * Analisar mensagem e extrair informações da despesa
    */
   async analyzeExpenseMessage(text, userPhone) {
@@ -281,8 +293,13 @@ Retorne APENAS JSON:`;
       // 2. Verificar se há uma conversa em andamento
       const ongoingConversation = await this.getOngoingConversation(userPhone);
       if (ongoingConversation) {
-        await this.continueConversation(user, ongoingConversation, text);
-        return;
+        // Se a mensagem parece iniciar uma nova despesa, cancelar a pendente e seguir como nova
+        if (this.isLikelyNewExpenseMessage(text)) {
+          await this.cancelConversation(ongoingConversation.id);
+        } else {
+          await this.continueConversation(user, ongoingConversation, text);
+          return;
+        }
       }
 
       // 3. Analisar nova mensagem
