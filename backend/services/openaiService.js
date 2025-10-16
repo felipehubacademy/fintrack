@@ -13,6 +13,10 @@ const openai = new OpenAI({
  * Suporta: Texto, Áudio (Whisper), Imagens (Vision)
  */
 class OpenAIService {
+  constructor() {
+    // Expose the underlying OpenAI client so other services can use it directly
+    this.client = openai;
+  }
   
   /**
    * 📸 Analisar imagem de comprovante (GPT-4 Vision)
