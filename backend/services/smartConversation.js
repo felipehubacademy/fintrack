@@ -215,9 +215,11 @@ Retorne APENAS JSON:`;
       return;
     }
 
+    const normalizedTo = String(to || '').startsWith('+') ? String(to) : `+${String(to)}`;
+
     const message = {
       messaging_product: 'whatsapp',
-      to: to,
+      to: normalizedTo,
       type: 'text',
       text: {
         body: text,
