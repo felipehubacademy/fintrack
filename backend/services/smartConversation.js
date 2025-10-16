@@ -22,6 +22,21 @@ class SmartConversation {
   }
 
   /**
+   * Normaliza método de pagamento para valores canônicos V2
+   */
+  normalizePaymentMethod(input) {
+    const t = String(input || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '');
+    if (/cred/.test(t) || /cart/.test(t)) return 'credit_card';
+    if (/deb/.test(t)) return 'debit_card';
+    if (/pix/.test(t)) return 'pix';
+    if (/(dinheiro|cash)/.test(t)) return 'cash';
+    return input || null;
+  }
+
+  /**
    * Heurística simples para detectar início de nova despesa
    */
   isLikelyNewExpenseMessage(text) {
@@ -497,7 +512,13 @@ Retorne APENAS JSON com o campo atualizado:
         message = '💳 Método de pagamento: Débito, Crédito, PIX ou Dinheiro?';
         break;
       case 'responsavel':
-        message = `👤 Responsável: ${costCenterNames.join(', ')} ou Compartilhado?`;
+        {
+          const hasCompartilhado = costCenterNames.some(n => n.toLowerCase() === 'compartilhado');
+          const list = costCenterNames.join(', ');
+          message = hasCompartilhado
+            ? `👤 Responsável: ${list}?`
+            : `👤 Responsável: ${list} ou Compartilhado?`;
+        }
         break;
       case 'categoria':
         const categories = await this.getBudgetCategories(user.organization_id);
@@ -618,9 +639,6 @@ Retorne APENAS JSON com o campo atualizado:
 
       // Perguntar primeiro campo faltando
       await this.askNextQuestion(user, missingFields[0]);
-
-      let message = `💰 R$ ${analysis.valor.toFixed(2)} - ${analysis.descricao} (${analysis.categoria})`;
-      await this.sendConversationalMessage(user.phone, message);
     }
   }
 
@@ -640,6 +658,14 @@ Retorne APENAS JSON com o campo atualizado:
       return;
     }
 
+    // Encontrar categoria id por nome (se existir)
+    const categories = await this.getBudgetCategories(user.organization_id);
+    const categoryRow = categories.find(c => c.name.toLowerCase() === (analysis.categoria || '').toLowerCase());
+    const categoryId = categoryRow?.id || null;
+
+    // Normalizar método de pagamento
+    const normalizedMethod = this.normalizePaymentMethod(analysis.metodo_pagamento);
+
     // Salvar despesa
     const expenseData = {
       organization_id: user.organization_id,
@@ -647,7 +673,9 @@ Retorne APENAS JSON com o campo atualizado:
       cost_center_id: costCenter.id,
       amount: analysis.valor,
       description: analysis.descricao,
-      payment_method: analysis.metodo_pagamento,
+      payment_method: normalizedMethod,
+      category_id: categoryId,
+      category: analysis.categoria,
       date: this.parseDate(analysis.data),
       status: 'confirmed',
       confirmed_at: new Date().toISOString(),
@@ -661,7 +689,7 @@ Retorne APENAS JSON com o campo atualizado:
     const confirmationMessage = `✅ Despesa registrada!\n\n` +
       `💰 R$ ${analysis.valor.toFixed(2)} - ${analysis.descricao}\n` +
       `📂 ${analysis.categoria} - ${analysis.responsavel}\n` +
-      `💳 ${this.getPaymentMethodName(analysis.metodo_pagamento)}\n` +
+      `💳 ${this.getPaymentMethodName(normalizedMethod)}\n` +
       `📅 ${this.parseDate(analysis.data).toLocaleDateString('pt-BR')}`;
 
     await this.sendWhatsAppMessage(user.phone, confirmationMessage);
