@@ -32,26 +32,50 @@ class SmartConversation {
       .normalize('NFD')
       .replace(/\p{Diacritic}/gu, '');
     
+    console.log('🔍 [NORMALIZE] Input:', input, '→ Normalized:', t);
+    
     // Cartão de Crédito - todas as variações
-    if (/cred/.test(t) || /cart.*cred/.test(t) || /credito/.test(t)) {
+    if (/cred/.test(t) || /cart.*cred/.test(t) || /credito/.test(t) || 
+        /credito/.test(t) || /cartao.*credito/.test(t) || /cartao.*cred/.test(t) ||
+        /visa/.test(t) || /mastercard/.test(t) || /amex/.test(t) ||
+        /cred/.test(t) || /credit/.test(t)) {
+      console.log('🔍 [NORMALIZE] → credit_card');
       return 'credit_card';
     }
     
     // Cartão de Débito - todas as variações
-    if (/deb/.test(t) || /cart.*deb/.test(t) || /debito/.test(t)) {
+    if (/deb/.test(t) || /cart.*deb/.test(t) || /debito/.test(t) ||
+        /cartao.*debito/.test(t) || /cartao.*deb/.test(t) ||
+        /debit/.test(t)) {
+      console.log('🔍 [NORMALIZE] → debit_card');
       return 'debit_card';
     }
     
     // PIX - todas as variações
     if (/pix/.test(t)) {
+      console.log('🔍 [NORMALIZE] → pix');
       return 'pix';
     }
     
     // Dinheiro - todas as variações
-    if (/(dinheiro|cash|especie)/.test(t)) {
+    if (/(dinheiro|cash|especie|especie|notas|moedas)/.test(t)) {
+      console.log('🔍 [NORMALIZE] → cash');
       return 'cash';
     }
     
+    // Transferência bancária
+    if (/(transferencia|ted|doc|pix|pix instantaneo)/.test(t)) {
+      console.log('🔍 [NORMALIZE] → bank_transfer');
+      return 'bank_transfer';
+    }
+    
+    // Boleto
+    if (/(boleto|fatura|conta)/.test(t)) {
+      console.log('🔍 [NORMALIZE] → boleto');
+      return 'boleto';
+    }
+    
+    console.log('🔍 [NORMALIZE] → other (fallback)');
     return 'other';
   }
 
@@ -778,6 +802,8 @@ Retorne APENAS JSON com o campo atualizado:
       'debit_card': 'Cartão de Débito',
       'pix': 'PIX',
       'cash': 'Dinheiro',
+      'bank_transfer': 'Transferência',
+      'boleto': 'Boleto',
       'other': 'Outro'
     };
     return names[method] || method;
