@@ -25,15 +25,34 @@ class SmartConversation {
    * Normaliza método de pagamento para valores canônicos V2
    */
   normalizePaymentMethod(input) {
-    const t = String(input || '')
+    if (!input) return 'other';
+    
+    const t = String(input)
       .toLowerCase()
       .normalize('NFD')
       .replace(/\p{Diacritic}/gu, '');
-    if (/cred/.test(t) || /cart/.test(t)) return 'credit_card';
-    if (/deb/.test(t)) return 'debit_card';
-    if (/pix/.test(t)) return 'pix';
-    if (/(dinheiro|cash)/.test(t)) return 'cash';
-    return input || null;
+    
+    // Cartão de Crédito - todas as variações
+    if (/cred/.test(t) || /cart.*cred/.test(t) || /credito/.test(t)) {
+      return 'credit_card';
+    }
+    
+    // Cartão de Débito - todas as variações
+    if (/deb/.test(t) || /cart.*deb/.test(t) || /debito/.test(t)) {
+      return 'debit_card';
+    }
+    
+    // PIX - todas as variações
+    if (/pix/.test(t)) {
+      return 'pix';
+    }
+    
+    // Dinheiro - todas as variações
+    if (/(dinheiro|cash|especie)/.test(t)) {
+      return 'cash';
+    }
+    
+    return 'other';
   }
 
   /**
@@ -73,7 +92,13 @@ REGRAS RÍGIDAS:
 CATEGORIAS DISPONÍVEIS PARA ESTA ORGANIZAÇÃO:
 ${categoryNames}
 
-MÉTODOS DE PAGAMENTO: credit_card, debit_card, pix, cash, other
+MÉTODOS DE PAGAMENTO:
+- credit_card: cartão de crédito, crédito, credito, cred, cartão cred
+- debit_card: cartão de débito, débito, debito, deb, cartão deb, débito automático
+- pix: pix, PIX
+- cash: dinheiro, cash, espécie, em espécie
+- other: outros métodos não listados
+
 RESPONSÁVEIS: Felipe, Letícia, Compartilhado (ou null se não especificado)
 
 EXEMPLOS:
@@ -82,6 +107,10 @@ EXEMPLOS:
 "Gastei 50 no mercado" → {"valor": 50, "descricao": "mercado", "categoria": "Alimentação", "metodo_pagamento": null, "responsavel": null, "data": "hoje", "confianca": 0.9, "precisa_confirmar": true}
 
 "Paguei 30 na farmácia" → {"valor": 30, "descricao": "farmácia", "categoria": "Saúde", "metodo_pagamento": null, "responsavel": null, "data": "hoje", "confianca": 0.95, "precisa_confirmar": true}
+
+"Gastei 25 no débito na padaria" → {"valor": 25, "descricao": "padaria", "categoria": "Alimentação", "metodo_pagamento": "debit_card", "responsavel": null, "data": "hoje", "confianca": 0.9, "precisa_confirmar": true}
+
+"Paguei 40 no cartão de débito" → {"valor": 40, "descricao": "gasto não especificado", "categoria": "Outros", "metodo_pagamento": "debit_card", "responsavel": null, "data": "hoje", "confianca": 0.8, "precisa_confirmar": true}
 
 Se a mensagem NÃO for sobre despesas, retorne: {"erro": "Mensagem não é sobre despesas"}
 
@@ -319,6 +348,7 @@ Retorne APENAS JSON:`;
 
       // 3. Analisar nova mensagem
       const analysis = await this.analyzeExpenseMessage(text, userPhone);
+      console.log('🔍 [ANALYSIS] Resultado da análise:', analysis);
       if (!analysis) {
         await this.sendWhatsAppMessage(userPhone, 
           "❌ Não consegui entender sua mensagem. Tente: 'Gastei 50 no mercado'"
@@ -611,7 +641,10 @@ Retorne APENAS JSON com o campo atualizado:
     const missingFields = [];
     if (!analysis.metodo_pagamento) missingFields.push('metodo_pagamento');
     if (!analysis.responsavel) missingFields.push('responsavel');
-    if (analysis.categoria === 'Outros' && analysis.confianca < 0.5) missingFields.push('categoria');
+    // Perguntar sobre categoria se confiança baixa OU se for "Outros" ou similar
+    if (analysis.confianca < 0.7 || !analysis.categoria || analysis.categoria === 'Outros') {
+      missingFields.push('categoria');
+    }
 
     if (missingFields.length > 0) {
       // Criar despesa pendente
@@ -664,7 +697,9 @@ Retorne APENAS JSON com o campo atualizado:
     const categoryId = categoryRow?.id || null;
 
     // Normalizar método de pagamento
+    console.log('🔍 [PAYMENT] Antes da normalização:', analysis.metodo_pagamento);
     const normalizedMethod = this.normalizePaymentMethod(analysis.metodo_pagamento);
+    console.log('🔍 [PAYMENT] Após normalização:', normalizedMethod);
 
     // Salvar despesa
     const expenseData = {
@@ -676,10 +711,12 @@ Retorne APENAS JSON com o campo atualizado:
       payment_method: normalizedMethod,
       category_id: categoryId,
       category: analysis.categoria,
+      owner: analysis.responsavel, // Mapear responsavel para owner
       date: this.parseDate(analysis.data),
       status: 'confirmed',
       confirmed_at: new Date().toISOString(),
       confirmed_by: user.id,
+      source: 'whatsapp', // Fonte WhatsApp
       whatsapp_message_id: `msg_${Date.now()}`
     };
 

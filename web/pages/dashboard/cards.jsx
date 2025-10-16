@@ -38,64 +38,42 @@ export default function CardsDashboard() {
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
-      fetchCards();
       fetchExpenses();
     } else if (!orgLoading && orgError) {
       router.push('/');
     }
   }, [orgLoading, orgError, organization, selectedMonth]);
 
-  const fetchCards = async () => {
-    try {
-      // Mock cards for now - will be replaced with real API
-      const mockCards = [
-        {
-          id: 1,
-          name: 'LATAM PASS Itaú Visa Infinite',
-          number: '**** **** **** 1234',
-          holder: 'FELIPE XAVIER',
-          expiry: '12/26',
-          limit: 15000,
-          used: 8500,
-          available: 6500,
-          status: 'active',
-          type: 'credit',
-          bank: 'Itaú',
-          color: 'from-blue-600 to-purple-600'
-        },
-        {
-          id: 2,
-          name: 'Nubank Mastercard',
-          number: '**** **** **** 5678',
-          holder: 'LETICIA XAVIER',
-          expiry: '08/25',
-          limit: 8000,
-          used: 3200,
-          available: 4800,
-          status: 'active',
-          type: 'credit',
-          bank: 'Nubank',
-          color: 'from-purple-600 to-pink-600'
-        },
-        {
-          id: 3,
-          name: 'Santander Débito',
-          number: '**** **** **** 9012',
-          holder: 'FELIPE XAVIER',
-          expiry: '05/27',
-          limit: 0,
-          used: 0,
-          available: 0,
-          status: 'active',
-          type: 'debit',
-          bank: 'Santander',
-          color: 'from-red-600 to-orange-600'
-        }
-      ];
-      setCards(mockCards);
-    } catch (error) {
-      console.error('Error fetching cards:', error);
-    }
+  // Derivar "cards" a partir de centros de custo + despesas de crédito do mês
+  const deriveCardsFromData = (creditExpenses) => {
+    if (!organization) return setCards([]);
+
+    // total por responsável (owner) para este mês
+    const usedByOwner = creditExpenses.reduce((acc, e) => {
+      const key = (e.owner || '').trim();
+      acc[key] = (acc[key] || 0) + Number(e.amount || 0);
+      return acc;
+    }, {});
+
+    const derived = (costCenters || []).map((cc, idx) => {
+      const used = usedByOwner[cc.name] || 0;
+      return {
+        id: idx + 1,
+        name: 'Cartão de Crédito',
+        number: '**** **** **** 0000',
+        holder: cc.name.toUpperCase(),
+        expiry: '—',
+        limit: 0,
+        used,
+        available: 0,
+        status: 'active',
+        type: 'credit',
+        bank: organization?.name || 'FinTrack',
+        color: 'from-blue-600 to-purple-600'
+      };
+    });
+
+    setCards(derived);
   };
 
   const fetchExpenses = async () => {
@@ -120,7 +98,9 @@ export default function CardsDashboard() {
 
       const { data, error } = await query;
       if (!error) {
-        setExpenses(data || []);
+        const list = data || [];
+        setExpenses(list);
+        deriveCardsFromData(list);
       }
     } catch (error) {
       console.error('Error fetching expenses:', error);

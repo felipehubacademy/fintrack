@@ -2,10 +2,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
+import { useOrganization } from '../../hooks/useOrganization';
+import { Button } from '../../components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { TrendingUp, Bell, Settings, Search, LogOut, Calendar } from 'lucide-react';
 
 export default function FinanceDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const { organization, costCenters, loading: orgLoading, error: orgError } = useOrganization();
+  
+  // Fallback para quando V2 não está configurado
+  const isV2Ready = organization && organization.id !== 'default-org';
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({
@@ -23,9 +31,17 @@ export default function FinanceDashboard() {
 
   useEffect(() => {
     if (user) {
+      console.log('🔍 [FINANCE] Fetching expenses with:', { 
+        user: user?.id, 
+        filter, 
+        orgLoading, 
+        orgError, 
+        organization,
+        isV2Ready 
+      });
       fetchExpenses();
     }
-  }, [user, filter]);
+  }, [user, filter, isV2Ready]);
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -62,19 +78,29 @@ export default function FinanceDashboard() {
       }
 
       if (filter.payment_method !== 'all') {
-        if (filter.payment_method === 'credit_card') {
-          query = query.eq('payment_method', 'credit_card');
-        } else {
-          query = query.neq('payment_method', 'credit_card');
-        }
+        query = query.eq('payment_method', filter.payment_method);
       } else {
         // Por padrão, mostrar apenas despesas que NÃO são de cartão
         query = query.neq('payment_method', 'credit_card');
       }
 
+      // Escopo por organização (V2) - só se V2 estiver configurado
+      if (isV2Ready) {
+        query = query.eq('organization_id', organization.id);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
+
+      console.log('🔍 [FINANCE] Query result:', {
+        dataLength: data?.length || 0,
+        data: data,
+        filter,
+        organizationId: organization?.id,
+        isV2Ready,
+        queryString: query.toString()
+      });
 
       setExpenses(data || []);
     } catch (error) {
@@ -137,38 +163,52 @@ export default function FinanceDashboard() {
   const total = totals.felipe + totals.leticia + totals.compartilhado + totals.pending;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      {/* Header */}
-      <div className="bg-white shadow">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header (consistente com /cards) */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <Link href="/dashboard">
-                <button className="text-gray-600 hover:text-gray-900">
+                <Button variant="ghost" size="icon">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
-                </button>
+                </Button>
               </Link>
+              <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
+                <TrendingUp className="h-6 w-6 text-white" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Despesas Gerais</h1>
-                <p className="text-sm text-gray-600">A vista • Débito • PIX • Dinheiro</p>
+                <h1 className="text-2xl font-bold text-gray-900">Despesas</h1>
+                <p className="text-sm text-gray-600">PIX • Débito • Dinheiro</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-            >
-              Sair
-            </button>
+            <div className="flex items-center space-x-3">
+              <Button variant="ghost" size="icon"><Search className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon"><Bell className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon"><Settings className="h-4 w-4" /></Button>
+              <Button variant="outline" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50">
+                <LogOut className="h-4 w-4 mr-2" /> Sair
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Filters (cards-style) */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+                <Calendar className="h-4 w-4 text-white" />
+              </div>
+              <span>Filtros</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Mês</label>
               <input
@@ -187,9 +227,24 @@ export default function FinanceDashboard() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="all">Todos</option>
-                <option value="Felipe">Felipe</option>
-                <option value="Leticia">Letícia</option>
-                <option value="Compartilhado">Compartilhado</option>
+                {isV2Ready ? (
+                  // V2: usar costCenters dinâmicos
+                  <>
+                    {(costCenters || []).map(cc => (
+                      <option key={cc.id || cc.name} value={cc.name}>{cc.name}</option>
+                    ))}
+                    {!costCenters?.some(cc => cc.name === 'Compartilhado') && (
+                      <option value="Compartilhado">Compartilhado</option>
+                    )}
+                  </>
+                ) : (
+                  // V1: usar opções fixas
+                  <>
+                    <option value="Felipe">Felipe</option>
+                    <option value="Leticia">Letícia</option>
+                    <option value="Compartilhado">Compartilhado</option>
+                  </>
+                )}
               </select>
             </div>
 
@@ -202,16 +257,17 @@ export default function FinanceDashboard() {
               >
                 <option value="all">Todas</option>
                 <option value="cash">Dinheiro</option>
-                <option value="debit">Débito</option>
+                  <option value="debit_card">Débito</option>
                 <option value="pix">PIX</option>
                 <option value="credit_card">Cartão de Crédito</option>
                 <option value="other">Outros</option>
               </select>
             </div>
-          </div>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Summary Cards */}
+        {/* Summary Cards (mantidos) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3">
