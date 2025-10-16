@@ -87,11 +87,12 @@ Retorne APENAS JSON:`;
    */
   async getUserByPhone(phone) {
     try {
+      const normalized = String(phone || '').replace(/^\+/, '');
       // Buscar usuário primeiro
       const { data: user, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('phone', phone)
+        .in('phone', [normalized, `+${normalized}`])
         .eq('is_active', true)
         .single();
 
@@ -173,9 +174,12 @@ Retorne APENAS JSON:`;
       return;
     }
 
+    // Normalize phone format to E.164 with leading +
+    const normalizedTo = String(to || '').startsWith('+') ? String(to) : `+${String(to)}`;
+
     const message = {
       messaging_product: 'whatsapp',
-      to: to,
+      to: normalizedTo,
       type: 'text',
       text: {
         body: text,
@@ -190,7 +194,7 @@ Retorne APENAS JSON:`;
         },
         timeout: 10000,
       });
-      console.log(`✅ Mensagem enviada para ${to}:`, response.data);
+      console.log(`✅ Mensagem enviada para ${normalizedTo}:`, response.data);
     } catch (error) {
       console.error(`❌ Erro ao enviar mensagem:`, error.message);
       if (error.response) {
