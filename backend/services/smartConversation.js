@@ -584,11 +584,20 @@ Retorne APENAS JSON com o campo atualizado:
         return;
       }
 
+      // Buscar categoria para obter o category_id
+      const categories = await this.getBudgetCategories(user.organization_id);
+      const categoryName = expense.conversation_state?.categoria || expense.category;
+      const category = categories.find(cat => 
+        cat.name.toLowerCase() === categoryName.toLowerCase()
+      );
+
       // Atualizar despesa como confirmada
       const expenseData = {
         organization_id: user.organization_id,
         user_id: user.id,
         cost_center_id: costCenter.id,
+        owner: responsibleName, // Mapear responsável para owner
+        category_id: category?.id || null, // Mapear categoria para category_id
         status: 'confirmed',
         confirmed_at: new Date().toISOString(),
         confirmed_by: user.id,
