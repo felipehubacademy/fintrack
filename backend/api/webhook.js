@@ -32,8 +32,8 @@ async function processWebhook(body) {
             }
 
             console.log('🔄 [B1][DEBUG] Importing SmartConversation...');
-            // Import dinâmico a partir de backend/services
-            const { default: SmartConversation } = await import('../../services/smartConversation.js');
+            // Import dinâmico a partir de backend/services (um nível acima)
+            const { default: SmartConversation } = await import('../services/smartConversation.js');
             console.log('🔄 [B1][DEBUG] SmartConversation imported successfully');
 
             console.log('🔄 [B1][DEBUG] Creating SmartConversation instance...');
