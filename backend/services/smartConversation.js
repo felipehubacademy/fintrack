@@ -390,7 +390,10 @@ Retorne APENAS JSON:`;
           await this.askNextQuestion(user, newMissingFields[0]);
         } else {
           // Todos os campos preenchidos, finalizar
-          await this.finalizeExpense(ongoingConversation, user);
+          await this.finalizeExpense({
+            ...ongoingConversation,
+            conversation_state: updatedState
+          }, user);
         }
       }
 
@@ -497,13 +500,14 @@ Retorne APENAS JSON com o campo atualizado:
   async finalizeExpense(expense, user) {
     try {
       const costCenters = await this.getCostCenters(user.organization_id);
-      const costCenter = costCenters.find(cc => 
-        cc.name.toLowerCase() === expense.responsavel?.toLowerCase()
+      const responsibleName = (expense.conversation_state?.responsavel || expense.responsavel || '').toString();
+      const costCenter = costCenters.find(cc =>
+        cc.name.toLowerCase() === responsibleName.toLowerCase()
       );
 
       if (!costCenter) {
         await this.sendWhatsAppMessage(user.phone, 
-          `❌ Centro de custo "${expense.responsavel}" não encontrado.`
+          `❌ Centro de custo "${responsibleName || 'indefinido'}" não encontrado.`
         );
         return;
       }
@@ -525,11 +529,17 @@ Retorne APENAS JSON com o campo atualizado:
         .eq('id', expense.id);
 
       // Enviar confirmação
+      const amount = expense.amount ?? expense.conversation_state?.valor;
+      const description = expense.description ?? expense.conversation_state?.descricao;
+      const category = expense.category ?? expense.conversation_state?.categoria;
+      const paymentMethod = expense.payment_method ?? expense.conversation_state?.metodo_pagamento;
+      const dateVal = expense.date ?? this.parseDate(expense.conversation_state?.data);
+
       const confirmationMessage = `✅ Despesa registrada!\n\n` +
-        `💰 R$ ${expense.amount.toFixed(2)} - ${expense.description}\n` +
-        `📂 ${expense.category} - ${expense.responsavel}\n` +
-        `💳 ${this.getPaymentMethodName(expense.payment_method)}\n` +
-        `📅 ${new Date(expense.date).toLocaleDateString('pt-BR')}`;
+        `💰 R$ ${Number(amount).toFixed(2)} - ${description}\n` +
+        `📂 ${category} - ${responsibleName}\n` +
+        `💳 ${this.getPaymentMethodName(paymentMethod)}\n` +
+        `📅 ${new Date(dateVal).toLocaleDateString('pt-BR')}`;
 
       await this.sendWhatsAppMessage(user.phone, confirmationMessage);
 
