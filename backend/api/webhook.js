@@ -41,7 +41,7 @@ async function processWebhook(body) {
             console.log('🔄 [B1][DEBUG] SmartConversation instance created');
 
             console.log('🔄 [B1][DEBUG] Calling handleMessage...');
-            await smartConversation.handleMessage(message.from, message.text.body);
+            await smartConversation.handleMessage(message.text.body, message.from);
             console.log('🔄 [B1][DEBUG] handleMessage completed');
 
             console.log('💬 [B1] Message processed successfully');
