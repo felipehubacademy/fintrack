@@ -22,6 +22,46 @@ class SmartConversation {
   }
 
   /**
+   * Normaliza nomes para comparação consistente
+   */
+  normalizeName(name) {
+    if (!name || typeof name !== 'string') return '';
+    
+    return name
+      .toLowerCase()
+      .normalize('NFD') // Decompor caracteres acentuados
+      .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+      .trim();
+  }
+
+  /**
+   * Mapeia nomes normalizados para nomes canônicos
+   * Para nomes futuros, mantém a capitalização original mas normaliza
+   */
+  getCanonicalName(name) {
+    const normalized = this.normalizeName(name);
+    const nameMapping = {
+      'felipe': 'Felipe',
+      'leticia': 'Letícia',
+      'letícia': 'Letícia',
+      'compartilhado': 'Compartilhado',
+      'compartilhada': 'Compartilhado',
+      'compartilhar': 'Compartilhado'
+    };
+    
+    // Se encontrou no mapeamento, usar o nome canônico
+    if (nameMapping[normalized]) {
+      return nameMapping[normalized];
+    }
+    
+    // Para nomes futuros, capitalizar primeira letra de cada palavra
+    return name
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  /**
    * Normaliza método de pagamento para valores canônicos V2
    */
   normalizePaymentMethod(input) {
@@ -598,7 +638,7 @@ Retorne APENAS JSON com o campo atualizado:
       const costCenters = await this.getCostCenters(user.organization_id);
       const responsibleName = (expense.conversation_state?.responsavel || expense.responsavel || '').toString();
       const costCenter = costCenters.find(cc =>
-        cc.name.toLowerCase() === responsibleName.toLowerCase()
+        this.normalizeName(cc.name) === this.normalizeName(responsibleName)
       );
 
       if (!costCenter) {
@@ -620,7 +660,7 @@ Retorne APENAS JSON com o campo atualizado:
         organization_id: user.organization_id,
         user_id: user.id,
         cost_center_id: costCenter.id,
-        owner: responsibleName, // Mapear responsável para owner
+        owner: this.getCanonicalName(responsibleName), // Mapear responsável para owner normalizado
         category_id: budgetCategory?.id || null, // Mapear categoria para category_id
         status: 'confirmed',
         confirmed_at: this.getBrazilDateTime().toISOString(),
@@ -704,14 +744,26 @@ Retorne APENAS JSON com o campo atualizado:
           responsavel: analysis.responsavel
         },
         source: 'whatsapp',
-        whatsapp_message_id: user.phone // Usar telefone como ID temporário
+        whatsapp_message_id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` // ID único
       };
 
-      const { data: pendingExpense } = await supabase
+      console.log('🔍 [DEBUG] Inserindo expense pendente:', expenseData);
+      
+      const { data: pendingExpense, error: insertError } = await supabase
         .from('expenses')
         .insert(expenseData)
         .select()
         .single();
+
+      if (insertError) {
+        console.error('❌ Erro ao inserir expense pendente:', insertError);
+        await this.sendWhatsAppMessage(user.phone, 
+          "❌ Erro ao salvar despesa. Tente novamente."
+        );
+        return;
+      }
+
+      console.log('✅ Expense pendente inserida:', pendingExpense);
 
       // Perguntar primeiro campo faltando
       await this.askNextQuestion(user, missingFields[0]);
@@ -724,7 +776,7 @@ Retorne APENAS JSON com o campo atualizado:
   async handleCompleteInfo(user, analysis) {
     const costCenters = await this.getCostCenters(user.organization_id);
     const costCenter = costCenters.find(cc => 
-      cc.name.toLowerCase() === analysis.responsavel?.toLowerCase()
+      this.normalizeName(cc.name) === this.normalizeName(analysis.responsavel)
     );
 
     if (!costCenter) {
@@ -754,7 +806,7 @@ Retorne APENAS JSON com o campo atualizado:
       payment_method: normalizedMethod,
       category_id: categoryId,
       category: analysis.categoria,
-      owner: analysis.responsavel, // Mapear responsavel para owner
+      owner: this.getCanonicalName(analysis.responsavel), // Mapear responsavel para owner normalizado
       date: this.parseDate(analysis.data),
       status: 'confirmed',
       confirmed_at: new Date().toISOString(),
