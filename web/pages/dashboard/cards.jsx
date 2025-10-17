@@ -5,6 +5,7 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import CardModal from '../../components/CardModal';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 import { 
   CreditCard, 
@@ -34,8 +35,10 @@ export default function CardsDashboard() {
   const [cards, setCards] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState('2025-10'); // Temporariamente fixo para outubro 2025
   const [showNumbers, setShowNumbers] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingCard, setEditingCard] = useState(null);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -45,37 +48,35 @@ export default function CardsDashboard() {
     }
   }, [orgLoading, orgError, organization, selectedMonth]);
 
-  // Derivar "cards" a partir de centros de custo + despesas de crédito do mês
-  const deriveCardsFromData = (creditExpenses) => {
-    if (!organization) return setCards([]);
+  // Buscar cartões reais da tabela cards
+  const fetchCards = async () => {
+    try {
+      let query = supabase
+        .from('cards')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-    // total por responsável (owner) para este mês usando normalização
-    const usedByOwner = creditExpenses.reduce((acc, e) => {
-      const normalizedOwner = normalizeName(e.owner || '');
-      acc[normalizedOwner] = (acc[normalizedOwner] || 0) + Number(e.amount || 0);
-      return acc;
-    }, {});
+      if (organization?.id && organization.id !== 'default-org') {
+        query = query.eq('organization_id', organization.id);
+      }
 
-    const derived = (costCenters || []).map((cc, idx) => {
-      const normalizedCCName = normalizeName(cc.name);
-      const used = usedByOwner[normalizedCCName] || 0;
-      return {
-        id: idx + 1,
-        name: 'Cartão de Crédito',
-        number: '**** **** **** 0000',
-        holder: cc.name.toUpperCase(),
-        expiry: '—',
-        limit: 0,
-        used,
-        available: 0,
-        status: 'active',
-        type: 'credit',
-        bank: organization?.name || 'FinTrack',
-        color: 'from-blue-600 to-purple-600'
-      };
-    });
+      const { data, error } = await query;
+      if (!error) {
+        setCards(data || []);
+      } else {
+        console.error('Error fetching cards:', error);
+      }
+    } catch (error) {
+      console.error('Error fetching cards:', error);
+    }
+  };
 
-    setCards(derived);
+  // Calcular uso de cada cartão no mês
+  const calculateCardUsage = (cardId) => {
+    return expenses
+      .filter(e => e.card_id === cardId)
+      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
   };
 
   const fetchExpenses = async () => {
@@ -102,7 +103,7 @@ export default function CardsDashboard() {
       if (!error) {
         const list = data || [];
         setExpenses(list);
-        deriveCardsFromData(list);
+        await fetchCards(); // Buscar cartões reais
       }
     } catch (error) {
       console.error('Error fetching expenses:', error);
@@ -114,6 +115,82 @@ export default function CardsDashboard() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
+  };
+
+  // Funções CRUD para cartões
+  const handleAddCard = async (cardData) => {
+    try {
+      const { error } = await supabase
+        .from('cards')
+        .insert([{
+          ...cardData,
+          organization_id: organization.id,
+          owner_id: orgUser.id,
+          is_active: true,
+          available_limit: cardData.credit_limit,
+          type: 'credit'
+        }]);
+      
+      if (!error) {
+        await fetchCards();
+        setShowModal(false);
+      } else {
+        console.error('Error adding card:', error);
+      }
+    } catch (error) {
+      console.error('Error adding card:', error);
+    }
+  };
+
+  const handleEditCard = async (cardData) => {
+    try {
+      const { error } = await supabase
+        .from('cards')
+        .update({
+          ...cardData,
+          available_limit: cardData.credit_limit - calculateCardUsage(editingCard.id)
+        })
+        .eq('id', editingCard.id);
+      
+      if (!error) {
+        await fetchCards();
+        setShowModal(false);
+        setEditingCard(null);
+      } else {
+        console.error('Error editing card:', error);
+      }
+    } catch (error) {
+      console.error('Error editing card:', error);
+    }
+  };
+
+  const handleDeleteCard = async (cardId) => {
+    if (!confirm('Tem certeza que deseja excluir este cartão?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('cards')
+        .update({ is_active: false })
+        .eq('id', cardId);
+      
+      if (!error) {
+        await fetchCards();
+      } else {
+        console.error('Error deleting card:', error);
+      }
+    } catch (error) {
+      console.error('Error deleting card:', error);
+    }
+  };
+
+  const openAddModal = () => {
+    setEditingCard(null);
+    setShowModal(true);
+  };
+
+  const openEditModal = (card) => {
+    setEditingCard(card);
+    setShowModal(true);
   };
 
   const getUsagePercentage = (used, limit) => {
@@ -236,7 +313,10 @@ export default function CardsDashboard() {
               <TrendingUp className="h-4 w-4 mr-2" />
               Relatório
             </Button>
-            <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+            <Button 
+              onClick={openAddModal}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Novo Cartão
             </Button>
@@ -265,7 +345,7 @@ export default function CardsDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Limite Total</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    R$ {cards.reduce((sum, c) => sum + c.limit, 0).toLocaleString('pt-BR')}
+                    R$ {cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0).toLocaleString('pt-BR')}
                   </p>
                 </div>
                 <div className="p-2 bg-green-50 rounded-lg">
@@ -281,7 +361,7 @@ export default function CardsDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Usado</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    R$ {cards.reduce((sum, c) => sum + c.used, 0).toLocaleString('pt-BR')}
+                    R$ {cards.reduce((sum, c) => sum + calculateCardUsage(c.id), 0).toLocaleString('pt-BR')}
                   </p>
                 </div>
                 <div className="p-2 bg-red-50 rounded-lg">
@@ -297,7 +377,7 @@ export default function CardsDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Disponível</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    R$ {cards.reduce((sum, c) => sum + c.available, 0).toLocaleString('pt-BR')}
+                    R$ {cards.reduce((sum, c) => sum + ((c.credit_limit || 0) - calculateCardUsage(c.id)), 0).toLocaleString('pt-BR')}
                   </p>
                 </div>
                 <div className="p-2 bg-purple-50 rounded-lg">
@@ -311,38 +391,39 @@ export default function CardsDashboard() {
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => {
-            const usagePercentage = getUsagePercentage(card.used, card.limit);
+            const used = calculateCardUsage(card.id);
+            const limit = card.credit_limit || 0;
+            const available = limit - used;
+            const usagePercentage = getUsagePercentage(used, limit);
             const usageStatus = getUsageStatus(usagePercentage);
             
             return (
               <Card key={card.id} className="border-0 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                 {/* Card Visual */}
-                <div className={`h-32 bg-gradient-to-r ${card.color} p-6 text-white relative`}>
+                <div className={`h-36 bg-gradient-to-r ${card.color} p-6 text-white relative`}>
                   <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-sm opacity-80">{card.bank}</p>
-                      <p className="text-lg font-semibold">{card.name}</p>
+                    <div className="flex-1">
+                      <p className="text-xl font-bold">{card.name} - {card.bank || 'Banco'}</p>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1">
-                        <Wifi className="h-4 w-4" />
-                        <Shield className="h-4 w-4" />
-                      </div>
-                      <Badge className="bg-white/20 text-white border-0">
-                        {card.type === 'credit' ? 'Crédito' : 'Débito'}
-                      </Badge>
                     </div>
                   </div>
                   
-                  <div className="absolute bottom-6 left-6 right-6">
+                  <div className="absolute bottom-4 left-6 right-6">
                     <div className="flex justify-between items-end">
                       <div>
-                        <p className="text-sm opacity-80">Titular</p>
-                        <p className="font-semibold">{card.holder}</p>
+                        <p className="text-xs opacity-70 mb-1">Titular</p>
+                        <p className="text-sm font-semibold">{card.holder_name || 'TITULAR'}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm opacity-80">Vencimento</p>
-                        <p className="font-semibold">{card.expiry}</p>
+                        <p className="text-xs opacity-70 mb-1">Vencimento</p>
+                        <p className="text-sm font-semibold">{card.billing_day || '—'}</p>
+                        {card.best_day && (
+                          <>
+                            <p className="text-xs opacity-70 mb-1 mt-2">Melhor dia de compra</p>
+                            <p className="text-sm font-semibold">{card.best_day}</p>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -350,14 +431,6 @@ export default function CardsDashboard() {
 
                 {/* Card Details */}
                 <CardContent className="p-6 space-y-4">
-                  {/* Card Number */}
-                  <div>
-                    <p className="text-sm text-gray-600 mb-2">Número do Cartão</p>
-                    <p className="font-mono text-lg font-semibold">
-                      {formatCardNumber(card.number)}
-                    </p>
-                  </div>
-
                   {/* Usage Progress (only for credit cards) */}
                   {card.type === 'credit' && (
                     <div className="space-y-2">
@@ -383,15 +456,15 @@ export default function CardsDashboard() {
                       <>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Limite:</span>
-                          <span className="font-semibold">R$ {card.limit.toLocaleString('pt-BR')}</span>
+                          <span className="font-semibold">R$ {limit.toLocaleString('pt-BR')}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Usado:</span>
-                          <span className="font-semibold">R$ {card.used.toLocaleString('pt-BR')}</span>
+                          <span className="font-semibold">R$ {used.toLocaleString('pt-BR')}</span>
                         </div>
                         <div className="flex justify-between border-t pt-2">
                           <span className="text-sm text-gray-600">Disponível:</span>
-                          <span className="font-semibold text-green-600">R$ {card.available.toLocaleString('pt-BR')}</span>
+                          <span className="font-semibold text-green-600">R$ {available.toLocaleString('pt-BR')}</span>
                         </div>
                       </>
                     ) : (
@@ -414,13 +487,22 @@ export default function CardsDashboard() {
 
                   {/* Actions */}
                   <div className="flex justify-center space-x-2 pt-4 border-t">
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-1" />
-                      Detalhes
-                    </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => openEditModal(card)}
+                    >
                       <Edit className="h-4 w-4 mr-1" />
                       Editar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDeleteCard(card.id)}
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Excluir
                     </Button>
                   </div>
                 </CardContent>
@@ -438,13 +520,27 @@ export default function CardsDashboard() {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum cartão cadastrado</h3>
               <p className="text-gray-600 mb-6">Adicione seus cartões para ter controle total sobre seus gastos e limites.</p>
-              <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+              <Button 
+                onClick={openAddModal}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeiro Cartão
               </Button>
             </CardContent>
           </Card>
         )}
+
+        {/* Card Modal */}
+        <CardModal
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setEditingCard(null);
+          }}
+          onSave={editingCard ? handleEditCard : handleAddCard}
+          editingCard={editingCard}
+        />
       </main>
     </div>
   );
