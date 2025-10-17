@@ -390,8 +390,11 @@ Retorne APENAS JSON:`;
       console.log(`📱 Processando mensagem de ${userPhone}: "${text}"`);
 
       // 1. Buscar usuário
+      console.log('🔍 [DEBUG] Buscando usuário para telefone:', userPhone);
       const user = await this.getUserByPhone(userPhone);
+      console.log('🔍 [DEBUG] Usuário encontrado:', user ? 'SIM' : 'NÃO');
       if (!user) {
+        console.log('❌ [DEBUG] Usuário não encontrado, enviando mensagem de erro');
         await this.sendWhatsAppMessage(userPhone, 
           "❌ Usuário não encontrado. Entre em contato com o administrador da organização."
         );
@@ -434,10 +437,15 @@ Retorne APENAS JSON:`;
       }
 
       // 5. Verificar se precisa de confirmação
+      console.log('🔍 [DEBUG] Verificando se precisa confirmar:', analysis.precisa_confirmar);
       if (analysis.precisa_confirmar) {
+        console.log('🔍 [DEBUG] Chamando handleIncompleteInfo...');
         await this.handleIncompleteInfo(user, analysis);
+        console.log('✅ [DEBUG] handleIncompleteInfo concluído');
       } else {
+        console.log('🔍 [DEBUG] Chamando handleCompleteInfo...');
         await this.handleCompleteInfo(user, analysis);
+        console.log('✅ [DEBUG] handleCompleteInfo concluído');
       }
 
     } catch (error) {
