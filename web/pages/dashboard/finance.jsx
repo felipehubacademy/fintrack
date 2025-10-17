@@ -25,6 +25,12 @@ export default function FinanceDashboard() {
   const [editingId, setEditingId] = useState(null);
   const [editOwner, setEditOwner] = useState('');
   const [saving, setSaving] = useState(false);
+  
+  // Estado de ordenação
+  const [sortConfig, setSortConfig] = useState({
+    key: 'date',
+    direction: 'desc'
+  });
 
   useEffect(() => {
     checkUser();
@@ -169,6 +175,59 @@ export default function FinanceDashboard() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
+  };
+
+  // Função para ordenar despesas
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  // Função para obter ícone de ordenação
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) {
+      return <span className="text-gray-400">↕️</span>;
+    }
+    return sortConfig.direction === 'asc' ? <span className="text-blue-600">↑</span> : <span className="text-blue-600">↓</span>;
+  };
+
+  // Função para ordenar array de despesas
+  const sortExpenses = (expenses) => {
+    return [...expenses].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+      // Tratamento especial para cada tipo de coluna
+      switch (sortConfig.key) {
+        case 'date':
+          aValue = new Date(aValue + 'T00:00:00');
+          bValue = new Date(bValue + 'T00:00:00');
+          break;
+        case 'amount':
+          aValue = parseFloat(aValue || 0);
+          bValue = parseFloat(bValue || 0);
+          break;
+        case 'category':
+        case 'owner':
+        case 'payment_method':
+          aValue = (aValue || '').toString().toLowerCase();
+          bValue = (bValue || '').toString().toLowerCase();
+          break;
+        default:
+          aValue = (aValue || '').toString().toLowerCase();
+          bValue = (bValue || '').toString().toLowerCase();
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
   };
 
   // Calcular totais dinamicamente por centro de custo
@@ -370,18 +429,58 @@ export default function FinanceDashboard() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('date')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Data</span>
+                      {getSortIcon('date')}
+                    </div>
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Forma</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsável</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('category')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Categoria</span>
+                      {getSortIcon('category')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('payment_method')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Forma</span>
+                      {getSortIcon('payment_method')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('owner')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Responsável</span>
+                      {getSortIcon('owner')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('amount')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Valor</span>
+                      {getSortIcon('amount')}
+                    </div>
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {expenses.map((expense) => (
+                {sortExpenses(expenses).map((expense) => (
                   <tr key={expense.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {expense.date ? new Date(expense.date + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
