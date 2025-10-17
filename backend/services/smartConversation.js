@@ -736,7 +736,11 @@ Retorne APENAS JSON com o campo atualizado:
       missingFields.push('categoria');
     }
 
+    console.log('🔍 [DEBUG] Campos faltando:', missingFields);
+    console.log('🔍 [DEBUG] Análise completa:', analysis);
+
     if (missingFields.length > 0) {
+      console.log('🔍 [DEBUG] Entrando no bloco de campos faltando...');
       // Criar despesa pendente
       const expenseData = {
         organization_id: user.organization_id,
@@ -775,6 +779,10 @@ Retorne APENAS JSON com o campo atualizado:
 
       // Perguntar primeiro campo faltando
       await this.askNextQuestion(user, missingFields[0]);
+    } else {
+      console.log('🔍 [DEBUG] Nenhum campo faltando, mas precisa confirmar. Chamando handleCompleteInfo...');
+      // Se não há campos faltando mas ainda precisa confirmar, tratar como informação completa
+      await this.handleCompleteInfo(user, analysis);
     }
   }
 
