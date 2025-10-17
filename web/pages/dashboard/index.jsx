@@ -23,7 +23,7 @@ import {
 export default function DashboardHome() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, budgetCategories, loading: orgLoading, error: orgError } = useOrganization();
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState('2025-10'); // Temporariamente fixo para outubro 2025
   const [cardExpenses, setCardExpenses] = useState([]);
   const [cashExpenses, setCashExpenses] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
@@ -46,6 +46,12 @@ export default function DashboardHome() {
       endOfMonth.setMonth(endOfMonth.getMonth() + 1);
       endOfMonth.setDate(0);
 
+      console.log('🔍 [DASHBOARD DEBUG] selectedMonth:', selectedMonth);
+      console.log('🔍 [DASHBOARD DEBUG] startOfMonth:', startOfMonth);
+      console.log('🔍 [DASHBOARD DEBUG] endOfMonth:', endOfMonth.toISOString().split('T')[0]);
+      console.log('🔍 [DASHBOARD DEBUG] organization.id:', organization.id);
+      console.log('🔍 [DASHBOARD DEBUG] organization:', organization);
+
       // Buscar despesas (compatível V1/V2)
       let query = supabase
         .from('expenses')
@@ -56,17 +62,41 @@ export default function DashboardHome() {
         .order('date', { ascending: false });
 
       // Adicionar filtro V2 se organização tem ID real (não mock)
+      console.log('🔍 [DASHBOARD DEBUG] Checking organization filter...');
+      console.log('🔍 [DASHBOARD DEBUG] organization?.id exists:', !!organization?.id);
+      console.log('🔍 [DASHBOARD DEBUG] organization.id !== default-org:', organization?.id !== 'default-org');
+      
       if (organization?.id && organization.id !== 'default-org') {
         query = query.eq('organization_id', organization.id);
+        console.log('🔍 [DASHBOARD DEBUG] Added organization filter:', organization.id);
+      } else {
+        console.log('🔍 [DASHBOARD DEBUG] No organization filter applied');
       }
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('🔍 [DASHBOARD DEBUG] Query error:', error);
+        throw error;
+      }
+
+      console.log('🔍 [DASHBOARD DEBUG] Raw data from DB:', data);
 
       // Separar cartão e a vista
       const card = (data || []).filter(e => e.payment_method === 'credit_card');
-      const cash = (data || []).filter(e => e.payment_method !== 'credit_card');
+      const cash = (data || []).filter(e => 
+        e.payment_method === 'cash' || 
+        e.payment_method === 'debit_card' || 
+        e.payment_method === 'pix' || 
+        e.payment_method === 'bank_transfer' || 
+        e.payment_method === 'boleto' || 
+        e.payment_method === 'other'
+      );
+
+      console.log('🔍 [DASHBOARD DEBUG] Card expenses:', card.length, 'items');
+      console.log('🔍 [DASHBOARD DEBUG] Cash expenses:', cash.length, 'items');
+      console.log('🔍 [DASHBOARD DEBUG] Card details:', card);
+      console.log('🔍 [DASHBOARD DEBUG] Cash details:', cash);
 
       setCardExpenses(card);
       setCashExpenses(cash);
@@ -113,7 +143,14 @@ export default function DashboardHome() {
             .reduce((sum, e) => sum + parseFloat(e.amount), 0);
             
           const cashTotal = data
-            .filter(e => e.payment_method !== 'credit_card')
+            .filter(e => 
+              e.payment_method === 'cash' || 
+              e.payment_method === 'debit_card' || 
+              e.payment_method === 'pix' || 
+              e.payment_method === 'bank_transfer' || 
+              e.payment_method === 'boleto' || 
+              e.payment_method === 'other'
+            )
             .reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
           months.push({
@@ -162,10 +199,19 @@ export default function DashboardHome() {
     return { ...totals, total };
   };
 
-  const cardTotals = calculateTotals(cardExpenses);
-  const cashTotals = calculateTotals(cashExpenses);
+  // Calcular totais usando a MESMA lógica do fetchMonthlyData que funciona!
+  const currentMonthData = monthlyData.find(month => month.month === 'out. de 25');
+  const cardTotal = currentMonthData ? currentMonthData.cartoes : 0;
+  const cashTotal = currentMonthData ? currentMonthData.despesas : 0;
   const allExpenses = [...cardExpenses, ...cashExpenses];
-  const grandTotal = cardTotals.total + cashTotals.total;
+  const grandTotal = cardTotal + cashTotal;
+
+  // Debug logs
+  console.log('🔍 [DASHBOARD DEBUG] monthlyData:', monthlyData);
+  console.log('🔍 [DASHBOARD DEBUG] currentMonthData:', currentMonthData);
+  console.log('🔍 [DASHBOARD DEBUG] cardTotal:', cardTotal);
+  console.log('🔍 [DASHBOARD DEBUG] cashTotal:', cashTotal);
+  console.log('🔍 [DASHBOARD DEBUG] grandTotal:', grandTotal);
 
   if (orgLoading) {
     return (
@@ -244,8 +290,8 @@ export default function DashboardHome() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Stats Cards */}
         <StatsCards 
-          cardExpenses={cardTotals.total}
-          cashExpenses={cashTotals.total}
+          cardExpenses={cardTotal}
+          cashExpenses={cashTotal}
           totalExpenses={grandTotal}
           costCenters={costCenters}
           budgets={[]}
