@@ -623,7 +623,7 @@ Retorne APENAS JSON com o campo atualizado:
         owner: responsibleName, // Mapear responsável para owner
         category_id: budgetCategory?.id || null, // Mapear categoria para category_id
         status: 'confirmed',
-        confirmed_at: new Date().toISOString(),
+        confirmed_at: this.getBrazilDateTime().toISOString(),
         confirmed_by: user.id,
         whatsapp_message_id: `msg_${Date.now()}`
       };
@@ -776,21 +776,30 @@ Retorne APENAS JSON com o campo atualizado:
   }
 
   /**
-   * Converter data
+   * Obter data/hora atual no fuso horário do Brasil
+   */
+  getBrazilDateTime() {
+    const now = new Date();
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+  }
+
+  /**
+   * Converter data com fuso horário do Brasil (UTC-3)
    */
   parseDate(dateStr) {
-    const today = new Date();
+    // Obter data atual no fuso horário do Brasil
+    const brazilTime = this.getBrazilDateTime();
     
-    if (dateStr === 'hoje') return today;
+    if (dateStr === 'hoje') return brazilTime;
     if (dateStr === 'ontem') {
-      const yesterday = new Date(today);
+      const yesterday = new Date(brazilTime);
       yesterday.setDate(yesterday.getDate() - 1);
       return yesterday;
     }
     
     // Tentar parsear data específica
     const parsed = new Date(dateStr);
-    return isNaN(parsed.getTime()) ? today : parsed;
+    return isNaN(parsed.getTime()) ? brazilTime : parsed;
   }
 
   /**
