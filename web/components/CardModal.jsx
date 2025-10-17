@@ -1,0 +1,343 @@
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
+import { Button } from './ui/Button';
+import { X, CreditCard, AlertCircle } from 'lucide-react';
+
+const CARD_COLORS = [
+  { value: 'from-blue-600 to-purple-600', label: 'Azul/Roxo', preview: 'bg-gradient-to-r from-blue-600 to-purple-600' },
+  { value: 'from-green-600 to-teal-600', label: 'Verde/Teal', preview: 'bg-gradient-to-r from-green-600 to-teal-600' },
+  { value: 'from-red-600 to-pink-600', label: 'Vermelho/Rosa', preview: 'bg-gradient-to-r from-red-600 to-pink-600' },
+  { value: 'from-orange-600 to-yellow-600', label: 'Laranja/Amarelo', preview: 'bg-gradient-to-r from-orange-600 to-yellow-600' },
+  { value: 'from-purple-600 to-indigo-600', label: 'Roxo/Índigo', preview: 'bg-gradient-to-r from-purple-600 to-indigo-600' },
+  { value: 'from-gray-600 to-slate-600', label: 'Cinza/Slate', preview: 'bg-gradient-to-r from-gray-600 to-slate-600' }
+];
+
+export default function CardModal({ isOpen, onClose, onSave, editingCard = null }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    bank: '',
+    holder_name: '',
+    billing_day: '',
+    best_day: '',
+    credit_limit: '',
+    color: 'from-blue-600 to-purple-600'
+  });
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (editingCard) {
+      setFormData({
+        name: editingCard.name || '',
+        bank: editingCard.bank || '',
+        holder_name: editingCard.holder_name || '',
+        billing_day: editingCard.billing_day?.toString() || '',
+        best_day: editingCard.best_day?.toString() || '',
+        credit_limit: editingCard.credit_limit?.toString() || '',
+        color: editingCard.color || 'from-blue-600 to-purple-600'
+      });
+    } else {
+      setFormData({
+        name: '',
+        bank: '',
+        holder_name: '',
+        billing_day: '',
+        best_day: '',
+        credit_limit: '',
+        color: 'from-blue-600 to-purple-600'
+      });
+    }
+    setErrors({});
+  }, [editingCard, isOpen]);
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.name.trim() || formData.name.trim().length < 3) {
+      newErrors.name = 'Nome deve ter pelo menos 3 caracteres';
+    }
+
+    if (!formData.bank.trim()) {
+      newErrors.bank = 'Banco é obrigatório';
+    }
+
+    if (!formData.holder_name.trim()) {
+      newErrors.holder_name = 'Titular é obrigatório';
+    }
+
+    if (!formData.billing_day || formData.billing_day < 1 || formData.billing_day > 31) {
+      newErrors.billing_day = 'Dia de vencimento deve ser entre 1 e 31';
+    }
+
+    if (formData.best_day && (formData.best_day < 1 || formData.best_day > 31)) {
+      newErrors.best_day = 'Melhor dia deve ser entre 1 e 31';
+    }
+
+    if (!formData.credit_limit || parseFloat(formData.credit_limit) <= 0) {
+      newErrors.credit_limit = 'Limite deve ser maior que zero';
+    }
+
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      const cardData = {
+        ...formData,
+        billing_day: parseInt(formData.billing_day),
+        best_day: formData.best_day ? parseInt(formData.best_day) : null,
+        credit_limit: parseFloat(formData.credit_limit)
+      };
+
+      await onSave(cardData);
+    } catch (error) {
+      console.error('Error saving card:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+      style={{ 
+        zIndex: 999999,
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0
+      }}
+    >
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-2xl">
+        <div className="p-6">
+          <div className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle className="flex items-center space-x-2">
+            <CreditCard className="h-5 w-5" />
+            <span>{editingCard ? 'Editar Cartão' : 'Novo Cartão'}</span>
+          </CardTitle>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+          </div>
+
+          <div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Nome do Cartão */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nome do Cartão *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                placeholder="Ex: Nubank Roxinho"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.name ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+              {errors.name && (
+                <p className="mt-1 text-sm text-red-600 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.name}
+                </p>
+              )}
+            </div>
+
+            {/* Banco e Titular */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Banco *
+                </label>
+                <input
+                  type="text"
+                  value={formData.bank}
+                  onChange={(e) => handleChange('bank', e.target.value)}
+                  placeholder="Ex: Nubank"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.bank ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.bank && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.bank}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Titular *
+                </label>
+                <input
+                  type="text"
+                  value={formData.holder_name}
+                  onChange={(e) => handleChange('holder_name', e.target.value)}
+                  placeholder="Nome do titular"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.holder_name ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.holder_name && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.holder_name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Limite de Crédito */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Limite de Crédito *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.credit_limit}
+                onChange={(e) => handleChange('credit_limit', e.target.value)}
+                placeholder="5000.00"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.credit_limit ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+              {errors.credit_limit && (
+                <p className="mt-1 text-sm text-red-600 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.credit_limit}
+                </p>
+              )}
+            </div>
+
+            {/* Dias de vencimento e melhor dia */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Dia de Vencimento *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={formData.billing_day}
+                  onChange={(e) => handleChange('billing_day', e.target.value)}
+                  placeholder="15"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.billing_day ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.billing_day && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.billing_day}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Melhor Dia para Compras
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={formData.best_day}
+                  onChange={(e) => handleChange('best_day', e.target.value)}
+                  placeholder="10"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.best_day ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.best_day && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.best_day}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Cor do Cartão */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cor do Cartão
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {CARD_COLORS.map((color) => (
+                  <label key={color.value} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="color"
+                      value={color.value}
+                      checked={formData.color === color.value}
+                      onChange={(e) => handleChange('color', e.target.value)}
+                      className="sr-only"
+                    />
+                    <div className={`w-8 h-6 rounded ${color.preview} ${
+                      formData.color === color.value ? 'ring-2 ring-blue-500' : ''
+                    }`}></div>
+                    <span className="text-sm text-gray-700">{color.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Preview do Cartão */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Preview
+              </label>
+              <div className={`h-24 bg-gradient-to-r ${formData.color} rounded-lg p-4 text-white relative overflow-hidden`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs opacity-80">{formData.bank || 'Banco'}</p>
+                    <p className="text-sm font-semibold">{formData.name || 'Nome do Cartão'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs opacity-80">Titular</p>
+                    <p className="text-sm font-semibold">{formData.holder_name || 'TITULAR'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Botões */}
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Salvando...' : editingCard ? 'Atualizar' : 'Criar Cartão'}
+              </Button>
+            </div>
+          </form>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
