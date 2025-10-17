@@ -6,6 +6,7 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { TrendingUp, Bell, Settings, Search, LogOut, Calendar } from 'lucide-react';
+import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 
 export default function FinanceDashboard() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function FinanceDashboard() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({
-    month: new Date().toISOString().slice(0, 7),
+    month: '2025-10', // Temporariamente fixo para outubro 2025
     owner: 'all',
     payment_method: 'all'
   });
@@ -65,16 +66,34 @@ export default function FinanceDashboard() {
 
       if (filter.month) {
         const startOfMonth = `${filter.month}-01`;
-        const endOfMonth = new Date(filter.month + '-01');
-        endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-        endOfMonth.setDate(0);
-        const endOfMonthStr = endOfMonth.toISOString().split('T')[0];
+        // Corrigir cálculo do último dia do mês
+        const [year, month] = filter.month.split('-');
+        const lastDay = new Date(year, month, 0).getDate();
+        const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
 
         query = query.gte('date', startOfMonth).lte('date', endOfMonthStr);
       }
 
       if (filter.owner !== 'all') {
-        query = query.eq('owner', filter.owner);
+        // Usar normalização para filtrar por responsável
+        const { data: allExpenses } = await supabase
+          .from('expenses')
+          .select('*')
+          .eq('status', 'confirmed')
+          .eq('organization_id', organization.id);
+        
+        const filteredExpenses = allExpenses?.filter(expense => 
+          isSameName(expense.owner, filter.owner)
+        ) || [];
+        
+        // Retornar apenas os IDs filtrados
+        const filteredIds = filteredExpenses.map(exp => exp.id);
+        if (filteredIds.length > 0) {
+          query = query.in('id', filteredIds);
+        } else {
+          // Se não encontrou nenhum, retornar array vazio
+          query = query.eq('id', -1); // ID que não existe
+        }
       }
 
       if (filter.payment_method !== 'all') {
@@ -152,15 +171,17 @@ export default function FinanceDashboard() {
     router.push('/');
   };
 
-  // Calcular totais
-  const totals = {
-    felipe: expenses.filter(e => e.status === 'confirmed' && e.owner === 'Felipe').reduce((sum, e) => sum + parseFloat(e.amount), 0),
-    leticia: expenses.filter(e => e.status === 'confirmed' && e.owner === 'Leticia').reduce((sum, e) => sum + parseFloat(e.amount), 0),
-    compartilhado: expenses.filter(e => e.status === 'confirmed' && e.owner === 'Compartilhado').reduce((sum, e) => sum + parseFloat(e.amount), 0),
-    pending: expenses.filter(e => e.status === 'pending').reduce((sum, e) => sum + parseFloat(e.amount), 0),
-  };
+  // Calcular totais dinamicamente por centro de custo
+  const totals = {};
+  const uniqueOwners = [...new Set(expenses.map(e => e.owner).filter(Boolean))];
+  
+  uniqueOwners.forEach(owner => {
+    totals[owner] = expenses.filter(e => e.status === 'confirmed' && isSameName(e.owner, owner)).reduce((sum, e) => sum + parseFloat(e.amount), 0);
+  });
+  
+  totals.pending = expenses.filter(e => e.status === 'pending').reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
-  const total = totals.felipe + totals.leticia + totals.compartilhado + totals.pending;
+  const total = Object.values(totals).reduce((sum, value) => sum + value, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -238,11 +259,11 @@ export default function FinanceDashboard() {
                     )}
                   </>
                 ) : (
-                  // V1: usar opções fixas
+                  // V1: usar opções dinâmicas baseadas nos dados existentes
                   <>
-                    <option value="Felipe">Felipe</option>
-                    <option value="Leticia">Letícia</option>
-                    <option value="Compartilhado">Compartilhado</option>
+                    {uniqueOwners.map(owner => (
+                      <option key={owner} value={owner}>{owner}</option>
+                    ))}
                   </>
                 )}
               </select>
@@ -267,39 +288,37 @@ export default function FinanceDashboard() {
           </CardContent>
         </Card>
 
-        {/* Summary Cards (mantidos) */}
+        {/* Summary Cards dinâmicos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3">
-              <div className="flex items-center justify-between text-white">
-                <div>
-                  <p className="text-xs font-medium opacity-90">Felipe</p>
-                  <p className="text-lg font-bold mt-1">R$ {totals.felipe.toFixed(2)}</p>
-                </div>
-                <div className="bg-white bg-opacity-30 rounded-full p-2 w-8 h-8 flex items-center justify-center">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-gradient-to-r from-pink-500 to-pink-600 p-3">
-              <div className="flex items-center justify-between text-white">
-                <div>
-                  <p className="text-xs font-medium opacity-90">Letícia</p>
-                  <p className="text-lg font-bold mt-1">R$ {totals.leticia.toFixed(2)}</p>
-                </div>
-                <div className="bg-white bg-opacity-30 rounded-full p-2 w-8 h-8 flex items-center justify-center">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+          {uniqueOwners.map((owner, index) => {
+            const colors = [
+              'from-blue-500 to-blue-600',
+              'from-pink-500 to-pink-600', 
+              'from-green-500 to-green-600',
+              'from-purple-500 to-purple-600',
+              'from-orange-500 to-orange-600',
+              'from-teal-500 to-teal-600'
+            ];
+            const colorClass = colors[index % colors.length];
+            
+            return (
+              <div key={owner} className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className={`bg-gradient-to-r ${colorClass} p-3`}>
+                  <div className="flex items-center justify-between text-white">
+                    <div>
+                      <p className="text-xs font-medium opacity-90">{owner}</p>
+                      <p className="text-lg font-bold mt-1">R$ {(totals[owner] || 0).toFixed(2)}</p>
+                    </div>
+                    <div className="bg-white bg-opacity-30 rounded-full p-2 w-8 h-8 flex items-center justify-center">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            );
+          })}
 
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3">
@@ -370,17 +389,17 @@ export default function FinanceDashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {expense.payment_method === 'cash' && '💵 Dinheiro'}
-                      {expense.payment_method === 'debit' && '💳 Débito'}
+                      {expense.payment_method === 'debit_card' && '💳 Cartão de Débito'}
                       {expense.payment_method === 'pix' && '📱 PIX'}
-                      {expense.payment_method === 'credit_card' && '💳 Crédito'}
+                      {expense.payment_method === 'credit_card' && '💳 Cartão de Crédito'}
+                      {expense.payment_method === 'bank_transfer' && '🏦 Transferência'}
+                      {expense.payment_method === 'boleto' && '📄 Boleto'}
                       {expense.payment_method === 'other' && '📄 Outros'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        expense.owner === 'Felipe' ? 'bg-blue-100 text-blue-800' :
-                        expense.owner === 'Leticia' ? 'bg-pink-100 text-pink-800' :
-                        expense.owner === 'Compartilhado' ? 'bg-purple-100 text-purple-800' :
-                        'text-gray-400'
+                        isSameName(expense.owner, 'Compartilhado') ? 'bg-purple-100 text-purple-800' :
+                        'bg-blue-100 text-blue-800'
                       }`}>
                         {expense.owner || '-'}
                       </span>
@@ -438,9 +457,9 @@ export default function FinanceDashboard() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Selecione...</option>
-                <option value="Felipe">Felipe</option>
-                <option value="Leticia">Letícia</option>
-                <option value="Compartilhado">Compartilhado</option>
+                {uniqueOwners.map(owner => (
+                  <option key={owner} value={owner}>{owner}</option>
+                ))}
               </select>
             </div>
 

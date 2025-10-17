@@ -41,9 +41,6 @@ class SmartConversation {
   getCanonicalName(name) {
     const normalized = this.normalizeName(name);
     const nameMapping = {
-      'felipe': 'Felipe',
-      'leticia': 'Letícia',
-      'letícia': 'Letícia',
       'compartilhado': 'Compartilhado',
       'compartilhada': 'Compartilhado',
       'compartilhar': 'Compartilhado'
@@ -163,7 +160,7 @@ MÉTODOS DE PAGAMENTO:
 - cash: dinheiro, cash, espécie, em espécie
 - other: outros métodos não listados
 
-RESPONSÁVEIS: Felipe, Letícia, Compartilhado (ou null se não especificado)
+RESPONSÁVEIS: Nomes dos centros de custo da organização (ou null se não especificado)
 
 EXEMPLOS:
 "Gastei 50" → {"valor": 50, "descricao": "gasto não especificado", "categoria": "${categories[0]?.name || 'Outros'}", "metodo_pagamento": null, "responsavel": null, "data": "hoje", "confianca": 0.3, "precisa_confirmar": true}
@@ -567,7 +564,7 @@ CONTEXTO: ${JSON.stringify(ongoingConversation)}
 
 CAMPOS POSSÍVEIS:
 - metodo_pagamento: credit_card, debit_card, pix, cash, other
-- responsavel: Felipe, Letícia, Compartilhado
+- responsavel: Nomes dos centros de custo da organização
 - categoria: ${categoryNames}
 - descricao: texto curto e direto (padaria, farmácia, mercado, restaurante, etc.)
 
@@ -859,10 +856,8 @@ Retorne APENAS JSON com o campo atualizado:
    */
   getOwnerWithEmoji(owner) {
     const normalizedOwner = this.normalizeName(owner);
-    if (normalizedOwner === 'felipe') return '👨 Felipe';
-    if (normalizedOwner === 'leticia') return '👩 Letícia';
     if (normalizedOwner === 'compartilhado') return '👥 Compartilhado';
-    return `👤 ${owner}`; // Emoji genérico para outros nomes
+    return `👤 ${owner}`; // Emoji genérico para qualquer centro de custo individual
   }
 
   /**
