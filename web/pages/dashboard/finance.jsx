@@ -328,7 +328,7 @@ export default function FinanceDashboard() {
               <div className="flex items-center justify-between text-white">
                 <div>
                   <p className="text-xs font-medium opacity-90">Compartilhado</p>
-                  <p className="text-lg font-bold mt-1">R$ {totals.compartilhado.toFixed(2)}</p>
+                  <p className="text-lg font-bold mt-1">R$ {Number(totals.compartilhado || 0).toFixed(2)}</p>
                 </div>
                 <div className="bg-white bg-opacity-30 rounded-full p-2 w-8 h-8 flex items-center justify-center">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -344,7 +344,7 @@ export default function FinanceDashboard() {
               <div className="flex items-center justify-between text-white">
                 <div>
                   <p className="text-xs font-medium opacity-90">Pendente</p>
-                  <p className="text-lg font-bold mt-1">R$ {totals.pending.toFixed(2)}</p>
+                  <p className="text-lg font-bold mt-1">R$ {Number(totals.pending || 0).toFixed(2)}</p>
                 </div>
                 <div className="bg-white bg-opacity-30 rounded-full p-2 w-8 h-8 flex items-center justify-center">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
