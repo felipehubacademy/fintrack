@@ -172,14 +172,17 @@ export default function FinanceDashboard() {
   };
 
   // Calcular totais dinamicamente por centro de custo
-  const totals = {};
   const uniqueOwners = [...new Set(expenses.map(e => e.owner).filter(Boolean))];
+  const totals = {};
   
   uniqueOwners.forEach(owner => {
-    totals[owner] = expenses.filter(e => e.status === 'confirmed' && isSameName(e.owner, owner)).reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    totals[owner] = expenses.filter(e => e.status === 'confirmed' && isSameName(e.owner, owner)).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
   });
   
-  totals.pending = expenses.filter(e => e.status === 'pending').reduce((sum, e) => sum + parseFloat(e.amount), 0);
+  totals.pending = expenses.filter(e => e.status === 'pending').reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+
+  console.log('🔍 [DEBUG] Totals calculados:', totals);
+  console.log('🔍 [DEBUG] Unique owners:', uniqueOwners);
 
   const total = Object.values(totals).reduce((sum, value) => sum + value, 0);
 
@@ -307,7 +310,7 @@ export default function FinanceDashboard() {
                   <div className="flex items-center justify-between text-white">
                     <div>
                       <p className="text-xs font-medium opacity-90">{owner}</p>
-                      <p className="text-lg font-bold mt-1">R$ {(totals[owner] || 0).toFixed(2)}</p>
+                      <p className="text-lg font-bold mt-1">R$ {Number(totals[owner] || 0).toFixed(2)}</p>
                     </div>
                     <div className="bg-white bg-opacity-30 rounded-full p-2 w-8 h-8 flex items-center justify-center">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
