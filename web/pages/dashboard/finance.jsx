@@ -172,7 +172,19 @@ export default function FinanceDashboard() {
   };
 
   // Calcular totais dinamicamente por centro de custo
-  const uniqueOwners = [...new Set(expenses.map(e => e.owner).filter(Boolean))];
+  // Usar normalização para evitar duplicatas (ex: "Leticia" vs "Letícia")
+  const allOwners = expenses.map(e => e.owner).filter(Boolean);
+  const uniqueOwners = [];
+  const seenOwners = new Set();
+  
+  allOwners.forEach(owner => {
+    const normalized = normalizeName(owner);
+    if (!seenOwners.has(normalized)) {
+      seenOwners.add(normalized);
+      uniqueOwners.push(owner);
+    }
+  });
+  
   const totals = {};
   
   uniqueOwners.forEach(owner => {
@@ -372,7 +384,7 @@ export default function FinanceDashboard() {
                 {expenses.map((expense) => (
                   <tr key={expense.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(expense.date).toLocaleDateString('pt-BR')}
+                      {expense.date ? new Date(expense.date + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <div className="max-w-xs truncate" title={expense.description}>
