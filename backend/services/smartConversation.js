@@ -825,22 +825,44 @@ Retorne APENAS JSON com o campo atualizado:
       owner: this.getCanonicalName(analysis.responsavel), // Mapear responsavel para owner normalizado
       date: this.parseDate(analysis.data),
       status: 'confirmed',
-      confirmed_at: new Date().toISOString(),
+      confirmed_at: this.getBrazilDateTime().toISOString(),
       confirmed_by: user.id,
       source: 'whatsapp', // Fonte WhatsApp
-      whatsapp_message_id: `msg_${Date.now()}`
+      whatsapp_message_id: `msg_${Date.now()}`,
+      conversation_state: {
+        valor: analysis.valor,
+        descricao: analysis.descricao,
+        categoria: analysis.categoria,
+        metodo_pagamento: analysis.metodo_pagamento,
+        responsavel: analysis.responsavel,
+        data: analysis.data,
+        confianca: analysis.confianca,
+        missing_fields: []
+      }
     };
 
     await this.saveExpense(expenseData);
 
     // Enviar confirmação
+    const ownerWithEmoji = this.getOwnerWithEmoji(analysis.responsavel);
     const confirmationMessage = `✅ Despesa registrada!\n\n` +
       `💰 R$ ${analysis.valor.toFixed(2)} - ${analysis.descricao}\n` +
-      `📂 ${analysis.categoria} - ${analysis.responsavel}\n` +
+      `📂 ${analysis.categoria} - ${ownerWithEmoji}\n` +
       `💳 ${this.getPaymentMethodName(normalizedMethod)}\n` +
       `📅 ${this.parseDate(analysis.data).toLocaleDateString('pt-BR')}`;
 
     await this.sendWhatsAppMessage(user.phone, confirmationMessage);
+  }
+
+  /**
+   * Adicionar emoji ao nome do responsável
+   */
+  getOwnerWithEmoji(owner) {
+    const normalizedOwner = this.normalizeName(owner);
+    if (normalizedOwner === 'felipe') return '👨 Felipe';
+    if (normalizedOwner === 'leticia') return '👩 Letícia';
+    if (normalizedOwner === 'compartilhado') return '👥 Compartilhado';
+    return `👤 ${owner}`; // Emoji genérico para outros nomes
   }
 
   /**
