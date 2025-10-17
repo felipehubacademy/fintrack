@@ -294,15 +294,22 @@ export default function FinanceDashboard() {
         {/* Summary Cards dinâmicos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
           {uniqueOwners.map((owner, index) => {
-            const colors = [
-              'from-blue-500 to-blue-600',
-              'from-pink-500 to-pink-600', 
-              'from-green-500 to-green-600',
-              'from-purple-500 to-purple-600',
-              'from-orange-500 to-orange-600',
-              'from-teal-500 to-teal-600'
-            ];
-            const colorClass = colors[index % colors.length];
+            // Cores específicas para cada responsável
+            let colorClass;
+            if (isSameName(owner, 'Compartilhado')) {
+              colorClass = 'from-green-500 to-green-600';
+            } else if (isSameName(owner, 'Letícia')) {
+              colorClass = 'from-purple-500 to-purple-600';
+            } else {
+              // Cores padrão para outros responsáveis
+              const colors = [
+                'from-blue-500 to-blue-600',
+                'from-pink-500 to-pink-600', 
+                'from-orange-500 to-orange-600',
+                'from-teal-500 to-teal-600'
+              ];
+              colorClass = colors[index % colors.length];
+            }
             
             return (
               <div key={owner} className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -323,32 +330,17 @@ export default function FinanceDashboard() {
             );
           })}
 
+          {/* Card Soma do Mês */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3">
+            <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 p-3">
               <div className="flex items-center justify-between text-white">
                 <div>
-                  <p className="text-xs font-medium opacity-90">Compartilhado</p>
-                  <p className="text-lg font-bold mt-1">R$ {Number(totals.compartilhado || 0).toFixed(2)}</p>
+                  <p className="text-xs font-medium opacity-90">Soma do Mês</p>
+                  <p className="text-lg font-bold mt-1">R$ {Number(Object.values(totals).reduce((sum, val) => sum + (Number(val) || 0), 0)).toFixed(2)}</p>
                 </div>
                 <div className="bg-white bg-opacity-30 rounded-full p-2 w-8 h-8 flex items-center justify-center">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-3">
-              <div className="flex items-center justify-between text-white">
-                <div>
-                  <p className="text-xs font-medium opacity-90">Pendente</p>
-                  <p className="text-lg font-bold mt-1">R$ {Number(totals.pending || 0).toFixed(2)}</p>
-                </div>
-                <div className="bg-white bg-opacity-30 rounded-full p-2 w-8 h-8 flex items-center justify-center">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
               </div>
@@ -401,7 +393,8 @@ export default function FinanceDashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        isSameName(expense.owner, 'Compartilhado') ? 'bg-purple-100 text-purple-800' :
+                        isSameName(expense.owner, 'Compartilhado') ? 'bg-green-100 text-green-800' :
+                        isSameName(expense.owner, 'Letícia') ? 'bg-purple-100 text-purple-800' :
                         'bg-blue-100 text-blue-800'
                       }`}>
                         {expense.owner || '-'}

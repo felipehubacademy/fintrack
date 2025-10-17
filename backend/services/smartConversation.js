@@ -458,10 +458,14 @@ Retorne APENAS JSON:`;
    */
   async getOngoingConversation(userPhone) {
     try {
+      // Primeiro buscar o usuário para obter o user_id
+      const user = await this.getUserByPhone(userPhone);
+      if (!user) return null;
+
       const { data, error } = await supabase
         .from('expenses')
         .select('*')
-        .eq('whatsapp_message_id', userPhone)
+        .eq('user_id', user.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(1)
