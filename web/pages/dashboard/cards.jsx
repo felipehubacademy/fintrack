@@ -5,6 +5,7 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { normalizeName, isSameName } from '../utils/nameNormalizer';
 import { 
   CreditCard, 
   Plus, 
@@ -48,15 +49,16 @@ export default function CardsDashboard() {
   const deriveCardsFromData = (creditExpenses) => {
     if (!organization) return setCards([]);
 
-    // total por responsável (owner) para este mês
+    // total por responsável (owner) para este mês usando normalização
     const usedByOwner = creditExpenses.reduce((acc, e) => {
-      const key = (e.owner || '').trim();
-      acc[key] = (acc[key] || 0) + Number(e.amount || 0);
+      const normalizedOwner = normalizeName(e.owner || '');
+      acc[normalizedOwner] = (acc[normalizedOwner] || 0) + Number(e.amount || 0);
       return acc;
     }, {});
 
     const derived = (costCenters || []).map((cc, idx) => {
-      const used = usedByOwner[cc.name] || 0;
+      const normalizedCCName = normalizeName(cc.name);
+      const used = usedByOwner[normalizedCCName] || 0;
       return {
         id: idx + 1,
         name: 'Cartão de Crédito',

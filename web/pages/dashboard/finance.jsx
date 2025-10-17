@@ -6,7 +6,7 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { TrendingUp, Bell, Settings, Search, LogOut, Calendar } from 'lucide-react';
-import { normalizeName, isSameName } from '../../utils/nameNormalizer';
+import { normalizeName, isSameName } from '../utils/nameNormalizer';
 
 export default function FinanceDashboard() {
   const router = useRouter();
