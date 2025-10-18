@@ -123,16 +123,27 @@ class SmartConversation {
     if (!text) return false;
     const t = String(text).toLowerCase();
     
-    // Padrões que indicam nova despesa
+    // Padrões que indicam nova despesa (mais específicos)
     const expensePatterns = [
       /(gastei|paguei|comprei|r\$)/,  // Palavras-gatilho
-      /^\w+\s+\d+/,  // "Mercado 300", "Farmácia 50"
-      /\d+\s+(no|na|em)\s+\w+/,  // "300 no mercado", "50 na farmácia"
-      /\w+\s+\d+\s+(crédito|débito|pix|dinheiro)/,  // "Mercado 300 crédito"
+      /^\w+\s+\d+[\.,]?\d*\s+(crédito|débito|pix|dinheiro|à vista)/,  // "Mercado 300 crédito"
+      /\d+[\.,]?\d*\s+(no|na|em)\s+\w+/,  // "300 no mercado", "50 na farmácia"
+      /^\w+\s+\d+[\.,]?\d*$/,  // "Mercado 300" (sem método de pagamento)
+    ];
+    
+    // Padrões que indicam resposta sobre cartão (NÃO são despesas)
+    const cardResponsePatterns = [
+      /^\w+\s+\d+x$/,  // "latam 3x", "nubank 2x"
+      /^\w+\s+(à vista)$/,  // "latam à vista"
+      /^\w+\s+(uma|duas|três|quatro|cinco|seis|sete|oito|nove|dez|onze|doze)\s+(vezes|x)$/,  // "latam duas vezes"
     ];
     
     const hasExpensePattern = expensePatterns.some(pattern => pattern.test(t));
+    const hasCardResponsePattern = cardResponsePatterns.some(pattern => pattern.test(t));
     const hasNumber = /\d+[\.,]?\d*/.test(t);
+    
+    // Se parece resposta sobre cartão, NÃO é nova despesa
+    if (hasCardResponsePattern) return false;
     
     return hasExpensePattern && hasNumber;
   }
