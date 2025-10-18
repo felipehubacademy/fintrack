@@ -1327,6 +1327,9 @@ Retorne APENAS JSON com o campo atualizado:
         userId: user.id
       });
 
+      // Gerar um whatsapp_message_id único para correlacionar a série
+      const whatsappMessageId = `msg_${Date.now()}`;
+
       // Chamar função do banco para criar parcelas
       const { data, error } = await supabase.rpc('create_installments', {
         p_amount: analysis.valor,
@@ -1339,7 +1342,7 @@ Retorne APENAS JSON com o campo atualizado:
         p_owner: this.getCanonicalName(analysis.responsavel),
         p_organization_id: user.organization_id,
         p_user_id: user.id,
-        p_whatsapp_message_id: `msg_${Date.now()}`
+        p_whatsapp_message_id: whatsappMessageId
       });
 
       if (error) {
@@ -1349,23 +1352,28 @@ Retorne APENAS JSON com o campo atualizado:
 
       console.log('✅ [INSTALLMENTS] Parcelas criadas com sucesso:', data);
 
-      // Confirmar imediatamente todas as parcelas futuras (sem cron)
+      // Confirmar imediatamente todas as parcelas (sem cron) e padronizar metadados
       try {
         const parentId = data; // função retorna UUID do parent
         if (parentId) {
+          const nowIso = this.getBrazilDateTime().toISOString();
+          const commonUpdate = {
+            status: 'confirmed',
+            confirmed_at: nowIso,
+            confirmed_by: user.id,
+            source: 'whatsapp',
+            category: analysis.categoria,
+            whatsapp_message_id: whatsappMessageId,
+          };
+          // Filhas
           await supabase
             .from('expenses')
-            .update({ status: 'confirmed' })
-            .eq('parent_expense_id', parentId)
-            .eq('status', 'pending');
-          // Garantir que todas as parcelas (pai e filhas) tenham source='whatsapp'
-          await supabase
-            .from('expenses')
-            .update({ source: 'whatsapp' })
+            .update(commonUpdate)
             .eq('parent_expense_id', parentId);
+          // Pai
           await supabase
             .from('expenses')
-            .update({ source: 'whatsapp' })
+            .update(commonUpdate)
             .eq('id', parentId);
         }
       } catch (confirmErr) {
