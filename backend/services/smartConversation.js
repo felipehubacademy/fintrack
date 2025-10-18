@@ -122,10 +122,19 @@ class SmartConversation {
   isLikelyNewExpenseMessage(text) {
     if (!text) return false;
     const t = String(text).toLowerCase();
-    // palavras-gatilho comuns e presença de número/valor
-    const hasTrigger = /(gastei|paguei|comprei|r\$)/.test(t);
+    
+    // Padrões que indicam nova despesa
+    const expensePatterns = [
+      /(gastei|paguei|comprei|r\$)/,  // Palavras-gatilho
+      /^\w+\s+\d+/,  // "Mercado 300", "Farmácia 50"
+      /\d+\s+(no|na|em)\s+\w+/,  // "300 no mercado", "50 na farmácia"
+      /\w+\s+\d+\s+(crédito|débito|pix|dinheiro)/,  // "Mercado 300 crédito"
+    ];
+    
+    const hasExpensePattern = expensePatterns.some(pattern => pattern.test(t));
     const hasNumber = /\d+[\.,]?\d*/.test(t);
-    return hasTrigger && hasNumber;
+    
+    return hasExpensePattern && hasNumber;
   }
 
   /**
@@ -1023,6 +1032,11 @@ Retorne APENAS JSON com o campo atualizado:
     // Limpar nome do cartão
     cardName = cardName.replace(/[^\w\s]/g, '').trim();
 
+    // Se não conseguiu extrair parcelas e o cardName contém números, provavelmente é uma despesa mal formatada
+    if (installments === 1 && /\d/.test(cardName)) {
+      return { cardName: null, installments: 1 };
+    }
+
     return {
       cardName: cardName || null,
       installments: installments || 1
@@ -1137,6 +1151,15 @@ Retorne APENAS JSON com o campo atualizado:
     try {
       console.log('🔍 [CARD] Processando resposta sobre cartão:', userResponse);
       
+      // Verificar se é uma nova despesa em vez de resposta sobre cartão
+      if (this.isLikelyNewExpenseMessage(userResponse)) {
+        console.log('🔍 [CARD] Detectada nova despesa, cancelando conversa pendente');
+        await this.cancelConversation(conversation.id);
+        // Processar como nova despesa
+        await this.handleMessage(userResponse, user.phone);
+        return;
+      }
+      
       // Extrair cartão e parcelas da resposta
       const { cardName, installments } = this.extractCardAndInstallments(userResponse);
       console.log('🔍 [CARD] Extraído:', { cardName, installments });
@@ -1144,7 +1167,7 @@ Retorne APENAS JSON com o campo atualizado:
       if (!cardName) {
         await this.sendWhatsAppMessage(user.phone, 
           "❌ Não consegui identificar o cartão. Tente novamente:\n\n" +
-          "Exemplos: 'Nubank 3x', 'Itaú à vista'"
+          "Exemplos: 'Latam 3x', 'Latam à vista'"
         );
         return;
       }
