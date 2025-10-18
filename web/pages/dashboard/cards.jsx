@@ -109,7 +109,8 @@ export default function CardsDashboard() {
         .from('cards')
         .update({
           ...cardData,
-          available_limit: cardData.credit_limit - calculateCardUsage(editingCard.id)
+          // Em modo "gestão", não calculamos uso aqui; alinhar available ao novo limite
+          available_limit: cardData.credit_limit
         })
         .eq('id', editingCard.id);
       
@@ -361,23 +362,7 @@ export default function CardsDashboard() {
                 {/* Card Details */}
                 <CardContent className="p-6 space-y-4">
                   {/* Usage Progress (only for credit cards) */}
-                  {card.type === 'credit' && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Uso do Limite</span>
-                        <span className="font-medium">{usagePercentage.toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full transition-all ${
-                            usageStatus === 'danger' ? 'bg-red-500' :
-                            usageStatus === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${Math.min(usagePercentage, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  {/* Uso do limite removido no modo gestão de cartões */}
 
                   {/* Financial Info */}
                   <div className="space-y-2">
