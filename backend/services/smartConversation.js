@@ -531,7 +531,9 @@ Retorne APENAS JSON:`;
 
       // Processar resposta do usuário
       const nextField = missingFields[0];
+      console.log('🔍 [CONV] Processando campo:', nextField, 'Resposta:', userResponse);
       const updatedAnalysis = await this.processUserResponse(nextField, userResponse, ongoingConversation);
+      console.log('🔍 [CONV] Análise atualizada:', updatedAnalysis);
       
       if (updatedAnalysis) {
         // Atualizar estado da conversa
@@ -640,6 +642,7 @@ Retorne APENAS JSON com o campo atualizado:
       });
 
       const result = JSON.parse(completion.choices[0].message.content);
+      console.log('🔍 [PROCESS] Resultado da IA:', result);
       
       // Combinar com análise anterior
       const fullAnalysis = {
@@ -649,6 +652,7 @@ Retorne APENAS JSON com o campo atualizado:
         data: ongoingConversation.date,
         ...result
       };
+      console.log('🔍 [PROCESS] Análise completa:', fullAnalysis);
 
       return fullAnalysis;
 
