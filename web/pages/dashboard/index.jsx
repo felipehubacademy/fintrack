@@ -461,8 +461,10 @@ export default function DashboardHome() {
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg">
-                  <TrendingUp className="h-4 w-4 text-white" />
+                <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18M7 13l3 3 7-7" />
+                  </svg>
                 </div>
                 <span>Comparativo Mensal</span>
               </CardTitle>

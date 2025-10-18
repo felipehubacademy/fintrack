@@ -668,11 +668,14 @@ Retorne APENAS JSON com o campo atualizado:
       console.log('🔍 [PROCESS] Resultado da IA:', result);
       
       // Combinar com análise anterior
+      const conversationState = ongoingConversation.conversation_state || {};
       const fullAnalysis = {
         valor: ongoingConversation.amount,
         descricao: ongoingConversation.description,
-        categoria: ongoingConversation.category,
+        categoria: conversationState.categoria || ongoingConversation.category,
         data: ongoingConversation.date,
+        responsavel: conversationState.responsavel,
+        metodo_pagamento: conversationState.metodo_pagamento,
         ...result
       };
       console.log('🔍 [PROCESS] Análise completa:', fullAnalysis);

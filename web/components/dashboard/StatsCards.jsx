@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { Button } from '../ui/Button';
 import { TrendingUp, TrendingDown, CreditCard, Wallet, Users, Target } from 'lucide-react';
 import Link from 'next/link';
 
@@ -28,28 +29,6 @@ export default function StatsCards({
 
   const stats = [
     {
-      title: "À vista",
-      value: `R$ ${(cashExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: Wallet,
-      trend: cashGrowth > 0 ? "up" : cashGrowth < 0 ? "down" : "neutral",
-      trendValue: `${Math.abs(cashGrowth || 0).toFixed(1)}%`,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-      description: "PIX • Débito • Dinheiro",
-      link: "/dashboard/finance"
-    },
-    {
-      title: "Cartões de Crédito",
-      value: `R$ ${(cardExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: CreditCard,
-      trend: cardGrowth > 0 ? "up" : cardGrowth < 0 ? "down" : "neutral",
-      trendValue: `${Math.abs(cardGrowth || 0).toFixed(1)}%`,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      description: "Faturamento do período",
-      link: "/dashboard/cards"
-    },
-    {
       title: "Total Geral",
       value: `R$ ${(totalExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       icon: TrendingUp,
@@ -59,13 +38,33 @@ export default function StatsCards({
       bgColor: "bg-purple-50",
       description: "Todas as despesas"
     },
+    {
+      title: "À vista",
+      value: `R$ ${(cashExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: Wallet,
+      trend: cashGrowth > 0 ? "up" : cashGrowth < 0 ? "down" : "neutral",
+      trendValue: `${Math.abs(cashGrowth || 0).toFixed(1)}%`,
+      color: "text-green-600",
+      bgColor: "bg-green-50",
+      description: "PIX • Débito • Dinheiro"
+    },
+    {
+      title: "Cartões de Crédito",
+      value: `R$ ${(cardExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: CreditCard,
+      trend: cardGrowth > 0 ? "up" : cardGrowth < 0 ? "down" : "neutral",
+      trendValue: `${Math.abs(cardGrowth || 0).toFixed(1)}%`,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50",
+      description: "Faturamento do período"
+    },
   ];
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {stats.map((stat, index) => {
-        const CardComponent = stat.link ? Link : 'div';
-        const cardProps = stat.link ? { href: stat.link } : {};
+        const CardComponent = 'div';
+        const cardProps = {};
         
         return (
           <CardComponent key={index} {...cardProps}>
@@ -104,12 +103,14 @@ export default function StatsCards({
                   )}
                   <span className="text-gray-500">vs mês anterior</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1 truncate">
-                  {stat.description}
-                </p>
-                {stat.link && (
-                  <div className="mt-2 text-xs text-blue-600 font-medium">
-                    Clique para ver detalhes →
+                {/* descrição removida para visual mais limpo */}
+                {stat.title === 'Total Geral' && (
+                  <div className="mt-3">
+                    <Link href="/dashboard/finance">
+                      <Button size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50" variant="outline">
+                        Clique para ver as despesas
+                      </Button>
+                    </Link>
                   </div>
                 )}
               </CardContent>

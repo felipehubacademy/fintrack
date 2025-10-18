@@ -12,14 +12,17 @@ import {
   FolderOpen
 } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
+import ExpenseModal from '../ExpenseModal';
 
 export default function QuickActions() {
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   const actions = [
     {
       title: "Adicionar Despesa",
       description: "Registrar nova despesa",
       icon: Plus,
-      href: "/dashboard/expenses/new",
+      href: null,
       color: "bg-blue-500 hover:bg-blue-600",
       textColor: "text-white"
     },
@@ -56,9 +59,24 @@ export default function QuickActions() {
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {visibleActions.map((action, index) => (
-            <Link key={index} href={action.href}>
+            action.href ? (
+              <Link key={index} href={action.href}>
+                <Button
+                  variant="outline"
+                  className={`w-full h-auto p-4 flex flex-col items-center space-y-2 ${action.color} ${action.textColor} border-0 hover:scale-105 transition-transform`}
+                >
+                  <action.icon className="h-5 w-5" />
+                  <div className="text-center">
+                    <div className="font-medium text-sm">{action.title}</div>
+                    <div className="text-xs opacity-80 mt-1">{action.description}</div>
+                  </div>
+                </Button>
+              </Link>
+            ) : (
               <Button
+                key={index}
                 variant="outline"
+                onClick={() => setShowExpenseModal(true)}
                 className={`w-full h-auto p-4 flex flex-col items-center space-y-2 ${action.color} ${action.textColor} border-0 hover:scale-105 transition-transform`}
               >
                 <action.icon className="h-5 w-5" />
@@ -67,10 +85,15 @@ export default function QuickActions() {
                   <div className="text-xs opacity-80 mt-1">{action.description}</div>
                 </div>
               </Button>
-            </Link>
+            )
           ))}
         </div>
       </CardContent>
+      <ExpenseModal
+        isOpen={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+        onSuccess={() => setShowExpenseModal(false)}
+      />
     </Card>
   );
 }

@@ -5,9 +5,10 @@ import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 import { useOrganization } from '../../hooks/useOrganization';
 import { Button } from '../../components/ui/Button';
+import ExpenseModal from '../../components/ExpenseModal';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import NotificationModal from '../../components/NotificationModal';
-import { TrendingUp, Bell, Settings, Search, LogOut, Calendar, Users, Target, Edit, Trash2, CreditCard } from 'lucide-react';
+import { TrendingUp, Bell, Settings, Search, LogOut, Calendar, Users, Target, Edit, Trash2, CreditCard, Plus } from 'lucide-react';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 
 export default function FinanceDashboard() {
@@ -40,6 +41,7 @@ export default function FinanceDashboard() {
   const [pageLoading, setPageLoading] = useState(true);
   const [cards, setCards] = useState([]);
   const [cardsLoading, setCardsLoading] = useState(true);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   
   // Estado de ordenação
   const [sortConfig, setSortConfig] = useState({
@@ -449,7 +451,7 @@ export default function FinanceDashboard() {
                     {organization?.name || 'FinTrack'}
                   </h1>
                 </Link>
-                <p className="text-sm text-gray-600">{orgUser?.name || 'Usuário'}</p>
+                <p className="text-sm text-gray-600">Despesas</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
@@ -465,6 +467,20 @@ export default function FinanceDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Header Actions (consistência com /cards) */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h2 className="text-lg font-semibold text-gray-900">Gestão de Despesas</h2>
+          <div className="flex items-center space-x-3">
+            <Button 
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+              onClick={() => setShowExpenseModal(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Despesa
+            </Button>
+          </div>
+        </div>
+
         {/* Summary Cards dinâmicos */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {uniqueOwners.map((owner) => {
@@ -775,6 +791,13 @@ export default function FinanceDashboard() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Expense Modal */}
+      <ExpenseModal
+        isOpen={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+        onSuccess={() => { setShowExpenseModal(false); fetchExpenses(); fetchCards(); }}
+      />
 
       {/* Modal de edição */}
       {editingId && (

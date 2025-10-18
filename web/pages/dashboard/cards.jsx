@@ -21,9 +21,7 @@ import {
   LogOut,
   Settings,
   Bell,
-  Search,
-  Eye,
-  EyeOff,
+  
   Wifi,
   Shield
 } from 'lucide-react';
@@ -34,7 +32,7 @@ export default function CardsDashboard() {
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showNumbers, setShowNumbers] = useState(false);
+  
   const [showModal, setShowModal] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [usageByCardId, setUsageByCardId] = useState({});
@@ -136,6 +134,15 @@ export default function CardsDashboard() {
     setUsageByCardId(Object.fromEntries(entries));
   };
 
+  // Agregados: limite total de crédito e uso total no ciclo
+  const totalCreditLimit = cards
+    .filter(c => c.type === 'credit')
+    .reduce((sum, c) => sum + Number(c.credit_limit || 0), 0);
+  const totalCreditUsed = cards
+    .filter(c => c.type === 'credit')
+    .reduce((sum, c) => sum + Number(usageByCardId[c.id]?.used || 0), 0);
+  const totalCreditUsagePct = totalCreditLimit > 0 ? (totalCreditUsed / totalCreditLimit) * 100 : 0;
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
@@ -219,12 +226,7 @@ export default function CardsDashboard() {
   };
 
 
-  const formatCardNumber = (number) => {
-    if (showNumbers) {
-      return number;
-    }
-    return number.replace(/\d(?=\d{4})/g, '*');
-  };
+  
 
   if (orgLoading) {
     return (
@@ -258,29 +260,19 @@ export default function CardsDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="icon">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                </Button>
-              </Link>
               <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
                 <CreditCard className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Cartões</h1>
-                <p className="text-sm text-gray-600">{organization?.name || 'FinTrack'}</p>
+                <Link href="/dashboard" className="text-2xl font-bold text-gray-900 hover:underline">
+                  {organization?.name || 'FinTrack'}
+                </Link>
+                <p className="text-sm text-gray-600">Cartões</p>
               </div>
             </div>
             
             <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="icon" onClick={() => setShowNumbers(!showNumbers)}>
-                {showNumbers ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Search className="h-4 w-4" />
-              </Button>
+              
               <Button variant="ghost" size="icon">
                 <Bell className="h-4 w-4" />
               </Button>
@@ -299,17 +291,10 @@ export default function CardsDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
-        {/* Header Actions */}
+        {/* Header Actions (consistentes com /finance) */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-lg font-semibold text-gray-900">Gestão de Cartões</h2>
-          </div>
-          
+          <h2 className="text-lg font-semibold text-gray-900">Gestão de Cartões</h2>
           <div className="flex items-center space-x-3">
-            <Button variant="outline">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Relatório
-            </Button>
             <Button 
               onClick={openAddModal}
               className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
@@ -372,13 +357,16 @@ export default function CardsDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Última Atualização</p>
+                  <p className="text-sm font-medium text-gray-600">Uso Total de Crédito</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {cards.length > 0 ? new Date(cards[0].updated_at).toLocaleDateString('pt-BR') : '-'}
+                    {totalCreditUsagePct.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    R$ {totalCreditUsed.toLocaleString('pt-BR')} de R$ {totalCreditLimit.toLocaleString('pt-BR')}
                   </p>
                 </div>
                 <div className="p-2 bg-purple-50 rounded-lg">
-                  <Calendar className="h-5 w-5 text-purple-600" />
+                  <TrendingDown className={`h-5 w-5 ${totalCreditUsagePct >= 90 ? 'text-red-600' : totalCreditUsagePct >= 70 ? 'text-yellow-600' : 'text-green-600'}`} />
                 </div>
               </div>
             </CardContent>
@@ -490,7 +478,6 @@ export default function CardsDashboard() {
                         size="sm"
                         className="text-blue-600 border-blue-200 hover:bg-blue-50"
                       >
-                        <Eye className="h-4 w-4 mr-1" />
                         Ver Despesas
                       </Button>
                     </Link>
