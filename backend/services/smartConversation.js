@@ -556,6 +556,29 @@ Retorne APENAS JSON:`;
           })
           .eq('id', ongoingConversation.id);
 
+        // Se acabamos de receber o método de pagamento e for crédito, PRIORIZE perguntar cartão/parcelas agora
+        if (nextField === 'metodo_pagamento') {
+          const normalized = this.normalizePaymentMethod(updatedAnalysis.metodo_pagamento);
+          if (normalized === 'credit_card') {
+            const { data: cards } = await supabase
+              .from('cards')
+              .select('name')
+              .eq('organization_id', user.organization_id)
+              .eq('is_active', true);
+            const cardNames = (cards || []).map(c => c.name).join(', ');
+            const message = `💳 Qual cartão e em quantas parcelas? (${cardNames})`;
+            await this.sendWhatsAppMessage(user.phone, message);
+
+            await supabase
+              .from('expenses')
+              .update({ 
+                conversation_state: { ...updatedState, waiting_for: 'card_info' }
+              })
+              .eq('id', ongoingConversation.id);
+            return;
+          }
+        }
+
         // Se ainda há campos faltando, perguntar o próximo
         if (newMissingFields.length > 0) {
           await this.askNextQuestion(user, newMissingFields[0]);
@@ -1089,7 +1112,9 @@ Retorne APENAS JSON com o campo atualizado:
     }
 
     // Limpar nome do cartão
-    cardName = cardName.replace(/[^\w\s]/g, '').trim();
+    cardName = cardName.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    // Remover conectores residuais ao final (ex.: "em", "no", "na", "de", "do", "da")
+    cardName = cardName.replace(/\b(em|no|na|de|do|da)\b\s*$/i, '').trim();
 
     // Se não conseguiu extrair parcelas e o cardName contém números, provavelmente é uma despesa mal formatada
     if (installments === 1 && /\d/.test(cardName)) {
