@@ -498,7 +498,7 @@ Retorne APENAS JSON:`;
       const missingFields = conversationState.missing_fields || [];
       
       // Verificar se está esperando informações de cartão
-      if (ongoingConversation.status === 'waiting_card_info') {
+      if (ongoingConversation.conversation_state?.waiting_for === 'card_info') {
         await this.handleCardInfoResponse(user, ongoingConversation, userResponse);
         return;
       }
@@ -1047,30 +1047,36 @@ Retorne APENAS JSON com o campo atualizado:
       console.log('🔍 [CARD] Cartões encontrados:', cards);
       const cardNames = cards.map(c => c.name).join(', ');
       
-      // Salvar conversa pendente
-      const { data: conversation, error: convError } = await supabase
-        .from('conversations')
+      // Salvar conversa pendente como despesa com status 'pending'
+      const { data: pendingExpense, error: convError } = await supabase
+        .from('expenses')
         .insert({
-          user_id: user.id,
           organization_id: user.organization_id,
-          phone: user.phone,
-          status: 'waiting_card_info',
+          user_id: user.id,
+          amount: analysis.valor,
+          description: analysis.descricao,
+          payment_method: 'credit_card',
+          category: analysis.categoria,
+          owner: analysis.responsavel,
+          date: this.parseDate(analysis.data),
+          status: 'pending',
           conversation_state: {
             valor: analysis.valor,
             descricao: analysis.descricao,
             categoria: analysis.categoria,
-            metodo_pagamento: analysis.metodo_pagamento,
+            metodo_pagamento: 'credit_card',
             responsavel: analysis.responsavel,
             data: analysis.data,
             confianca: analysis.confianca,
-            missing_fields: []
+            missing_fields: [],
+            waiting_for: 'card_info'
           }
         })
         .select()
         .single();
 
       if (convError) {
-        console.error('❌ Erro ao salvar conversa:', convError);
+        console.error('❌ Erro ao salvar conversa pendente:', convError);
         await this.sendWhatsAppMessage(user.phone, 
           "❌ Erro interno. Tente novamente."
         );
@@ -1084,9 +1090,9 @@ Retorne APENAS JSON com o campo atualizado:
         `**Qual cartão e em quantas parcelas?**\n\n` +
         `📋 Cartões disponíveis: ${cardNames}\n\n` +
         `💡 Exemplos:\n` +
-        `• "Nubank 3x"\n` +
-        `• "Itaú à vista"\n` +
-        `• "Santander 12x"`;
+        `• "Latam 3x"\n` +
+        `• "Latam à vista"\n` +
+        `• "Latam 12x"`;
 
       await this.sendWhatsAppMessage(user.phone, message);
 
@@ -1129,19 +1135,23 @@ Retorne APENAS JSON com o campo atualizado:
         return;
       }
 
-      // Atualizar conversa com informações do cartão
+      // Atualizar despesa pendente com informações do cartão
       const updatedState = {
         ...conversation.conversation_state,
         cartao: card.name,
         parcelas: installments,
-        card_id: card.id
+        card_id: card.id,
+        waiting_for: null
       };
 
       await supabase
-        .from('conversations')
+        .from('expenses')
         .update({
           conversation_state: updatedState,
-          status: 'completed'
+          status: 'confirmed',
+          card_id: card.id,
+          confirmed_at: new Date().toISOString(),
+          confirmed_by: user.id
         })
         .eq('id', conversation.id);
 
