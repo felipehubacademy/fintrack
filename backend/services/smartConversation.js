@@ -950,7 +950,19 @@ Retorne APENAS JSON com o campo atualizado:
     const installmentPatterns = [
       /(\d+)\s*x\s*$/,  // "3x", "12x"
       /(\d+)\s*parcelas?/,  // "3 parcelas", "12 parcelas"
-      /(\d+)\s*vezes/,  // "3 vezes"
+      /(\d+)\s*vezes/,  // "3 vezes", "duas vezes"
+      /(\d+)\s*$/,  // "3", "12" (apenas número)
+      /duas?\s*vezes?/i,  // "duas vezes", "duas"
+      /três?\s*vezes?/i,  // "três vezes", "três"
+      /quatro?\s*vezes?/i,  // "quatro vezes", "quatro"
+      /cinco?\s*vezes?/i,  // "cinco vezes", "cinco"
+      /seis?\s*vezes?/i,  // "seis vezes", "seis"
+      /sete?\s*vezes?/i,  // "sete vezes", "sete"
+      /oito?\s*vezes?/i,  // "oito vezes", "oito"
+      /nove?\s*vezes?/i,  // "nove vezes", "nove"
+      /dez?\s*vezes?/i,  // "dez vezes", "dez"
+      /onze?\s*vezes?/i,  // "onze vezes", "onze"
+      /doze?\s*vezes?/i,  // "doze vezes", "doze"
     ];
 
     // Padrões para detectar à vista
@@ -964,6 +976,21 @@ Retorne APENAS JSON com o campo atualizado:
 
     let installments = 1;
     let cardName = text;
+
+    // Mapeamento de palavras para números
+    const wordToNumber = {
+      'duas': 2, 'dois': 2, 'duas vezes': 2, 'dois vezes': 2,
+      'três': 3, 'tres': 3, 'três vezes': 3, 'tres vezes': 3,
+      'quatro': 4, 'quatro vezes': 4,
+      'cinco': 5, 'cinco vezes': 5,
+      'seis': 6, 'seis vezes': 6,
+      'sete': 7, 'sete vezes': 7,
+      'oito': 8, 'oito vezes': 8,
+      'nove': 9, 'nove vezes': 9,
+      'dez': 10, 'dez vezes': 10,
+      'onze': 11, 'onze vezes': 11,
+      'doze': 12, 'doze vezes': 12
+    };
 
     // Verificar se é à vista
     for (const pattern of cashPatterns) {
@@ -979,7 +1006,14 @@ Retorne APENAS JSON com o campo atualizado:
       for (const pattern of installmentPatterns) {
         const match = normalizedText.match(pattern);
         if (match) {
-          installments = parseInt(match[1]);
+          if (match[1]) {
+            // Número direto
+            installments = parseInt(match[1]);
+          } else {
+            // Palavra convertida para número
+            const matchedText = match[0].trim();
+            installments = wordToNumber[matchedText] || 1;
+          }
           cardName = normalizedText.replace(pattern, '').trim();
           break;
         }
@@ -1084,15 +1118,7 @@ Retorne APENAS JSON com o campo atualizado:
       }
 
       // Enviar pergunta sobre cartão e parcelas
-      const message = `💳 **Cartão de Crédito detectado!**\n\n` +
-        `💰 R$ ${analysis.valor.toFixed(2)} - ${analysis.descricao}\n` +
-        `📂 ${analysis.categoria} - ${analysis.responsavel}\n\n` +
-        `**Qual cartão e em quantas parcelas?**\n\n` +
-        `📋 Cartões disponíveis: ${cardNames}\n\n` +
-        `💡 Exemplos:\n` +
-        `• "Latam 3x"\n` +
-        `• "Latam à vista"\n` +
-        `• "Latam 12x"`;
+      const message = `💳 Qual cartão e em quantas parcelas? (${cardNames})`;
 
       await this.sendWhatsAppMessage(user.phone, message);
 
