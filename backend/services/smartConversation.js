@@ -1178,14 +1178,10 @@ Retorne APENAS JSON com o campo atualizado:
         return;
       }
 
-      // Se há campos faltando, perguntar primeiro sobre eles
-      if (missingFields.length > 0) {
-        await this.askNextQuestion(user, missingFields[0]);
-      } else {
-        // Se não há campos faltando, perguntar sobre cartão
-        const message = `💳 Qual cartão e em quantas parcelas? (${cardNames})`;
-        await this.sendWhatsAppMessage(user.phone, message);
-      }
+      // SEMPRE perguntar sobre cartão primeiro para despesas de crédito
+      // Campos faltando (como responsável) serão perguntados após o cartão
+      const message = `💳 Qual cartão e em quantas parcelas? (${cardNames})`;
+      await this.sendWhatsAppMessage(user.phone, message);
 
     } catch (error) {
       console.error('❌ Erro ao perguntar sobre cartão:', error);
@@ -1244,16 +1240,21 @@ Retorne APENAS JSON com o campo atualizado:
         waiting_for: null
       };
 
+      // Atualizar somente o estado e o card_id; manter como pending até finalizar todos os campos
       await supabase
         .from('expenses')
         .update({
           conversation_state: updatedState,
-          status: 'confirmed',
-          card_id: card.id,
-          confirmed_at: new Date().toISOString(),
-          confirmed_by: user.id
+          card_id: card.id
         })
         .eq('id', conversation.id);
+
+      // Se ainda falta responsável (ou outros campos), perguntar agora; caso contrário, finalizar
+      const remainingFields = (updatedState.missing_fields || []).filter(f => f !== 'cartao' && f !== 'parcelas');
+      if (!updatedState.responsavel || remainingFields.includes('responsavel')) {
+        await this.askNextQuestion(user, 'responsavel');
+        return;
+      }
 
       // Processar despesa com cartão e parcelas
       const analysis = {
