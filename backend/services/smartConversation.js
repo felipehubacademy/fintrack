@@ -885,8 +885,9 @@ Retorne APENAS JSON com o campo atualizado:
 
     // Verificar se é cartão de crédito e tem informações de cartão
     if (normalizedMethod === 'credit_card' && analysis.card_id && analysis.parcelas) {
-      // Criar parcelas usando função do banco
-      await this.createInstallments(user, analysis, costCenter, categoryId);
+      // Criar parcelas usando função do banco (capitalizando a descrição)
+      const normalizedDescription = this.capitalizeDescription(analysis.descricao);
+      await this.createInstallments(user, { ...analysis, descricao: normalizedDescription }, costCenter, categoryId);
     } else {
       // Salvar despesa normal (não parcelada)
       const expenseData = {
@@ -894,7 +895,7 @@ Retorne APENAS JSON com o campo atualizado:
         user_id: user.id,
         cost_center_id: costCenter.id,
         amount: analysis.valor,
-        description: analysis.descricao,
+        description: this.capitalizeDescription(analysis.descricao),
         payment_method: normalizedMethod,
         category_id: categoryId,
         category: analysis.categoria,
@@ -930,8 +931,9 @@ Retorne APENAS JSON com o campo atualizado:
       : `💳 ${this.getPaymentMethodName(normalizedMethod)}`;
     
     const confirmationMessage = `✅ Despesa registrada!\n\n` +
-      `💰 R$ ${analysis.valor.toFixed(2)} - ${analysis.descricao}\n` +
-      `📂 ${analysis.categoria} - ${ownerWithEmoji}\n` +
+      `💰 R$ ${analysis.valor.toFixed(2)} - ${this.capitalizeDescription(analysis.descricao)}\n` +
+      `📂 ${analysis.categoria}\n` +
+      `${ownerWithEmoji}\n` +
       `${paymentInfo}\n` +
       `📅 ${this.parseDate(analysis.data).toLocaleDateString('pt-BR')}`;
 
@@ -945,6 +947,16 @@ Retorne APENAS JSON com o campo atualizado:
     const normalizedOwner = this.normalizeName(owner);
     if (normalizedOwner === 'compartilhado') return '👥 Compartilhado';
     return `👤 ${owner}`; // Emoji genérico para qualquer centro de custo individual
+  }
+
+  /**
+   * Normalizar descrição para iniciar com maiúscula
+   */
+  capitalizeDescription(text) {
+    if (!text || typeof text !== 'string') return '';
+    const t = text.trim();
+    if (t.length === 0) return '';
+    return t.charAt(0).toUpperCase() + t.slice(1);
   }
 
   /**
@@ -1346,6 +1358,15 @@ Retorne APENAS JSON com o campo atualizado:
             .update({ status: 'confirmed' })
             .eq('parent_expense_id', parentId)
             .eq('status', 'pending');
+          // Garantir que todas as parcelas (pai e filhas) tenham source='whatsapp'
+          await supabase
+            .from('expenses')
+            .update({ source: 'whatsapp' })
+            .eq('parent_expense_id', parentId);
+          await supabase
+            .from('expenses')
+            .update({ source: 'whatsapp' })
+            .eq('id', parentId);
         }
       } catch (confirmErr) {
         console.error('❌ Erro ao confirmar parcelas futuras:', confirmErr);
