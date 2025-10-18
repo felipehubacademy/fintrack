@@ -1027,6 +1027,8 @@ Retorne APENAS JSON com o campo atualizado:
    */
   async askForCardAndInstallments(user, analysis) {
     try {
+      console.log('🔍 [CARD] Buscando cartões para organização:', user.organization_id);
+      
       // Buscar cartões disponíveis na organização
       const { data: cards, error } = await supabase
         .from('cards')
@@ -1042,6 +1044,7 @@ Retorne APENAS JSON com o campo atualizado:
         return;
       }
 
+      console.log('🔍 [CARD] Cartões encontrados:', cards);
       const cardNames = cards.map(c => c.name).join(', ');
       
       // Salvar conversa pendente
@@ -1104,6 +1107,7 @@ Retorne APENAS JSON com o campo atualizado:
       
       // Extrair cartão e parcelas da resposta
       const { cardName, installments } = this.extractCardAndInstallments(userResponse);
+      console.log('🔍 [CARD] Extraído:', { cardName, installments });
       
       if (!cardName) {
         await this.sendWhatsAppMessage(user.phone, 
@@ -1114,7 +1118,10 @@ Retorne APENAS JSON com o campo atualizado:
       }
 
       // Buscar cartão no banco
+      console.log('🔍 [CARD] Buscando cartão:', cardName, 'na organização:', user.organization_id);
       const card = await this.getCardByName(cardName, user.organization_id);
+      console.log('🔍 [CARD] Cartão encontrado:', card);
+      
       if (!card) {
         await this.sendWhatsAppMessage(user.phone, 
           `❌ Cartão "${cardName}" não encontrado. Verifique o nome e tente novamente.`
@@ -1170,7 +1177,11 @@ Retorne APENAS JSON com o campo atualizado:
       console.log('🔍 [INSTALLMENTS] Criando parcelas:', {
         amount: analysis.valor,
         installments: analysis.parcelas,
-        cardId: analysis.card_id
+        cardId: analysis.card_id,
+        costCenterId: costCenter.id,
+        categoryId: categoryId,
+        organizationId: user.organization_id,
+        userId: user.id
       });
 
       // Chamar função do banco para criar parcelas
