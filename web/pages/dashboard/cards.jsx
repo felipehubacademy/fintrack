@@ -37,6 +37,7 @@ export default function CardsDashboard() {
   const [showNumbers, setShowNumbers] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
+  const [usageByCardId, setUsageByCardId] = useState({});
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -62,6 +63,12 @@ export default function CardsDashboard() {
       const { data, error } = await query;
       if (!error) {
         setCards(data || []);
+        // calcular uso após carregar
+        if (data && data.length) {
+          await calculateAllCardsUsage(data);
+        } else {
+          setUsageByCardId({});
+        }
       } else {
         console.error('Error fetching cards:', error);
       }
@@ -70,8 +77,58 @@ export default function CardsDashboard() {
     }
   };
 
-  // Calcular uso de cada cartão no mês
+  // Calcular uso por cartão no ciclo de faturamento atual
+  const calculateAllCardsUsage = async (cardsList) => {
+    const today = new Date();
+    const refDate = today.toISOString().split('T')[0];
 
+    const entries = await Promise.all(
+      cardsList.map(async (card) => {
+        if (card.type !== 'credit') {
+          return [card.id, { used: 0, percentage: 0, status: 'ok' }];
+        }
+
+        // obter ciclo de faturamento; fallback para mês corrente
+        let startDate, endDate;
+        try {
+          const { data: cycle } = await supabase.rpc('get_billing_cycle', {
+            card_uuid: card.id,
+            reference_date: refDate
+          });
+          if (cycle && cycle.length) {
+            startDate = cycle[0].start_date;
+            endDate = cycle[0].end_date;
+          }
+        } catch {}
+        if (!startDate || !endDate) {
+          const y = today.getFullYear();
+          const m = today.getMonth();
+          const start = new Date(y, m, 1);
+          const end = new Date(y, m + 1, 0);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+        }
+
+        // somar despesas confirmadas desse cartão no ciclo
+        const { data: expenses } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('payment_method', 'credit_card')
+          .eq('card_id', card.id)
+          .eq('status', 'confirmed')
+          .gte('date', startDate)
+          .lte('date', endDate);
+
+        const used = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+        const limit = Number(card.credit_limit || 0);
+        const percentage = limit > 0 ? (used / limit) * 100 : 0;
+        const status = percentage >= 90 ? 'danger' : percentage >= 70 ? 'warning' : 'ok';
+        return [card.id, { used, percentage, status }];
+      })
+    );
+
+    setUsageByCardId(Object.fromEntries(entries));
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -362,7 +419,24 @@ export default function CardsDashboard() {
                 {/* Card Details */}
                 <CardContent className="p-6 space-y-4">
                   {/* Usage Progress (only for credit cards) */}
-                  {/* Uso do limite removido no modo gestão de cartões */}
+                  {/* Uso do limite (apenas cartões de crédito) */}
+                  {card.type === 'credit' && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Uso do Limite</span>
+                        <span className="font-medium">{(usageByCardId[card.id]?.percentage || 0).toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            (usageByCardId[card.id]?.status === 'danger') ? 'bg-red-500' :
+                            (usageByCardId[card.id]?.status === 'warning') ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${Math.min(usageByCardId[card.id]?.percentage || 0, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Financial Info */}
                   <div className="space-y-2">
