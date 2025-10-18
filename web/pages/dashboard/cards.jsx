@@ -39,6 +39,12 @@ export default function CardsDashboard() {
   const [editingCard, setEditingCard] = useState(null);
   const [usageByCardId, setUsageByCardId] = useState({});
 
+  const computeClosingDay = (bestDay) => {
+    if (!bestDay || typeof bestDay !== 'number') return null;
+    if (bestDay <= 1) return 30; // fallback para melhor dia = 1
+    return bestDay - 1;
+  };
+
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
       fetchCards();
@@ -447,8 +453,18 @@ export default function CardsDashboard() {
                           <span className="font-semibold">R$ {limit.toLocaleString('pt-BR')}</span>
                         </div>
                         <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Limite Disponível:</span>
+                          <span className="font-semibold">
+                            {(() => {
+                              const used = Number(usageByCardId[card.id]?.used || 0);
+                              const available = Math.max(0, Number(limit) - used);
+                              return `R$ ${available.toLocaleString('pt-BR')}`;
+                            })()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Dia de Fechamento:</span>
-                          <span className="font-semibold">{card.closing_day || 'N/A'}</span>
+                          <span className="font-semibold">{computeClosingDay(card.best_day) ?? 'N/A'}</span>
                         </div>
                         <div className="flex justify-between border-t pt-2">
                           <span className="text-sm text-gray-600">Status:</span>
