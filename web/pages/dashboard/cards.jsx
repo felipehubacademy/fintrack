@@ -33,20 +33,18 @@ export default function CardsDashboard() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
   const [cards, setCards] = useState([]);
-  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState('2025-10'); // Temporariamente fixo para outubro 2025
   const [showNumbers, setShowNumbers] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
-      fetchExpenses();
+      fetchCards();
     } else if (!orgLoading && orgError) {
       router.push('/');
     }
-  }, [orgLoading, orgError, organization, selectedMonth]);
+  }, [orgLoading, orgError, organization]);
 
   // Buscar cartões reais da tabela cards
   const fetchCards = async () => {
@@ -73,44 +71,7 @@ export default function CardsDashboard() {
   };
 
   // Calcular uso de cada cartão no mês
-  const calculateCardUsage = (cardId) => {
-    return expenses
-      .filter(e => e.card_id === cardId)
-      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-  };
 
-  const fetchExpenses = async () => {
-    try {
-      const startOfMonth = `${selectedMonth}-01`;
-      const endOfMonth = new Date(selectedMonth + '-01');
-      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-      endOfMonth.setDate(0);
-
-      let query = supabase
-        .from('expenses')
-        .select('*')
-        .eq('status', 'confirmed')
-        .eq('payment_method', 'credit_card')
-        .gte('date', startOfMonth)
-        .lte('date', endOfMonth.toISOString().split('T')[0])
-        .order('date', { ascending: false });
-
-      if (organization?.id && organization.id !== 'default-org') {
-        query = query.eq('organization_id', organization.id);
-      }
-
-      const { data, error } = await query;
-      if (!error) {
-        const list = data || [];
-        setExpenses(list);
-        await fetchCards(); // Buscar cartões reais
-      }
-    } catch (error) {
-      console.error('Error fetching expenses:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -193,29 +154,6 @@ export default function CardsDashboard() {
     setShowModal(true);
   };
 
-  const getUsagePercentage = (used, limit) => {
-    if (limit === 0) return 0;
-    return (used / limit) * 100;
-  };
-
-  const getUsageStatus = (percentage) => {
-    if (percentage >= 90) return 'danger';
-    if (percentage >= 70) return 'warning';
-    return 'success';
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'success':
-        return 'bg-green-100 text-green-800';
-      case 'warning':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'danger':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   const formatCardNumber = (number) => {
     if (showNumbers) {
@@ -300,12 +238,7 @@ export default function CardsDashboard() {
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-4">
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
+            <h2 className="text-lg font-semibold text-gray-900">Gestão de Cartões</h2>
           </div>
           
           <div className="flex items-center space-x-3">
@@ -359,13 +292,13 @@ export default function CardsDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Usado</p>
+                  <p className="text-sm font-medium text-gray-600">Cartões Ativos</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    R$ {cards.reduce((sum, c) => sum + calculateCardUsage(c.id), 0).toLocaleString('pt-BR')}
+                    {cards.filter(c => c.is_active).length}
                   </p>
                 </div>
-                <div className="p-2 bg-red-50 rounded-lg">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
                 </div>
               </div>
             </CardContent>
@@ -375,13 +308,13 @@ export default function CardsDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Disponível</p>
+                  <p className="text-sm font-medium text-gray-600">Última Atualização</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    R$ {cards.reduce((sum, c) => sum + ((c.credit_limit || 0) - calculateCardUsage(c.id)), 0).toLocaleString('pt-BR')}
+                    {cards.length > 0 ? new Date(cards[0].updated_at).toLocaleDateString('pt-BR') : '-'}
                   </p>
                 </div>
                 <div className="p-2 bg-purple-50 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-purple-600" />
+                  <Calendar className="h-5 w-5 text-purple-600" />
                 </div>
               </div>
             </CardContent>
@@ -391,11 +324,7 @@ export default function CardsDashboard() {
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => {
-            const used = calculateCardUsage(card.id);
             const limit = card.credit_limit || 0;
-            const available = limit - used;
-            const usagePercentage = getUsagePercentage(used, limit);
-            const usageStatus = getUsageStatus(usagePercentage);
             
             return (
               <Card key={card.id} className="border-0 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -459,12 +388,14 @@ export default function CardsDashboard() {
                           <span className="font-semibold">R$ {limit.toLocaleString('pt-BR')}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Usado:</span>
-                          <span className="font-semibold">R$ {used.toLocaleString('pt-BR')}</span>
+                          <span className="text-sm text-gray-600">Dia de Fechamento:</span>
+                          <span className="font-semibold">{card.closing_day || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between border-t pt-2">
-                          <span className="text-sm text-gray-600">Disponível:</span>
-                          <span className="font-semibold text-green-600">R$ {available.toLocaleString('pt-BR')}</span>
+                          <span className="text-sm text-gray-600">Status:</span>
+                          <span className={`font-semibold ${card.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                            {card.is_active ? 'Ativo' : 'Inativo'}
+                          </span>
                         </div>
                       </>
                     ) : (
@@ -475,18 +406,19 @@ export default function CardsDashboard() {
                     )}
                   </div>
 
-                  {/* Status Badge */}
-                  {card.type === 'credit' && (
-                    <div className="flex justify-center">
-                      <Badge className={`${getStatusColor(usageStatus)} border-0`}>
-                        {usageStatus === 'danger' ? 'Limite Crítico' : 
-                         usageStatus === 'warning' ? 'Atenção' : 'Limite Saudável'}
-                      </Badge>
-                    </div>
-                  )}
 
                   {/* Actions */}
                   <div className="flex justify-center space-x-2 pt-4 border-t">
+                    <Link href={`/dashboard/finance?card=${card.id}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver Despesas
+                      </Button>
+                    </Link>
                     <Button 
                       variant="outline" 
                       size="sm"

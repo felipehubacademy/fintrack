@@ -433,7 +433,15 @@ Retorne APENAS JSON:`;
         return;
       }
 
-      // 5. Verificar se precisa de confirmação
+      // 5. Verificar se é cartão de crédito e precisa de cartão/parcelas
+      const normalizedMethod = this.normalizePaymentMethod(analysis.metodo_pagamento);
+      if (normalizedMethod === 'credit_card' && !analysis.cartao) {
+        console.log('🔍 [CARD] Detectado cartão de crédito, perguntando sobre cartão e parcelas');
+        await this.askForCardAndInstallments(user, analysis);
+        return;
+      }
+
+      // 6. Verificar se precisa de confirmação
       console.log('🔍 [DEBUG] Verificando se precisa confirmar:', analysis.precisa_confirmar);
       if (analysis.precisa_confirmar) {
         console.log('🔍 [DEBUG] Chamando handleIncompleteInfo...');
@@ -488,6 +496,12 @@ Retorne APENAS JSON:`;
       
       const conversationState = ongoingConversation.conversation_state || {};
       const missingFields = conversationState.missing_fields || [];
+      
+      // Verificar se está esperando informações de cartão
+      if (ongoingConversation.status === 'waiting_card_info') {
+        await this.handleCardInfoResponse(user, ongoingConversation, userResponse);
+        return;
+      }
       
       if (missingFields.length === 0) {
         // Sem campos faltando, finalizar
@@ -813,43 +827,56 @@ Retorne APENAS JSON com o campo atualizado:
     const normalizedMethod = this.normalizePaymentMethod(analysis.metodo_pagamento);
     console.log('🔍 [PAYMENT] Após normalização:', normalizedMethod);
 
-    // Salvar despesa
-    const expenseData = {
-      organization_id: user.organization_id,
-      user_id: user.id,
-      cost_center_id: costCenter.id,
-      amount: analysis.valor,
-      description: analysis.descricao,
-      payment_method: normalizedMethod,
-      category_id: categoryId,
-      category: analysis.categoria,
-      owner: this.getCanonicalName(analysis.responsavel), // Mapear responsavel para owner normalizado
-      date: this.parseDate(analysis.data),
-      status: 'confirmed',
-      confirmed_at: this.getBrazilDateTime().toISOString(),
-      confirmed_by: user.id,
-      source: 'whatsapp', // Fonte WhatsApp
-      whatsapp_message_id: `msg_${Date.now()}`,
-      conversation_state: {
-        valor: analysis.valor,
-        descricao: analysis.descricao,
-        categoria: analysis.categoria,
-        metodo_pagamento: analysis.metodo_pagamento,
-        responsavel: analysis.responsavel,
-        data: analysis.data,
-        confianca: analysis.confianca,
-        missing_fields: []
-      }
-    };
+    // Verificar se é cartão de crédito e tem informações de cartão
+    if (normalizedMethod === 'credit_card' && analysis.card_id && analysis.parcelas) {
+      // Criar parcelas usando função do banco
+      await this.createInstallments(user, analysis, costCenter, categoryId);
+    } else {
+      // Salvar despesa normal (não parcelada)
+      const expenseData = {
+        organization_id: user.organization_id,
+        user_id: user.id,
+        cost_center_id: costCenter.id,
+        amount: analysis.valor,
+        description: analysis.descricao,
+        payment_method: normalizedMethod,
+        category_id: categoryId,
+        category: analysis.categoria,
+        owner: this.getCanonicalName(analysis.responsavel),
+        date: this.parseDate(analysis.data),
+        status: 'confirmed',
+        confirmed_at: this.getBrazilDateTime().toISOString(),
+        confirmed_by: user.id,
+        source: 'whatsapp',
+        whatsapp_message_id: `msg_${Date.now()}`,
+        card_id: analysis.card_id || null,
+        conversation_state: {
+          valor: analysis.valor,
+          descricao: analysis.descricao,
+          categoria: analysis.categoria,
+          metodo_pagamento: analysis.metodo_pagamento,
+          responsavel: analysis.responsavel,
+          data: analysis.data,
+          confianca: analysis.confianca,
+          cartao: analysis.cartao || null,
+          parcelas: analysis.parcelas || null,
+          missing_fields: []
+        }
+      };
 
-    await this.saveExpense(expenseData);
+      await this.saveExpense(expenseData);
+    }
 
     // Enviar confirmação
     const ownerWithEmoji = this.getOwnerWithEmoji(analysis.responsavel);
+    const paymentInfo = normalizedMethod === 'credit_card' && analysis.cartao 
+      ? `💳 ${analysis.cartao} - ${analysis.parcelas}x`
+      : `💳 ${this.getPaymentMethodName(normalizedMethod)}`;
+    
     const confirmationMessage = `✅ Despesa registrada!\n\n` +
       `💰 R$ ${analysis.valor.toFixed(2)} - ${analysis.descricao}\n` +
       `📂 ${analysis.categoria} - ${ownerWithEmoji}\n` +
-      `💳 ${this.getPaymentMethodName(normalizedMethod)}\n` +
+      `${paymentInfo}\n` +
       `📅 ${this.parseDate(analysis.data).toLocaleDateString('pt-BR')}`;
 
     await this.sendWhatsAppMessage(user.phone, confirmationMessage);
@@ -905,6 +932,273 @@ Retorne APENAS JSON com o campo atualizado:
       'other': 'Outro'
     };
     return names[method] || method;
+  }
+
+  /**
+   * Extrair nome do cartão e número de parcelas do texto
+   * Ex: "Nubank 3x" -> { cardName: "Nubank", installments: 3 }
+   * Ex: "Itaú à vista" -> { cardName: "Itaú", installments: 1 }
+   */
+  extractCardAndInstallments(text) {
+    if (!text || typeof text !== 'string') {
+      return { cardName: null, installments: 1 };
+    }
+
+    const normalizedText = text.toLowerCase().trim();
+    
+    // Padrões para detectar parcelas
+    const installmentPatterns = [
+      /(\d+)\s*x\s*$/,  // "3x", "12x"
+      /(\d+)\s*parcelas?/,  // "3 parcelas", "12 parcelas"
+      /(\d+)\s*vezes/,  // "3 vezes"
+    ];
+
+    // Padrões para detectar à vista
+    const cashPatterns = [
+      /à\s*vista/i,
+      /a\s*vista/i,
+      /avista/i,
+      /1\s*x\s*$/,
+      /1\s*parcela/,
+    ];
+
+    let installments = 1;
+    let cardName = text;
+
+    // Verificar se é à vista
+    for (const pattern of cashPatterns) {
+      if (pattern.test(normalizedText)) {
+        installments = 1;
+        cardName = normalizedText.replace(pattern, '').trim();
+        break;
+      }
+    }
+
+    // Se não é à vista, verificar parcelas
+    if (installments === 1) {
+      for (const pattern of installmentPatterns) {
+        const match = normalizedText.match(pattern);
+        if (match) {
+          installments = parseInt(match[1]);
+          cardName = normalizedText.replace(pattern, '').trim();
+          break;
+        }
+      }
+    }
+
+    // Limpar nome do cartão
+    cardName = cardName.replace(/[^\w\s]/g, '').trim();
+
+    return {
+      cardName: cardName || null,
+      installments: installments || 1
+    };
+  }
+
+  /**
+   * Buscar cartão pelo nome na organização
+   */
+  async getCardByName(cardName, organizationId) {
+    if (!cardName || !organizationId) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .ilike('name', `%${cardName}%`);
+
+      if (error) {
+        console.error('❌ Erro ao buscar cartão:', error);
+        return null;
+      }
+
+      // Retornar o primeiro cartão que contém o nome
+      return data && data.length > 0 ? data[0] : null;
+    } catch (error) {
+      console.error('❌ Erro ao buscar cartão:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Perguntar sobre cartão e parcelas para despesas de crédito
+   */
+  async askForCardAndInstallments(user, analysis) {
+    try {
+      // Buscar cartões disponíveis na organização
+      const { data: cards, error } = await supabase
+        .from('cards')
+        .select('name')
+        .eq('organization_id', user.organization_id)
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('❌ Erro ao buscar cartões:', error);
+        await this.sendWhatsAppMessage(user.phone, 
+          "❌ Erro ao buscar cartões. Tente novamente."
+        );
+        return;
+      }
+
+      const cardNames = cards.map(c => c.name).join(', ');
+      
+      // Salvar conversa pendente
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .insert({
+          user_id: user.id,
+          organization_id: user.organization_id,
+          phone: user.phone,
+          status: 'waiting_card_info',
+          conversation_state: {
+            valor: analysis.valor,
+            descricao: analysis.descricao,
+            categoria: analysis.categoria,
+            metodo_pagamento: analysis.metodo_pagamento,
+            responsavel: analysis.responsavel,
+            data: analysis.data,
+            confianca: analysis.confianca,
+            missing_fields: []
+          }
+        })
+        .select()
+        .single();
+
+      if (convError) {
+        console.error('❌ Erro ao salvar conversa:', convError);
+        await this.sendWhatsAppMessage(user.phone, 
+          "❌ Erro interno. Tente novamente."
+        );
+        return;
+      }
+
+      // Enviar pergunta sobre cartão e parcelas
+      const message = `💳 **Cartão de Crédito detectado!**\n\n` +
+        `💰 R$ ${analysis.valor.toFixed(2)} - ${analysis.descricao}\n` +
+        `📂 ${analysis.categoria} - ${analysis.responsavel}\n\n` +
+        `**Qual cartão e em quantas parcelas?**\n\n` +
+        `📋 Cartões disponíveis: ${cardNames}\n\n` +
+        `💡 Exemplos:\n` +
+        `• "Nubank 3x"\n` +
+        `• "Itaú à vista"\n` +
+        `• "Santander 12x"`;
+
+      await this.sendWhatsAppMessage(user.phone, message);
+
+    } catch (error) {
+      console.error('❌ Erro ao perguntar sobre cartão:', error);
+      await this.sendWhatsAppMessage(user.phone, 
+        "❌ Erro interno. Tente novamente."
+      );
+    }
+  }
+
+  /**
+   * Processar resposta sobre cartão e parcelas
+   */
+  async handleCardInfoResponse(user, conversation, userResponse) {
+    try {
+      console.log('🔍 [CARD] Processando resposta sobre cartão:', userResponse);
+      
+      // Extrair cartão e parcelas da resposta
+      const { cardName, installments } = this.extractCardAndInstallments(userResponse);
+      
+      if (!cardName) {
+        await this.sendWhatsAppMessage(user.phone, 
+          "❌ Não consegui identificar o cartão. Tente novamente:\n\n" +
+          "Exemplos: 'Nubank 3x', 'Itaú à vista'"
+        );
+        return;
+      }
+
+      // Buscar cartão no banco
+      const card = await this.getCardByName(cardName, user.organization_id);
+      if (!card) {
+        await this.sendWhatsAppMessage(user.phone, 
+          `❌ Cartão "${cardName}" não encontrado. Verifique o nome e tente novamente.`
+        );
+        return;
+      }
+
+      // Atualizar conversa com informações do cartão
+      const updatedState = {
+        ...conversation.conversation_state,
+        cartao: card.name,
+        parcelas: installments,
+        card_id: card.id
+      };
+
+      await supabase
+        .from('conversations')
+        .update({
+          conversation_state: updatedState,
+          status: 'completed'
+        })
+        .eq('id', conversation.id);
+
+      // Processar despesa com cartão e parcelas
+      const analysis = {
+        valor: conversation.conversation_state.valor,
+        descricao: conversation.conversation_state.descricao,
+        categoria: conversation.conversation_state.categoria,
+        metodo_pagamento: conversation.conversation_state.metodo_pagamento,
+        responsavel: conversation.conversation_state.responsavel,
+        data: conversation.conversation_state.data,
+        confianca: conversation.conversation_state.confianca,
+        cartao: card.name,
+        parcelas: installments,
+        card_id: card.id
+      };
+
+      await this.handleCompleteInfo(user, analysis);
+
+    } catch (error) {
+      console.error('❌ Erro ao processar resposta de cartão:', error);
+      await this.sendWhatsAppMessage(user.phone, 
+        "❌ Erro interno. Tente novamente."
+      );
+    }
+  }
+
+  /**
+   * Criar parcelas usando função do banco
+   */
+  async createInstallments(user, analysis, costCenter, categoryId) {
+    try {
+      console.log('🔍 [INSTALLMENTS] Criando parcelas:', {
+        amount: analysis.valor,
+        installments: analysis.parcelas,
+        cardId: analysis.card_id
+      });
+
+      // Chamar função do banco para criar parcelas
+      const { data, error } = await supabase.rpc('create_installments', {
+        p_amount: analysis.valor,
+        p_installments: analysis.parcelas,
+        p_description: analysis.descricao,
+        p_date: this.parseDate(analysis.data).toISOString().split('T')[0],
+        p_card_id: analysis.card_id,
+        p_category_id: categoryId,
+        p_cost_center_id: costCenter.id,
+        p_owner: this.getCanonicalName(analysis.responsavel),
+        p_organization_id: user.organization_id,
+        p_user_id: user.id,
+        p_whatsapp_message_id: `msg_${Date.now()}`
+      });
+
+      if (error) {
+        console.error('❌ Erro ao criar parcelas:', error);
+        throw error;
+      }
+
+      console.log('✅ [INSTALLMENTS] Parcelas criadas com sucesso:', data);
+
+    } catch (error) {
+      console.error('❌ Erro ao criar parcelas:', error);
+      throw error;
+    }
   }
 }
 

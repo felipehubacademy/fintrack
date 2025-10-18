@@ -19,7 +19,8 @@ export function useOrganization() {
       setError(null);
 
       // Buscar usuário atual
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
       if (!currentUser) {
         setError('Usuário não autenticado');
         return;
@@ -41,32 +42,38 @@ export function useOrganization() {
       setUser(userRow);
 
       // Buscar organização
-      const { data: orgRow } = await supabase
+      const { data: orgRow, error: orgError } = await supabase
         .from('organizations')
         .select('*')
         .eq('id', userRow.organization_id)
         .single();
+      
+      if (orgError) throw orgError;
       setOrganization(orgRow || null);
 
       // Buscar centros de custo
-      const { data: centers } = await supabase
+      const { data: centers, error: centersError } = await supabase
         .from('cost_centers')
         .select('*')
         .eq('organization_id', userRow.organization_id)
         .order('name');
+      
+      if (centersError) throw centersError;
       setCostCenters(centers || []);
 
       // Buscar categorias
-      const { data: categories } = await supabase
+      const { data: categories, error: categoriesError } = await supabase
         .from('budget_categories')
         .select('*')
         .eq('organization_id', userRow.organization_id)
         .order('name');
+      
+      if (categoriesError) throw categoriesError;
       setBudgetCategories(categories || []);
 
     } catch (error) {
       console.error('Erro ao buscar dados da organização:', error);
-      setError(error.message);
+      setError(error.message || 'Erro desconhecido');
     } finally {
       setLoading(false);
     }

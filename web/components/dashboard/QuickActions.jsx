@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function QuickActions({ userRole = 'member' }) {
+export default function QuickActions() {
   const actions = [
     {
       title: "Adicionar Despesa",
@@ -32,70 +32,16 @@ export default function QuickActions({ userRole = 'member' }) {
       textColor: "text-white"
     },
     {
-      title: "Convidar Usuários",
-      description: "Adicionar membros à organização",
-      icon: Users,
-      href: "/dashboard/users/invite",
-      color: "bg-green-500 hover:bg-green-600",
-      textColor: "text-white",
-      adminOnly: true
-    },
-    {
       title: "Orçamentos",
       description: "Definir metas mensais",
       icon: Target,
       href: "/dashboard/budgets",
       color: "bg-orange-500 hover:bg-orange-600",
       textColor: "text-white"
-    },
-    {
-      title: "Centros de Custo",
-      description: "Gerenciar categorias",
-      icon: Settings,
-      href: "/dashboard/cost-centers",
-      color: "bg-gray-500 hover:bg-gray-600",
-      textColor: "text-white",
-      adminOnly: true
-    },
-    {
-      title: "Categorias",
-      description: "Personalizar categorias",
-      icon: FolderOpen,
-      href: "/dashboard/categories",
-      color: "bg-emerald-500 hover:bg-emerald-600",
-      textColor: "text-white",
-      adminOnly: true
-    },
-    {
-      title: "Relatórios",
-      description: "Análises detalhadas",
-      icon: BarChart3,
-      href: "/dashboard/reports",
-      color: "bg-indigo-500 hover:bg-indigo-600",
-      textColor: "text-white"
-    },
-    {
-      title: "Compartilhar",
-      description: "Link de convite",
-      icon: Share2,
-      href: "/dashboard/share",
-      color: "bg-pink-500 hover:bg-pink-600",
-      textColor: "text-white",
-      adminOnly: true
-    },
-    {
-      title: "Extratos",
-      description: "Histórico completo",
-      icon: Receipt,
-      href: "/dashboard/statements",
-      color: "bg-teal-500 hover:bg-teal-600",
-      textColor: "text-white"
     }
   ];
 
-  const visibleActions = userRole === 'admin' 
-    ? actions 
-    : actions.filter(action => !action.adminOnly);
+  const visibleActions = actions;
 
   return (
     <Card className="border-0 shadow-sm">
@@ -108,7 +54,7 @@ export default function QuickActions({ userRole = 'member' }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {visibleActions.map((action, index) => (
             <Link key={index} href={action.href}>
               <Button

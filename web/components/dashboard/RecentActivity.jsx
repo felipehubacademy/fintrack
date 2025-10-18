@@ -3,7 +3,7 @@ import { Badge } from '../ui/Badge';
 import { Clock, CreditCard, Wallet, User } from 'lucide-react';
 
 export default function RecentActivity({ expenses = [] }) {
-  const recentExpenses = expenses.slice(0, 5);
+  const recentExpenses = (expenses || []).slice(0, 5);
 
   const getPaymentIcon = (paymentMethod) => {
     switch (paymentMethod) {

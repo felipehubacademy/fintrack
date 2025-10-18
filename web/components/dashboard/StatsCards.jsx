@@ -8,15 +8,31 @@ export default function StatsCards({
   totalExpenses = 0, 
   costCenters = [], 
   budgets = [],
-  monthlyGrowth = 0 
+  monthlyGrowth = 0,
+  previousMonthData = {
+    cardExpenses: 0,
+    cashExpenses: 0,
+    totalExpenses: 0
+  }
 }) {
+  // Calcular percentual de crescimento para cada categoria
+  const calculateGrowth = (current, previous) => {
+    if (!current || current === 0) return 0;
+    if (!previous || previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const cashGrowth = calculateGrowth(cashExpenses, previousMonthData?.cashExpenses || 0);
+  const cardGrowth = calculateGrowth(cardExpenses, previousMonthData?.cardExpenses || 0);
+  const totalGrowth = calculateGrowth(totalExpenses, previousMonthData?.totalExpenses || 0);
+
   const stats = [
     {
       title: "À vista",
-      value: `R$ ${cashExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      value: `R$ ${(cashExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       icon: Wallet,
-      trend: monthlyGrowth > 0 ? "up" : "down",
-      trendValue: `${Math.abs(monthlyGrowth)}%`,
+      trend: cashGrowth > 0 ? "up" : cashGrowth < 0 ? "down" : "neutral",
+      trendValue: `${Math.abs(cashGrowth || 0).toFixed(1)}%`,
       color: "text-green-600",
       bgColor: "bg-green-50",
       description: "PIX • Débito • Dinheiro",
@@ -24,10 +40,10 @@ export default function StatsCards({
     },
     {
       title: "Cartões de Crédito",
-      value: `R$ ${cardExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      value: `R$ ${(cardExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       icon: CreditCard,
-      trend: monthlyGrowth > 0 ? "up" : "down",
-      trendValue: `${Math.abs(monthlyGrowth)}%`,
+      trend: cardGrowth > 0 ? "up" : cardGrowth < 0 ? "down" : "neutral",
+      trendValue: `${Math.abs(cardGrowth || 0).toFixed(1)}%`,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
       description: "Faturamento do período",
@@ -35,27 +51,18 @@ export default function StatsCards({
     },
     {
       title: "Total Geral",
-      value: `R$ ${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      value: `R$ ${(totalExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       icon: TrendingUp,
-      trend: "up",
-      trendValue: "12%",
+      trend: totalGrowth > 0 ? "up" : totalGrowth < 0 ? "down" : "neutral",
+      trendValue: `${Math.abs(totalGrowth || 0).toFixed(1)}%`,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
       description: "Todas as despesas"
     },
-    {
-      title: "Centros de Custo",
-      value: costCenters.length.toString(),
-      icon: Users,
-      trend: "neutral",
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
-      description: costCenters.map(c => c.name).join(", ")
-    }
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {stats.map((stat, index) => {
         const CardComponent = stat.link ? Link : 'div';
         const cardProps = stat.link ? { href: stat.link } : {};
@@ -88,6 +95,11 @@ export default function StatsCards({
                     <>
                       <TrendingDown className="h-3 w-3 text-red-600" />
                       <span className="text-red-600">-{stat.trendValue}</span>
+                    </>
+                  )}
+                  {stat.trend === "neutral" && (
+                    <>
+                      <span className="text-gray-500">0%</span>
                     </>
                   )}
                   <span className="text-gray-500">vs mês anterior</span>
