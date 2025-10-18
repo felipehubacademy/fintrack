@@ -1267,14 +1267,14 @@ Retorne APENAS JSON com o campo atualizado:
         return;
       }
 
-      // Processar despesa com cartão e parcelas
+      // Processar despesa com cartão e parcelas (garantindo valores do registro pendente)
       const analysis = {
-        valor: updatedState.valor ?? conversation.conversation_state.valor,
-        descricao: updatedState.descricao ?? conversation.conversation_state.descricao,
-        categoria: updatedState.categoria ?? conversation.conversation_state.categoria,
-        metodo_pagamento: updatedState.metodo_pagamento ?? conversation.conversation_state.metodo_pagamento,
-        responsavel: updatedState.responsavel ?? conversation.conversation_state.responsavel,
-        data: updatedState.data ?? conversation.conversation_state.data,
+        valor: conversation.amount ?? updatedState.valor ?? conversation.conversation_state.valor,
+        descricao: conversation.description ?? updatedState.descricao ?? conversation.conversation_state.descricao,
+        categoria: conversation.category ?? updatedState.categoria ?? conversation.conversation_state.categoria,
+        metodo_pagamento: conversation.payment_method ?? updatedState.metodo_pagamento ?? conversation.conversation_state.metodo_pagamento,
+        responsavel: conversation.owner ?? updatedState.responsavel ?? conversation.conversation_state.responsavel,
+        data: conversation.date ?? updatedState.data ?? conversation.conversation_state.data,
         confianca: updatedState.confianca ?? conversation.conversation_state.confianca,
         cartao: card.name,
         parcelas: installments,
