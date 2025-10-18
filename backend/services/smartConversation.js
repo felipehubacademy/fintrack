@@ -734,7 +734,8 @@ Retorne APENAS JSON com o campo atualizado:
         status: 'confirmed',
         confirmed_at: this.getBrazilDateTime().toISOString(),
         confirmed_by: user.id,
-        whatsapp_message_id: `msg_${Date.now()}`
+        whatsapp_message_id: `msg_${Date.now()}`,
+        source: 'whatsapp'
       };
 
       await supabase
@@ -757,6 +758,15 @@ Retorne APENAS JSON com o campo atualizado:
         `📅 ${new Date(dateVal).toLocaleDateString('pt-BR')}`;
 
       await this.sendWhatsAppMessage(user.phone, confirmationMessage);
+
+      // Limpar a conversa pendente caso ainda exista como status 'pending'
+      try {
+        await supabase
+          .from('expenses')
+          .delete()
+          .eq('id', expense.id)
+          .eq('status', 'pending');
+      } catch (_) {}
 
     } catch (error) {
       console.error('❌ Erro ao finalizar despesa:', error);
@@ -1155,6 +1165,7 @@ Retorne APENAS JSON com o campo atualizado:
           owner: analysis.responsavel,
           date: this.parseDate(analysis.data),
           status: 'pending',
+          source: 'whatsapp',
           conversation_state: {
             valor: analysis.valor,
             descricao: analysis.descricao,
@@ -1258,19 +1269,28 @@ Retorne APENAS JSON com o campo atualizado:
 
       // Processar despesa com cartão e parcelas
       const analysis = {
-        valor: conversation.conversation_state.valor,
-        descricao: conversation.conversation_state.descricao,
-        categoria: conversation.conversation_state.categoria,
-        metodo_pagamento: conversation.conversation_state.metodo_pagamento,
-        responsavel: conversation.conversation_state.responsavel,
-        data: conversation.conversation_state.data,
-        confianca: conversation.conversation_state.confianca,
+        valor: updatedState.valor ?? conversation.conversation_state.valor,
+        descricao: updatedState.descricao ?? conversation.conversation_state.descricao,
+        categoria: updatedState.categoria ?? conversation.conversation_state.categoria,
+        metodo_pagamento: updatedState.metodo_pagamento ?? conversation.conversation_state.metodo_pagamento,
+        responsavel: updatedState.responsavel ?? conversation.conversation_state.responsavel,
+        data: updatedState.data ?? conversation.conversation_state.data,
+        confianca: updatedState.confianca ?? conversation.conversation_state.confianca,
         cartao: card.name,
         parcelas: installments,
         card_id: card.id
       };
 
       await this.handleCompleteInfo(user, analysis);
+
+      // Limpar pendente após finalizar o fluxo
+      try {
+        await supabase
+          .from('expenses')
+          .delete()
+          .eq('id', conversation.id)
+          .eq('status', 'pending');
+      } catch (_) {}
 
     } catch (error) {
       console.error('❌ Erro ao processar resposta de cartão:', error);
@@ -1316,6 +1336,20 @@ Retorne APENAS JSON com o campo atualizado:
       }
 
       console.log('✅ [INSTALLMENTS] Parcelas criadas com sucesso:', data);
+
+      // Confirmar imediatamente todas as parcelas futuras (sem cron)
+      try {
+        const parentId = data; // função retorna UUID do parent
+        if (parentId) {
+          await supabase
+            .from('expenses')
+            .update({ status: 'confirmed' })
+            .eq('parent_expense_id', parentId)
+            .eq('status', 'pending');
+        }
+      } catch (confirmErr) {
+        console.error('❌ Erro ao confirmar parcelas futuras:', confirmErr);
+      }
 
     } catch (error) {
       console.error('❌ Erro ao criar parcelas:', error);
