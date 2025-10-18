@@ -558,11 +558,33 @@ Retorne APENAS JSON:`;
         if (newMissingFields.length > 0) {
           await this.askNextQuestion(user, newMissingFields[0]);
         } else {
-          // Todos os campos preenchidos, finalizar
-          await this.finalizeExpense({
-            ...ongoingConversation,
-            conversation_state: updatedState
-          }, user);
+          // Todos os campos preenchidos, verificar se precisa perguntar sobre cartão
+          if (updatedState.metodo_pagamento === 'credit_card' && !updatedState.cartao) {
+            // Perguntar sobre cartão e parcelas
+            const { data: cards } = await supabase
+              .from('cards')
+              .select('name')
+              .eq('organization_id', user.organization_id)
+              .eq('is_active', true);
+            
+            const cardNames = cards.map(c => c.name).join(', ');
+            const message = `💳 Qual cartão e em quantas parcelas? (${cardNames})`;
+            await this.sendWhatsAppMessage(user.phone, message);
+            
+            // Atualizar estado para esperar resposta sobre cartão
+            await supabase
+              .from('expenses')
+              .update({ 
+                conversation_state: { ...updatedState, waiting_for: 'card_info' }
+              })
+              .eq('id', ongoingConversation.id);
+          } else {
+            // Finalizar despesa
+            await this.finalizeExpense({
+              ...ongoingConversation,
+              conversation_state: updatedState
+            }, user);
+          }
         }
       }
 
@@ -1106,6 +1128,16 @@ Retorne APENAS JSON com o campo atualizado:
       console.log('🔍 [CARD] Cartões encontrados:', cards);
       const cardNames = cards.map(c => c.name).join(', ');
       
+      // Determinar campos faltando (exceto cartão que será perguntado depois)
+      const missingFields = [];
+      if (!analysis.responsavel) missingFields.push('responsavel');
+      if (!analysis.descricao || /nao especificado|não especificado/i.test(String(analysis.descricao))) {
+        missingFields.push('descricao');
+      }
+      if (analysis.confianca < 0.7 || !analysis.categoria || analysis.categoria === 'Outros') {
+        missingFields.push('categoria');
+      }
+
       // Salvar conversa pendente como despesa com status 'pending'
       const { data: pendingExpense, error: convError } = await supabase
         .from('expenses')
@@ -1127,7 +1159,7 @@ Retorne APENAS JSON com o campo atualizado:
             responsavel: analysis.responsavel,
             data: analysis.data,
             confianca: analysis.confianca,
-            missing_fields: [],
+            missing_fields: missingFields,
             waiting_for: 'card_info'
           }
         })
@@ -1142,10 +1174,14 @@ Retorne APENAS JSON com o campo atualizado:
         return;
       }
 
-      // Enviar pergunta sobre cartão e parcelas
-      const message = `💳 Qual cartão e em quantas parcelas? (${cardNames})`;
-
-      await this.sendWhatsAppMessage(user.phone, message);
+      // Se há campos faltando, perguntar primeiro sobre eles
+      if (missingFields.length > 0) {
+        await this.askNextQuestion(user, missingFields[0]);
+      } else {
+        // Se não há campos faltando, perguntar sobre cartão
+        const message = `💳 Qual cartão e em quantas parcelas? (${cardNames})`;
+        await this.sendWhatsAppMessage(user.phone, message);
+      }
 
     } catch (error) {
       console.error('❌ Erro ao perguntar sobre cartão:', error);
