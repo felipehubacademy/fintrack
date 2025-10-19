@@ -106,7 +106,7 @@ export default function StatsCards({
                 {/* descrição removida para visual mais limpo */}
                 {stat.title === 'Total Geral' && (
                   <div className="mt-3">
-                    <Link href="/dashboard/finance">
+                    <Link href="/dashboard/expenses">
                       <Button size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50" variant="outline">
                         Clique para ver as despesas
                       </Button>

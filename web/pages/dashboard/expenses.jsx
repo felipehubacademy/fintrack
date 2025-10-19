@@ -8,7 +8,8 @@ import { Button } from '../../components/ui/Button';
 import ExpenseModal from '../../components/ExpenseModal';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import NotificationModal from '../../components/NotificationModal';
-import { TrendingUp, Bell, Settings, Search, LogOut, Calendar, Users, Target, Edit, Trash2, CreditCard, Plus } from 'lucide-react';
+import { TrendingUp, Bell, Settings, Search, LogOut, Calendar, Users, Target, Edit, Trash2, CreditCard, Plus, DollarSign } from 'lucide-react';
+import Header from '../../components/Header';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 
 export default function FinanceDashboard() {
@@ -437,33 +438,14 @@ export default function FinanceDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header igual ao /dashboard */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
-                <TrendingUp className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <Link href="/dashboard">
-                  <h1 className="text-2xl font-bold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors">
-                    {organization?.name || 'FinTrack'}
-                  </h1>
-                </Link>
-                <p className="text-sm text-gray-600">Despesas</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="icon" onClick={() => setShowNotificationModal(true)}>
-                <Bell className="h-4 w-4" />
-              </Button>
-              <Link href="/dashboard/config"><Button variant="ghost" size="icon"><Settings className="h-4 w-4" /></Button></Link>
-              <Button variant="outline" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50"><LogOut className="h-4 w-4 mr-2" /> Sair</Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Header */}
+      <Header 
+        organization={organization}
+        user={orgUser}
+        pageTitle="Despesas"
+        showNotificationModal={showNotificationModal}
+        setShowNotificationModal={setShowNotificationModal}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -481,8 +463,75 @@ export default function FinanceDashboard() {
           </div>
         </div>
 
-        {/* Summary Cards dinâmicos */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {/* Summary Cards reorganizados */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+          {/* Card Total do Mês */}
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total do Mês
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-green-50">
+                <Target className="h-4 w-4 text-green-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {Number(Object.values(totals).reduce((sum, val) => sum + (Number(val) || 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Total de todas as despesas
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Card À Vista */}
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                À Vista
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-purple-50">
+                <DollarSign className="h-4 w-4 text-purple-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {Number(expenses
+                  .filter(expense => ['cash', 'debit_card', 'pix'].includes(expense.payment_method))
+                  .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
+                ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Dinheiro, PIX e débito
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Card Crédito */}
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Crédito
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-blue-50">
+                <CreditCard className="h-4 w-4 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {Number(expenses
+                  .filter(expense => expense.payment_method === 'credit_card')
+                  .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
+                ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Gastos em cartão de crédito
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Cards dos Responsáveis */}
           {uniqueOwners.map((owner) => {
             const oc = buildOwnerColorMap(costCenters);
             const bg = owner && normalizeKey(owner) === normalizeKey('Compartilhado') ? '#8B5CF6' : (oc[normalizeKey(owner)] || '#6366F1');
@@ -510,53 +559,10 @@ export default function FinanceDashboard() {
               </Card>
             );
           })}
-
-          {/* Card Crédito */}
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Crédito
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-blue-50">
-                <CreditCard className="h-4 w-4 text-blue-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {Number(expenses
-                  .filter(expense => expense.payment_method === 'credit_card')
-                  .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
-                ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Gastos em cartão de crédito
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Card Soma do Mês */}
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Soma do Mês
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-green-50">
-                <Target className="h-4 w-4 text-green-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {Number(Object.values(totals).reduce((sum, val) => sum + (Number(val) || 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Total de todas as despesas
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Filters */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
@@ -643,7 +649,7 @@ export default function FinanceDashboard() {
         </Card>
 
         {/* Expense Table */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg">

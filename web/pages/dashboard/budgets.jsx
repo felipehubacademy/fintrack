@@ -18,10 +18,11 @@ import {
   Trash2,
   LogOut,
   Settings,
-  Bell,
-  Search
+  Bell
 } from 'lucide-react';
 import Link from 'next/link';
+import BudgetModal from '../../components/BudgetModal';
+import Header from '../../components/Header';
 
 export default function BudgetsDashboard() {
   const router = useRouter();
@@ -30,6 +31,8 @@ export default function BudgetsDashboard() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [editingBudget, setEditingBudget] = useState(null);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -42,37 +45,65 @@ export default function BudgetsDashboard() {
 
   const fetchBudgets = async () => {
     try {
-      // Mock budgets for now - will be replaced with real API
-      const mockBudgets = [
-        {
-          id: 1,
-          category: 'Alimentação',
-          amount: 2000,
-          spent: 1450,
-          cost_center: 'Compartilhado',
-          month: selectedMonth,
-          status: 'warning' // success, warning, danger
-        },
-        {
-          id: 2,
-          category: 'Transporte',
-          amount: 800,
-          spent: 650,
-          cost_center: 'Felipe',
-          month: selectedMonth,
-          status: 'success'
-        },
-        {
-          id: 3,
-          category: 'Lazer',
-          amount: 500,
-          spent: 520,
-          cost_center: 'Leticia',
-          month: selectedMonth,
-          status: 'danger'
-        }
-      ];
-      setBudgets(mockBudgets);
+      if (!organization?.id) return;
+
+      const [year, month] = selectedMonth.split('-');
+      const monthNumber = parseInt(month);
+
+      // Buscar orçamentos do mês selecionado
+      const startOfMonth = `${year}-${month.padStart(2, '0')}-01`;
+      const { data: budgetsData, error: budgetsError } = await supabase
+        .from('budgets')
+        .select(`
+          *,
+          category:category_id (
+            id,
+            name,
+            description
+          )
+        `)
+        .eq('organization_id', organization.id)
+        .eq('month_year', startOfMonth);
+
+      if (budgetsError) {
+        console.error('Error fetching budgets:', budgetsError);
+        return;
+      }
+
+      // Calcular valores gastos para cada orçamento
+      const budgetsWithSpent = await Promise.all(
+        (budgetsData || []).map(async (budget) => {
+          // Buscar despesas do mês para esta categoria (sem filtro por cost_center)
+          const endOfMonth = new Date(parseInt(year), monthNumber, 0).toISOString().split('T')[0];
+
+          const { data: expensesData, error: expensesError } = await supabase
+            .from('expenses')
+            .select('amount')
+            .eq('organization_id', organization.id)
+            .eq('status', 'confirmed')
+            .eq('category_id', budget.category_id)
+            .gte('date', startOfMonth)
+            .lte('date', endOfMonth);
+
+          if (expensesError) {
+            console.error('Error fetching expenses for budget:', expensesError);
+          }
+
+          const spent = (expensesData || []).reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
+
+          return {
+            id: budget.id,
+            category: budget.category?.name || 'Sem categoria',
+            category_id: budget.category_id, // Keep ID for editing
+            amount: parseFloat(budget.limit_amount),
+            spent: spent,
+            month: selectedMonth,
+            status: getBudgetStatus(spent, parseFloat(budget.limit_amount))
+          };
+        })
+      );
+
+      setBudgets(budgetsWithSpent);
     } catch (error) {
       console.error('Error fetching budgets:', error);
     }
@@ -111,6 +142,69 @@ export default function BudgetsDashboard() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
+  };
+
+  const handleAddBudget = async (budgetData) => {
+    try {
+      const [year, month] = selectedMonth.split('-');
+      const monthYear = `${year}-${month.padStart(2, '0')}-01`;
+
+      const { error } = await supabase
+        .from('budgets')
+        .insert({
+          organization_id: organization.id,
+          category_id: budgetData.category_id,
+          limit_amount: parseFloat(budgetData.limit_amount),
+          month_year: monthYear
+        });
+
+      if (error) throw error;
+
+      await fetchBudgets();
+      alert('Orçamento criado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao criar orçamento:', error);
+      alert('Erro ao criar orçamento');
+    }
+  };
+
+  const handleEditBudget = async (budgetData) => {
+    try {
+      const { error } = await supabase
+        .from('budgets')
+        .update({
+          category_id: budgetData.category_id,
+          limit_amount: parseFloat(budgetData.limit_amount)
+        })
+        .eq('id', budgetData.id);
+
+      if (error) throw error;
+
+      await fetchBudgets();
+      alert('Orçamento atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar orçamento:', error);
+      alert('Erro ao atualizar orçamento');
+    }
+  };
+
+  const handleDeleteBudget = async (budgetId) => {
+    if (confirm('Tem certeza que deseja excluir este orçamento?')) {
+      try {
+        const { error } = await supabase
+          .from('budgets')
+          .delete()
+          .eq('id', budgetId);
+
+        if (error) throw error;
+
+        await fetchBudgets();
+        alert('Orçamento excluído com sucesso!');
+      } catch (error) {
+        console.error('Erro ao excluir orçamento:', error);
+        alert('Erro ao excluir orçamento');
+      }
+    }
   };
 
   const getBudgetStatus = (spent, amount) => {
@@ -174,65 +268,31 @@ export default function BudgetsDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="icon">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                </Button>
-              </Link>
-              <div className="p-3 bg-gradient-to-r from-green-600 to-blue-600 rounded-xl">
-                <Target className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Orçamentos & Metas</h1>
-                <p className="text-sm text-gray-600">{organization?.name || 'FinTrack'}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="icon">
-                <Search className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Bell className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50">
-                <LogOut className="h-4 w-4 mr-2" />
-                Sair
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header 
+        organization={organization}
+        user={orgUser}
+        pageTitle="Orçamentos"
+        showNotificationModal={showNotificationModal}
+        setShowNotificationModal={setShowNotificationModal}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <div className="flex items-center space-x-4">
+          <h2 className="text-lg font-semibold text-gray-900">Gestão de Orçamentos</h2>
+          <div className="flex items-center space-x-3">
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <Button variant="outline">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Relatório
-            </Button>
-            <Button className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700">
+            <Button 
+              onClick={() => setShowBudgetModal(true)}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Novo Orçamento
             </Button>
@@ -241,7 +301,7 @@ export default function BudgetsDashboard() {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -257,7 +317,7 @@ export default function BudgetsDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -273,7 +333,7 @@ export default function BudgetsDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -289,7 +349,7 @@ export default function BudgetsDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -311,21 +371,32 @@ export default function BudgetsDashboard() {
             const status = getBudgetStatus(budget.spent, budget.amount);
             
             return (
-              <Card key={budget.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+              <Card key={budget.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       {getStatusIcon(status)}
                       <div>
                         <CardTitle className="text-lg">{budget.category}</CardTitle>
-                        <p className="text-sm text-gray-600">{budget.cost_center}</p>
+                        <p className="text-sm text-gray-600">Orçamento da família</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="icon">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => {
+                          setEditingBudget(budget);
+                          setShowBudgetModal(true);
+                        }}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleDeleteBudget(budget.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -384,14 +455,17 @@ export default function BudgetsDashboard() {
 
         {/* Empty State */}
         {budgets.length === 0 && (
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-12 text-center">
               <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <Target className="h-8 w-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum orçamento definido</h3>
               <p className="text-gray-600 mb-6">Configure suas metas mensais para ter controle total sobre seus gastos.</p>
-              <Button className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700">
+              <Button 
+                onClick={() => setShowBudgetModal(true)}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeiro Orçamento
               </Button>
@@ -399,6 +473,21 @@ export default function BudgetsDashboard() {
           </Card>
         )}
       </main>
+
+      {/* Budget Modal */}
+      {showBudgetModal && (
+        <BudgetModal
+          isOpen={showBudgetModal}
+          onClose={() => {
+            setShowBudgetModal(false);
+            setEditingBudget(null);
+          }}
+          onSave={editingBudget ? handleEditBudget : handleAddBudget}
+          editingBudget={editingBudget}
+          categories={budgetCategories}
+          selectedMonth={selectedMonth}
+        />
+      )}
     </div>
   );
 }

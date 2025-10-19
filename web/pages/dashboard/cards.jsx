@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import CardModal from '../../components/CardModal';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
+import Header from '../../components/Header';
 import { 
   CreditCard, 
   Plus, 
@@ -256,37 +257,13 @@ export default function CardsDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
-                <CreditCard className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <Link href="/dashboard" className="text-2xl font-bold text-gray-900 hover:underline">
-                  {organization?.name || 'FinTrack'}
-                </Link>
-                <p className="text-sm text-gray-600">Cartões</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              
-              <Button variant="ghost" size="icon">
-                <Bell className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50">
-                <LogOut className="h-4 w-4 mr-2" />
-                Sair
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header 
+        organization={organization}
+        user={orgUser}
+        pageTitle="Cartões"
+        showNotificationModal={showNotificationModal}
+        setShowNotificationModal={setShowNotificationModal}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -307,7 +284,7 @@ export default function CardsDashboard() {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -321,7 +298,7 @@ export default function CardsDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -337,7 +314,7 @@ export default function CardsDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -353,7 +330,7 @@ export default function CardsDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -379,7 +356,7 @@ export default function CardsDashboard() {
             const limit = card.credit_limit || 0;
             
             return (
-              <Card key={card.id} className="border-0 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+              <Card key={card.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
                 {/* Card Visual */}
                 <div className={`h-36 bg-gradient-to-r ${card.color} p-6 text-white relative`}>
                   <div className="flex justify-between items-start">
@@ -472,7 +449,7 @@ export default function CardsDashboard() {
 
                   {/* Actions */}
                   <div className="flex justify-center space-x-2 pt-4 border-t">
-                    <Link href={`/dashboard/finance?card=${card.id}`}>
+                    <Link href={`/dashboard/expenses?card=${card.id}`}>
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -507,7 +484,7 @@ export default function CardsDashboard() {
 
         {/* Empty State */}
         {cards.length === 0 && (
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardContent className="p-12 text-center">
               <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <CreditCard className="h-8 w-8 text-gray-400" />

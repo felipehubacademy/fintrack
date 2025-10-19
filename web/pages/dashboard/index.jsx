@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Users
 } from 'lucide-react';
+import Header from '../../components/Header';
 
 export default function DashboardHome() {
   const router = useRouter();
@@ -389,40 +390,12 @@ export default function DashboardHome() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
-                <TrendingUp className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{organization?.name || 'FinTrack'}</h1>
-                <p className="text-sm text-gray-600">{orgUser?.name || 'Usuário'}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setShowNotificationModal(true)}
-              >
-                <Bell className="h-4 w-4" />
-              </Button>
-              <Link href="/dashboard/config">
-                <Button variant="ghost" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Button variant="outline" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50">
-                <LogOut className="h-4 w-4 mr-2" />
-                Sair
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header 
+        organization={organization}
+        user={orgUser}
+        showNotificationModal={showNotificationModal}
+        setShowNotificationModal={setShowNotificationModal}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -443,7 +416,7 @@ export default function DashboardHome() {
         {/* Charts Section */}
         <div className="space-y-6">
           {/* Month Charts */}
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
@@ -458,7 +431,7 @@ export default function DashboardHome() {
           </Card>
 
           {/* Monthly Comparison */}
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
