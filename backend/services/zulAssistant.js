@@ -312,7 +312,7 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
   async waitForCompletion(threadId, runId, context) {
     console.log(`⏳ [ASSISTANT] Iniciando waitForCompletion - threadId: ${threadId}, runId: ${runId}`);
     
-    let run = await openai.beta.threads.runs.retrieve(threadId, runId);
+    let run = await openai.beta.threads.runs.retrieve(runId, { thread_id: threadId });
     console.log(`📊 [ASSISTANT] Status inicial: ${run.status}`);
     
     let attempts = 0;
@@ -324,7 +324,7 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
         throw new Error('Timeout aguardando resposta do Assistant');
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
-      run = await openai.beta.threads.runs.retrieve(threadId, runId);
+      run = await openai.beta.threads.runs.retrieve(runId, { thread_id: threadId });
       attempts++;
       console.log(`⏳ [ASSISTANT] Status: ${run.status} (tentativa ${attempts}/${maxAttempts})`);
     }
@@ -350,7 +350,8 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
       }
 
       // Submeter os resultados das funções
-      await openai.beta.threads.runs.submitToolOutputs(threadId, runId, {
+      await openai.beta.threads.runs.submitToolOutputs(runId, {
+        thread_id: threadId,
         tool_outputs: toolOutputs
       });
 
