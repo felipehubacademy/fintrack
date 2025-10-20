@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import OpenAIService from './openaiService.js';
+import ZulMessages from './zulMessages.js';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 class SmartConversation {
   constructor() {
     this.openai = new OpenAIService();
+    this.zulMessages = new ZulMessages();
   }
 
   /**
@@ -413,7 +415,7 @@ Retorne APENAS JSON:`;
       if (!user) {
         console.log('❌ [DEBUG] Usuário não encontrado, enviando mensagem de erro');
         await this.sendWhatsAppMessage(userPhone, 
-          "❌ Usuário não encontrado. Entre em contato com o administrador da organização."
+          this.zulMessages.userNotFound()
         );
         return;
       }
@@ -435,7 +437,7 @@ Retorne APENAS JSON:`;
       console.log('🔍 [ANALYSIS] Resultado da análise:', analysis);
       if (!analysis) {
         await this.sendWhatsAppMessage(userPhone, 
-          "❌ Não consegui entender sua mensagem. Tente: 'Gastei 50 no mercado'"
+          this.zulMessages.didNotUnderstand()
         );
         return;
       }
@@ -443,12 +445,7 @@ Retorne APENAS JSON:`;
       // 4. Verificar se é uma mensagem sobre despesas
       if (analysis.erro === "Mensagem não é sobre despesas") {
         await this.sendWhatsAppMessage(userPhone, 
-          "💰 Olá! Eu sou o assistente do MeuAzulão.\n\n" +
-          "📝 Para registrar uma despesa, envie uma mensagem como:\n" +
-          "• 'Gastei 50 no mercado'\n" +
-          "• 'Paguei 30 na farmácia'\n" +
-          "• 'R$ 25 no posto de gasolina'\n\n" +
-          "🎯 Foco apenas em gastos e despesas!"
+          this.zulMessages.notAboutExpense()
         );
         return;
       }
@@ -476,7 +473,7 @@ Retorne APENAS JSON:`;
     } catch (error) {
       console.error('❌ Erro no processamento:', error);
       await this.sendWhatsAppMessage(userPhone, 
-        "❌ Ocorreu um erro. Tente novamente em alguns minutos."
+        this.zulMessages.genericError()
       );
     }
   }
@@ -587,7 +584,11 @@ Retorne APENAS JSON:`;
 
         // Se ainda há campos faltando, perguntar o próximo
         if (newMissingFields.length > 0) {
-          await this.askNextQuestion(user, newMissingFields[0]);
+          await this.askNextQuestion(user, newMissingFields[0], {
+            amount: updatedAnalysis.valor,
+            description: updatedAnalysis.descricao,
+            isAfterCard: false
+          });
         } else {
           // Todos os campos preenchidos, verificar se precisa perguntar sobre cartão
           if (updatedState.metodo_pagamento === 'credit_card' && !updatedState.cartao) {
@@ -622,7 +623,7 @@ Retorne APENAS JSON:`;
     } catch (error) {
       console.error('❌ Erro ao continuar conversa:', error);
       await this.sendWhatsAppMessage(user.phone, 
-        "❌ Ocorreu um erro. Vou cancelar esta conversa."
+        this.zulMessages.genericError()
       );
       await this.cancelConversation(ongoingConversation.id);
     }
@@ -697,32 +698,28 @@ Retorne APENAS JSON com o campo atualizado:
   /**
    * Perguntar próxima questão
    */
-  async askNextQuestion(user, field) {
+  async askNextQuestion(user, field, context = {}) {
     const costCenters = await this.getCostCenters(user.organization_id);
-    const costCenterNames = costCenters.map(cc => cc.name);
-    
     let message = '';
     
     switch (field) {
       case 'metodo_pagamento':
-        message = '💳 Método de pagamento: Débito, Crédito, PIX ou Dinheiro?';
+        message = this.zulMessages.askPaymentMethod(
+          context.amount, 
+          context.description,
+          user.name
+        );
         break;
       case 'responsavel':
-        {
-          const hasCompartilhado = costCenterNames.some(n => n.toLowerCase() === 'compartilhado');
-          const list = costCenterNames.join(', ');
-          message = hasCompartilhado
-            ? `👤 Responsável: ${list}?`
-            : `👤 Responsável: ${list} ou Compartilhado?`;
-        }
+        message = this.zulMessages.askResponsible(costCenters, context.isAfterCard);
         break;
       case 'descricao':
-        message = '📝 Qual a descrição? (ex.: padaria, farmácia, mercado, etc.)';
+        message = this.zulMessages.askDescription();
         break;
       case 'categoria':
         const categories = await this.getBudgetCategories(user.organization_id);
-        const categoryNames = categories.map(cat => cat.name).join(', ');
-        message = `📂 Categoria: ${categoryNames}?`;
+        const categoryNames = categories.map(cat => cat.name);
+        message = this.zulMessages.askCategory(categoryNames);
         break;
       default:
         message = `❓ Por favor, forneça: ${field}`;
@@ -744,7 +741,7 @@ Retorne APENAS JSON com o campo atualizado:
 
       if (!costCenter) {
         await this.sendWhatsAppMessage(user.phone, 
-          `❌ Centro de custo "${responsibleName || 'indefinido'}" não encontrado.`
+          this.zulMessages.costCenterNotFound(responsibleName || 'indefinido')
         );
         return;
       }
@@ -783,19 +780,26 @@ Retorne APENAS JSON com o campo atualizado:
         .update(expenseData)
         .eq('id', expense.id);
 
-      // Enviar confirmação
+      // Enviar confirmação personalizada do ZUL
       const amount = expense.amount ?? expense.conversation_state?.valor;
       const description = expense.description ?? expense.conversation_state?.descricao;
       const category = expense.category ?? expense.conversation_state?.categoria;
       const paymentMethod = expense.payment_method ?? expense.conversation_state?.metodo_pagamento;
       const dateVal = expense.date ?? this.parseDate(expense.conversation_state?.data);
+      const cartao = expense.conversation_state?.cartao;
+      const parcelas = expense.conversation_state?.parcelas;
 
-      const confirmationMessage = `✅ Despesa registrada no MeuAzulão!\n\n` +
-        `💰 R$ ${Number(amount).toFixed(2)} - ${description || 'gasto não especificado'}\n` +
-        `📂 ${category || '-'}\n` +
-        `👤 ${responsibleName || '-'}\n` +
-        `💳 ${this.getPaymentMethodName(paymentMethod)}\n` +
-        `📅 ${new Date(dateVal).toLocaleDateString('pt-BR')}`;
+      const confirmationMessage = this.zulMessages.getConfirmation({
+        amount,
+        description,
+        category,
+        owner: responsibleName,
+        payment_method: paymentMethod,
+        date: dateVal,
+        cartao,
+        parcelas,
+        isShared
+      }, user.name, costCenters);
 
       await this.sendWhatsAppMessage(user.phone, confirmationMessage);
 
@@ -881,15 +885,19 @@ Retorne APENAS JSON com o campo atualizado:
       if (insertError) {
         console.error('❌ Erro ao inserir expense pendente:', insertError);
         await this.sendWhatsAppMessage(user.phone, 
-          "❌ Erro ao salvar despesa. Tente novamente."
+          this.zulMessages.saveError()
         );
         return;
       }
 
       console.log('✅ Expense pendente inserida:', pendingExpense);
 
-      // Perguntar primeiro campo faltando
-      await this.askNextQuestion(user, missingFields[0]);
+      // Perguntar primeiro campo faltando com contexto
+      await this.askNextQuestion(user, missingFields[0], {
+        amount: analysis.valor,
+        description: analysis.descricao,
+        isAfterCard: false
+      });
     } else {
       console.log('🔍 [DEBUG] Nenhum campo faltando, mas precisa confirmar. Chamando handleCompleteInfo...');
       // Se não há campos faltando mas ainda precisa confirmar, tratar como informação completa
@@ -911,7 +919,7 @@ Retorne APENAS JSON com o campo atualizado:
 
     if (!costCenter) {
       await this.sendWhatsAppMessage(user.phone, 
-        `❌ Centro de custo "${analysis.responsavel}" não encontrado. Contate o administrador.`
+        this.zulMessages.costCenterNotFound(analysis.responsavel)
       );
       return;
     }
@@ -977,18 +985,18 @@ Retorne APENAS JSON com o campo atualizado:
         : '✅ Despesa individual criada');
     }
 
-    // Enviar confirmação
-    const ownerWithEmoji = this.getOwnerWithEmoji(analysis.responsavel);
-    const paymentInfo = normalizedMethod === 'credit_card' && analysis.cartao 
-      ? `💳 ${analysis.cartao} - ${analysis.parcelas}x`
-      : `💳 ${this.getPaymentMethodName(normalizedMethod)}`;
-    
-    const confirmationMessage = `✅ Despesa registrada no MeuAzulão!\n\n` +
-      `💰 R$ ${analysis.valor.toFixed(2)} - ${this.capitalizeDescription(analysis.descricao)}\n` +
-      `📂 ${analysis.categoria}\n` +
-      `${ownerWithEmoji}\n` +
-      `${paymentInfo}\n` +
-      `📅 ${this.parseDate(analysis.data).toLocaleDateString('pt-BR')}`;
+    // Enviar confirmação personalizada do ZUL
+    const confirmationMessage = this.zulMessages.getConfirmation({
+      amount: analysis.valor,
+      description: this.capitalizeDescription(analysis.descricao),
+      category: analysis.categoria,
+      owner: this.getCanonicalName(analysis.responsavel),
+      payment_method: normalizedMethod,
+      date: this.parseDate(analysis.data),
+      cartao: analysis.cartao,
+      parcelas: analysis.parcelas,
+      isShared
+    }, user.name, costCenters);
 
     await this.sendWhatsAppMessage(user.phone, confirmationMessage);
   }
@@ -1201,13 +1209,13 @@ Retorne APENAS JSON com o campo atualizado:
       if (error) {
         console.error('❌ Erro ao buscar cartões:', error);
         await this.sendWhatsAppMessage(user.phone, 
-          "❌ Erro ao buscar cartões. Tente novamente."
+          this.zulMessages.genericError()
         );
         return;
       }
 
       console.log('🔍 [CARD] Cartões encontrados:', cards);
-      const cardNames = cards.map(c => c.name).join(', ');
+      const cardNames = cards.map(c => c.name);
       
       // Determinar campos faltando (exceto cartão que será perguntado depois)
       const missingFields = [];
@@ -1251,20 +1259,24 @@ Retorne APENAS JSON com o campo atualizado:
       if (convError) {
         console.error('❌ Erro ao salvar conversa pendente:', convError);
         await this.sendWhatsAppMessage(user.phone, 
-          "❌ Erro interno. Tente novamente."
+          this.zulMessages.genericError()
         );
         return;
       }
 
       // SEMPRE perguntar sobre cartão primeiro para despesas de crédito
       // Campos faltando (como responsável) serão perguntados após o cartão
-      const message = `💳 Qual cartão e em quantas parcelas? (${cardNames})`;
+      const message = this.zulMessages.askCardAndInstallments(
+        analysis.valor,
+        analysis.descricao,
+        cardNames
+      );
       await this.sendWhatsAppMessage(user.phone, message);
 
     } catch (error) {
       console.error('❌ Erro ao perguntar sobre cartão:', error);
       await this.sendWhatsAppMessage(user.phone, 
-        "❌ Erro interno. Tente novamente."
+        this.zulMessages.genericError()
       );
     }
   }
@@ -1319,7 +1331,7 @@ Retorne APENAS JSON com o campo atualizado:
     } catch (error) {
       console.error('❌ Erro ao processar responsável:', error);
       await this.sendWhatsAppMessage(user.phone, 
-        "❌ Erro interno. Tente novamente."
+        this.zulMessages.genericError()
       );
     }
   }
@@ -1346,8 +1358,7 @@ Retorne APENAS JSON com o campo atualizado:
       
       if (!cardName) {
         await this.sendWhatsAppMessage(user.phone, 
-          "❌ Não consegui identificar o cartão. Tente novamente:\n\n" +
-          "Exemplos: 'Latam 3x', 'Latam à vista'"
+          this.zulMessages.cardInfoError()
         );
         return;
       }
@@ -1358,8 +1369,17 @@ Retorne APENAS JSON com o campo atualizado:
       console.log('🔍 [CARD] Cartão encontrado:', card);
       
       if (!card) {
+        // Buscar cartões disponíveis para sugerir
+        const { data: availableCards } = await supabase
+          .from('cards')
+          .select('name')
+          .eq('organization_id', user.organization_id)
+          .eq('is_active', true);
+        
+        const cardNames = availableCards ? availableCards.map(c => c.name) : [];
+        
         await this.sendWhatsAppMessage(user.phone, 
-          `❌ Cartão "${cardName}" não encontrado. Verifique o nome e tente novamente.`
+          this.zulMessages.cardNotFound(cardName, cardNames)
         );
         return;
       }
@@ -1393,7 +1413,7 @@ Retorne APENAS JSON com o campo atualizado:
           })
           .eq('id', conversation.id);
         
-        await this.askNextQuestion(user, 'responsavel');
+        await this.askNextQuestion(user, 'responsavel', { isAfterCard: true });
         return;
       }
 
@@ -1425,7 +1445,7 @@ Retorne APENAS JSON com o campo atualizado:
     } catch (error) {
       console.error('❌ Erro ao processar resposta de cartão:', error);
       await this.sendWhatsAppMessage(user.phone, 
-        "❌ Erro interno. Tente novamente."
+        this.zulMessages.genericError()
       );
     }
   }
