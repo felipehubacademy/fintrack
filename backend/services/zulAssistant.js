@@ -279,23 +279,29 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
       }
 
       // Adicionar mensagem do usuário
+      console.log(`📝 [ASSISTANT] Adicionando mensagem à thread...`);
       await openai.beta.threads.messages.create(threadId, {
         role: 'user',
         content: messageContent
       });
+      console.log(`✅ [ASSISTANT] Mensagem adicionada`);
 
       // Executar o Assistant
       console.log(`🏃 [ASSISTANT] Criando run...`);
       const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: assistantId
       });
-      console.log(`✅ [ASSISTANT] Run criado: ${run.id}`);
+      console.log(`✅ [ASSISTANT] Run criado: ${run.id} (status: ${run.status})`);
 
       // Aguardar conclusão e processar
-      return await this.waitForCompletion(threadId, run.id, context);
+      console.log(`⏳ [ASSISTANT] Aguardando conclusão do run...`);
+      const result = await this.waitForCompletion(threadId, run.id, context);
+      console.log(`✅ [ASSISTANT] Run completado, retornando resposta`);
+      return result;
 
     } catch (error) {
-      console.error('❌ Erro ao enviar mensagem:', error);
+      console.error('❌ [ASSISTANT] Erro ao enviar mensagem:', error);
+      console.error('❌ [ASSISTANT] Error stack:', error.stack);
       throw error;
     }
   }
@@ -304,12 +310,17 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
    * Aguardar conclusão do run e processar function calls
    */
   async waitForCompletion(threadId, runId, context) {
+    console.log(`⏳ [ASSISTANT] Iniciando waitForCompletion - threadId: ${threadId}, runId: ${runId}`);
+    
     let run = await openai.beta.threads.runs.retrieve(threadId, runId);
+    console.log(`📊 [ASSISTANT] Status inicial: ${run.status}`);
+    
     let attempts = 0;
     const maxAttempts = 30; // 30 segundos timeout
     
     while (run.status === 'in_progress' || run.status === 'queued') {
       if (attempts >= maxAttempts) {
+        console.error(`❌ [ASSISTANT] Timeout após ${maxAttempts} tentativas`);
         throw new Error('Timeout aguardando resposta do Assistant');
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -317,6 +328,8 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
       attempts++;
       console.log(`⏳ [ASSISTANT] Status: ${run.status} (tentativa ${attempts}/${maxAttempts})`);
     }
+    
+    console.log(`📊 [ASSISTANT] Status final: ${run.status}`);
 
     // Se precisar de function calls
     if (run.status === 'requires_action') {
