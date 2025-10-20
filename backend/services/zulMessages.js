@@ -80,9 +80,24 @@ class ZulMessages {
     const name = userName ? userName.split(' ')[0] : '';
     
     const variations = [
-      `Entendi! ${emoji} R$ ${parseFloat(amount).toFixed(2)} ${description ? `em ${description}` : ''}\n\nComo você pagou? (Débito, Crédito, PIX ou Dinheiro)`,
-      `Certo${name ? ` ${name}` : ''}! ${emoji} R$ ${parseFloat(amount).toFixed(2)} ${description ? `- ${description}` : ''}\n\nQual foi a forma de pagamento? (Débito, Crédito, PIX ou Dinheiro)`,
-      `Anotado! ${emoji} R$ ${parseFloat(amount).toFixed(2)} ${description ? `em ${description}` : ''}\n\nMe diz como pagou? (Débito, Crédito, PIX ou Dinheiro)`
+      `Entendi! ${emoji} R$ ${parseFloat(amount).toFixed(2)} ${description ? `em ${description}` : ''}\n\nComo você pagou?`,
+      `Certo${name ? ` ${name}` : ''}! R$ ${parseFloat(amount).toFixed(2)} ${description ? `em ${description}` : ''} ${emoji}\n\nQual foi a forma de pagamento?`,
+      `Anotado! ${emoji} R$ ${parseFloat(amount).toFixed(2)} ${description ? `em ${description}` : ''}\n\nMe diz como pagou?`
+    ];
+    
+    return this.pickRandom(variations);
+  }
+
+  /**
+   * Erro - Método de pagamento inválido
+   */
+  invalidPaymentMethod(userName) {
+    const name = userName ? userName.split(' ')[0] : '';
+    
+    const variations = [
+      `Eita${name ? ` ${name}` : ''}, não entendi! 😅\n\nAs formas que tenho aqui são: Débito, Crédito, PIX ou Dinheiro`,
+      `Hmm${name ? ` ${name}` : ''}, não consegui identificar! 🤔\n\nTenho essas opções: Débito, Crédito, PIX ou Dinheiro`,
+      `Opa${name ? ` ${name}` : ''}, não reconheci essa forma de pagamento! 😅\n\nPode escolher entre: Débito, Crédito, PIX ou Dinheiro`
     ];
     
     return this.pickRandom(variations);
@@ -92,14 +107,28 @@ class ZulMessages {
    * Perguntar sobre cartão e parcelas
    */
   askCardAndInstallments(amount, description, cardsList) {
-    const cardsText = cardsList && cardsList.length > 0 
-      ? `(${cardsList.join(', ')})` 
-      : '';
+    const variations = [
+      `Beleza! Foi no crédito então 💳\n\nQual cartão e em quantas parcelas?`,
+      `Certo! Cartão de crédito 💳\n\nQual cartão? E foi à vista ou parcelado?`,
+      `Entendi! No crédito 💳\n\nMe fala o cartão e quantas vezes?`
+    ];
+    
+    return this.pickRandom(variations);
+  }
+
+  /**
+   * Erro - Cartão inválido (com sugestões)
+   */
+  invalidCard(userName, availableCards) {
+    const name = userName ? userName.split(' ')[0] : '';
+    const cardsText = availableCards && availableCards.length > 0
+      ? availableCards.join(' e ')
+      : 'cadastrados';
     
     const variations = [
-      `Beleza! Foi no crédito então 💳\n\nQual cartão usou e me diz se foi 1x ou parcelado?\n${cardsText}`,
-      `Certo! Cartão de crédito 💳\n\nQual cartão? E foi à vista ou parcelado?\n${cardsText}`,
-      `Entendi! No crédito 💳\n\nMe fala o cartão e se parcelou?\n${cardsText}`
+      `${name}, os cartões que tenho no sistema são ${cardsText}! 💳\n\nEm qual foi e em quantas vezes?`,
+      `Hmm ${name}, não achei esse cartão! 🤔\n\nTenho aqui: ${cardsText}\n\nQual foi e quantas parcelas?`,
+      `Opa ${name}, esse cartão não tá cadastrado! 😅\n\nOs disponíveis são: ${cardsText}\n\nMe diz qual e quantas vezes?`
     ];
     
     return this.pickRandom(variations);
@@ -109,27 +138,50 @@ class ZulMessages {
    * Perguntar responsável
    */
   askResponsible(costCenters, isAfterCard = false) {
-    const costCenterNames = costCenters.map(cc => cc.name);
-    const hasCompartilhado = costCenterNames.some(n => n.toLowerCase() === 'compartilhado');
-    
-    // Adicionar "Compartilhado" se não existir
-    const options = hasCompartilhado 
-      ? costCenterNames.join(', ')
-      : [...costCenterNames, 'Compartilhado'].join(', ');
-    
     if (isAfterCard) {
       const variations = [
-        `Perfeito! E quem foi o responsável por essa?\n\n(${options})`,
-        `Certo! Agora me diz quem foi o responsável?\n\n(${options})`,
-        `Beleza! Só me fala quem pagou?\n\n(${options})`
+        `Perfeito! E quem foi o responsável por essa?`,
+        `Certo! Agora me diz quem foi o responsável?`,
+        `Beleza! Só me fala quem pagou?`
       ];
       return this.pickRandom(variations);
     }
     
     const variations = [
-      `E quem foi o responsável por essa?\n\n(${options})`,
-      `Quem é o responsável?\n\n(${options})`,
-      `Me diz quem pagou?\n\n(${options})`
+      `E quem foi o responsável por essa?`,
+      `Quem é o responsável?`,
+      `Me diz quem pagou?`
+    ];
+    
+    return this.pickRandom(variations);
+  }
+
+  /**
+   * Erro - Responsável inválido (com sugestões)
+   */
+  invalidResponsible(userName, costCenters) {
+    const name = userName ? userName.split(' ')[0] : '';
+    const costCenterNames = costCenters.map(cc => cc.name);
+    const hasCompartilhado = costCenterNames.some(n => n.toLowerCase() === 'compartilhado');
+    
+    // Adicionar "Compartilhado" se não existir e formatar
+    const names = hasCompartilhado ? costCenterNames : [...costCenterNames, 'Compartilhado'];
+    
+    let namesList = '';
+    if (names.length === 2) {
+      namesList = names.join(' ou então ');
+    } else if (names.length > 2) {
+      const lastNames = names.slice(-2);
+      const firstNames = names.slice(0, -2);
+      namesList = firstNames.join(', ') + ', ' + lastNames.join(' ou então ');
+    } else {
+      namesList = names[0];
+    }
+    
+    const variations = [
+      `Humm ${name}, aqui para mim eu tenho ${namesList}!`,
+      `Opa ${name}, não achei esse nome! 🤔\n\nTenho: ${namesList}`,
+      `Eita ${name}, não reconheci! 😅\n\nOs responsáveis são: ${namesList}`
     ];
     
     return this.pickRandom(variations);

@@ -535,6 +535,35 @@ Retorne APENAS JSON:`;
       // Processar resposta do usuário
       const nextField = missingFields[0];
       console.log('🔍 [CONV] Processando campo:', nextField, 'Resposta:', userResponse);
+      
+      // VALIDAÇÃO: Verificar se a resposta é válida para o campo
+      let isValid = true;
+      let validatedValue = null;
+      
+      if (nextField === 'metodo_pagamento') {
+        validatedValue = await this.validatePaymentMethod(userResponse);
+        if (!validatedValue) {
+          isValid = false;
+          await this.sendWhatsAppMessage(user.phone, 
+            this.zulMessages.invalidPaymentMethod(user.name)
+          );
+        }
+      } else if (nextField === 'responsavel') {
+        validatedValue = await this.validateResponsible(userResponse, user.organization_id);
+        if (!validatedValue) {
+          isValid = false;
+          const costCenters = await this.getCostCenters(user.organization_id);
+          await this.sendWhatsAppMessage(user.phone, 
+            this.zulMessages.invalidResponsible(user.name, costCenters)
+          );
+        }
+      }
+      
+      // Se não for válido, reperguntar o mesmo campo (não avançar)
+      if (!isValid) {
+        return;
+      }
+      
       const updatedAnalysis = await this.processUserResponse(nextField, userResponse, ongoingConversation);
       console.log('🔍 [CONV] Análise atualizada:', updatedAnalysis);
       
@@ -627,6 +656,32 @@ Retorne APENAS JSON:`;
       );
       await this.cancelConversation(ongoingConversation.id);
     }
+  }
+
+  /**
+   * Validar método de pagamento
+   */
+  async validatePaymentMethod(userResponse) {
+    const normalized = this.normalizePaymentMethod(userResponse);
+    const validMethods = ['credit_card', 'debit_card', 'pix', 'cash', 'bank_transfer', 'boleto', 'other'];
+    return validMethods.includes(normalized) ? normalized : null;
+  }
+
+  /**
+   * Validar responsável
+   */
+  async validateResponsible(userResponse, organizationId) {
+    const costCenters = await this.getCostCenters(organizationId);
+    const normalized = this.normalizeName(userResponse);
+    
+    // Compartilhado é sempre válido
+    if (normalized === 'compartilhado') {
+      return 'Compartilhado';
+    }
+    
+    // Buscar nos cost centers
+    const found = costCenters.find(cc => this.normalizeName(cc.name) === normalized);
+    return found ? found.name : null;
   }
 
   /**
@@ -735,9 +790,14 @@ Retorne APENAS JSON com o campo atualizado:
     try {
       const costCenters = await this.getCostCenters(user.organization_id);
       const responsibleName = (expense.conversation_state?.responsavel || expense.responsavel || '').toString();
-      const costCenter = costCenters.find(cc =>
-        this.normalizeName(cc.name) === this.normalizeName(responsibleName)
-      );
+      
+      // Verificar se é despesa compartilhada ANTES de buscar cost center
+      const isShared = this.normalizeName(responsibleName) === 'compartilhado';
+      
+      // Para despesas compartilhadas, não precisa de costCenter
+      const costCenter = isShared 
+        ? { id: null, name: 'Compartilhado' }
+        : costCenters.find(cc => this.normalizeName(cc.name) === this.normalizeName(responsibleName));
 
       if (!costCenter) {
         await this.sendWhatsAppMessage(user.phone, 
@@ -752,9 +812,6 @@ Retorne APENAS JSON com o campo atualizado:
       const budgetCategory = categories.find(cat => 
         cat.name.toLowerCase() === categoryName.toLowerCase()
       );
-
-      // Verificar se é despesa compartilhada
-      const isShared = this.normalizeName(responsibleName) === 'compartilhado';
 
       // Atualizar despesa como confirmada
       const expenseData = {
@@ -1288,9 +1345,20 @@ Retorne APENAS JSON com o campo atualizado:
     try {
       console.log('🔍 [RESPONSAVEL] Processando resposta sobre responsável:', userResponse);
       
+      // VALIDAR responsável antes de processar
+      const validatedResponsible = await this.validateResponsible(userResponse, user.organization_id);
+      if (!validatedResponsible) {
+        const costCenters = await this.getCostCenters(user.organization_id);
+        await this.sendWhatsAppMessage(user.phone, 
+          this.zulMessages.invalidResponsible(user.name, costCenters)
+        );
+        // Não avançar - manter esperando responsável válido
+        return;
+      }
+      
       const updatedState = {
         ...conversation.conversation_state,
-        responsavel: userResponse,
+        responsavel: validatedResponsible,
         waiting_for: null
       };
 
@@ -1299,7 +1367,7 @@ Retorne APENAS JSON com o campo atualizado:
         .from('expenses')
         .update({
           conversation_state: updatedState,
-          owner: this.getCanonicalName(userResponse)
+          owner: this.getCanonicalName(validatedResponsible)
         })
         .eq('id', conversation.id);
 
@@ -1309,7 +1377,7 @@ Retorne APENAS JSON com o campo atualizado:
         descricao: conversation.description ?? updatedState.descricao ?? conversation.conversation_state.descricao,
         categoria: conversation.category ?? updatedState.categoria ?? conversation.conversation_state.categoria,
         metodo_pagamento: 'credit_card',
-        responsavel: userResponse,
+        responsavel: validatedResponsible,
         data: conversation.date ?? updatedState.data ?? conversation.conversation_state.data,
         confianca: updatedState.confianca ?? conversation.conversation_state.confianca,
         cartao: updatedState.cartao,
@@ -1379,8 +1447,9 @@ Retorne APENAS JSON com o campo atualizado:
         const cardNames = availableCards ? availableCards.map(c => c.name) : [];
         
         await this.sendWhatsAppMessage(user.phone, 
-          this.zulMessages.cardNotFound(cardName, cardNames)
+          this.zulMessages.invalidCard(user.name, cardNames)
         );
+        // Não retornar - manter a conversa no mesmo estado para reperguntar
         return;
       }
 
