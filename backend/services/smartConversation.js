@@ -3,6 +3,7 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import OpenAIService from './openaiService.js';
 import ZulMessages from './zulMessages.js';
+import ZulAssistant from './zulAssistant.js';
 
 dotenv.config();
 
@@ -21,6 +22,8 @@ class SmartConversation {
   constructor() {
     this.openai = new OpenAIService();
     this.zulMessages = new ZulMessages();
+    this.zulAssistant = new ZulAssistant();
+    this.useAssistant = process.env.USE_ZUL_ASSISTANT === 'true'; // Feature flag
   }
 
   /**
@@ -402,9 +405,200 @@ Retorne APENAS JSON:`;
   }
 
   /**
+   * Processar mensagem usando ZUL Assistant (novo fluxo)
+   */
+  async handleMessageWithAssistant(text, userPhone) {
+    try {
+      console.log(`🤖 [ASSISTANT] Processando mensagem de ${userPhone}: "${text}"`);
+
+      // 1. Buscar usuário
+      const user = await this.getUserByPhone(userPhone);
+      if (!user) {
+        await this.sendWhatsAppMessage(userPhone, 
+          this.zulMessages.userNotFound()
+        );
+        return;
+      }
+
+      // 2. Buscar contexto necessário
+      const costCenters = await this.getCostCenters(user.organization_id);
+      const categories = await this.getBudgetCategories(user.organization_id);
+      const { data: cards } = await supabase
+        .from('cards')
+        .select('name, id')
+        .eq('organization_id', user.organization_id)
+        .eq('is_active', true);
+
+      // 3. Preparar contexto para o Assistant
+      const context = {
+        userName: user.name,
+        userPhone: userPhone,
+        organizationId: user.organization_id,
+        userId: user.id,
+        
+        // Funções que o Assistant pode chamar
+        validatePaymentMethod: async (userInput) => {
+          const normalized = this.normalizePaymentMethod(userInput);
+          const valid = ['credit_card', 'debit_card', 'pix', 'cash', 'bank_transfer', 'boleto', 'other'].includes(normalized);
+          
+          return {
+            valid,
+            normalized_method: normalized,
+            available_methods: ['Débito', 'Crédito', 'PIX', 'Dinheiro']
+          };
+        },
+
+        validateCard: async (cardName, installments, availableCards) => {
+          const card = cards?.find(c => 
+            this.normalizeName(c.name) === this.normalizeName(cardName)
+          );
+          
+          return {
+            valid: !!card,
+            card_id: card?.id || null,
+            card_name: card?.name || null,
+            available_cards: cards?.map(c => c.name) || []
+          };
+        },
+
+        validateResponsible: async (responsibleName, availableResponsibles) => {
+          const normalized = this.normalizeName(responsibleName);
+          
+          // Compartilhado é sempre válido
+          if (normalized === 'compartilhado') {
+            return {
+              valid: true,
+              responsible: 'Compartilhado',
+              is_shared: true
+            };
+          }
+          
+          // Buscar nos cost centers
+          const found = costCenters.find(cc => 
+            this.normalizeName(cc.name) === normalized
+          );
+          
+          const availableNames = [
+            ...costCenters.map(cc => cc.name),
+            'Compartilhado'
+          ];
+          
+          return {
+            valid: !!found,
+            responsible: found?.name || null,
+            cost_center_id: found?.id || null,
+            is_shared: false,
+            available_responsibles: availableNames
+          };
+        },
+
+        saveExpense: async (expenseData) => {
+          try {
+            console.log('💾 [ASSISTANT] Salvando despesa:', expenseData);
+            
+            // Encontrar categoria
+            const category = categories.find(c => 
+              c.name.toLowerCase() === (expenseData.category || '').toLowerCase()
+            );
+            
+            // Verificar se é compartilhado
+            const isShared = this.normalizeName(expenseData.responsible) === 'compartilhado';
+            
+            // Buscar cost center se não for compartilhado
+            let costCenterId = null;
+            if (!isShared) {
+              const costCenter = costCenters.find(cc => 
+                this.normalizeName(cc.name) === this.normalizeName(expenseData.responsible)
+              );
+              costCenterId = costCenter?.id || null;
+            }
+            
+            // Se for cartão de crédito e tiver parcelas, criar installments
+            if (expenseData.payment_method === 'credit_card' && expenseData.installments > 1) {
+              const card = cards?.find(c => 
+                this.normalizeName(c.name) === this.normalizeName(expenseData.card_name)
+              );
+              
+              if (card) {
+                await this.createInstallments(
+                  user,
+                  {
+                    valor: expenseData.amount,
+                    descricao: expenseData.description,
+                    categoria: expenseData.category,
+                    responsavel: expenseData.responsible,
+                    data: 'hoje',
+                    cartao: card.name,
+                    parcelas: expenseData.installments,
+                    card_id: card.id
+                  },
+                  { id: costCenterId, name: expenseData.responsible },
+                  category?.id || null
+                );
+                
+                return { success: true, installments: true };
+              }
+            }
+            
+            // Despesa simples (não parcelada)
+            const { data, error } = await supabase
+              .from('expenses')
+              .insert({
+                organization_id: user.organization_id,
+                user_id: user.id,
+                cost_center_id: costCenterId,
+                split: isShared,
+                amount: expenseData.amount,
+                description: this.capitalizeDescription(expenseData.description),
+                payment_method: expenseData.payment_method,
+                category_id: category?.id || null,
+                category: expenseData.category,
+                owner: this.getCanonicalName(expenseData.responsible),
+                date: this.parseDate('hoje'),
+                status: 'confirmed',
+                confirmed_at: this.getBrazilDateTime().toISOString(),
+                confirmed_by: user.id,
+                source: 'whatsapp',
+                whatsapp_message_id: `msg_${Date.now()}`
+              })
+              .select()
+              .single();
+            
+            if (error) throw error;
+            
+            return { success: true, expense_id: data.id };
+            
+          } catch (error) {
+            console.error('❌ Erro ao salvar despesa:', error);
+            return { success: false, error: error.message };
+          }
+        }
+      };
+
+      // 4. Enviar mensagem para o Assistant
+      const response = await this.zulAssistant.sendMessage(user.id, text, context);
+      
+      // 5. Enviar resposta para o usuário
+      await this.sendWhatsAppMessage(userPhone, response);
+
+    } catch (error) {
+      console.error('❌ [ASSISTANT] Erro no processamento:', error);
+      await this.sendWhatsAppMessage(userPhone, 
+        this.zulMessages.genericError()
+      );
+    }
+  }
+
+  /**
    * Processar mensagem principal
    */
   async handleMessage(text, userPhone) {
+    // Se USE_ZUL_ASSISTANT=true, usar o novo fluxo com Assistant
+    if (this.useAssistant) {
+      return await this.handleMessageWithAssistant(text, userPhone);
+    }
+    
+    // Fluxo antigo (fallback)
     try {
       console.log(`📱 Processando mensagem de ${userPhone}: "${text}"`);
 
@@ -895,14 +1089,14 @@ Retorne APENAS JSON com o campo atualizado:
     const costCenters = await this.getCostCenters(user.organization_id);
     const costCenterNames = costCenters.map(cc => cc.name);
 
-    // Determinar campos faltando
+    // Determinar campos faltando (ORDEM IMPORTANTE!)
     const missingFields = [];
-    if (!analysis.metodo_pagamento) missingFields.push('metodo_pagamento');
-    if (!analysis.responsavel) missingFields.push('responsavel');
-    // Perguntar descrição se ausente ou genérica
+    // Perguntar descrição PRIMEIRO se ausente ou genérica
     if (!analysis.descricao || /nao especificado|não especificado/i.test(String(analysis.descricao))) {
       missingFields.push('descricao');
     }
+    if (!analysis.metodo_pagamento) missingFields.push('metodo_pagamento');
+    if (!analysis.responsavel) missingFields.push('responsavel');
     // Perguntar sobre categoria se confiança baixa OU se for "Outros" ou similar
     if (analysis.confianca < 0.7 || !analysis.categoria || analysis.categoria === 'Outros') {
       missingFields.push('categoria');

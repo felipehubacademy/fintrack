@@ -78,12 +78,20 @@ class ZulMessages {
   askPaymentMethod(amount, description, userName) {
     const emoji = this.getContextEmoji(description);
     const name = userName ? userName.split(' ')[0] : '';
+    const valor = parseFloat(amount).toFixed(2);
     
-    const variations = [
-      `Entendi! ${emoji} R$ ${parseFloat(amount).toFixed(2)} ${description ? `em ${description}` : ''}\n\nComo você pagou?`,
-      `Certo${name ? ` ${name}` : ''}! R$ ${parseFloat(amount).toFixed(2)} ${description ? `em ${description}` : ''} ${emoji}\n\nQual foi a forma de pagamento?`,
-      `Anotado! ${emoji} R$ ${parseFloat(amount).toFixed(2)} ${description ? `em ${description}` : ''}\n\nMe diz como pagou?`
-    ];
+    // Variações mais naturais baseadas no contexto
+    const variations = description && description !== 'gasto não especificado'
+      ? [
+          `Opa! R$ ${valor} de ${description} ${emoji}\n\nComo você pagou?`,
+          `Beleza! Anotei R$ ${valor} em ${description} aqui ${emoji}\n\nQual foi a forma de pagamento?`,
+          `Entendi! R$ ${valor} em ${description} ${emoji}\n\nMe diz como pagou?`
+        ]
+      : [
+          `Certo${name ? ` ${name}` : ''}! R$ ${valor} 💰\n\nO que foi?`,
+          `Beleza! R$ ${valor} 💰\n\nMe conta o que foi?`,
+          `Anotado! R$ ${valor} 💰\n\nO que você comprou?`
+        ];
     
     return this.pickRandom(variations);
   }
@@ -108,9 +116,9 @@ class ZulMessages {
    */
   askCardAndInstallments(amount, description, cardsList) {
     const variations = [
-      `Beleza! Foi no crédito então 💳\n\nQual cartão e em quantas parcelas?`,
-      `Certo! Cartão de crédito 💳\n\nQual cartão? E foi à vista ou parcelado?`,
-      `Entendi! No crédito 💳\n\nMe fala o cartão e quantas vezes?`
+      `Beleza! Foi no crédito então\n\nQual cartão e em quantas parcelas? 💳`,
+      `Certo! Cartão de crédito\n\nQual cartão? E foi à vista ou parcelado? 💳`,
+      `Entendi! No crédito\n\nMe fala o cartão e quantas vezes? 💳`
     ];
     
     return this.pickRandom(variations);
@@ -216,6 +224,76 @@ class ZulMessages {
   }
 
   /**
+   * Mensagem final conversacional baseada no contexto
+   */
+  getContextualClosing(description, category) {
+    if (!description) return '';
+    
+    const desc = description.toLowerCase();
+    
+    // Alimentação / Restaurante
+    if (desc.includes('restaurante') || desc.includes('pizza') || desc.includes('lanche') || 
+        desc.includes('hamburger') || desc.includes('comida') || category === 'Alimentação') {
+      return this.pickRandom([
+        '\n\nBom apetite! 🍽️',
+        '\n\nAproveite! 😋',
+        '\n\nDelícia! 🤤'
+      ]);
+    }
+    
+    // Mercado / Supermercado
+    if (desc.includes('mercado') || desc.includes('supermercado')) {
+      return this.pickRandom([
+        '\n\nBoas compras! 🛒',
+        '\n\nMercado feito! ✅',
+        '\n\nDespensa cheia! 🛒'
+      ]);
+    }
+    
+    // Combustível / Gasolina
+    if (desc.includes('gasolina') || desc.includes('combustível') || desc.includes('posto') || 
+        desc.includes('etanol') || category === 'Transporte') {
+      return this.pickRandom([
+        '\n\nBoa viagem! 🚗',
+        '\n\nTanque cheio! ⛽',
+        '\n\nPega a estrada! 🛣️'
+      ]);
+    }
+    
+    // Farmácia / Saúde
+    if (desc.includes('farmácia') || desc.includes('remédio') || desc.includes('médico') || 
+        category === 'Saúde') {
+      return this.pickRandom([
+        '\n\nCuide-se bem! 💊',
+        '\n\nMelhoras! 🏥',
+        '\n\nSaúde em dia! ✨'
+      ]);
+    }
+    
+    // Lazer / Entretenimento
+    if (desc.includes('cinema') || desc.includes('show') || desc.includes('festa') || 
+        desc.includes('bar') || category === 'Lazer') {
+      return this.pickRandom([
+        '\n\nAproveite! 🎉',
+        '\n\nDivirta-se! 🥳',
+        '\n\nCurta bastante! 🎊'
+      ]);
+    }
+    
+    // Academia / Esporte
+    if (desc.includes('academia') || desc.includes('esporte') || desc.includes('treino')) {
+      return this.pickRandom([
+        '\n\nBom treino! 💪',
+        '\n\nVamo que vamo! 🏋️',
+        '\n\nFoco no shape! 💪'
+      ]);
+    }
+    
+    // Genérico
+    return '';
+  }
+
+  /**
    * Confirmação de despesa registrada
    */
   getConfirmation(expense, userName, costCenters = []) {
@@ -235,21 +313,21 @@ class ZulMessages {
     const emoji = this.getContextEmoji(description);
     const valor = parseFloat(amount);
     
-    // Reação baseada no valor
+    // Reação baseada no valor/contexto
     let reaction = '';
     if (valor > 500) {
       reaction = `Opa, essa foi grande hein! Mas tá tudo registrado 📝\n\n`;
     } else if (isShared) {
       reaction = `Beleza! Vou dividir entre vocês 👥\n\n`;
     } else if (parcelas && parcelas > 1) {
-      reaction = `Perfeito! Já separei as ${parcelas} parcelas aqui pra você 📊\n\n`;
+      reaction = `Já separei as ${parcelas} parcelas aqui pra você 📊\n\n`;
     }
     
-    // Construir mensagem
+    // Construir saudação inicial
     const greetingVariations = [
       `Tudo certo${name ? ` ${name}` : ''}! 🎯`,
-      `Perfeito${name ? ` ${name}` : ''}! ✅`,
-      `Registrado${name ? ` ${name}` : ''}! 🎯`
+      `Registrado${name ? ` ${name}` : ''}! ✅`,
+      `Anotado${name ? ` ${name}` : ''}! 🎯`
     ];
     
     let message = `${this.pickRandom(greetingVariations)}\n\n${reaction}`;
@@ -300,6 +378,12 @@ class ZulMessages {
     // Dica para ajustar divisão se for compartilhado
     if (isShared) {
       message += `\n\n_Quer ajustar a divisão? É só entrar no app!_ 📱`;
+    }
+    
+    // Adicionar fechamento contextual conversacional
+    const contextualClosing = this.getContextualClosing(description, category);
+    if (contextualClosing) {
+      message += contextualClosing;
     }
     
     return message;
