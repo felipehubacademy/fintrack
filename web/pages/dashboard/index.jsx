@@ -404,7 +404,6 @@ export default function DashboardHome() {
   // Debug logs
   console.log('🔍 [DASHBOARD DEBUG] selectedMonth:', selectedMonth);
   console.log('🔍 [DASHBOARD DEBUG] monthlyData:', monthlyData);
-  console.log('🔍 [DASHBOARD DEBUG] currentMonthData:', currentMonthData);
   console.log('🔍 [DASHBOARD DEBUG] cardExpenses:', cardExpenses);
   console.log('🔍 [DASHBOARD DEBUG] cashExpenses:', cashExpenses);
   console.log('🔍 [DASHBOARD DEBUG] expensesForCharts:', expensesForCharts);
