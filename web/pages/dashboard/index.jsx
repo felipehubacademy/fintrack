@@ -284,11 +284,16 @@ export default function DashboardHome() {
         }
 
         if (!error && data) {
-          const cardTotal = data
+          // Filtrar apenas despesas confirmadas
+          const confirmedExpenses = data.filter(e => 
+            e.status === 'confirmed' || e.status === 'paid' || !e.status
+          );
+          
+          const cardTotal = confirmedExpenses
             .filter(e => e.payment_method === 'credit_card')
-            .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+            .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
             
-          const cashTotal = data
+          const cashTotal = confirmedExpenses
             .filter(e => 
               e.payment_method === 'cash' || 
               e.payment_method === 'debit_card' || 
@@ -297,7 +302,14 @@ export default function DashboardHome() {
               e.payment_method === 'boleto' || 
               e.payment_method === 'other'
             )
-            .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+            .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+
+          console.log(`🔍 [MONTHLY DEBUG] ${monthStr}:`, {
+            totalExpenses: confirmedExpenses.length,
+            cardTotal,
+            cashTotal,
+            grandTotal: cardTotal + cashTotal
+          });
 
           months.push({
             month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
@@ -365,13 +377,33 @@ export default function DashboardHome() {
     return { ...totals, total };
   };
 
-  // Calcular totais usando dados do mês SELECIONADO (não sempre o atual)
-  const selectedDate = new Date(selectedMonth + '-01');
-  const selectedMonthStr = selectedDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-  const selectedMonthData = monthlyData.find(month => month.month === selectedMonthStr);
-  const cardTotal = selectedMonthData ? (selectedMonthData.cartoes || 0) : 0;
-  const cashTotal = selectedMonthData ? (selectedMonthData.despesas || 0) : 0;
+  // Calcular totais diretamente de monthExpenses (mesmo usado nos gráficos)
+  const confirmedMonthExpenses = monthExpenses.filter(e => 
+    e.status === 'confirmed' || e.status === 'paid' || !e.status
+  );
+  
+  const cardTotal = confirmedMonthExpenses
+    .filter(e => e.payment_method === 'credit_card')
+    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    
+  const cashTotal = confirmedMonthExpenses
+    .filter(e => 
+      e.payment_method === 'cash' || 
+      e.payment_method === 'debit_card' || 
+      e.payment_method === 'pix' || 
+      e.payment_method === 'bank_transfer' || 
+      e.payment_method === 'boleto' || 
+      e.payment_method === 'other'
+    )
+    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    
   const grandTotal = cardTotal + cashTotal;
+  
+  console.log('🔍 [STATS DEBUG] monthExpenses:', monthExpenses.length);
+  console.log('🔍 [STATS DEBUG] confirmedMonthExpenses:', confirmedMonthExpenses.length);
+  console.log('🔍 [STATS DEBUG] cardTotal:', cardTotal);
+  console.log('🔍 [STATS DEBUG] cashTotal:', cashTotal);
+  console.log('🔍 [STATS DEBUG] grandTotal:', grandTotal);
 
   // Recalcular dados do mês anterior baseado no mês selecionado
   useEffect(() => {
