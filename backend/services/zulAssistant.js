@@ -257,8 +257,11 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
    */
   async sendMessage(userId, userMessage, context = {}) {
     try {
+      console.log(`📤 [ASSISTANT] Enviando mensagem para usuário ${userId}`);
       const assistantId = await this.getOrCreateAssistant();
+      console.log(`✅ [ASSISTANT] Assistant ID: ${assistantId}`);
       const threadId = await this.getOrCreateThread(userId);
+      console.log(`✅ [ASSISTANT] Thread ID: ${threadId}`);
 
       // Adicionar contexto do usuário na primeira mensagem
       let messageContent = userMessage;
@@ -291,10 +294,17 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
    */
   async waitForCompletion(threadId, runId, context) {
     let run = await openai.beta.threads.runs.retrieve(threadId, runId);
+    let attempts = 0;
+    const maxAttempts = 30; // 30 segundos timeout
     
     while (run.status === 'in_progress' || run.status === 'queued') {
+      if (attempts >= maxAttempts) {
+        throw new Error('Timeout aguardando resposta do Assistant');
+      }
       await new Promise(resolve => setTimeout(resolve, 1000));
       run = await openai.beta.threads.runs.retrieve(threadId, runId);
+      attempts++;
+      console.log(`⏳ [ASSISTANT] Status: ${run.status} (tentativa ${attempts}/${maxAttempts})`);
     }
 
     // Se precisar de function calls
@@ -330,8 +340,15 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
       const lastMessage = messages.data[0];
       
       if (lastMessage.role === 'assistant') {
-        return lastMessage.content[0].text.value;
+        const response = lastMessage.content[0].text.value;
+        console.log(`✅ [ASSISTANT] Resposta: ${response.substring(0, 100)}...`);
+        return response;
       }
+    }
+
+    // Se falhou, logar detalhes
+    if (run.status === 'failed') {
+      console.error(`❌ [ASSISTANT] Run falhou:`, run.last_error);
     }
 
     throw new Error(`Run finalizado com status: ${run.status}`);

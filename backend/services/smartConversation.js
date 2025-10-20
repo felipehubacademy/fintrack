@@ -576,13 +576,16 @@ Retorne APENAS JSON:`;
       };
 
       // 4. Enviar mensagem para o Assistant
+      console.log('🔄 [ASSISTANT] Enviando para ZUL Assistant...');
       const response = await this.zulAssistant.sendMessage(user.id, text, context);
+      console.log('✅ [ASSISTANT] Resposta recebida do Assistant');
       
       // 5. Enviar resposta para o usuário
       await this.sendWhatsAppMessage(userPhone, response);
 
     } catch (error) {
       console.error('❌ [ASSISTANT] Erro no processamento:', error);
+      console.error('❌ [ASSISTANT] Stack:', error.stack);
       await this.sendWhatsAppMessage(userPhone, 
         this.zulMessages.genericError()
       );
