@@ -403,7 +403,6 @@ export default function DashboardHome() {
 
   // Debug logs
   console.log('🔍 [DASHBOARD DEBUG] selectedMonth:', selectedMonth);
-  console.log('🔍 [DASHBOARD DEBUG] currentMonthStr:', currentMonthStr);
   console.log('🔍 [DASHBOARD DEBUG] monthlyData:', monthlyData);
   console.log('🔍 [DASHBOARD DEBUG] currentMonthData:', currentMonthData);
   console.log('🔍 [DASHBOARD DEBUG] cardExpenses:', cardExpenses);
