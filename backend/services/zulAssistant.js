@@ -258,9 +258,18 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
   async sendMessage(userId, userMessage, context = {}) {
     try {
       console.log(`📤 [ASSISTANT] Enviando mensagem para usuário ${userId}`);
+      console.log(`📤 [ASSISTANT] Mensagem: "${userMessage}"`);
+      
       const assistantId = await this.getOrCreateAssistant();
+      if (!assistantId) {
+        throw new Error('Falha ao obter/criar Assistant ID');
+      }
       console.log(`✅ [ASSISTANT] Assistant ID: ${assistantId}`);
+      
       const threadId = await this.getOrCreateThread(userId);
+      if (!threadId) {
+        throw new Error('Falha ao obter/criar Thread ID');
+      }
       console.log(`✅ [ASSISTANT] Thread ID: ${threadId}`);
 
       // Adicionar contexto do usuário na primeira mensagem
@@ -276,9 +285,11 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
       });
 
       // Executar o Assistant
+      console.log(`🏃 [ASSISTANT] Criando run...`);
       const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: assistantId
       });
+      console.log(`✅ [ASSISTANT] Run criado: ${run.id}`);
 
       // Aguardar conclusão e processar
       return await this.waitForCompletion(threadId, run.id, context);
