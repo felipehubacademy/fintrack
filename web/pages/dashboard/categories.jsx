@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import LoadingLogo from '../../components/LoadingLogo';
 import { useOrganization } from '../../hooks/useOrganization';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -84,18 +85,15 @@ export default function Categories() {
 
   if (orgLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando categorias...</p>
-        </div>
+      <div className="min-h-screen bg-fog-mist flex items-center justify-center">
+        <LoadingLogo className="h-16 w-16" />
       </div>
     );
   }
 
   if (orgError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-fog-mist flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">Erro ao carregar dados da organização</p>
         </div>
@@ -208,7 +206,7 @@ export default function Categories() {
         </Card>
 
         {/* Informações */}
-        <Card className="p-6 mt-6 bg-blue-50 border-blue-200">
+        <Card className="p-6 mt-6 bg-blue-50 border-0 shadow-sm hover:shadow-md transition-all duration-200">
           <h3 className="font-medium text-blue-900 mb-2">💡 Como funciona</h3>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• As categorias são específicas da sua organização</li>

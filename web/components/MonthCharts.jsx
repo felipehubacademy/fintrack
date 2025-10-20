@@ -69,66 +69,59 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Pizza 3: Divisão por Responsável (sem dupla contagem)
-  // Estratégia:
-  // 1) Somar despesas individuais por owner
-  // 2) Somar total compartilhado (owner === 'Compartilhado')
-  // 3) Distribuir o compartilhado entre os owners individuais conforme split_percentage ou igualmente
+  // Pizza 3: Divisão por Responsável (com expense_splits)
+  // Nova Estratégia:
+  // 1) Despesas individuais: somar direto por owner
+  // 2) Despesas compartilhadas COM splits: usar os splits personalizados
+  // 3) Despesas compartilhadas SEM splits: usar fallback (cost_centers.split_percentage)
+  
   const ownerTotals = {};
-  let sharedTotal = 0;
-
   const displayNameByCanon = {};
 
+  // Determinar owners individuais conhecidos
+  const individualCenters = (costCenters || []).filter(c => c && c.type === 'individual');
+  
+  // Criar mapa de cost_center_id -> name para lookup rápido
+  const costCenterMap = {};
+  individualCenters.forEach(cc => {
+    costCenterMap[cc.id] = cc.name;
+    displayNameByCanon[canon(cc.name)] = cc.name;
+  });
+
+  // Processar cada despesa
   (expenses || []).forEach(expense => {
     if (!expense) return;
     const amount = parseAmount(expense.amount);
-    const ownerRaw = expense.owner || 'Outros';
-    const ownerKey = canon(ownerRaw);
-    if (ownerKey === canon('Compartilhado')) {
-      sharedTotal += amount;
-      return;
+    
+    if (expense.split && expense.owner === 'Compartilhado') {
+      // Despesa compartilhada
+      if (expense.expense_splits && expense.expense_splits.length > 0) {
+        // Usar splits personalizados
+        expense.expense_splits.forEach(split => {
+          const ccName = costCenterMap[split.cost_center_id] || split.cost_center?.name || 'Outros';
+          const ccKey = canon(ccName);
+          if (!ownerTotals[ccKey]) ownerTotals[ccKey] = 0;
+          ownerTotals[ccKey] += parseAmount(split.amount);
+          if (!displayNameByCanon[ccKey]) displayNameByCanon[ccKey] = ccName;
+        });
+      } else {
+        // Usar fallback (cost_centers.split_percentage)
+        individualCenters.forEach(cc => {
+          const percentage = parseFloat(cc.split_percentage || 0);
+          const share = (amount * percentage) / 100;
+          const ccKey = canon(cc.name);
+          if (!ownerTotals[ccKey]) ownerTotals[ccKey] = 0;
+          ownerTotals[ccKey] += share;
+        });
+      }
+    } else {
+      // Despesa individual
+      const ownerRaw = expense.owner || 'Outros';
+      const ownerKey = canon(ownerRaw);
+      if (!ownerTotals[ownerKey]) ownerTotals[ownerKey] = 0;
+      ownerTotals[ownerKey] += amount;
+      if (!displayNameByCanon[ownerKey]) displayNameByCanon[ownerKey] = ownerRaw;
     }
-    if (!ownerTotals[ownerKey]) ownerTotals[ownerKey] = 0;
-    ownerTotals[ownerKey] += amount;
-    if (!displayNameByCanon[ownerKey]) displayNameByCanon[ownerKey] = ownerRaw;
-  });
-
-  // Determinar owners individuais conhecidos (priorizar costCenters, cair para owners detectados nas despesas)
-  const individualCenters = (costCenters || []).filter(c => c && c.type === 'individual' && c.name !== 'Compartilhado');
-  const individualNames = individualCenters.length > 0
-    ? individualCenters.map(c => c.name)
-    : Object.keys(ownerTotals).map(k => displayNameByCanon[k] || k);
-
-  // Mapear percentuais de split a partir dos cost centers (normalizado)
-  let splitMap = {};
-  let totalPct = 0;
-  individualCenters.forEach(c => {
-    const pct = Number(c.split_percentage ?? 0);
-    if (!isNaN(pct) && pct > 0) {
-      splitMap[canon(c.name)] = pct;
-      totalPct += pct;
-    }
-  });
-
-  if (Object.keys(splitMap).length === 0 || totalPct === 0) {
-    // dividir igualmente se não houver configuração válida
-    const equalPct = individualNames.length > 0 ? (100 / individualNames.length) : 0;
-    individualNames.forEach(name => { splitMap[canon(name)] = equalPct; });
-    totalPct = 100;
-  }
-
-  // Normalizar para garantir soma 100
-  if (totalPct !== 100 && totalPct > 0) {
-    Object.keys(splitMap).forEach(name => {
-      splitMap[name] = (splitMap[name] / totalPct) * 100;
-    });
-  }
-
-  // Aplicar rateio do compartilhado sem duplicar valores
-  Object.keys(splitMap).forEach(nameKey => {
-    const share = sharedTotal * (splitMap[nameKey] / 100);
-    if (!ownerTotals[nameKey]) ownerTotals[nameKey] = 0;
-    ownerTotals[nameKey] += share;
   });
 
   const ownerData = Object.entries(ownerTotals)
@@ -230,7 +223,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
   if (!expenses || expenses.length === 0) {
     return (
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
-        <div className="p-6 border-b border-gray-200/50 bg-gradient-to-r from-indigo-50 to-purple-50">
+        <div className="p-6 bg-flight-blue/5 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Análise do Mês</h2>
@@ -248,8 +241,8 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
           </div>
         </div>
         <div className="p-12 text-center">
-          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
-            <svg className="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-fog-mist to-feather-blue/50 rounded-2xl flex items-center justify-center">
+            <svg className="w-10 h-10 text-flight-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
@@ -264,7 +257,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
-        <div className="p-6 border-b border-gray-200/50 bg-gradient-to-r from-indigo-50 to-purple-50">
+        <div className="p-6 bg-flight-blue/5 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Análise do Mês</h2>
@@ -283,8 +276,8 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
         </div>
       </div>
       
-      {/* Grid dos 3 gráficos pizza */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Grid dos 3 gráficos pizza */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-4">
         {/* Pizza 1: Por Categorias */}
         <ProfessionalPieChart data={categoryChartData} title="Por Categorias" />
         

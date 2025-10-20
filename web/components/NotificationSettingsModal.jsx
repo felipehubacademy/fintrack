@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { Bell, X, Save, Mail, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Bell, X, Mail, MessageSquare, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 export default function NotificationSettingsModal({ isOpen, onClose, organization, user }) {
@@ -125,23 +125,23 @@ export default function NotificationSettingsModal({ isOpen, onClose, organizatio
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-hidden border border-flight-blue/20">
         <Card className="border-0 shadow-none">
-          <CardHeader className="border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <div className="p-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg">
-                  <Bell className="h-4 w-4 text-white" />
-                </div>
-                <span>Configurações de Notificações</span>
-              </CardTitle>
-              <Button variant="Koost" size="icon" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
+            <CardTitle className="flex items-center space-x-3">
+              <span className="text-gray-900 font-semibold">Configurações de Notificações</span>
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
+              className="text-gray-700 hover:bg-gray-100"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </CardHeader>
           
-          <CardContent className="p-6 space-y-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+          <CardContent className="pt-6 space-y-6 max-h-[calc(90vh-120px)] overflow-y-auto">
             {loading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -182,16 +182,19 @@ export default function NotificationSettingsModal({ isOpen, onClose, organizatio
                   ))}
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4 border-t">
-                  <Button variant="outline" onClick={onClose}>
+                <div className="flex justify-end space-x-3 pt-8 border-t border-gray-200">
+                  <Button 
+                    variant="outline" 
+                    onClick={onClose}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
                     Cancelar
                   </Button>
                   <Button 
                     onClick={handleSave}
                     disabled={saving}
-                    className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                    className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
                   >
-                    <Save className="h-4 w-4 mr-2" />
                     {saving ? 'Salvando...' : 'Salvar'}
                   </Button>
                 </div>

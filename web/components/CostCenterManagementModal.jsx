@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { Users, Plus, Edit, Trash2, X, Save } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 export default function CostCenterManagementModal({ isOpen, onClose, organization }) {
@@ -134,23 +134,23 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-hidden border border-flight-blue/20">
         <Card className="border-0 shadow-none">
-          <CardHeader className="border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg">
-                  <Users className="h-4 w-4 text-white" />
-                </div>
-                <span>Gerenciar Responsáveis</span>
-              </CardTitle>
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
+            <CardTitle className="flex items-center space-x-3">
+              <span className="text-gray-900 font-semibold">Gerenciar Responsáveis</span>
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
+              className="text-gray-700 hover:bg-gray-100"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </CardHeader>
           
-          <CardContent className="p-6 space-y-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+          <CardContent className="pt-6 space-y-6 max-h-[calc(90vh-120px)] overflow-y-auto">
             {/* Add/Edit Form */}
             {showForm && (
               <div className="bg-gray-50 rounded-lg p-4">
@@ -167,7 +167,7 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                       placeholder="Ex: Felipe, Letícia, Compartilhado..."
                       required
                     />
@@ -181,7 +181,7 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                       type="text"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                       placeholder="Descrição opcional do responsável"
                     />
                   </div>
@@ -205,12 +205,19 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                     </div>
                   </div>
                   
-                  <div className="flex justify-end space-x-3">
-                    <Button type="button" variant="outline" onClick={resetForm}>
+                  <div className="flex justify-end space-x-3 pt-8 border-t border-gray-200">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={resetForm}
+                      className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                    >
                       Cancelar
                     </Button>
-                    <Button type="submit" className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
-                      <Save className="h-4 w-4 mr-2" />
+                    <Button 
+                      type="submit" 
+                      className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+                    >
                       {editingCostCenter ? 'Salvar' : 'Criar'}
                     </Button>
                   </div>
@@ -225,7 +232,7 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                 {!showForm && (
                   <Button
                     onClick={() => setShowForm(true)}
-                    className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                    className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
                     size="sm"
                   >
                     <Plus className="h-4 w-4 mr-2" />

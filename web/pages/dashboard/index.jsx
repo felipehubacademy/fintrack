@@ -7,6 +7,7 @@ import MonthlyComparison from '../../components/MonthlyComparison';
 import StatsCards from '../../components/dashboard/StatsCards';
 import QuickActions from '../../components/dashboard/QuickActions';
 import NotificationModal from '../../components/NotificationModal';
+import LoadingLogo from '../../components/LoadingLogo';
 import { useOrganization } from '../../hooks/useOrganization';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -17,9 +18,11 @@ import {
   Search,
   Calendar,
   TrendingUp,
-  Users
+  Users,
+  RefreshCw
 } from 'lucide-react';
 import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 
 export default function DashboardHome() {
   const router = useRouter();
@@ -36,6 +39,9 @@ export default function DashboardHome() {
     totalExpenses: 0
   });
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -90,6 +96,8 @@ export default function DashboardHome() {
   const fetchAllExpenses = async () => {
     if (!organization) return;
     
+    setIsDataLoaded(false);
+    
     try {
       // Buscar todas as despesas confirmadas do mês da organização
       const startOfMonth = `${selectedMonth}-01`;
@@ -103,10 +111,18 @@ export default function DashboardHome() {
       console.log('🔍 [DASHBOARD DEBUG] organization.id:', organization.id);
       console.log('🔍 [DASHBOARD DEBUG] organization:', organization);
 
-      // Buscar despesas (compatível V1/V2)
+      // Buscar despesas (compatível V1/V2) com expense_splits
       let query = supabase
         .from('expenses')
-        .select('*')
+        .select(`
+          *,
+          expense_splits (
+            id,
+            cost_center_id,
+            percentage,
+            amount
+          )
+        `)
         // status: confirmed, paid, ou null (legado)
         .or('status.eq.confirmed,status.eq.paid,status.is.null')
         .gte('date', startOfMonth)
@@ -193,8 +209,24 @@ export default function DashboardHome() {
       
       // Buscar dados dos últimos 6 meses para comparação
       await fetchMonthlyData();
+      
+      // Marcar dados como carregados
+      setIsDataLoaded(true);
     } catch (error) {
       console.error('Error fetching expenses:', error);
+      setIsDataLoaded(true);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchAllExpenses();
+      await fetchMonthlyData();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -304,11 +336,8 @@ export default function DashboardHome() {
     }
   };
 
-  useEffect(() => {
-    if (orgUser) {
-      fetchAllExpenses();
-    }
-  }, [selectedMonth, orgUser]);
+  // Removido: useEffect duplicado que causava renderização dupla
+  // O fetchAllExpenses já é chamado no useEffect principal (linha 45-50)
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -336,13 +365,38 @@ export default function DashboardHome() {
     return { ...totals, total };
   };
 
-  // Calcular totais usando dados do mês atual do monthlyData
-  const currentDate = new Date();
-  const currentMonthStr = currentDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-  const currentMonthData = monthlyData.find(month => month.month === currentMonthStr);
-  const cardTotal = currentMonthData ? (currentMonthData.cartoes || 0) : 0;
-  const cashTotal = currentMonthData ? (currentMonthData.despesas || 0) : 0;
+  // Calcular totais usando dados do mês SELECIONADO (não sempre o atual)
+  const selectedDate = new Date(selectedMonth + '-01');
+  const selectedMonthStr = selectedDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+  const selectedMonthData = monthlyData.find(month => month.month === selectedMonthStr);
+  const cardTotal = selectedMonthData ? (selectedMonthData.cartoes || 0) : 0;
+  const cashTotal = selectedMonthData ? (selectedMonthData.despesas || 0) : 0;
   const grandTotal = cardTotal + cashTotal;
+
+  // Recalcular dados do mês anterior baseado no mês selecionado
+  useEffect(() => {
+    if (monthlyData.length === 0) return;
+    
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const previousDate = new Date(year, month - 2, 1); // month - 2 porque month está 1-indexed
+    const previousMonthStr = previousDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    
+    const previousData = monthlyData.find(m => m.month === previousMonthStr);
+    
+    if (previousData) {
+      setPreviousMonthData({
+        cardExpenses: previousData.cartoes || 0,
+        cashExpenses: previousData.despesas || 0,
+        totalExpenses: (previousData.cartoes || 0) + (previousData.despesas || 0)
+      });
+    } else {
+      setPreviousMonthData({
+        cardExpenses: 0,
+        cashExpenses: 0,
+        totalExpenses: 0
+      });
+    }
+  }, [selectedMonth, monthlyData]);
   
   // Usar despesas brutas do mês diretamente nos gráficos
   const expensesForCharts = monthExpenses || [];
@@ -359,13 +413,10 @@ export default function DashboardHome() {
   console.log('🔍 [DASHBOARD DEBUG] cashTotal:', cashTotal);
   console.log('🔍 [DASHBOARD DEBUG] grandTotal:', grandTotal);
 
-  if (orgLoading) {
+  if (orgLoading || !isDataLoaded) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando organização...</p>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <LoadingLogo className="h-24 w-24" />
       </div>
     );
   }
@@ -388,17 +439,37 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <Header 
         organization={organization}
         user={orgUser}
         showNotificationModal={showNotificationModal}
         setShowNotificationModal={setShowNotificationModal}
+        onUnreadCountChange={setUnreadNotifications}
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
+        {/* Header Actions */}
+        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+              <h2 className="text-lg font-semibold text-gray-900">Painel Principal</h2>
+              <div className="flex items-center space-x-3">
+                <Button 
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Atualizando...' : 'Atualizar Dados'}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
         {/* Stats Cards */}
         <StatsCards 
           cardExpenses={cardTotal}
@@ -414,45 +485,23 @@ export default function DashboardHome() {
         <QuickActions />
 
         {/* Charts Section */}
-        <div className="space-y-6">
+        <div className="space-y-12">
           {/* Month Charts */}
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                  <Calendar className="h-4 w-4 text-white" />
-                </div>
-                <span>Análise do Mês</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MonthCharts expenses={expensesForCharts} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} categories={budgetCategories} />
-            </CardContent>
-          </Card>
+          <MonthCharts expenses={expensesForCharts} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} categories={budgetCategories} />
 
           {/* Monthly Comparison */}
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18M7 13l3 3 7-7" />
-                  </svg>
-                </div>
-                <span>Comparativo Mensal</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MonthlyComparison monthlyData={monthlyData} />
-            </CardContent>
-          </Card>
+          <MonthlyComparison monthlyData={monthlyData} />
         </div>
       </main>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Notification Modal */}
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
+        onUnreadCountChange={setUnreadNotifications}
       />
     </div>
   );

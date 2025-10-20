@@ -5,6 +5,7 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import LoadingLogo from '../../components/LoadingLogo';
 import { 
   Target, 
   Plus, 
@@ -22,7 +23,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import BudgetModal from '../../components/BudgetModal';
+import NotificationModal from '../../components/NotificationModal';
 import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 
 export default function BudgetsDashboard() {
   const router = useRouter();
@@ -33,15 +36,29 @@ export default function BudgetsDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
-      fetchBudgets();
-      fetchExpenses();
+      fetchData();
     } else if (!orgLoading && orgError) {
       router.push('/');
     }
   }, [orgLoading, orgError, organization, selectedMonth]);
+  
+  const fetchData = async () => {
+    setIsDataLoaded(false);
+    try {
+      await Promise.all([fetchBudgets(), fetchExpenses()]);
+      setIsDataLoaded(true);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setIsDataLoaded(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchBudgets = async () => {
     try {
@@ -240,20 +257,17 @@ export default function BudgetsDashboard() {
     }
   };
 
-  if (orgLoading) {
+  if (orgLoading || !isDataLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando orçamentos...</p>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <LoadingLogo className="h-24 w-24" />
       </div>
     );
   }
 
   if (orgError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
           <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
@@ -266,7 +280,7 @@ export default function BudgetsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <Header 
         organization={organization}
@@ -277,101 +291,92 @@ export default function BudgetsDashboard() {
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
         {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-lg font-semibold text-gray-900">Gestão de Orçamentos</h2>
-          <div className="flex items-center space-x-3">
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-            <Button 
-              onClick={() => setShowBudgetModal(true)}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Orçamento
-            </Button>
-          </div>
-        </div>
+        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+              <h2 className="text-lg font-semibold text-gray-900">Gestão de Orçamentos</h2>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-transparent"
+                />
+                <Button 
+                  onClick={() => setShowBudgetModal(true)}
+                  className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Orçamento
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Orçado</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    R$ {budgets.reduce((sum, b) => sum + b.amount, 0).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <Target className="h-5 w-5 text-blue-600" />
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Orçado
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <Target className="h-4 w-4 text-flight-blue" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {budgets.reduce((sum, b) => sum + b.amount, 0).toLocaleString('pt-BR')}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Gasto</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    R$ {budgets.reduce((sum, b) => sum + b.spent, 0).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-                <div className="p-2 bg-red-50 rounded-lg">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
-                </div>
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Gasto
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <TrendingDown className="h-4 w-4 text-flight-blue" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {budgets.reduce((sum, b) => sum + b.spent, 0).toLocaleString('pt-BR')}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Restante</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    R$ {(budgets.reduce((sum, b) => sum + b.amount, 0) - budgets.reduce((sum, b) => sum + b.spent, 0)).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-                <div className="p-2 bg-green-50 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                </div>
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Restante
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <DollarSign className="h-4 w-4 text-flight-blue" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {(budgets.reduce((sum, b) => sum + b.amount, 0) - budgets.reduce((sum, b) => sum + b.spent, 0)).toLocaleString('pt-BR')}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Categorias</p>
-                  <p className="text-2xl font-bold text-gray-900">{budgets.length}</p>
-                </div>
-                <div className="p-2 bg-purple-50 rounded-lg">
-                  <Calendar className="h-5 w-5 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Budgets Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {budgets.map((budget) => {
             const percentage = (budget.spent / budget.amount) * 100;
             const status = getBudgetStatus(budget.spent, budget.amount);
             
             return (
-              <Card key={budget.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+              <Card key={budget.id} className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -455,7 +460,7 @@ export default function BudgetsDashboard() {
 
         {/* Empty State */}
         {budgets.length === 0 && (
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardContent className="p-12 text-center">
               <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <Target className="h-8 w-8 text-gray-400" />
@@ -464,7 +469,7 @@ export default function BudgetsDashboard() {
               <p className="text-gray-600 mb-6">Configure suas metas mensais para ter controle total sobre seus gastos.</p>
               <Button 
                 onClick={() => setShowBudgetModal(true)}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeiro Orçamento
@@ -488,6 +493,15 @@ export default function BudgetsDashboard() {
           selectedMonth={selectedMonth}
         />
       )}
+
+      {/* Footer */}
+      <Footer />
+
+      {/* Notification Modal */}
+      <NotificationModal 
+        isOpen={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+      />
     </div>
   );
 }

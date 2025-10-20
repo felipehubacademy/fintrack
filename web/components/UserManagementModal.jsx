@@ -91,23 +91,23 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-hidden border border-flight-blue/20">
         <Card className="border-0 shadow-none">
-          <CardHeader className="border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg">
-                  <Users className="h-4 w-4 text-white" />
-                </div>
-                <span>Gerenciar Usuários</span>
-              </CardTitle>
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
+            <CardTitle className="flex items-center space-x-3">
+              <span className="text-gray-900 font-semibold">Gerenciar Usuários</span>
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
+              className="text-gray-700 hover:bg-gray-100"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </CardHeader>
           
-          <CardContent className="p-6 space-y-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+          <CardContent className="pt-6 space-y-6 max-h-[calc(90vh-120px)] overflow-y-auto">
             {/* Invite Link Section */}
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="font-medium text-gray-900 mb-3">Link de Convite</h3>
@@ -116,12 +116,12 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
                   type="text"
                   value={generateInviteLink()}
                   readOnly
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-mono"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-mono focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 />
                 <Button
                   onClick={copyInviteLink}
                   variant={copied ? "default" : "outline"}
-                  className={copied ? "bg-green-600 hover:bg-green-700" : ""}
+                  className={copied ? "bg-green-600 hover:bg-green-700" : "bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"}
                   size="sm"
                 >
                   {copied ? (

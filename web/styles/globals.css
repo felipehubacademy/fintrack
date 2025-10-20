@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* MeuAzulão Brand Colors */
+:root {
+  --flight-blue: #207DFF;
+  --deep-sky: #0D2C66;
+  --feather-blue: #8FCBFF;
+  --spring-accent: #5FFFA7;
+  --fog-mist: #E9EEF5;
+}
+
+/* Loading Logo Animation */
+@keyframes fillLogo {
+  0% {
+    clip-path: inset(100% 0 0 0);
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+.animate-fill-logo {
+  animation: fillLogo 1.5s ease-in-out infinite;
+}
+
+/* Filtros de cor para SVG */
+.logo-base {
+  filter: brightness(0) saturate(100%) invert(46%) sepia(88%) saturate(2477%) hue-rotate(198deg) brightness(102%) contrast(101%);
+}
+
+.logo-fill {
+  filter: brightness(0) saturate(100%) invert(13%) sepia(67%) saturate(2899%) hue-rotate(208deg) brightness(97%) contrast(98%);
+}
+
 * {
   box-sizing: border-box;
   padding: 0;

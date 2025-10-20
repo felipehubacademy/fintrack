@@ -4,24 +4,24 @@ import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import LoadingLogo from '../../components/LoadingLogo';
 import { 
   LogOut, 
   Settings, 
   Bell, 
   Users, 
   Target,
-  Copy,
-  CheckCircle,
-  UserPlus,
   Tag,
   UserCheck
 } from 'lucide-react';
 import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 import Link from 'next/link';
 import UserManagementModal from '../../components/UserManagementModal';
 import CategoryManagementModal from '../../components/CategoryManagementModal';
 import CostCenterManagementModal from '../../components/CostCenterManagementModal';
 import NotificationSettingsModal from '../../components/NotificationSettingsModal';
+import NotificationModal from '../../components/NotificationModal';
 
 export default function ConfigPage() {
   const router = useRouter();
@@ -32,10 +32,13 @@ export default function ConfigPage() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCostCenterModal, setShowCostCenterModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
       generateInviteLink();
+      setIsDataLoaded(true);
     } else if (!orgLoading && orgError) {
       router.push('/');
     }
@@ -77,12 +80,6 @@ export default function ConfigPage() {
           action: "users",
           icon: UserCheck
         },
-        {
-          title: "Compartilhar Link",
-          description: "Link de convite da organização",
-          action: "share",
-          icon: UserPlus
-        }
       ]
     },
     {
@@ -123,20 +120,17 @@ export default function ConfigPage() {
     }
   ];
 
-  if (orgLoading) {
+  if (orgLoading || !isDataLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando configurações...</p>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <LoadingLogo className="h-24 w-24" />
       </div>
     );
   }
 
   if (orgError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
           <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
@@ -149,7 +143,7 @@ export default function ConfigPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <Header 
         organization={organization}
@@ -160,109 +154,89 @@ export default function ConfigPage() {
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
         {/* Organization Info */}
-        <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                <Settings className="h-4 w-4 text-white" />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+              <h2 className="text-lg font-semibold text-gray-900">Informações da Organização</h2>
+              <div className="flex items-center space-x-6">
+                <div className="text-left">
+                  <p className="text-sm font-medium text-gray-600">Nome</p>
+                  <p className="text-lg font-semibold text-gray-900">{organization?.name || 'N/A'}</p>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-gray-600">Código</p>
+                  <p className="text-lg font-semibold text-gray-900 font-mono">{organization?.invite_code || 'N/A'}</p>
+                </div>
               </div>
-              <span>Informações da Organização</span>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Configuration Actions */}
+        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
+          <CardHeader>
+            <CardTitle>
+              Ações
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-600">Nome da Organização</label>
-                <p className="text-lg font-semibold text-gray-900">{organization?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600">Código de Convite</label>
-                <p className="text-lg font-semibold text-gray-900 font-mono">{organization?.invite_code || 'N/A'}</p>
-              </div>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {configSections.flatMap(section => section.actions).map((action, index) => (
+                <div key={index}>
+                  {action.href ? (
+                    <Link href={action.href}>
+                      <Button
+                        variant="outline"
+                        className="w-full h-auto p-4 flex flex-col items-center space-y-2 bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md"
+                      >
+                        <action.icon className="h-5 w-5" />
+                        <div className="text-center">
+                          <div className="font-medium text-sm">{action.title}</div>
+                          <div className="text-xs opacity-80 mt-1">{action.description}</div>
+                        </div>
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full h-auto p-4 flex flex-col items-center space-y-2 hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white"
+                      disabled={action.action === 'export'}
+                      onClick={() => {
+                        if (action.action === 'notifications') {
+                          setShowNotificationSettingsModal(true);
+                        } else if (action.action === 'users') {
+                          setShowUserModal(true);
+                        } else if (action.action === 'categories') {
+                          setShowCategoryModal(true);
+                        } else if (action.action === 'cost-centers') {
+                          setShowCostCenterModal(true);
+                        } else if (action.action === 'export') {
+                          // TODO: Implementar exportação
+                        }
+                      }}
+                    >
+                      <action.icon className="h-5 w-5" />
+                      <div className="text-center">
+                        <div className="font-medium text-sm">
+                          {action.title}
+                          {(action.action === 'export' || action.action === 'notifications') && (
+                            <span className="ml-2 text-xs text-gray-500">(Em breve)</span>
+                          )}
+                        </div>
+                        <div className="text-xs opacity-80 mt-1">
+                          {action.description}
+                        </div>
+                      </div>
+                    </Button>
+                  )}
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
-
-        {/* Configuration Sections */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {configSections.map((section, index) => (
-            <Card key={index} className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center space-x-3">
-                  <div className={`p-2 rounded-lg ${section.color}`}>
-                    <section.icon className={`h-4 w-4 ${section.iconColor}`} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{section.description}</p>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  {section.actions.map((action, actionIndex) => (
-                    <div key={actionIndex}>
-                      {action.href ? (
-                        <Link href={action.href}>
-                          <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:bg-gray-50">
-                            <action.icon className="h-4 w-4 mr-3 flex-shrink-0" />
-                            <div className="text-left flex-1">
-                              <div className="font-medium text-gray-900">{action.title}</div>
-                              <div className="text-xs text-gray-600 mt-1">{action.description}</div>
-                            </div>
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Button 
-                          variant={action.action === 'share' && copied ? "default" : "outline"}
-                          className={`w-full justify-start h-auto py-3 px-4 hover:bg-gray-50 ${
-                            action.action === 'share' && copied ? "bg-green-600 hover:bg-green-700 text-white" : ""
-                          }`}
-                          disabled={action.action === 'export'}
-                          onClick={() => {
-                            if (action.action === 'share') {
-                              copyInviteLink();
-                            } else if (action.action === 'notifications') {
-                              setShowNotificationModal(true);
-                            } else if (action.action === 'users') {
-                              setShowUserModal(true);
-                            } else if (action.action === 'categories') {
-                              setShowCategoryModal(true);
-                            } else if (action.action === 'cost-centers') {
-                              setShowCostCenterModal(true);
-                            } else if (action.action === 'export') {
-                              // TODO: Implementar exportação
-                            }
-                          }}
-                        >
-                          {action.action === 'share' && copied ? (
-                            <CheckCircle className="h-4 w-4 mr-3 flex-shrink-0" />
-                          ) : (
-                            <action.icon className="h-4 w-4 mr-3 flex-shrink-0" />
-                          )}
-                          <div className="text-left flex-1">
-                            <div className={`font-medium ${action.action === 'share' && copied ? "text-white" : "text-gray-900"}`}>
-                              {action.action === 'share' && copied ? "Link Copiado!" : action.title}
-                              {(action.action === 'export' || action.action === 'notifications') && (
-                                <span className="ml-2 text-xs text-gray-500">(Em breve)</span>
-                              )}
-                            </div>
-                            <div className={`text-xs mt-1 ${action.action === 'share' && copied ? "text-green-100" : "text-gray-600"}`}>
-                              {action.action === 'share' && copied ? "Link copiado para a área de transferência" : action.description}
-                            </div>
-                          </div>
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
 
 
         {/* Modals */}
@@ -285,12 +259,20 @@ export default function ConfigPage() {
         />
 
         <NotificationSettingsModal
-          isOpen={showNotificationModal}
-          onClose={() => setShowNotificationModal(false)}
+          isOpen={showNotificationSettingsModal}
+          onClose={() => setShowNotificationSettingsModal(false)}
           organization={organization}
           user={orgUser}
         />
+
+        <NotificationModal 
+          isOpen={showNotificationModal}
+          onClose={() => setShowNotificationModal(false)}
+        />
       </main>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

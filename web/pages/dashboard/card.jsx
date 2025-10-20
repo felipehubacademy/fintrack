@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import SummaryCards from '../../components/SummaryCards';
 import ExpenseTable from '../../components/ExpenseTable';
 import Chart from '../../components/Chart';
+import LoadingLogo from '../../components/LoadingLogo';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -148,11 +149,8 @@ export default function Dashboard() {
 
   if (loading && !user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
-        </div>
+      <div className="min-h-screen bg-fog-mist flex items-center justify-center">
+        <LoadingLogo className="h-24 w-24" />
       </div>
     );
   }

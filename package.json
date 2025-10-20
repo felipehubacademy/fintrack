@@ -1,8 +1,8 @@
 {
-  "name": "fintrack",
+  "name": "meuazulao",
   "version": "1.0.0",
   "type": "module",
-  "description": "Personal finance tracker with AI",
+  "description": "MeuAzulão - Gestão Financeira Familiar Inteligente com WhatsApp",
   "private": true,
   "scripts": {
     "test:ai": "node test-openai-integration.js"

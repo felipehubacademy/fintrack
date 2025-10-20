@@ -6,8 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import CardModal from '../../components/CardModal';
+import LoadingLogo from '../../components/LoadingLogo';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 import Header from '../../components/Header';
+import Footer from '../../components/Footer';
+import NotificationModal from '../../components/NotificationModal';
 import { 
   CreditCard, 
   Plus, 
@@ -37,6 +40,8 @@ export default function CardsDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [usageByCardId, setUsageByCardId] = useState({});
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const computeClosingDay = (bestDay) => {
     if (!bestDay || typeof bestDay !== 'number') return null;
@@ -54,6 +59,7 @@ export default function CardsDashboard() {
 
   // Buscar cartões reais da tabela cards
   const fetchCards = async () => {
+    setIsDataLoaded(false);
     try {
       let query = supabase
         .from('cards')
@@ -74,11 +80,16 @@ export default function CardsDashboard() {
         } else {
           setUsageByCardId({});
         }
+        setIsDataLoaded(true);
       } else {
         console.error('Error fetching cards:', error);
+        setIsDataLoaded(true);
       }
     } catch (error) {
       console.error('Error fetching cards:', error);
+      setIsDataLoaded(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -229,20 +240,17 @@ export default function CardsDashboard() {
 
   
 
-  if (orgLoading) {
+  if (orgLoading || !isDataLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando cartões...</p>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <LoadingLogo className="h-24 w-24" />
       </div>
     );
   }
 
   if (orgError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
           <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
@@ -255,7 +263,7 @@ export default function CardsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <Header 
         organization={organization}
@@ -266,104 +274,95 @@ export default function CardsDashboard() {
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
-        {/* Header Actions (consistentes com /finance) */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-lg font-semibold text-gray-900">Gestão de Cartões</h2>
-          <div className="flex items-center space-x-3">
-            <Button 
-              onClick={openAddModal}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Cartão
-            </Button>
-          </div>
-        </div>
+        {/* Header Actions */}
+        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+              <h2 className="text-lg font-semibold text-gray-900">Gestão de Cartões</h2>
+              <div className="flex items-center space-x-3">
+                <Button 
+                  onClick={openAddModal}
+                  className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Cartão
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total de Cartões</p>
-                  <p className="text-2xl font-bold text-gray-900">{cards.length}</p>
-                </div>
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <CreditCard className="h-5 w-5 text-blue-600" />
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total de Cartões
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <CreditCard className="h-4 w-4 text-flight-blue" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                {cards.length}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Limite Total</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    R$ {cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-                <div className="p-2 bg-green-50 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                </div>
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Limite Total
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <TrendingUp className="h-4 w-4 text-flight-blue" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0).toLocaleString('pt-BR')}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Cartões Ativos</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {cards.filter(c => c.is_active).length}
-                  </p>
-                </div>
-                <div className="p-2 bg-green-50 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                </div>
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Uso Total de Crédito
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <TrendingDown className={`h-4 w-4 ${totalCreditUsagePct >= 90 ? 'text-red-600' : totalCreditUsagePct >= 70 ? 'text-yellow-600' : 'text-flight-blue'}`} />
               </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                {totalCreditUsagePct.toFixed(1)}%
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                R$ {totalCreditUsed.toLocaleString('pt-BR')} de R$ {totalCreditLimit.toLocaleString('pt-BR')}
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Uso Total de Crédito</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {totalCreditUsagePct.toFixed(1)}%
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    R$ {totalCreditUsed.toLocaleString('pt-BR')} de R$ {totalCreditLimit.toLocaleString('pt-BR')}
-                  </p>
-                </div>
-                <div className="p-2 bg-purple-50 rounded-lg">
-                  <TrendingDown className={`h-5 w-5 ${totalCreditUsagePct >= 90 ? 'text-red-600' : totalCreditUsagePct >= 70 ? 'text-yellow-600' : 'text-green-600'}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {cards.map((card) => {
             const limit = card.credit_limit || 0;
             
             return (
-              <Card key={card.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+              <Card key={card.id} className="border border-flight-blue/20 bg-white shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden">
                 {/* Card Visual */}
                 <div className={`h-36 bg-gradient-to-r ${card.color} p-6 text-white relative`}>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="text-xl font-bold">{card.name} - {card.bank || 'Banco'}</p>
                     </div>
                     <div className="flex items-center space-x-2">
+                      <p className="text-xl font-bold">{card.name} - {card.bank || 'Banco'}</p>
                     </div>
                   </div>
                   
@@ -373,22 +372,12 @@ export default function CardsDashboard() {
                         <p className="text-xs opacity-70 mb-1">Titular</p>
                         <p className="text-sm font-semibold">{card.holder_name || 'TITULAR'}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs opacity-70 mb-1">Vencimento</p>
-                        <p className="text-sm font-semibold">{card.billing_day || '—'}</p>
-                        {card.best_day && (
-                          <>
-                            <p className="text-xs opacity-70 mb-1 mt-2">Melhor dia de compra</p>
-                            <p className="text-sm font-semibold">{card.best_day}</p>
-                          </>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Card Details */}
-                <CardContent className="p-6 space-y-4">
+                <CardContent className="p-6 space-y-4 bg-flight-blue/5">
                   {/* Usage Progress (only for credit cards) */}
                   {/* Uso do limite (apenas cartões de crédito) */}
                   {card.type === 'credit' && (
@@ -427,9 +416,19 @@ export default function CardsDashboard() {
                             })()}
                           </span>
                         </div>
+                        {card.best_day && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">Melhor dia de compra:</span>
+                            <span className="font-semibold">{card.best_day}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Dia de Fechamento:</span>
                           <span className="font-semibold">{computeClosingDay(card.best_day) ?? 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Vencimento:</span>
+                          <span className="font-semibold">{card.billing_day || '—'}</span>
                         </div>
                         <div className="flex justify-between border-t pt-2">
                           <span className="text-sm text-gray-600">Status:</span>
@@ -484,7 +483,7 @@ export default function CardsDashboard() {
 
         {/* Empty State */}
         {cards.length === 0 && (
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardContent className="p-12 text-center">
               <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <CreditCard className="h-8 w-8 text-gray-400" />
@@ -493,7 +492,7 @@ export default function CardsDashboard() {
               <p className="text-gray-600 mb-6">Adicione seus cartões para ter controle total sobre seus gastos e limites.</p>
               <Button 
                 onClick={openAddModal}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                className="bg-gradient-to-r from-deep-sky to-flight-blue hover:from-flight-blue hover:to-feather-blue shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeiro Cartão
@@ -513,6 +512,15 @@ export default function CardsDashboard() {
           editingCard={editingCard}
         />
       </main>
+
+      {/* Footer */}
+      <Footer />
+
+      {/* Notification Modal */}
+      <NotificationModal 
+        isOpen={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+      />
     </div>
   );
 }

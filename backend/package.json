@@ -1,7 +1,7 @@
 {
-  "name": "fintrack-backend",
+  "name": "meuazulao-backend",
   "version": "1.0.0",
-  "description": "Backend for FinTrack - Personal Finance Tracker",
+  "description": "Backend for MeuAzulão - Gestão Financeira Familiar Inteligente",
   "main": "index.js",
   "type": "module",
   "scripts": {

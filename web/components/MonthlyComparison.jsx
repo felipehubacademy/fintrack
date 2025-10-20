@@ -1,16 +1,20 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Area, AreaChart } from 'recharts';
+import { useState } from 'react';
 
 export default function MonthlyComparison({ monthlyData = [] }) {
+  const [selectedPeriod, setSelectedPeriod] = useState('12');
   // Debug logs
   console.log('🔍 [MONTHLYCOMPARISON DEBUG] monthlyData:', monthlyData);
   
   // Processar dados para o gráfico
-  const chartData = monthlyData.map(month => ({
-    ...month,
-    cartoes: parseFloat(month.cartoes || 0),
-    despesas: parseFloat(month.despesas || 0),
-    total: parseFloat(month.cartoes || 0) + parseFloat(month.despesas || 0)
-  }));
+  const chartData = monthlyData
+    .slice(-parseInt(selectedPeriod)) // Pegar apenas os últimos N meses
+    .map(month => ({
+      ...month,
+      cartoes: parseFloat(month.cartoes || 0),
+      despesas: parseFloat(month.despesas || 0),
+      total: parseFloat(month.cartoes || 0) + parseFloat(month.despesas || 0)
+    }));
 
   // Tooltip customizado moderno
   const CustomTooltip = ({ active, payload, label }) => {
@@ -27,19 +31,19 @@ export default function MonthlyComparison({ monthlyData = [] }) {
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
-                  <span className="text-xs text-gray-600">Cartões</span>
+                  <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+                  <span className="text-xs text-gray-600">Crédito</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">
+                <span className="text-sm font-semibold text-gray-900 ml-4">
                   R$ {cartoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                  <div className="w-3 h-3 rounded-full bg-flight-blue"></div>
                   <span className="text-xs text-gray-600">À Vista</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">
+                <span className="text-sm font-semibold text-gray-900 ml-4">
                   R$ {despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -62,13 +66,13 @@ export default function MonthlyComparison({ monthlyData = [] }) {
   if (!monthlyData || monthlyData.length === 0) {
     return (
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
-        <div className="p-6 border-b border-gray-200/50 bg-gradient-to-r from-indigo-50 to-purple-50">
+        <div className="p-6 bg-flight-blue/5 rounded-t-2xl">
           <h2 className="text-xl font-bold text-gray-900">Comparativo Mensal</h2>
           <p className="text-sm text-gray-600 mt-1">Evolução dos gastos nos últimos 12 meses</p>
         </div>
         <div className="p-12 text-center">
-          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
-            <svg className="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-fog-mist to-feather-blue/50 rounded-2xl flex items-center justify-center">
+            <svg className="w-10 h-10 text-flight-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
@@ -80,13 +84,34 @@ export default function MonthlyComparison({ monthlyData = [] }) {
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
-      <div className="p-6 border-b border-gray-200/50 bg-gradient-to-r from-indigo-50 to-purple-50">
-        <h2 className="text-xl font-bold text-gray-900">Comparativo Mensal</h2>
-        <p className="text-sm text-gray-600 mt-1">Evolução dos gastos nos últimos 12 meses</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
+        <div className="p-6 bg-flight-blue/5 rounded-t-2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Comparativo Mensal</h2>
+              <p className="text-sm text-gray-600 mt-1">Evolução dos gastos nos últimos {selectedPeriod} meses</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <label className="text-sm font-medium text-gray-700">Período:</label>
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-transparent text-sm bg-white/50"
+              >
+                <option value="3">3 meses</option>
+                <option value="6">6 meses</option>
+                <option value="12">12 meses</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
       
-      <div className="p-6">
+      {/* Gráfico */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
+        <div className="p-6">
         <ResponsiveContainer width="100%" height={400}>
           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -124,16 +149,17 @@ export default function MonthlyComparison({ monthlyData = [] }) {
             />
             <defs>
               <linearGradient id="cartoesGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#6366F1" />
-                <stop offset="100%" stopColor="#8B5CF6" />
+                <stop offset="0%" stopColor="#6B7280" />
+                <stop offset="100%" stopColor="#6B7280" />
               </linearGradient>
               <linearGradient id="despesasGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10B981" />
-                <stop offset="100%" stopColor="#059669" />
+                <stop offset="0%" stopColor="#207DFF" />
+                <stop offset="100%" stopColor="#207DFF" />
               </linearGradient>
             </defs>
           </BarChart>
         </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );

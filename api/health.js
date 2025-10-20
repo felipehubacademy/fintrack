@@ -22,7 +22,7 @@ export default function handler(req, res) {
       res.status(200).json({ 
         status: 'ok', 
         timestamp: new Date().toISOString(),
-        service: 'FinTrack Backend',
+        service: 'MeuAzulão Backend',
         version: '1.0.0'
       });
     }

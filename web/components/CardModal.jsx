@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import { X, CreditCard, AlertCircle } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 
 const CARD_COLORS = [
-  { value: 'from-blue-600 to-purple-600', label: 'Azul/Roxo', preview: 'bg-gradient-to-r from-blue-600 to-purple-600' },
-  { value: 'from-green-600 to-teal-600', label: 'Verde/Teal', preview: 'bg-gradient-to-r from-green-600 to-teal-600' },
-  { value: 'from-red-600 to-pink-600', label: 'Vermelho/Rosa', preview: 'bg-gradient-to-r from-red-600 to-pink-600' },
-  { value: 'from-orange-600 to-yellow-600', label: 'Laranja/Amarelo', preview: 'bg-gradient-to-r from-orange-600 to-yellow-600' },
-  { value: 'from-purple-600 to-indigo-600', label: 'Roxo/Índigo', preview: 'bg-gradient-to-r from-purple-600 to-indigo-600' },
-  { value: 'from-gray-600 to-slate-600', label: 'Cinza/Slate', preview: 'bg-gradient-to-r from-gray-600 to-slate-600' }
+  { value: 'bg-blue-600', label: 'Azul', preview: 'bg-blue-600' },
+  { value: 'bg-orange-600', label: 'Laranja', preview: 'bg-orange-600' },
+  { value: 'bg-purple-600', label: 'Roxo', preview: 'bg-purple-600' },
+  { value: 'bg-green-600', label: 'Verde', preview: 'bg-green-600' },
+  { value: 'bg-gray-600', label: 'Cinza', preview: 'bg-gray-600' },
+  { value: 'bg-red-600', label: 'Vermelho', preview: 'bg-red-600' }
 ];
 
 export default function CardModal({ isOpen, onClose, onSave, editingCard = null }) {
@@ -21,7 +21,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
     billing_day: '',
     best_day: '',
     credit_limit: '',
-    color: 'from-blue-600 to-purple-600'
+    color: 'bg-blue-600'
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -45,7 +45,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         billing_day: '',
         best_day: '',
         credit_limit: '',
-        color: 'from-blue-600 to-purple-600'
+        color: 'bg-blue-600'
       });
     }
     setErrors({});
@@ -126,17 +126,22 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         bottom: 0
       }}
     >
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-2xl">
-        <div className="p-6">
-          <div className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="flex items-center space-x-2">
-            <CreditCard className="h-5 w-5" />
-            <span>{editingCard ? 'Editar Cartão' : 'Novo Cartão'}</span>
-          </CardTitle>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-          </div>
+      <div className="w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-xl border border-flight-blue/20">
+        <Card className="border-0 shadow-none">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
+            <CardTitle className="flex items-center space-x-3">
+              <span className="text-gray-900 font-semibold">{editingCard ? 'Editar Cartão' : 'Novo Cartão'}</span>
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
+              className="text-gray-700 hover:bg-gray-100"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-6">
 
           <div>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -150,7 +155,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="Ex: Nubank Roxinho"
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                   errors.name ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -173,7 +178,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                   value={formData.bank}
                   onChange={(e) => handleChange('bank', e.target.value)}
                   placeholder="Ex: Nubank"
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                     errors.bank ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
@@ -194,7 +199,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                   value={formData.holder_name}
                   onChange={(e) => handleChange('holder_name', e.target.value)}
                   placeholder="Nome do titular"
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                     errors.holder_name ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
@@ -219,7 +224,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                 value={formData.credit_limit}
                 onChange={(e) => handleChange('credit_limit', e.target.value)}
                 placeholder="5000.00"
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                   errors.credit_limit ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -244,7 +249,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                   value={formData.billing_day}
                   onChange={(e) => handleChange('billing_day', e.target.value)}
                   placeholder="15"
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                     errors.billing_day ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
@@ -267,7 +272,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                   value={formData.best_day}
                   onChange={(e) => handleChange('best_day', e.target.value)}
                   placeholder="10"
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                     errors.best_day ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
@@ -285,7 +290,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Cor do Cartão
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-6 gap-3">
                 {CARD_COLORS.map((color) => (
                   <label key={color.value} className="flex items-center space-x-2 cursor-pointer">
                     <input
@@ -310,7 +315,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Preview
               </label>
-              <div className={`h-24 bg-gradient-to-r ${formData.color} rounded-lg p-4 text-white relative overflow-hidden`}>
+              <div className={`h-24 ${formData.color} rounded-lg p-4 text-white relative overflow-hidden`}>
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-xs opacity-80">{formData.bank || 'Banco'}</p>
@@ -325,17 +330,28 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             </div>
 
             {/* Botões */}
-            <div className="flex justify-end space-x-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onClose} 
+                disabled={loading}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+              >
                 {loading ? 'Salvando...' : editingCard ? 'Atualizar' : 'Criar Cartão'}
               </Button>
             </div>
           </form>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>,
     document.body

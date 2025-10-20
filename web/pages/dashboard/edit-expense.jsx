@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
+import LoadingLogo from '../../components/LoadingLogo';
 import { useOrganization } from '../../hooks/useOrganization';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -87,18 +88,15 @@ export default function EditExpense() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando despesa...</p>
-        </div>
+      <div className="min-h-screen bg-fog-mist flex items-center justify-center">
+        <LoadingLogo className="h-16 w-16" />
       </div>
     );
   }
 
   if (!expense) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-fog-mist flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">Despesa não encontrada</p>
           <Button onClick={() => router.push('/dashboard')}>

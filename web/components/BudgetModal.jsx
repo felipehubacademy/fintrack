@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import { Target, X, Save } from 'lucide-react';
+import { X } from 'lucide-react';
 
 export default function BudgetModal({ 
   isOpen, 
@@ -67,32 +67,32 @@ export default function BudgetModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl border border-flight-blue/20">
         <Card className="border-0 shadow-none">
-          <CardHeader className="border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                  <Target className="h-4 w-4 text-white" />
-                </div>
-                <span>{editingBudget ? 'Editar Orçamento' : 'Novo Orçamento'}</span>
-              </CardTitle>
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
+            <CardTitle className="flex items-center space-x-3">
+              <span className="text-gray-900 font-semibold">{editingBudget ? 'Editar Orçamento' : 'Novo Orçamento'}</span>
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
+              className="text-gray-700 hover:bg-gray-100"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </CardHeader>
           
-          <CardContent className="p-6">
+          <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Categoria *
                 </label>
                 <select
                   value={formData.category_id}
                   onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 >
                   <option value="">Selecione uma categoria</option>
@@ -105,7 +105,7 @@ export default function BudgetModal({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Valor do Orçamento *
                 </label>
                 <input
@@ -114,7 +114,7 @@ export default function BudgetModal({
                   min="0"
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   placeholder="0.00"
                   required
                 />
@@ -125,16 +125,21 @@ export default function BudgetModal({
                 <p><strong>Funcionalidade:</strong> Orçamento da família para esta categoria. Todas as despesas da categoria serão somadas, independente de quem gastou.</p>
               </div>
               
-              <div className="flex justify-end space-x-3 pt-4">
-                <Button type="button" variant="outline" onClick={onClose}>
+              <div className="flex justify-end space-x-3 pt-8 border-t border-gray-200">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={onClose}
+                  disabled={saving}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
                   Cancelar
                 </Button>
                 <Button 
                   type="submit"
                   disabled={saving}
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                  className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
                 >
-                  <Save className="h-4 w-4 mr-2" />
                   {saving ? 'Salvando...' : (editingBudget ? 'Salvar' : 'Criar')}
                 </Button>
               </div>

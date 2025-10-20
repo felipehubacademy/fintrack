@@ -6,10 +6,13 @@ import Link from 'next/link';
 import { useOrganization } from '../../hooks/useOrganization';
 import { Button } from '../../components/ui/Button';
 import ExpenseModal from '../../components/ExpenseModal';
+import EditExpenseModal from '../../components/EditExpenseModal';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import NotificationModal from '../../components/NotificationModal';
+import LoadingLogo from '../../components/LoadingLogo';
 import { TrendingUp, Bell, Settings, Search, LogOut, Calendar, Users, Target, Edit, Trash2, CreditCard, Plus, DollarSign } from 'lucide-react';
 import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 
 export default function FinanceDashboard() {
@@ -28,21 +31,13 @@ export default function FinanceDashboard() {
     card_id: null
   });
   const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState({
-    owner: '',
-    description: '',
-    category: '',
-    payment_method: '',
-    amount: '',
-    date: ''
-  });
-  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [cards, setCards] = useState([]);
   const [cardsLoading, setCardsLoading] = useState(true);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   
   // Estado de ordenação
   const [sortConfig, setSortConfig] = useState({
@@ -83,10 +78,19 @@ export default function FinanceDashboard() {
     try {
       setLoading(true);
       setPageLoading(true);
+      setIsDataLoaded(false);
       
       let query = supabase
         .from('expenses')
-        .select('*')
+        .select(`
+          *,
+          expense_splits (
+            id,
+            cost_center_id,
+            percentage,
+            amount
+          )
+        `)
         .eq('status', 'confirmed')
         .order('date', { ascending: false });
 
@@ -104,7 +108,15 @@ export default function FinanceDashboard() {
         // Usar normalização para filtrar por responsável
         const { data: allExpenses } = await supabase
           .from('expenses')
-          .select('*')
+          .select(`
+            *,
+            expense_splits (
+              id,
+              cost_center_id,
+              percentage,
+              amount
+            )
+          `)
           .eq('status', 'confirmed')
           .eq('organization_id', organization.id);
         
@@ -150,8 +162,10 @@ export default function FinanceDashboard() {
       });
 
       setExpenses(data || []);
+      setIsDataLoaded(true);
     } catch (error) {
       console.error('Error fetching expenses:', error);
+      setIsDataLoaded(true);
     } finally {
       setLoading(false);
       setPageLoading(false);
@@ -194,80 +208,8 @@ export default function FinanceDashboard() {
 
   const handleEdit = (expense) => {
     setEditingId(expense.id);
-    setEditData({
-      owner: expense.owner || '',
-      description: expense.description || '',
-      category: expense.category || '',
-      payment_method: expense.payment_method || '',
-      amount: expense.amount || '',
-      date: expense.date || ''
-    });
   };
 
-  const handleSave = async () => {
-    if (!editData.owner || !editData.description || !editData.amount) {
-      alert('Preencha todos os campos obrigatórios');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      // Buscar a despesa para verificar se tem parcelas
-      const expense = expenses.find(e => e.id === editingId);
-      const hasInstallments = expense?.parent_expense_id || expense?.installment_info;
-      
-      const updateData = {
-        owner: editData.owner,
-        description: editData.description,
-        category: editData.category,
-        payment_method: editData.payment_method,
-        amount: parseFloat(editData.amount),
-        date: editData.date,
-        status: 'confirmed',
-        split: editData.owner === 'Compartilhado',
-        confirmed_at: new Date().toISOString()
-      };
-
-      if (hasInstallments) {
-        // Atualizar todas as parcelas relacionadas (exceto installment_info)
-        const { error } = await supabase
-          .from('expenses')
-          .update(updateData)
-          .or(`id.eq.${editingId},parent_expense_id.eq.${editingId}`);
-        
-        if (error) throw error;
-        
-        alert('Todas as parcelas foram atualizadas com sucesso!');
-      } else {
-        // Atualizar despesa única
-        const { error } = await supabase
-          .from('expenses')
-          .update(updateData)
-          .eq('id', editingId);
-        
-        if (error) throw error;
-        
-        alert('Despesa atualizada com sucesso!');
-      }
-
-      setEditingId(null);
-      setEditData({
-        owner: '',
-        description: '',
-        category: '',
-        payment_method: '',
-        amount: '',
-        date: ''
-      });
-      fetchExpenses();
-
-    } catch (error) {
-      console.error('Erro ao atualizar:', error);
-      alert('Erro ao atualizar despesa');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleDelete = async (expenseId) => {
     // Buscar a despesa para verificar se tem parcelas
@@ -380,40 +322,89 @@ export default function FinanceDashboard() {
   };
 
   // Calcular totais dinamicamente por centro de custo
-  // Usar normalização para evitar duplicatas (ex: "Leticia" vs "Letícia")
-  const allOwners = expenses.map(e => e.owner).filter(Boolean);
+  // SEMPRE incluir todos os cost centers individuais + owners das despesas
   const uniqueOwners = [];
   const seenOwners = new Set();
   
-  allOwners.forEach(owner => {
-    const normalized = normalizeName(owner);
-    if (!seenOwners.has(normalized)) {
-      seenOwners.add(normalized);
-      uniqueOwners.push(owner);
+  // 1. Adicionar todos os cost centers individuais primeiro
+  (costCenters || []).forEach(cc => {
+    if (cc.type === 'individual') {
+      const normalized = normalizeName(cc.name);
+      if (!seenOwners.has(normalized)) {
+        seenOwners.add(normalized);
+        uniqueOwners.push(cc.name);
+      }
+    }
+  });
+  
+  // 2. Adicionar owners das despesas (incluindo "Compartilhado")
+  expenses.forEach(e => {
+    if (e.owner) {
+      const normalized = normalizeName(e.owner);
+      if (!seenOwners.has(normalized)) {
+        seenOwners.add(normalized);
+        uniqueOwners.push(e.owner);
+      }
     }
   });
   
   const totals = {};
   
+  // Calcular totais considerando splits para despesas compartilhadas
   uniqueOwners.forEach(owner => {
-    totals[owner] = expenses.filter(e => e.status === 'confirmed' && isSameName(e.owner, owner)).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    const isCompartilhado = normalizeName(owner) === 'compartilhado';
+    
+    if (isCompartilhado) {
+      // Para "Compartilhado", somar o valor TOTAL das despesas compartilhadas
+      totals[owner] = expenses
+        .filter(e => e.status === 'confirmed' && isSameName(e.owner, owner))
+        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    } else {
+      // Para responsáveis individuais, considerar splits
+      let total = 0;
+      
+      expenses.forEach(e => {
+        if (e.status !== 'confirmed') return;
+        
+        if (e.split && e.owner === 'Compartilhado') {
+          // Despesa compartilhada: buscar o split deste responsável
+          if (e.expense_splits && e.expense_splits.length > 0) {
+            // Usar splits personalizados
+            const ownerCostCenter = costCenters.find(cc => isSameName(cc.name, owner));
+            if (ownerCostCenter) {
+              const split = e.expense_splits.find(s => s.cost_center_id === ownerCostCenter.id);
+              if (split) {
+                total += parseFloat(split.amount || 0);
+              }
+            }
+          } else {
+            // Usar fallback (split_percentage do cost_center)
+            const ownerCostCenter = costCenters.find(cc => isSameName(cc.name, owner));
+            if (ownerCostCenter) {
+              const percentage = parseFloat(ownerCostCenter.split_percentage || 0);
+              const amount = parseFloat(e.amount || 0);
+              total += (amount * percentage) / 100;
+            }
+          }
+        } else if (isSameName(e.owner, owner)) {
+          // Despesa individual deste responsável
+          total += parseFloat(e.amount || 0);
+        }
+      });
+      
+      totals[owner] = total;
+    }
   });
   
   totals.pending = expenses.filter(e => e.status === 'pending').reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
 
-  console.log('🔍 [DEBUG] Totals calculados:', totals);
-  console.log('🔍 [DEBUG] Unique owners:', uniqueOwners);
-
   const total = Object.values(totals).reduce((sum, value) => sum + value, 0);
 
   // Loading inicial enquanto organização carrega
-  if (orgLoading || pageLoading) {
+  if (orgLoading || pageLoading || !isDataLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando despesas...</p>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <LoadingLogo className="h-24 w-24" />
       </div>
     );
   }
@@ -421,7 +412,7 @@ export default function FinanceDashboard() {
   // Erro de organização
   if (orgError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
           <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
@@ -437,7 +428,7 @@ export default function FinanceDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <Header 
         organization={organization}
@@ -448,36 +439,44 @@ export default function FinanceDashboard() {
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         {/* Header Actions (consistência com /cards) */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-          <h2 className="text-lg font-semibold text-gray-900">Gestão de Despesas</h2>
-          <div className="flex items-center space-x-3">
-            <Button 
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-              onClick={() => setShowExpenseModal(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Despesa
-            </Button>
-          </div>
-        </div>
+        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+              <h2 className="text-lg font-semibold text-gray-900">Gestão de Despesas</h2>
+              <div className="flex items-center space-x-3">
+                <Button 
+                  className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
+                  onClick={() => setShowExpenseModal(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Despesa
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
 
         {/* Summary Cards reorganizados */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
           {/* Card Total do Mês */}
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Total do Mês
               </CardTitle>
-              <div className="p-2 rounded-lg bg-green-50">
-                <Target className="h-4 w-4 text-green-600" />
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <Target className="h-4 w-4 text-flight-blue" />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {Number(Object.values(totals).reduce((sum, val) => sum + (Number(val) || 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {Number(
+                  expenses
+                    .filter(e => e.status === 'confirmed')
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+                ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Total de todas as despesas
@@ -486,16 +485,16 @@ export default function FinanceDashboard() {
           </Card>
 
           {/* Card À Vista */}
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 À Vista
               </CardTitle>
-              <div className="p-2 rounded-lg bg-purple-50">
-                <DollarSign className="h-4 w-4 text-purple-600" />
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <DollarSign className="h-4 w-4 text-flight-blue" />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
                 R$ {Number(expenses
                   .filter(expense => ['cash', 'debit_card', 'pix'].includes(expense.payment_method))
@@ -509,16 +508,16 @@ export default function FinanceDashboard() {
           </Card>
 
           {/* Card Crédito */}
-          <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Crédito
               </CardTitle>
-              <div className="p-2 rounded-lg bg-blue-50">
-                <CreditCard className="h-4 w-4 text-blue-600" />
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <CreditCard className="h-4 w-4 text-flight-blue" />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
                 R$ {Number(expenses
                   .filter(expense => expense.payment_method === 'credit_card')
@@ -539,16 +538,16 @@ export default function FinanceDashboard() {
             const isShared = normalizeKey(owner) === normalizeKey('Compartilhado');
             
             return (
-              <Card key={owner} className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Card key={owner} className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                   <CardTitle className="text-sm font-medium text-gray-600">
                     {owner}
                   </CardTitle>
-                  <div className="p-2 rounded-lg" style={{ backgroundColor: `${bg}20` }}>
-                    <Users className="h-4 w-4" style={{ color: bg }} />
+                  <div className="p-2 rounded-lg bg-flight-blue/5">
+                    <Users className="h-4 w-4 text-flight-blue" />
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 pt-0">
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     R$ {Number(totals[owner] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </div>
@@ -562,11 +561,11 @@ export default function FinanceDashboard() {
         </div>
 
         {/* Filters */}
-        <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                <Calendar className="h-4 w-4 text-white" />
+              <div className="p-2 bg-flight-blue/5 rounded-lg">
+                <Calendar className="h-4 w-4 text-flight-blue" />
               </div>
               <span>Filtros</span>
             </CardTitle>
@@ -649,17 +648,17 @@ export default function FinanceDashboard() {
         </Card>
 
         {/* Expense Table */}
-        <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+        <Card className="border-0 bg-white overflow-visible" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg">
-                <TrendingUp className="h-4 w-4 text-white" />
+              <div className="p-2 bg-flight-blue/5 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-flight-blue" />
               </div>
               <span>Despesas Gerais</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
+          <CardContent className="overflow-visible">
+            <div className="overflow-x-auto overflow-y-visible">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -697,7 +696,7 @@ export default function FinanceDashboard() {
                     onClick={() => handleSort('owner')}
                   >
                     <div className="flex items-center space-x-1">
-                      <span>Responsável</span>
+                      <span>Responsabilidade</span>
                       {getSortIcon('owner')}
                     </div>
                   </th>
@@ -733,13 +732,13 @@ export default function FinanceDashboard() {
                       {expense.category || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {expense.payment_method === 'cash' && '💵 Dinheiro'}
-                      {expense.payment_method === 'debit_card' && '💳 Cartão de Débito'}
-                      {expense.payment_method === 'pix' && '📱 PIX'}
-                      {expense.payment_method === 'credit_card' && '💳 Cartão de Crédito'}
-                      {expense.payment_method === 'bank_transfer' && '🏦 Transferência'}
-                      {expense.payment_method === 'boleto' && '📄 Boleto'}
-                      {expense.payment_method === 'other' && '📄 Outros'}
+                      {expense.payment_method === 'cash' && 'Dinheiro'}
+                      {expense.payment_method === 'debit_card' && 'Cartão de Débito'}
+                      {expense.payment_method === 'pix' && 'PIX'}
+                      {expense.payment_method === 'credit_card' && 'Cartão de Crédito'}
+                      {expense.payment_method === 'bank_transfer' && 'Transferência'}
+                      {expense.payment_method === 'boleto' && 'Boleto'}
+                      {expense.payment_method === 'other' && 'Outros'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {expense.card_id ? (() => {
@@ -751,10 +750,77 @@ export default function FinanceDashboard() {
                       {(() => {
                         const oc = buildOwnerColorMap(costCenters);
                         const color = expense.owner ? (oc[normalizeKey(expense.owner)] || '#6366F1') : '#6B7280';
+                        const isShared = expense.owner === 'Compartilhado';
+                        
+                        // Calcular splits para tooltip
+                        let splitInfo = null;
+                        if (isShared && expense.expense_splits && expense.expense_splits.length > 0) {
+                          splitInfo = expense.expense_splits.map(split => {
+                            const cc = costCenters.find(c => c.id === split.cost_center_id);
+                            return {
+                              name: cc?.name || 'Desconhecido',
+                              percentage: parseFloat(split.percentage).toFixed(0),
+                              color: cc?.color || '#6B7280'
+                            };
+                          });
+                        } else if (isShared) {
+                          // Usar fallback
+                          splitInfo = costCenters
+                            .filter(cc => cc.type === 'individual')
+                            .map(cc => ({
+                              name: cc.name,
+                              percentage: parseFloat(cc.split_percentage || 0).toFixed(0),
+                              color: cc.color
+                            }));
+                        }
+                        
                         return (
-                          <span className="text-sm font-medium" style={{ color: color }}>
-                            {expense.owner || '-'}
-                          </span>
+                          <div className="relative inline-block group">
+                            <span 
+                              className="text-sm font-medium cursor-help" 
+                              style={{ color: color }}
+                              onMouseEnter={(e) => {
+                                if (isShared && splitInfo) {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const tooltip = e.currentTarget.nextElementSibling;
+                                  if (tooltip) {
+                                    tooltip.style.left = `${rect.left + rect.width / 2}px`;
+                                    tooltip.style.top = `${rect.bottom + 8}px`;
+                                  }
+                                }
+                              }}
+                            >
+                              {expense.owner || '-'}
+                            </span>
+                            
+                            {/* Tooltip - FIXED para escapar do container */}
+                            {isShared && splitInfo && (
+                              <div className="fixed -translate-x-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-[9999]">
+                                <div className="bg-white border border-gray-200 text-gray-900 text-xs rounded-lg shadow-xl p-3 min-w-[160px]">
+                                  <div className="font-semibold mb-2 text-gray-700 text-xs">Divisão:</div>
+                                  <div className="space-y-2">
+                                    {splitInfo.map((split, idx) => (
+                                      <div key={idx} className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-2">
+                                          <div 
+                                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                            style={{ backgroundColor: split.color }}
+                                          />
+                                          <span className="text-gray-700">{split.name}</span>
+                                        </div>
+                                        <span className="font-semibold text-gray-900 ml-3">{split.percentage}%</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {/* Seta do tooltip apontando para CIMA */}
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-px">
+                                    <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-white"></div>
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[1px] w-0 h-0 border-l-[7px] border-r-[7px] border-b-[7px] border-transparent border-b-gray-200"></div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         );
                       })()}
                     </td>
@@ -791,7 +857,6 @@ export default function FinanceDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
               <p className="text-gray-600">Nenhuma despesa encontrada</p>
-              <p className="text-sm text-gray-500 mt-1">Envie uma mensagem no WhatsApp para registrar!</p>
             </div>
           )}
           </CardContent>
@@ -806,120 +871,22 @@ export default function FinanceDashboard() {
       />
 
       {/* Modal de edição */}
-      {editingId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Editar Despesa</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
-                <select
-                  value={editData.owner}
-                  onChange={(e) => setEditData({...editData, owner: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="">Selecione...</option>
-                  {uniqueOwners.map(owner => (
-                    <option key={owner} value={owner}>{owner}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Data *</label>
-                <input
-                  type="date"
-                  value={editData.date}
-                  onChange={(e) => setEditData({...editData, date: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
-                <input
-                  type="text"
-                  value={editData.description}
-                  onChange={(e) => setEditData({...editData, description: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Descrição da despesa"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                <input
-                  type="text"
-                  value={editData.category}
-                  onChange={(e) => setEditData({...editData, category: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Ex: Alimentação, Transporte"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Valor *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editData.amount}
-                  onChange={(e) => setEditData({...editData, amount: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
-                <select
-                  value={editData.payment_method}
-                  onChange={(e) => setEditData({...editData, payment_method: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="">Selecione...</option>
-                  <option value="cash">Dinheiro</option>
-                  <option value="debit_card">Cartão de Débito</option>
-                  <option value="pix">PIX</option>
-                  <option value="credit_card">Cartão de Crédito</option>
-                  <option value="bank_transfer">Transferência</option>
-                  <option value="boleto">Boleto</option>
-                  <option value="other">Outros</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setEditingId(null);
-                  setEditData({
-                    owner: '',
-                    description: '',
-                    category: '',
-                    payment_method: '',
-                    amount: '',
-                    date: ''
-                  });
-                }}
-                disabled={saving}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditExpenseModal
+        isOpen={!!editingId}
+        expenseId={editingId}
+        costCenters={costCenters}
+        onClose={() => setEditingId(null)}
+        onSuccess={() => {
+          setEditingId(null);
+          fetchExpenses();
+          fetchCards();
+        }}
+      />
 
       {/* Notification Modal */}
+      {/* Footer */}
+      <Footer />
+
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}

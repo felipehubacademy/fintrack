@@ -13,7 +13,7 @@ const supabase = createClient(
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
 /**
- * Conversa inteligente para FinTrack V2
+ * Conversa inteligente para MeuAzulão
  * Analisa mensagens e extrai informações automaticamente
  */
 class SmartConversation {
@@ -160,7 +160,7 @@ class SmartConversation {
       const categories = user ? await this.getBudgetCategories(user.organization_id) : [];
       const categoryNames = categories.map(cat => cat.name).join(', ');
       
-      const prompt = `Você é um assistente financeiro especializado APENAS em processar despesas do FinTrack.
+      const prompt = `Você é um assistente financeiro especializado APENAS em processar despesas do MeuAzulão.
 
 REGRAS RÍGIDAS:
 1. Processe APENAS mensagens sobre gastos/despesas
@@ -443,7 +443,7 @@ Retorne APENAS JSON:`;
       // 4. Verificar se é uma mensagem sobre despesas
       if (analysis.erro === "Mensagem não é sobre despesas") {
         await this.sendWhatsAppMessage(userPhone, 
-          "💰 Olá! Eu sou o assistente do FinTrack.\n\n" +
+          "💰 Olá! Eu sou o assistente do MeuAzulão.\n\n" +
           "📝 Para registrar uma despesa, envie uma mensagem como:\n" +
           "• 'Gastei 50 no mercado'\n" +
           "• 'Paguei 30 na farmácia'\n" +
@@ -520,6 +520,12 @@ Retorne APENAS JSON:`;
       // Verificar se está esperando informações de cartão
       if (ongoingConversation.conversation_state?.waiting_for === 'card_info') {
         await this.handleCardInfoResponse(user, ongoingConversation, userResponse);
+        return;
+      }
+      
+      // Verificar se está esperando responsável (após fornecer cartão)
+      if (ongoingConversation.conversation_state?.waiting_for === 'responsavel') {
+        await this.handleResponsavelResponse(user, ongoingConversation, userResponse);
         return;
       }
       
@@ -750,11 +756,15 @@ Retorne APENAS JSON com o campo atualizado:
         cat.name.toLowerCase() === categoryName.toLowerCase()
       );
 
+      // Verificar se é despesa compartilhada
+      const isShared = this.normalizeName(responsibleName) === 'compartilhado';
+
       // Atualizar despesa como confirmada
       const expenseData = {
         organization_id: user.organization_id,
         user_id: user.id,
-        cost_center_id: costCenter.id,
+        cost_center_id: isShared ? null : costCenter.id,
+        split: isShared,
         owner: this.getCanonicalName(responsibleName), // Mapear responsável para owner normalizado
         category_id: budgetCategory?.id || null, // Mapear categoria para category_id
         status: 'confirmed',
@@ -763,6 +773,10 @@ Retorne APENAS JSON com o campo atualizado:
         whatsapp_message_id: `msg_${Date.now()}`,
         source: 'whatsapp'
       };
+
+      console.log(isShared 
+        ? '✅ [SPLIT] Despesa compartilhada finalizada com fallback de divisão (sem expense_splits)'
+        : '✅ Despesa individual finalizada');
 
       await supabase
         .from('expenses')
@@ -776,7 +790,7 @@ Retorne APENAS JSON com o campo atualizado:
       const paymentMethod = expense.payment_method ?? expense.conversation_state?.metodo_pagamento;
       const dateVal = expense.date ?? this.parseDate(expense.conversation_state?.data);
 
-      const confirmationMessage = `✅ Despesa registrada!\n\n` +
+      const confirmationMessage = `✅ Despesa registrada no MeuAzulão!\n\n` +
         `💰 R$ ${Number(amount).toFixed(2)} - ${description || 'gasto não especificado'}\n` +
         `📂 ${category || '-'}\n` +
         `👤 ${responsibleName || '-'}\n` +
@@ -888,9 +902,12 @@ Retorne APENAS JSON com o campo atualizado:
    */
   async handleCompleteInfo(user, analysis) {
     const costCenters = await this.getCostCenters(user.organization_id);
-    const costCenter = costCenters.find(cc => 
-      this.normalizeName(cc.name) === this.normalizeName(analysis.responsavel)
-    );
+    const isShared = this.normalizeName(analysis.responsavel) === 'compartilhado';
+    
+    // Para despesas compartilhadas, não precisa de costCenter
+    const costCenter = isShared 
+      ? { id: null, name: 'Compartilhado' } 
+      : costCenters.find(cc => this.normalizeName(cc.name) === this.normalizeName(analysis.responsavel));
 
     if (!costCenter) {
       await this.sendWhatsAppMessage(user.phone, 
@@ -915,11 +932,15 @@ Retorne APENAS JSON com o campo atualizado:
       const normalizedDescription = this.capitalizeDescription(analysis.descricao);
       await this.createInstallments(user, { ...analysis, descricao: normalizedDescription }, costCenter, categoryId);
     } else {
+      // Verificar se é despesa compartilhada
+      const isShared = this.normalizeName(analysis.responsavel) === 'compartilhado';
+
       // Salvar despesa normal (não parcelada)
       const expenseData = {
         organization_id: user.organization_id,
         user_id: user.id,
-        cost_center_id: costCenter.id,
+        cost_center_id: isShared ? null : costCenter.id,
+        split: isShared,
         amount: analysis.valor,
         description: this.capitalizeDescription(analysis.descricao),
         payment_method: normalizedMethod,
@@ -947,7 +968,13 @@ Retorne APENAS JSON com o campo atualizado:
         }
       };
 
-      await this.saveExpense(expenseData);
+      const savedExpense = await this.saveExpense(expenseData);
+
+      // Se é compartilhada, NÃO criar expense_splits (usar fallback)
+      // O frontend já saberá calcular com base nos split_percentage dos cost_centers
+      console.log(isShared 
+        ? '✅ [SPLIT] Despesa compartilhada criada com fallback de divisão (sem expense_splits)'
+        : '✅ Despesa individual criada');
     }
 
     // Enviar confirmação
@@ -956,7 +983,7 @@ Retorne APENAS JSON com o campo atualizado:
       ? `💳 ${analysis.cartao} - ${analysis.parcelas}x`
       : `💳 ${this.getPaymentMethodName(normalizedMethod)}`;
     
-    const confirmationMessage = `✅ Despesa registrada!\n\n` +
+    const confirmationMessage = `✅ Despesa registrada no MeuAzulão!\n\n` +
       `💰 R$ ${analysis.valor.toFixed(2)} - ${this.capitalizeDescription(analysis.descricao)}\n` +
       `📂 ${analysis.categoria}\n` +
       `${ownerWithEmoji}\n` +
@@ -1243,6 +1270,61 @@ Retorne APENAS JSON com o campo atualizado:
   }
 
   /**
+   * Processar resposta sobre responsável (após fornecer cartão)
+   */
+  async handleResponsavelResponse(user, conversation, userResponse) {
+    try {
+      console.log('🔍 [RESPONSAVEL] Processando resposta sobre responsável:', userResponse);
+      
+      const updatedState = {
+        ...conversation.conversation_state,
+        responsavel: userResponse,
+        waiting_for: null
+      };
+
+      // Atualizar expense com o responsável
+      await supabase
+        .from('expenses')
+        .update({
+          conversation_state: updatedState,
+          owner: this.getCanonicalName(userResponse)
+        })
+        .eq('id', conversation.id);
+
+      // Processar despesa completa
+      const analysis = {
+        valor: conversation.amount ?? updatedState.valor ?? conversation.conversation_state.valor,
+        descricao: conversation.description ?? updatedState.descricao ?? conversation.conversation_state.descricao,
+        categoria: conversation.category ?? updatedState.categoria ?? conversation.conversation_state.categoria,
+        metodo_pagamento: 'credit_card',
+        responsavel: userResponse,
+        data: conversation.date ?? updatedState.data ?? conversation.conversation_state.data,
+        confianca: updatedState.confianca ?? conversation.conversation_state.confianca,
+        cartao: updatedState.cartao,
+        parcelas: updatedState.parcelas,
+        card_id: updatedState.card_id ?? conversation.card_id
+      };
+
+      await this.handleCompleteInfo(user, analysis);
+
+      // Limpar pendente após finalizar o fluxo
+      try {
+        await supabase
+          .from('expenses')
+          .delete()
+          .eq('id', conversation.id)
+          .eq('status', 'pending');
+      } catch (_) {}
+
+    } catch (error) {
+      console.error('❌ Erro ao processar responsável:', error);
+      await this.sendWhatsAppMessage(user.phone, 
+        "❌ Erro interno. Tente novamente."
+      );
+    }
+  }
+
+  /**
    * Processar resposta sobre cartão e parcelas
    */
   async handleCardInfoResponse(user, conversation, userResponse) {
@@ -1303,6 +1385,14 @@ Retorne APENAS JSON com o campo atualizado:
       // Se ainda falta responsável (ou outros campos), perguntar agora; caso contrário, finalizar
       const remainingFields = (updatedState.missing_fields || []).filter(f => f !== 'cartao' && f !== 'parcelas');
       if (!updatedState.responsavel || remainingFields.includes('responsavel')) {
+        // Atualizar estado para esperar responsável
+        await supabase
+          .from('expenses')
+          .update({ 
+            conversation_state: { ...updatedState, waiting_for: 'responsavel' }
+          })
+          .eq('id', conversation.id);
+        
         await this.askNextQuestion(user, 'responsavel');
         return;
       }
@@ -1345,11 +1435,15 @@ Retorne APENAS JSON com o campo atualizado:
    */
   async createInstallments(user, analysis, costCenter, categoryId) {
     try {
+      // Verificar se é compartilhado
+      const isShared = this.normalizeName(analysis.responsavel) === 'compartilhado';
+      
       console.log('🔍 [INSTALLMENTS] Criando parcelas:', {
         amount: analysis.valor,
         installments: analysis.parcelas,
         cardId: analysis.card_id,
-        costCenterId: costCenter.id,
+        costCenterId: isShared ? null : costCenter.id,
+        isShared: isShared,
         categoryId: categoryId,
         organizationId: user.organization_id,
         userId: user.id
@@ -1366,7 +1460,7 @@ Retorne APENAS JSON com o campo atualizado:
         p_date: this.parseDate(analysis.data).toISOString().split('T')[0],
         p_card_id: analysis.card_id,
         p_category_id: categoryId,
-        p_cost_center_id: costCenter.id,
+        p_cost_center_id: isShared ? null : costCenter.id,
         p_owner: this.getCanonicalName(analysis.responsavel),
         p_organization_id: user.organization_id,
         p_user_id: user.id,

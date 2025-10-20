@@ -1,20 +1,22 @@
-# 💰 FinTrack - Personal Finance Tracker
+# MeuAzulão - Gestão Financeira Familiar Inteligente
 
-Full-stack personal finance tracker that stores user-initiated WhatsApp transactions in Supabase and displays everything on a beautiful dashboard.
+Sistema completo de gestão financeira familiar que permite registrar despesas via WhatsApp e visualizar tudo em um dashboard moderno e intuitivo.
 
-## 🚀 Features
+## 🚀 Funcionalidades
 
-- **WhatsApp-first Input**: Registre despesas via conversa no WhatsApp
-- **WhatsApp Notifications**: Receive instant notifications for new transactions
-- **Interactive Attribution**: Assign expenses to Felipe, Letícia, or Shared via WhatsApp buttons
-- **Real-time Dashboard**: Beautiful Next.js dashboard with charts and filters
-- **Secure Authentication**: Supabase Auth with magic link login
-- **Responsive Design**: Modern UI built with Tailwind CSS
+- **Entrada via WhatsApp**: Registre despesas através de conversas naturais no WhatsApp
+- **Notificações Inteligentes**: Receba confirmações instantâneas de novas transações
+- **Atribuição Inteligente**: Atribua despesas a diferentes responsáveis automaticamente
+- **Dashboard em Tempo Real**: Interface moderna com gráficos e filtros avançados
+- **Autenticação Segura**: Login via magic link com Supabase Auth
+- **Design Responsivo**: Interface moderna construída com Tailwind CSS
+- **Gestão de Cartões**: Controle de cartões de crédito com parcelamento
+- **Orçamentos**: Definição e acompanhamento de orçamentos por categoria
 
-## 🏗️ Architecture
+## 🏗️ Arquitetura
 
 ```
-FinTrack/
+MeuAzulão/
 ├── backend/              # Node.js + Express API
 │   ├── index.js         # Server entry point
 │   ├── routes/          # API routes

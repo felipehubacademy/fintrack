@@ -34,8 +34,9 @@ export default function StatsCards({
       icon: TrendingUp,
       trend: totalGrowth > 0 ? "up" : totalGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(totalGrowth || 0).toFixed(1)}%`,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      color: "text-flight-blue",
+      bgColor: "bg-flight-blue/5",
+      borderColor: "border-flight-blue/20",
       description: "Todas as despesas"
     },
     {
@@ -44,8 +45,9 @@ export default function StatsCards({
       icon: Wallet,
       trend: cashGrowth > 0 ? "up" : cashGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(cashGrowth || 0).toFixed(1)}%`,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "text-flight-blue",
+      bgColor: "bg-flight-blue/5",
+      borderColor: "border-flight-blue/20",
       description: "PIX • Débito • Dinheiro"
     },
     {
@@ -54,24 +56,25 @@ export default function StatsCards({
       icon: CreditCard,
       trend: cardGrowth > 0 ? "up" : cardGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(cardGrowth || 0).toFixed(1)}%`,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "text-flight-blue",
+      bgColor: "bg-flight-blue/5",
+      borderColor: "border-flight-blue/20",
       description: "Faturamento do período"
     },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 grid-cols-1 md:grid-cols-3 w-full">
       {stats.map((stat, index) => {
         const CardComponent = 'div';
         const cardProps = {};
         
         return (
           <CardComponent key={index} {...cardProps}>
-            <Card className={`border-0 shadow-sm hover:shadow-md transition-all duration-200 ${
+            <Card className={`${stat.borderColor ? `border ${stat.borderColor}` : ''} shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden ${
               stat.link ? 'cursor-pointer hover:scale-105' : ''
-            }`}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            } ${stat.bgColor}`}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
                   {stat.title}
                 </CardTitle>
@@ -79,7 +82,7 @@ export default function StatsCards({
                   <stat.icon className={`h-4 w-4 ${stat.color}`} />
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 pt-0">
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {stat.value}
                 </div>
@@ -104,15 +107,6 @@ export default function StatsCards({
                   <span className="text-gray-500">vs mês anterior</span>
                 </div>
                 {/* descrição removida para visual mais limpo */}
-                {stat.title === 'Total Geral' && (
-                  <div className="mt-3">
-                    <Link href="/dashboard/expenses">
-                      <Button size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50" variant="outline">
-                        Clique para ver as despesas
-                      </Button>
-                    </Link>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </CardComponent>
