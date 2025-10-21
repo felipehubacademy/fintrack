@@ -554,7 +554,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
         .from('conversation_state')
         .upsert({
           user_phone: normalizedPhone,
-          state: 'active',
+          state: 'awaiting_confirmation', // Estado genérico para conversa ativa
           temp_data: {
             messages: limitedHistory,
             last_message: userMessage,
