@@ -4,13 +4,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Simular payload do WhatsApp
+    // Simular payload do WhatsApp com número real
     const testPayload = {
       entry: [{
         changes: [{
           value: {
             messages: [{
-              from: '+5511999999999',
+              from: '+551151928551', // Número real do seu WhatsApp
               id: 'test_msg_123',
               timestamp: Math.floor(Date.now() / 1000),
               text: {
