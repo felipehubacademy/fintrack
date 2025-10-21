@@ -929,12 +929,9 @@ Retorne APENAS JSON:`;
       const assistantResponse = await this.zulAssistant.sendMessage(user.id, text, context);
       console.log('✅ [ASSISTANT] Resposta recebida do Assistant:', assistantResponse);
       
-      // 5. Aplicar personalidade do ZUL
-      const zulResponse = this.applyZulPersonality(assistantResponse, user.name);
-      console.log('🎭 [ZUL] Resposta com personalidade:', zulResponse);
-      
-      // 6. Enviar resposta personalizada para o usuário
-      await this.sendWhatsAppMessage(userPhone, zulResponse);
+      // 5. Enviar resposta natural do ZUL (sem transformação artificial)
+      console.log('🤖 [ZUL] Resposta natural:', assistantResponse);
+      await this.sendWhatsAppMessage(userPhone, assistantResponse);
 
     } catch (error) {
       console.error('❌ [ASSISTANT] Erro no processamento:', error);
