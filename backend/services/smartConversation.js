@@ -475,8 +475,10 @@ Retorne APENAS JSON:`;
           
           // Mapear "eu" para o nome do usuário atual
           if (normalized === 'eu' || normalized === 'me' || normalized === 'mim') {
+            // Tentar primeiro nome do usuário
+            const firstName = context.userName.split(' ')[0];
             const userCostCenter = costCenters.find(cc => 
-              this.normalizeName(cc.name) === this.normalizeName(context.userName)
+              this.normalizeName(cc.name) === this.normalizeName(firstName)
             );
             if (userCostCenter) {
               return {
