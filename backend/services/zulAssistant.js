@@ -29,14 +29,24 @@ class ZulAssistant {
   }
 
   /**
-   * Criar ou recuperar o Assistant ZUL
+   * Obter o Assistant ZUL (usando ID fixo da env var)
    */
   async getOrCreateAssistant() {
+    // Se já temos o ID em cache, retornar
     if (this.assistantId) {
       return this.assistantId;
     }
 
     try {
+      // PRIORIDADE 1: Usar ID fixo da variável de ambiente
+      if (process.env.OPENAI_ASSISTANT_ID) {
+        console.log('✅ Usando Assistant ID da env var:', process.env.OPENAI_ASSISTANT_ID);
+        this.assistantId = process.env.OPENAI_ASSISTANT_ID;
+        return this.assistantId;
+      }
+
+      console.log('⚠️ OPENAI_ASSISTANT_ID não configurado, tentando criar/recuperar dinamicamente...');
+
       // Tentar recuperar assistant existente pelo nome
       const assistants = await openai.beta.assistants.list();
       const existingAssistant = assistants.data.find(a => a.name === 'ZUL - MeuAzulão');
