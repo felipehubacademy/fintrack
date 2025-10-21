@@ -403,6 +403,7 @@ Seja direto, natural e brasileiro! 😊`;
     try {
       console.log(`📤 [ASSISTANT] Enviando mensagem para usuário ${userId}`);
       console.log(`📤 [ASSISTANT] Mensagem: "${userMessage}"`);
+      console.log(`📤 [ASSISTANT] Context:`, JSON.stringify(context, null, 2));
       
       const assistantId = await this.getOrCreateAssistant();
       if (!assistantId) {

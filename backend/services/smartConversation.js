@@ -651,8 +651,12 @@ Retorne APENAS JSON:`;
 
       // 4. Enviar mensagem para o Assistant
       console.log('🔄 [ASSISTANT] Enviando para ZUL Assistant...');
+      console.log('🔄 [ASSISTANT] User ID:', user.id);
+      console.log('🔄 [ASSISTANT] Text:', text);
+      console.log('🔄 [ASSISTANT] Context keys:', Object.keys(context));
+      
       const response = await this.zulAssistant.sendMessage(user.id, text, context);
-      console.log('✅ [ASSISTANT] Resposta recebida do Assistant');
+      console.log('✅ [ASSISTANT] Resposta recebida do Assistant:', response);
       
       // 5. Enviar resposta para o usuário
       await this.sendWhatsAppMessage(userPhone, response);
