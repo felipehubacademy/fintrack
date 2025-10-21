@@ -673,6 +673,22 @@ Retorne APENAS JSON:`;
     console.log(`🔍 [DEBUG] useAssistant flag: ${this.useAssistant}`);
     console.log(`🔍 [DEBUG] USE_ZUL_ASSISTANT env: ${process.env.USE_ZUL_ASSISTANT}`);
     
+    // Salvar debug no banco para análise
+    try {
+      await supabase.from('conversation_state').insert({
+        user_phone: userPhone,
+        state: 'debug',
+        temp_data: {
+          useAssistant: this.useAssistant,
+          env_var: process.env.USE_ZUL_ASSISTANT,
+          message: text,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (e) {
+      console.log('Erro ao salvar debug:', e.message);
+    }
+    
     // Se USE_ZUL_ASSISTANT=true, usar o novo fluxo com Assistant
     if (this.useAssistant) {
       console.log(`🤖 [DEBUG] Usando ZUL Assistant para: "${text}"`);
