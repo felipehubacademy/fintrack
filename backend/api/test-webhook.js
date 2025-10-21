@@ -10,7 +10,7 @@ export default async function handler(req, res) {
         changes: [{
           value: {
             messages: [{
-              from: '+551151928551', // Seu número do WhatsApp
+              from: '+5511978229898', // Felipe - número real
               id: 'test_msg_123',
               timestamp: Math.floor(Date.now() / 1000),
               text: {
