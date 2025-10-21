@@ -27,8 +27,8 @@ async function sendMessage(text) {
     const response = await axios.post(`${BASE_URL}/api/webhook`, payload);
     console.log('✅ Status:', response.status);
     
-    // Aguardar WhatsApp enviar
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Aguardar WhatsApp enviar e banco salvar
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     return response.data;
   } catch (error) {

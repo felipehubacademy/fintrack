@@ -422,11 +422,39 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
       // Carregar histórico da conversa do banco
       const history = await this.loadConversationHistory(userPhone);
       
+      // Extrair informações já coletadas do histórico
+      const collectedInfo = this.extractCollectedInfo(history);
+      console.log('📊 [GPT-4] Informações coletadas:', JSON.stringify(collectedInfo));
+      
+      // Adicionar contexto de informações coletadas ao system message
+      let systemMessage = this.getConversationalInstructions(context);
+      if (Object.keys(collectedInfo).length > 0) {
+        systemMessage += `\n\n📝 INFORMAÇÕES JÁ COLETADAS NESTA CONVERSA:\n`;
+        if (collectedInfo.amount) systemMessage += `- Valor: R$ ${collectedInfo.amount}\n`;
+        if (collectedInfo.description) systemMessage += `- Descrição: ${collectedInfo.description}\n`;
+        if (collectedInfo.payment_method) systemMessage += `- Pagamento: ${collectedInfo.payment_method}\n`;
+        if (collectedInfo.responsible) systemMessage += `- Responsável: ${collectedInfo.responsible}\n`;
+        if (collectedInfo.card) systemMessage += `- Cartão: ${collectedInfo.card}\n`;
+        if (collectedInfo.installments) systemMessage += `- Parcelas: ${collectedInfo.installments}\n`;
+        
+        const missing = [];
+        if (!collectedInfo.amount) missing.push('valor');
+        if (!collectedInfo.description) missing.push('descrição');
+        if (!collectedInfo.payment_method) missing.push('pagamento');
+        if (!collectedInfo.responsible) missing.push('responsável');
+        
+        if (missing.length > 0) {
+          systemMessage += `\n⚠️ FALTA: ${missing.join(', ')}`;
+        } else {
+          systemMessage += `\n✅ TUDO COLETADO! Chame save_expense AGORA!`;
+        }
+      }
+      
       // Preparar mensagens para GPT-4
       const messages = [
         {
           role: 'system',
-          content: this.getConversationalInstructions(context)
+          content: systemMessage
         },
         ...history,
         {
@@ -503,6 +531,49 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
       console.error('❌ [GPT-4] Erro:', error);
       throw error;
     }
+  }
+
+  /**
+   * Extrair informações já coletadas do histórico
+   */
+  extractCollectedInfo(history) {
+    const info = {};
+    
+    const conversationText = history.map(m => m.content).join(' ').toLowerCase();
+    
+    // Extrair valor
+    const amountMatch = conversationText.match(/(?:gastei|paguei|foi|valor)?\s*(?:r\$)?\s*(\d+(?:[.,]\d{1,2})?)/i);
+    if (amountMatch) {
+      info.amount = parseFloat(amountMatch[1].replace(',', '.'));
+    }
+    
+    // Extrair descrição (palavras-chave comuns)
+    const descKeywords = ['mercado', 'farmácia', 'posto', 'gasolina', 'restaurante', 'uber', 'almoço', 'jantar', 'café', 'lanche'];
+    for (const keyword of descKeywords) {
+      if (conversationText.includes(keyword)) {
+        info.description = keyword;
+        break;
+      }
+    }
+    
+    // Extrair forma de pagamento
+    if (conversationText.includes('pix')) info.payment_method = 'pix';
+    else if (conversationText.includes('dinheiro') || conversationText.includes('cash')) info.payment_method = 'dinheiro';
+    else if (conversationText.includes('débito') || conversationText.includes('debito')) info.payment_method = 'débito';
+    else if (conversationText.includes('crédito') || conversationText.includes('credito')) info.payment_method = 'crédito';
+    
+    // Extrair responsável
+    if (conversationText.includes('eu') || conversationText.includes('me') || conversationText.includes('mim')) {
+      info.responsible = 'eu';
+    } else if (conversationText.includes('felipe')) {
+      info.responsible = 'Felipe';
+    } else if (conversationText.includes('letícia') || conversationText.includes('leticia')) {
+      info.responsible = 'Letícia';
+    } else if (conversationText.includes('compartilhado')) {
+      info.responsible = 'Compartilhado';
+    }
+    
+    return info;
   }
 
   /**
@@ -604,29 +675,43 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
 
 OBJETIVO: Registrar despesas conversando naturalmente.
 
-INFORMAÇÕES NECESSÁRIAS:
-- Valor e descrição
-- Forma de pagamento
-- Responsável (quem pagou)
-- Se crédito: cartão e parcelas
+🎯 INFORMAÇÕES OBRIGATÓRIAS:
+1. Valor (numérico)
+2. Descrição (o que foi comprado)
+3. Forma de pagamento (dinheiro, pix, débito, crédito)
+4. Responsável (quem pagou: nome ou "eu")
 
-COMO CONVERSAR:
-- Seja NATURAL e VARIADO - cada conversa diferente
-- Use nome "${firstName}" quando fizer sentido
-- Perguntas curtas e diretas
-- Se usuário der múltiplas infos juntas ("100 no mercado, pix, eu"), extraia tudo
-- NUNCA pergunte algo já respondido
-- Quando tiver tudo, chame save_expense
+⚠️ SE CRÉDITO:
+5. Nome do cartão
+6. Número de parcelas
 
-EXEMPLOS (varie MUITO):
-"Quanto foi?"
+📋 REGRAS CRÍTICAS:
+- EXTRAIA TODAS as informações que o usuário der de uma vez
+- NUNCA pergunte algo que já foi dito
+- Assim que tiver TODAS as infos obrigatórias → CHAME save_expense IMEDIATAMENTE
+- Não peça confirmação, SALVE DIRETO
+- Perguntas: curtas, variadas, naturais
+
+✅ EXEMPLOS DE QUANDO SALVAR:
+User: "Gastei 150 no mercado"
+You: "Pagamento?"
+User: "pix"
+You: "Quem pagou?"
+User: "eu"
+→ AGORA TEM TUDO! Chame save_expense(amount=150, description="mercado", payment_method="pix", responsible="eu")
+
+User: "100 reais na farmácia com débito, eu paguei"
+→ JÁ TEM TUDO! Chame save_expense direto
+
+🗣️ VARIAÇÃO:
+"Quanto?"
 "Como pagou?"
-"Pagamento?"
 "Foi você?"
-"Quem pagou essa?"
-"Tá, e o cartão?"
+"Valor?"
+"Quem?"
+"Pagamento?"
 
-Seja imprevisível. Converse de verdade.`;
+Seja direto e natural.`;
   }
 
   /**
