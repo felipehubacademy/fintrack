@@ -13,10 +13,13 @@ const openai = new OpenAI({
  * Personalidade: Sábio Jovem - calmo, claro, curioso e inspirador
  * Tom: Próximo, pessoal e respeitoso (muito brasileiro!)
  */
+// Cache global para threads (persiste entre requisições no mesmo processo)
+const threadCache = new Map(); // userId -> { threadId, lastUsed }
+const THREAD_EXPIRY = 30 * 60 * 1000; // 30 minutos
+
 class ZulAssistant {
   constructor() {
     this.assistantId = null;
-    this.threads = new Map(); // userId -> threadId
   }
 
   /**
@@ -241,18 +244,45 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
    * Obter ou criar thread para um usuário
    */
   async getOrCreateThread(userId) {
-    if (this.threads.has(userId)) {
-      return this.threads.get(userId);
+    // Limpar threads expiradas
+    const now = Date.now();
+    for (const [key, value] of threadCache.entries()) {
+      if (now - value.lastUsed > THREAD_EXPIRY) {
+        console.log(`🗑️ Thread expirada removida: ${key}`);
+        threadCache.delete(key);
+      }
     }
 
+    // Verificar se já existe thread ativa
+    if (threadCache.has(userId)) {
+      const cached = threadCache.get(userId);
+      console.log(`♻️ Thread reutilizada para usuário ${userId}: ${cached.threadId}`);
+      cached.lastUsed = now; // Atualizar tempo de uso
+      return cached.threadId;
+    }
+
+    // Criar nova thread
     try {
       const thread = await openai.beta.threads.create();
-      this.threads.set(userId, thread.id);
-      console.log(`🧵 Thread criada para usuário ${userId}: ${thread.id}`);
+      threadCache.set(userId, {
+        threadId: thread.id,
+        lastUsed: now
+      });
+      console.log(`🆕 Nova thread criada para usuário ${userId}: ${thread.id}`);
       return thread.id;
     } catch (error) {
       console.error('❌ Erro ao criar thread:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Limpar thread do usuário (forçar nova conversa)
+   */
+  clearThread(userId) {
+    if (threadCache.has(userId)) {
+      console.log(`🗑️ Thread do usuário ${userId} removida manualmente`);
+      threadCache.delete(userId);
     }
   }
 
@@ -276,9 +306,10 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
       }
       console.log(`✅ [ASSISTANT] Thread ID: ${threadId}`);
 
-      // Adicionar contexto do usuário na primeira mensagem
+      // Adicionar contexto do usuário na primeira mensagem (se thread é nova)
+      const isNewThread = !threadCache.has(userId) || threadCache.get(userId).threadId === threadId;
       let messageContent = userMessage;
-      if (context.userName && !this.threads.has(userId)) {
+      if (context.userName && isNewThread) {
         messageContent = `[CONTEXTO: Usuário: ${context.userName}]\n\n${userMessage}`;
       }
 
