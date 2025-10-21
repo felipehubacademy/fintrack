@@ -679,39 +679,45 @@ OBJETIVO: Registrar despesas conversando naturalmente.
 1. Valor (numérico)
 2. Descrição (o que foi comprado)
 3. Forma de pagamento (dinheiro, pix, débito, crédito)
-4. Responsável (quem pagou: nome ou "eu")
+4. Responsável (quem pagou)
 
 ⚠️ SE CRÉDITO:
 5. Nome do cartão
 6. Número de parcelas
 
-📋 REGRAS CRÍTICAS:
-- EXTRAIA TODAS as informações que o usuário der de uma vez
-- NUNCA pergunte algo que já foi dito
-- Assim que tiver TODAS as infos obrigatórias → CHAME save_expense IMEDIATAMENTE
-- Não peça confirmação, SALVE DIRETO
-- Perguntas: curtas, variadas, naturais
+🚨 VALIDAÇÃO OBRIGATÓRIA:
+ANTES de chamar save_expense, você DEVE:
+1. Chamar validate_payment_method(user_input) para validar o pagamento
+2. Se crédito: Chamar validate_card(card_name, installments) para validar cartão
+3. Chamar validate_responsible(responsible_name) para validar responsável
 
-✅ EXEMPLOS DE QUANDO SALVAR:
+❌ NUNCA chame save_expense sem validar TODAS as informações primeiro!
+❌ NUNCA aceite "eu", "Felipe", "Letícia" sem validar!
+❌ NUNCA aceite cartões sem validar se existem!
+
+✅ FLUXO CORRETO:
 User: "Gastei 150 no mercado"
 You: "Pagamento?"
 User: "pix"
+You: [CHAMA validate_payment_method("pix")] → recebe método normalizado
 You: "Quem pagou?"
 User: "eu"
-→ AGORA TEM TUDO! Chame save_expense(amount=150, description="mercado", payment_method="pix", responsible="eu")
+You: [CHAMA validate_responsible("eu")] → recebe cost_center_id
+You: [CHAMA save_expense com dados VALIDADOS]
 
-User: "100 reais na farmácia com débito, eu paguei"
-→ JÁ TEM TUDO! Chame save_expense direto
+🔧 FUNÇÕES DISPONÍVEIS:
+- validate_payment_method: Valida e normaliza método (retorna valid, normalized_method)
+- validate_card: Valida cartão e parcelas (retorna valid, card_id)
+- validate_responsible: Valida responsável e mapeia "eu" para o cost_center correto (retorna valid, cost_center_id, name)
+- save_expense: Salva APENAS com dados JÁ VALIDADOS
 
-🗣️ VARIAÇÃO:
+🗣️ VARIAÇÃO nas perguntas:
 "Quanto?"
-"Como pagou?"
-"Foi você?"
-"Valor?"
-"Quem?"
 "Pagamento?"
+"Foi você?"
+"Qual cartão?"
 
-Seja direto e natural.`;
+Seja direto e natural. Mas SEMPRE VALIDE!`;
   }
 
   /**
@@ -755,19 +761,48 @@ Seja direto e natural.`;
       },
       {
         name: 'save_expense',
-        description: 'Salvar despesa quando tiver todas as informações',
+        description: 'Salvar despesa quando tiver todas as informações VALIDADAS. Use os valores retornados pelas funções de validação.',
         parameters: {
           type: 'object',
           properties: {
-            amount: { type: 'number' },
-            description: { type: 'string' },
-            payment_method: { type: 'string' },
-            responsible: { type: 'string' },
-            card_name: { type: 'string' },
-            installments: { type: 'number' },
-            category: { type: 'string' }
+            amount: { 
+              type: 'number',
+              description: 'Valor numérico da despesa'
+            },
+            description: { 
+              type: 'string',
+              description: 'Descrição da despesa'
+            },
+            payment_method: { 
+              type: 'string',
+              description: 'Método de pagamento JÁ VALIDADO (use normalized_method retornado por validate_payment_method)'
+            },
+            responsible: { 
+              type: 'string',
+              description: 'Nome do responsável JÁ VALIDADO (use responsible retornado por validate_responsible)'
+            },
+            cost_center_id: {
+              type: 'string',
+              description: 'ID do cost center JÁ VALIDADO (use cost_center_id retornado por validate_responsible)'
+            },
+            card_name: { 
+              type: 'string',
+              description: 'Nome do cartão (se crédito)' 
+            },
+            card_id: {
+              type: 'string',
+              description: 'ID do cartão JÁ VALIDADO (use card_id retornado por validate_card)'
+            },
+            installments: { 
+              type: 'number',
+              description: 'Número de parcelas (se crédito)' 
+            },
+            category: { 
+              type: 'string',
+              description: 'Categoria da despesa (opcional, será inferida se não fornecida)' 
+            }
           },
-          required: ['amount', 'description', 'payment_method', 'responsible']
+          required: ['amount', 'description', 'payment_method', 'responsible', 'cost_center_id']
         }
       }
     ];

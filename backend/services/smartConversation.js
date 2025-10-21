@@ -761,20 +761,33 @@ Retorne APENAS JSON:`;
             // Verificar se é compartilhado
             const isShared = this.normalizeName(expenseData.responsible) === 'compartilhado';
             
-            // Buscar cost center se não for compartilhado
-            let costCenterId = null;
-            if (!isShared) {
+            // Usar cost_center_id do expenseData (já validado) ou buscar pelo nome
+            let costCenterId = expenseData.cost_center_id || null;
+            
+            if (!costCenterId && !isShared) {
+              // Fallback: buscar cost center pelo nome
               const costCenter = costCenters.find(cc => 
                 this.normalizeName(cc.name) === this.normalizeName(expenseData.responsible)
               );
               costCenterId = costCenter?.id || null;
+              console.log('⚠️ [SAVE_EXPENSE] Cost center ID não fornecido, buscado pelo nome:', costCenterId);
+            } else if (costCenterId) {
+              console.log('✅ [SAVE_EXPENSE] Cost center ID fornecido (já validado):', costCenterId);
             }
             
             // Se for cartão de crédito e tiver parcelas, criar installments
             if (expenseData.payment_method === 'credit_card' && expenseData.installments > 1) {
-              const card = cards?.find(c => 
-                this.normalizeName(c.name) === this.normalizeName(expenseData.card_name)
-              );
+              // Usar card_id fornecido ou buscar pelo nome
+              let card = null;
+              if (expenseData.card_id) {
+                card = cards?.find(c => c.id === expenseData.card_id);
+                console.log('✅ [SAVE_EXPENSE] Card ID fornecido (já validado):', expenseData.card_id);
+              } else {
+                card = cards?.find(c => 
+                  this.normalizeName(c.name) === this.normalizeName(expenseData.card_name)
+                );
+                console.log('⚠️ [SAVE_EXPENSE] Card ID não fornecido, buscado pelo nome:', card?.id);
+              }
               
               if (card) {
                 await this.createInstallments(
