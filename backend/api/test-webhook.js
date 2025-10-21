@@ -10,7 +10,7 @@ export default async function handler(req, res) {
         changes: [{
           value: {
             messages: [{
-              from: '+551151928551', // Número real do seu WhatsApp
+              from: '+551151928551', // Seu número do WhatsApp
               id: 'test_msg_123',
               timestamp: Math.floor(Date.now() / 1000),
               text: {
@@ -32,14 +32,24 @@ export default async function handler(req, res) {
     console.log(`🔍 [TEST] useAssistant flag: ${smartConversation.useAssistant}`);
     console.log(`🔍 [TEST] USE_ZUL_ASSISTANT env: ${process.env.USE_ZUL_ASSISTANT}`);
 
-    await smartConversation.handleMessage(testPayload.entry[0].changes[0].value.messages[0].text.body, testPayload.entry[0].changes[0].value.messages[0].from);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Test completed',
-      useAssistant: smartConversation.useAssistant,
-      envVar: process.env.USE_ZUL_ASSISTANT
-    });
+    try {
+      await smartConversation.handleMessage(testPayload.entry[0].changes[0].value.messages[0].text.body, testPayload.entry[0].changes[0].value.messages[0].from);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Test completed',
+        useAssistant: smartConversation.useAssistant,
+        envVar: process.env.USE_ZUL_ASSISTANT
+      });
+    } catch (handleError) {
+      console.error('❌ [TEST] Error in handleMessage:', handleError);
+      return res.status(500).json({
+        success: false,
+        error: 'handleMessage failed',
+        message: handleError.message,
+        stack: handleError.stack
+      });
+    }
 
   } catch (error) {
     console.error('❌ [TEST] Error:', error);
