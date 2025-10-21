@@ -687,7 +687,7 @@ Retorne APENAS JSON:`;
     
     // Salvar debug no banco para análise
     try {
-      await supabase.from('conversation_state').insert({
+      await supabase.from('conversation_state').upsert({
         user_phone: userPhone,
         state: 'debug',
         temp_data: {
@@ -695,7 +695,10 @@ Retorne APENAS JSON:`;
           env_var: process.env.USE_ZUL_ASSISTANT,
           message: text,
           timestamp: new Date().toISOString()
-        }
+        },
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_phone'
       });
     } catch (e) {
       console.log('Erro ao salvar debug:', e.message);
