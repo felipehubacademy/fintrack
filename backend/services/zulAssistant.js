@@ -436,6 +436,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
       ];
       
       console.log('💬 [GPT-4] Histórico carregado:', history.length, 'mensagens');
+      console.log('💬 [GPT-4] Histórico completo:', JSON.stringify(history, null, 2));
       
       // Chamar GPT-4 com function calling
       const completion = await openai.chat.completions.create({
@@ -493,6 +494,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
       const response = assistantMessage.content;
       
       // Salvar no histórico
+      console.log('💾 [GPT-4] Salvando no histórico: user="' + userMessage + '", assistant="' + response + '"');
       await this.saveToHistory(userPhone, userMessage, response);
       
       return response;
@@ -533,18 +535,22 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
   async saveToHistory(userPhone, userMessage, assistantResponse) {
     try {
       const normalizedPhone = this.normalizePhone(userPhone);
+      console.log('💾 [saveToHistory] Phone:', normalizedPhone);
       
       const history = await this.loadConversationHistory(userPhone);
+      console.log('💾 [saveToHistory] Histórico atual:', history.length, 'mensagens');
       
       history.push(
         { role: 'user', content: userMessage },
         { role: 'assistant', content: assistantResponse }
       );
       
+      console.log('💾 [saveToHistory] Histórico após push:', history.length, 'mensagens');
+      
       // Limitar histórico a últimas 10 mensagens
       const limitedHistory = history.slice(-10);
       
-      await supabase
+      const result = await supabase
         .from('conversation_state')
         .upsert({
           user_phone: normalizedPhone,
@@ -559,7 +565,8 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           onConflict: 'user_phone'
         });
       
-      console.log('💾 [GPT-4] Histórico salvo');
+      console.log('💾 [saveToHistory] Upsert result:', JSON.stringify(result));
+      console.log('💾 [GPT-4] Histórico salvo com', limitedHistory.length, 'mensagens');
     } catch (error) {
       console.error('❌ Erro ao salvar histórico:', error);
     }
