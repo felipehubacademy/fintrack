@@ -496,10 +496,36 @@ Retorne APENAS JSON:`;
           try {
             console.log('💾 [ASSISTANT] Salvando despesa:', expenseData);
             
-            // Encontrar categoria
-            const category = categories.find(c => 
+            // Inferir categoria baseada na descrição
+            const inferCategory = (description) => {
+              const desc = description.toLowerCase();
+              
+              // Mapeamento de palavras-chave para categorias
+              const mapping = {
+                'Transporte': ['gasolina', 'posto', 'combustível', 'uber', 'taxi', 'ônibus', 'metrô', 'estacionamento'],
+                'Alimentação': ['mercado', 'supermercado', 'restaurante', 'lanche', 'padaria', 'açougue', 'feira'],
+                'Saúde': ['farmácia', 'remédio', 'médico', 'consulta', 'hospital', 'clínica'],
+                'Lazer': ['cinema', 'show', 'teatro', 'parque', 'viagem'],
+                'Moradia': ['aluguel', 'condomínio', 'água', 'luz', 'gás', 'internet']
+              };
+              
+              for (const [categoryName, keywords] of Object.entries(mapping)) {
+                if (keywords.some(keyword => desc.includes(keyword))) {
+                  return categories.find(c => c.name === categoryName);
+                }
+              }
+              
+              return null;
+            };
+            
+            // Tentar encontrar categoria exata ou inferir
+            let category = categories.find(c => 
               c.name.toLowerCase() === (expenseData.category || '').toLowerCase()
             );
+            
+            if (!category) {
+              category = inferCategory(expenseData.description);
+            }
             
             // Verificar se é compartilhado
             const isShared = this.normalizeName(expenseData.responsible) === 'compartilhado';

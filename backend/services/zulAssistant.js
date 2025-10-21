@@ -303,10 +303,12 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
    */
   async loadThreadFromDB(userPhone) {
     try {
+      const normalizedPhone = this.normalizePhone(userPhone);
+      
       const { data, error } = await supabase
         .from('conversation_state')
         .select('*')
-        .eq('user_phone', userPhone)
+        .eq('user_phone', normalizedPhone)
         .neq('state', 'idle')
         .single();
 
@@ -319,7 +321,7 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
         return null;
       }
 
-      console.log(`💾 Thread recuperada do banco para ${userPhone}`);
+      console.log(`💾 Thread recuperada do banco para ${normalizedPhone}`);
       return {
         threadId,
         userName: data.temp_data?.user_name,
@@ -332,14 +334,25 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
   }
 
   /**
+   * Normalizar telefone (sempre com +)
+   */
+  normalizePhone(phone) {
+    if (!phone) return null;
+    const cleanPhone = String(phone).replace(/\D/g, ''); // Remove não-dígitos
+    return cleanPhone.startsWith('+') ? cleanPhone : `+${cleanPhone}`;
+  }
+
+  /**
    * Salvar thread no banco de dados
    */
   async saveThreadToDB(userPhone, threadId, state = 'awaiting_payment_method', extraData = {}) {
     try {
+      const normalizedPhone = this.normalizePhone(userPhone);
+      
       const { error } = await supabase
         .from('conversation_state')
         .upsert({
-          user_phone: userPhone,
+          user_phone: normalizedPhone,
           state: state,
           temp_data: {
             assistant_thread_id: threadId,
@@ -353,7 +366,7 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
       if (error) {
         console.error('❌ Erro ao salvar thread no banco:', error);
       } else {
-        console.log(`💾 Thread salva no banco: ${userPhone} -> ${threadId}`);
+        console.log(`💾 Thread salva no banco: ${normalizedPhone} -> ${threadId}`);
       }
     } catch (error) {
       console.error('❌ Erro ao salvar thread:', error);
@@ -373,14 +386,16 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
     // Limpar do banco (marcar como idle)
     if (userPhone) {
       try {
+        const normalizedPhone = this.normalizePhone(userPhone);
+        
         await supabase
           .from('conversation_state')
           .update({ 
             state: 'idle',
             temp_data: {}
           })
-          .eq('user_phone', userPhone);
-        console.log(`💾 Thread limpa no banco: ${userPhone}`);
+          .eq('user_phone', normalizedPhone);
+        console.log(`💾 Thread limpa no banco: ${normalizedPhone}`);
       } catch (error) {
         console.error('❌ Erro ao limpar thread do banco:', error);
       }
