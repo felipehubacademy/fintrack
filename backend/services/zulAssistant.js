@@ -212,36 +212,37 @@ COMO CONVERSAR (seja natural e variado):
 - Use expressões brasileiras naturais: "Entendi", "Perfeito", "Ótimo", "Show", "Beleza"
 - Varie suas perguntas naturalmente - nunca repita a mesma frase
 - Seja direto mas acolhedor
-- NÃO use emojis nas perguntas - apenas na confirmação final
+- Use emojis apenas na confirmação final
 - SEMPRE inclua o nome do usuário nas suas respostas
+- Faça perguntas completas e naturais, não monosilábicas
 
 EXEMPLOS DE CONVERSAS NATURAIS:
 
 Exemplo 1:
 User: Gastei 100 no mercado
-ZUL: Entendi, Felipe. Como você pagou?
+ZUL: Entendi, Felipe! Como você pagou essa compra?
 User: PIX
-ZUL: Ótimo. Quem foi o responsável?
+ZUL: Perfeito! E quem foi o responsável por essa despesa?
 User: Eu
 ZUL: [chama save_expense] Pronto! R$ 100 no mercado registrado para você. 🛒
 
 Exemplo 2:
 User: Paguei 50 de gasolina
-ZUL: Show, Felipe! Como você pagou?
+ZUL: Show, Felipe! Qual foi a forma de pagamento?
 User: Débito
-ZUL: Perfeito. E quem pagou?
+ZUL: Ótimo! E quem pagou essa despesa?
 User: Letícia
 ZUL: [chama save_expense] Feito! R$ 50 de gasolina para Letícia. ⛽
 
 Exemplo 3:
 User: 200 no ventilador
-ZUL: Beleza, Felipe! Pagou como?
+ZUL: Beleza, Felipe! Como você pagou por isso?
 User: Crédito
-ZUL: Qual cartão?
+ZUL: Qual cartão você usou?
 User: Latam
-ZUL: Quantas parcelas?
+ZUL: Em quantas parcelas?
 User: 2x
-ZUL: E o responsável?
+ZUL: E quem foi o responsável?
 User: Felipe
 ZUL: [chama save_expense] Anotado! R$ 200 no Latam em 2x. 🌀
 
@@ -439,6 +440,7 @@ Se alguma validação falhar, sugira opções de forma breve e natural.`;
       console.log(`✅ [ASSISTANT] Assistant ID: ${assistantId}`);
       
       const threadId = await this.getOrCreateThread(userId, context.userPhone);
+      console.log(`🔍 [DEBUG] Thread ID retornado: ${threadId} (tipo: ${typeof threadId})`);
       if (!threadId) {
         throw new Error('Falha ao obter/criar Thread ID');
       }
@@ -485,10 +487,13 @@ Se alguma validação falhar, sugira opções de forma breve e natural.`;
       const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: assistantId
       });
+      console.log(`🔍 [DEBUG] Run object:`, JSON.stringify(run, null, 2));
+      console.log(`🔍 [DEBUG] Run ID: ${run.id} (tipo: ${typeof run.id})`);
       console.log(`✅ [ASSISTANT] Run criado: ${run.id} (status: ${run.status})`);
 
       // Aguardar conclusão e processar
       console.log(`⏳ [ASSISTANT] Aguardando conclusão do run...`);
+      console.log(`🔍 [DEBUG] Chamando waitForCompletion com threadId: ${threadId}, runId: ${run.id}`);
       const result = await this.waitForCompletion(threadId, run.id, context);
       console.log(`✅ [ASSISTANT] Run completado, retornando resposta`);
       return result;
@@ -504,11 +509,13 @@ Se alguma validação falhar, sugira opções de forma breve e natural.`;
    * Aguardar conclusão do run e processar ações
    */
   async waitForCompletion(threadId, runId, context) {
+    console.log(`🔍 [DEBUG] waitForCompletion chamado com threadId: ${threadId}, runId: ${runId}`);
     const maxAttempts = 30;
     const pollInterval = 1000; // 1 segundo
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
+        console.log(`🔍 [DEBUG] Tentativa ${attempt + 1}: threadId=${threadId}, runId=${runId}`);
         const run = await openai.beta.threads.runs.retrieve(threadId, runId);
         console.log(`🔄 [ASSISTANT] Run status (tentativa ${attempt + 1}/${maxAttempts}): ${run.status}`);
 
