@@ -41,6 +41,9 @@ async function processWebhook(body) {
             console.log('🔄 [B1][DEBUG] SmartConversation instance created');
 
             console.log('🔄 [B1][DEBUG] Calling handleMessage...');
+            console.log(`🔍 [B1][DEBUG] useAssistant flag: ${smartConversation.useAssistant}`);
+            console.log(`🔍 [B1][DEBUG] USE_ZUL_ASSISTANT env: ${process.env.USE_ZUL_ASSISTANT}`);
+            
             await smartConversation.handleMessage(message.text.body, message.from);
             console.log('🔄 [B1][DEBUG] handleMessage completed');
 
