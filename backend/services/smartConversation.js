@@ -716,6 +716,15 @@ Retorne APENAS JSON:`;
             console.log('💾 [SAVE_EXPENSE] User ID:', user.id);
             console.log('💾 [SAVE_EXPENSE] Organization ID:', user.organization_id);
             
+            // ❌ VALIDAÇÃO: cost_center_id é OBRIGATÓRIO
+            if (!expenseData.cost_center_id && expenseData.responsible !== 'Compartilhado') {
+              console.error('❌ [SAVE_EXPENSE] cost_center_id não fornecido!');
+              return {
+                success: false,
+                error: 'cost_center_id é obrigatório. Você DEVE chamar validate_responsible primeiro e passar o cost_center_id retornado.'
+              };
+            }
+            
             // Inferir categoria baseada na descrição
             const inferCategory = (description) => {
               const desc = description.toLowerCase();
