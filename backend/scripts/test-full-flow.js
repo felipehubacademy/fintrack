@@ -52,13 +52,20 @@ async function clearThread() {
 }
 
 async function checkExpenseInDB() {
+  // Procurar por "mercado" ou "Mercado" (case insensitive via ilike)
   const { data, error } = await supabase
     .from('expenses')
     .select('*')
-    .eq('description', 'mercado')
+    .ilike('description', '%mercado%')
     .eq('amount', '100.00')
+    .eq('source', 'whatsapp')
     .order('created_at', { ascending: false })
     .limit(1);
+  
+  if (error) {
+    console.log('\n❌ Erro ao buscar despesa:', error.message);
+    return null;
+  }
   
   if (data && data.length > 0) {
     console.log('\n✅ DESPESA SALVA NO BANCO:');
