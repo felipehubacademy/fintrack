@@ -473,18 +473,30 @@ Retorne APENAS JSON:`;
             };
           }
           
-          // Mapear "eu" para o nome do usuário atual
+          // Mapear "eu" para o cost center do usuário atual
           if (normalized === 'eu' || normalized === 'me' || normalized === 'mim') {
-            // Tentar primeiro nome do usuário
+            // 1. Buscar cost center por nome (primeiro nome do usuário)
             const firstName = context.userName.split(' ')[0];
-            const userCostCenter = costCenters.find(cc => 
-              this.normalizeName(cc.name) === this.normalizeName(firstName)
+            let userCostCenter = costCenters.find(cc => 
+              this.normalizeName(cc.name) === this.normalizeName(firstName) && cc.type === 'individual'
             );
+            
             if (userCostCenter) {
               return {
                 valid: true,
                 responsible: userCostCenter.name,
                 cost_center_id: userCostCenter.id,
+                is_shared: false
+              };
+            }
+            
+            // 2. Se não encontrou, usar o primeiro cost center individual da org
+            const firstIndividual = costCenters.find(cc => cc.type === 'individual');
+            if (firstIndividual) {
+              return {
+                valid: true,
+                responsible: firstIndividual.name,
+                cost_center_id: firstIndividual.id,
                 is_shared: false
               };
             }
