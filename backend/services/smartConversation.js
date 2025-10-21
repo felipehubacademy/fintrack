@@ -354,218 +354,135 @@ Retorne APENAS JSON:`;
   }
 
   /**
-   * Aplicar personalidade conversacional do ZUL
+   * Aplicar personalidade do ZUL nas respostas
    */
   applyZulPersonality(assistantResponse, userName) {
+    // Extrair o primeiro nome do usuário
     const firstName = userName ? userName.split(' ')[0] : '';
     
-    // Detectar tipo de pergunta e gerar resposta conversacional
-    if (this.isPaymentQuestion(assistantResponse)) {
-      return this.getConversationalPaymentQuestion(firstName);
-    }
-    
-    if (this.isResponsibleQuestion(assistantResponse)) {
-      return this.getConversationalResponsibleQuestion();
-    }
-    
-    if (this.isCardQuestion(assistantResponse)) {
-      return this.getConversationalCardQuestion();
-    }
-    
-    if (this.isInstallmentQuestion(assistantResponse)) {
-      return this.getConversationalInstallmentQuestion();
-    }
-    
-    if (this.isConfirmation(assistantResponse)) {
-      return this.getConversationalConfirmation(assistantResponse, firstName);
-    }
-    
-    return assistantResponse;
-  }
-
-  /**
-   * Detectar se é pergunta sobre pagamento
-   */
-  isPaymentQuestion(response) {
-    const paymentKeywords = ['pagou', 'pagamento', 'forma', 'método', 'pix', 'débito', 'crédito', 'dinheiro'];
-    return paymentKeywords.some(keyword => response.toLowerCase().includes(keyword));
-  }
-
-  /**
-   * Detectar se é pergunta sobre responsável
-   */
-  isResponsibleQuestion(response) {
-    const responsibleKeywords = ['quem', 'responsável', 'pagou', 'fez', 'compra'];
-    return responsibleKeywords.some(keyword => response.toLowerCase().includes(keyword));
-  }
-
-  /**
-   * Detectar se é pergunta sobre cartão
-   */
-  isCardQuestion(response) {
-    const cardKeywords = ['cartão', 'cartao', 'qual', 'qual foi'];
-    return cardKeywords.some(keyword => response.toLowerCase().includes(keyword));
-  }
-
-  /**
-   * Detectar se é pergunta sobre parcelas
-   */
-  isInstallmentQuestion(response) {
-    const installmentKeywords = ['parcela', 'vezes', 'quantas', 'parcelou'];
-    return installmentKeywords.some(keyword => response.toLowerCase().includes(keyword));
-  }
-
-  /**
-   * Detectar se é confirmação final
-   */
-  isConfirmation(response) {
-    return response.includes('Pronto!') || response.includes('Feito!') || response.includes('Salvo!') || response.includes('Anotado!');
-  }
-
-  /**
-   * Gerar pergunta conversacional sobre pagamento
-   */
-  getConversationalPaymentQuestion(firstName) {
-    const variations = [
-      `Entendi${firstName ? `, ${firstName}` : ''}. Como você pagou essa despesa?`,
-      `Perfeito${firstName ? `, ${firstName}` : ''}. Qual foi a forma de pagamento?`,
-      `Ótimo${firstName ? `, ${firstName}` : ''}. Como você pagou?`,
-      `Certo${firstName ? `, ${firstName}` : ''}. Qual método de pagamento você usou?`,
-      `Show${firstName ? `, ${firstName}` : ''}. Como foi o pagamento?`,
-      `Beleza${firstName ? `, ${firstName}` : ''}. Qual forma de pagamento?`,
-      `Legal${firstName ? `, ${firstName}` : ''}. Como você pagou essa?`,
-      `Tranquilo${firstName ? `, ${firstName}` : ''}. Qual foi a forma?`,
-      `Top${firstName ? `, ${firstName}` : ''}. Como pagou?`,
-      `Bacana${firstName ? `, ${firstName}` : ''}. Qual método você usou?`,
-      `Massa${firstName ? `, ${firstName}` : ''}. Como foi o pagamento dessa despesa?`,
-      `Demais${firstName ? `, ${firstName}` : ''}. Qual forma de pagamento você escolheu?`,
-      `Incrível${firstName ? `, ${firstName}` : ''}. Como você pagou essa compra?`,
-      `Fantástico${firstName ? `, ${firstName}` : ''}. Qual foi o método de pagamento?`,
-      `Excelente${firstName ? `, ${firstName}` : ''}. Como você fez o pagamento?`
-    ];
-    return variations[Math.floor(Math.random() * variations.length)];
-  }
-
-  /**
-   * Gerar pergunta conversacional sobre responsável
-   */
-  getConversationalResponsibleQuestion() {
-    const variations = [
-      `Perfeito. Quem foi o responsável por essa compra?`,
-      `Ótimo. Quem pagou essa despesa?`,
-      `Certo. Quem foi o responsável?`,
-      `Entendi. Quem fez essa compra?`,
-      `Show. Quem foi que pagou?`,
-      `Beleza. Quem foi o responsável por essa?`,
-      `Legal. Quem pagou essa despesa?`,
-      `Tranquilo. Quem foi que fez essa compra?`,
-      `Top. Quem foi o responsável?`,
-      `Bacana. Quem pagou essa?`,
-      `Massa. Quem foi que fez essa despesa?`,
-      `Demais. Quem foi o responsável por essa compra?`,
-      `Incrível. Quem pagou essa despesa?`,
-      `Fantástico. Quem foi que fez essa compra?`,
-      `Excelente. Quem foi o responsável por essa?`
-    ];
-    return variations[Math.floor(Math.random() * variations.length)];
-  }
-
-  /**
-   * Gerar pergunta conversacional sobre cartão
-   */
-  getConversationalCardQuestion() {
-    const variations = [
-      `Qual cartão você usou?`,
-      `Em qual cartão foi?`,
-      `Qual cartão?`,
-      `Qual foi o cartão?`,
-      `Show. Qual cartão você escolheu?`,
-      `Beleza. Em qual cartão foi?`,
-      `Legal. Qual cartão você usou?`,
-      `Tranquilo. Qual foi o cartão?`,
-      `Top. Qual cartão?`,
-      `Bacana. Em qual cartão foi essa?`,
-      `Massa. Qual cartão você usou?`,
-      `Demais. Qual foi o cartão escolhido?`,
-      `Incrível. Qual cartão?`,
-      `Fantástico. Em qual cartão foi?`,
-      `Excelente. Qual cartão você usou?`
-    ];
-    return variations[Math.floor(Math.random() * variations.length)];
-  }
-
-  /**
-   * Gerar pergunta conversacional sobre parcelas
-   */
-  getConversationalInstallmentQuestion() {
-    const variations = [
-      `Em quantas parcelas?`,
-      `Quantas vezes?`,
-      `Parcelou em quantas vezes?`,
-      `Em quantas vezes foi?`,
-      `Show. Quantas parcelas?`,
-      `Beleza. Em quantas vezes foi?`,
-      `Legal. Parcelou em quantas?`,
-      `Tranquilo. Quantas vezes?`,
-      `Top. Em quantas parcelas?`,
-      `Bacana. Quantas vezes foi?`,
-      `Massa. Parcelou em quantas vezes?`,
-      `Demais. Quantas parcelas você escolheu?`,
-      `Incrível. Em quantas vezes?`,
-      `Fantástico. Quantas parcelas?`,
-      `Excelente. Parcelou em quantas vezes?`
-    ];
-    return variations[Math.floor(Math.random() * variations.length)];
-  }
-
-  /**
-   * Gerar confirmação conversacional
-   */
-  getConversationalConfirmation(assistantResponse, firstName) {
-    // Extrair informações da confirmação
-    const amountMatch = assistantResponse.match(/R\$ ([\d,]+)/);
-    const descriptionMatch = assistantResponse.match(/de (\w+)/);
-    const paymentMatch = assistantResponse.match(/no (\w+)/);
-    const responsibleMatch = assistantResponse.match(/([A-Za-záàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ\s]+)\./);
-    const emojiMatch = assistantResponse.match(/([^\s]+)$/);
-    
-    if (amountMatch && descriptionMatch && paymentMatch && responsibleMatch) {
-      const amount = amountMatch[1];
-      const description = descriptionMatch[1];
-      const payment = paymentMatch[1];
-      const responsible = responsibleMatch[1].trim();
-      const emoji = emojiMatch ? emojiMatch[1] : '💰';
-      
-      // Variações de confirmação
-      const confirmationVariations = [
-        `Pronto! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
-        `Feito! R$ ${amount} na ${description} para ${responsible}. ${emoji}`,
-        `Anotado! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
-        `Salvo! R$ ${amount} na ${description} para ${responsible}. ${emoji}`,
-        `Show! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
-        `Beleza! R$ ${amount} na ${description} para ${responsible}. ${emoji}`,
-        `Legal! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
-        `Tranquilo! R$ ${amount} na ${description} para ${responsible}. ${emoji}`,
-        `Top! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
-        `Bacana! R$ ${amount} na ${description} para ${responsible}. ${emoji}`,
-        `Massa! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
-        `Demais! R$ ${amount} na ${description} para ${responsible}. ${emoji}`,
-        `Incrível! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
-        `Fantástico! R$ ${amount} na ${description} para ${responsible}. ${emoji}`,
-        `Excelente! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`
+    // Mapear respostas do Assistant para personalidade do ZUL com variações
+    const getPaymentQuestion = () => {
+      const variations = [
+        `Entendi${firstName ? `, ${firstName}` : ''}. Como você pagou essa despesa?`,
+        `Perfeito${firstName ? `, ${firstName}` : ''}. Qual foi a forma de pagamento?`,
+        `Ótimo${firstName ? `, ${firstName}` : ''}. Como você pagou?`,
+        `Certo${firstName ? `, ${firstName}` : ''}. Qual método de pagamento você usou?`
       ];
+      return variations[Math.floor(Math.random() * variations.length)];
+    };
+
+    const getResponsibleQuestion = () => {
+      const variations = [
+        `Perfeito. Quem foi o responsável por essa compra?`,
+        `Ótimo. Quem pagou essa despesa?`,
+        `Certo. Quem foi o responsável?`,
+        `Entendi. Quem fez essa compra?`
+      ];
+      return variations[Math.floor(Math.random() * variations.length)];
+    };
+
+    const getCardQuestion = () => {
+      const variations = [
+        `Qual cartão você usou?`,
+        `Em qual cartão foi?`,
+        `Qual cartão?`,
+        `Qual foi o cartão?`
+      ];
+      return variations[Math.floor(Math.random() * variations.length)];
+    };
+
+    const getInstallmentQuestion = () => {
+      const variations = [
+        `Em quantas parcelas?`,
+        `Quantas vezes?`,
+        `Parcelou em quantas vezes?`,
+        `Em quantas vezes foi?`
+      ];
+      return variations[Math.floor(Math.random() * variations.length)];
+    };
+
+    const personalityMap = {
+      // Perguntas sobre pagamento
+      'Como você pagou?': getPaymentQuestion(),
+      'Foi em que forma?': getPaymentQuestion(),
+      'Pagou como?': getPaymentQuestion(),
+      'Qual foi a forma de pagamento?': getPaymentQuestion(),
       
-      let confirmation = confirmationVariations[Math.floor(Math.random() * confirmationVariations.length)];
+      // Perguntas sobre responsável
+      'Quem pagou?': getResponsibleQuestion(),
+      'Responsável?': getResponsibleQuestion(),
+      'Foi você ou a Letícia?': getResponsibleQuestion(),
+      'Quem foi?': getResponsibleQuestion(),
       
-      // Adicionar comentário contextual
-      const contextualComment = this.getContextualComment(description);
-      if (contextualComment) {
-        confirmation += `\n${contextualComment}`;
+      // Perguntas sobre cartão
+      'Qual cartão?': getCardQuestion(),
+      'Em qual cartão?': getCardQuestion(),
+      'Cartão?': getCardQuestion(),
+      
+      // Perguntas sobre parcelas
+      'Quantas vezes?': getInstallmentQuestion(),
+      'Parcelou?': getInstallmentQuestion(),
+      'Em quantas?': getInstallmentQuestion()
+    };
+    
+    // Aplicar mapeamento se encontrar correspondência exata
+    if (personalityMap[assistantResponse]) {
+      return personalityMap[assistantResponse];
+    }
+    
+    // Para confirmações finais, adicionar personalidade
+    if (assistantResponse.includes('Pronto!') || assistantResponse.includes('Feito!') || assistantResponse.includes('Salvei!')) {
+      // Extrair informações da confirmação com regex mais flexível
+      const amountMatch = assistantResponse.match(/R\$ ([\d,]+)/);
+      const descriptionMatch = assistantResponse.match(/de (\w+)/);
+      const paymentMatch = assistantResponse.match(/no (\w+)/);
+      const responsibleMatch = assistantResponse.match(/([A-Za-záàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ\s]+)\./);
+      const emojiMatch = assistantResponse.match(/([^\s]+)$/);
+      
+      if (amountMatch && descriptionMatch && paymentMatch && responsibleMatch) {
+        const amount = amountMatch[1];
+        const description = descriptionMatch[1];
+        const payment = paymentMatch[1];
+        const responsible = responsibleMatch[1];
+        const emoji = emojiMatch ? emojiMatch[1] : '💰';
+        
+        // Gerar confirmação com personalidade do ZUL e variações
+        const confirmationVariations = [
+          `Pronto! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
+          `Feito! R$ ${amount} na ${description} para ${responsible}. ${emoji}`,
+          `Anotado! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
+          `Salvo! R$ ${amount} na ${description} para ${responsible}. ${emoji}`
+        ];
+        
+        let confirmation = confirmationVariations[Math.floor(Math.random() * confirmationVariations.length)];
+        
+        // Adicionar comentário contextual baseado na categoria
+        const contextualComment = this.getContextualComment(description);
+        if (contextualComment) {
+          confirmation += `\n${contextualComment}`;
+        }
+        
+        return confirmation;
       }
       
-      return confirmation;
+      // Fallback: se não conseguir extrair, aplicar transformação simples
+      let transformedResponse = assistantResponse
+        .replace(/de (\w+)/, 'na $1')
+        .replace(/no (\w+)/, 'no $1');
+      
+      // Adicionar comentário contextual se possível
+      const descMatch = assistantResponse.match(/de (\w+)/);
+      if (descMatch) {
+        const contextualComment = this.getContextualComment(descMatch[1]);
+        if (contextualComment) {
+          transformedResponse += `\n${contextualComment}`;
+        }
+      }
+      
+      return transformedResponse;
     }
     
+    // Se não encontrar mapeamento, retornar resposta original
     return assistantResponse;
   }
 
@@ -929,9 +846,12 @@ Retorne APENAS JSON:`;
       const assistantResponse = await this.zulAssistant.sendMessage(user.id, text, context);
       console.log('✅ [ASSISTANT] Resposta recebida do Assistant:', assistantResponse);
       
-      // 5. Enviar resposta natural do ZUL (sem transformação artificial)
-      console.log('🤖 [ZUL] Resposta natural:', assistantResponse);
-      await this.sendWhatsAppMessage(userPhone, assistantResponse);
+      // 5. Aplicar personalidade do ZUL
+      const zulResponse = this.applyZulPersonality(assistantResponse, user.name);
+      console.log('🎭 [ZUL] Resposta com personalidade:', zulResponse);
+      
+      // 6. Enviar resposta personalizada para o usuário
+      await this.sendWhatsAppMessage(userPhone, zulResponse);
 
     } catch (error) {
       console.error('❌ [ASSISTANT] Erro no processamento:', error);

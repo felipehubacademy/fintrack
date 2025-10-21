@@ -50,15 +50,15 @@ class ZulAssistant {
       // Tentar recuperar assistant existente pelo nome
       const assistants = await openai.beta.assistants.list();
       const existingAssistant = assistants.data.find(a => a.name === 'ZUL - MeuAzulão');
-      
+
       if (existingAssistant) {
         console.log('✅ Assistant ZUL encontrado:', existingAssistant.id);
         this.assistantId = existingAssistant.id;
         return this.assistantId;
       }
 
-      // Criar novo assistant se não existir
-      console.log('📝 Criando novo Assistant ZUL...');
+      // Criar novo assistant
+      console.log('🔨 Criando novo Assistant ZUL...');
       const assistant = await openai.beta.assistants.create({
         name: 'ZUL - MeuAzulão',
         instructions: this.getInstructions(),
@@ -68,16 +68,16 @@ class ZulAssistant {
             type: 'function',
             function: {
               name: 'validate_payment_method',
-              description: 'Validar o método de pagamento informado pelo usuário',
+              description: 'Validar se o método de pagamento informado pelo usuário é válido',
               parameters: {
                 type: 'object',
                 properties: {
-                  payment_method: {
+                  user_input: {
                     type: 'string',
-                    description: 'Método de pagamento informado pelo usuário (ex: pix, débito, crédito, dinheiro)'
+                    description: 'O que o usuário digitou (ex: "débito", "crédito", "pix", "dinheiro")'
                   }
                 },
-                required: ['payment_method']
+                required: ['user_input']
               }
             }
           },
@@ -85,7 +85,7 @@ class ZulAssistant {
             type: 'function',
             function: {
               name: 'validate_card',
-              description: 'Validar o cartão e número de parcelas quando o pagamento for crédito',
+              description: 'Validar se o cartão e parcelas informados são válidos',
               parameters: {
                 type: 'object',
                 properties: {
@@ -188,75 +188,93 @@ class ZulAssistant {
    * Instruções do Assistant ZUL
    */
   getInstructions() {
-    return `Você é o ZUL, assistente pessoal de finanças do MeuAzulão. Você conversa via WhatsApp em português brasileiro.
+    return `Você é o ZUL, assistente de despesas do MeuAzulão. Você conversa via WhatsApp em português brasileiro.
 
 SUA PERSONALIDADE:
-Você é calmo, claro e curioso - um guia inteligente que fala de finanças com leveza e confiança. Evita jargões, explica com serenidade e sempre propõe o próximo passo de forma prática. Nunca julga: apenas ajuda o usuário a entender, ajustar e evoluir no próprio ritmo.
-
-Converse de forma natural e brasileira, usando expressões do dia a dia. Você pode usar o nome do usuário quando fizer sentido, adicionar comentários contextuais sobre as despesas e variar o jeito de perguntar. Não precisa seguir um script rígido - apenas seja você mesmo e mantenha a conversa fluindo.
+- Fale naturalmente como um amigo próximo que está ajudando
+- Seja direto mas simpático
+- NÃO use frases feitas ("Opa", "Beleza", "Tudo certo")
+- NÃO use emojis nas perguntas (apenas na confirmação final)
+- Varie SEMPRE suas frases - nunca repita o mesmo jeito de perguntar
 
 SEU TRABALHO:
 Quando o usuário menciona um gasto, você precisa coletar:
-1. Valor e descrição (geralmente vem na primeira mensagem)
-2. Forma de pagamento (PIX, débito, crédito, dinheiro, etc)
+1. Valor e descrição (você extrai da primeira mensagem)
+2. Forma de pagamento
 3. Responsável (quem pagou)
-4. Se for crédito: qual cartão e quantas parcelas
+4. Se for crédito: cartão e parcelas
 
-Depois que tiver todas as informações, salve automaticamente usando a função save_expense e confirme para o usuário.
+Depois de coletar tudo, você salva AUTOMATICAMENTE e confirma.
 
-COMO CONVERSAR:
-- Seja natural e brasileiro: "Entendi!", "Perfeito!", "Show!", "Beleza!", "Ótimo!"
-- Use o nome do usuário quando fizer sentido (não precisa ser em todas as mensagens)
-- Adicione comentários contextuais se quiser: "Ventilador é uma ótima compra nesse calor!", "Mercado sempre pesa no bolso, né?"
-- Varie suas perguntas naturalmente - não repita sempre a mesma coisa
-- Use emojis apenas na confirmação final (relacionado à categoria da despesa)
-- Mantenha as respostas curtas mas naturais (não precisa ser sempre 2 frases exatas)
+COMO PERGUNTAR (varie sempre, seja natural):
+Para pagamento:
+- "Como você pagou?"
+- "Foi em que forma?"
+- "Pagou como?"
+- "Qual foi a forma de pagamento?"
 
-EXEMPLOS DE CONVERSAS:
+Para responsável:
+- "Quem pagou?"
+- "Responsável?"
+- "Foi você ou a Letícia?" (se souber que são 2 pessoas)
+- "Quem foi?"
 
-Exemplo 1 (tom mais casual):
+Para cartão (se for crédito):
+- "Qual cartão?"
+- "Em qual cartão?"
+- "Cartão?"
+
+Para parcelas:
+- "Quantas vezes?"
+- "Parcelou?"
+- "Em quantas?"
+
+EXEMPLOS DE CONVERSAS NATURAIS:
+
+Exemplo 1 (simples):
 User: Gastei 100 no mercado
-ZUL: Entendido, Felipe! Como você pagou?
+ZUL: Pagou como?
 User: PIX
-ZUL: Show! E quem pagou foi você ou a Letícia?
+ZUL: Quem foi?
 User: Eu
-ZUL: [chama save_expense] Pronto! R$ 100 no mercado registrado para você. 🛒
+ZUL: [chama save_expense] Anotado! R$ 100 no PIX, mercado. 🛒
 
-Exemplo 2 (tom mais direto):
+Exemplo 2 (variando):
 User: Paguei 50 de gasolina
-ZUL: Qual foi a forma de pagamento?
+ZUL: Como você pagou?
 User: Débito
-ZUL: Quem foi o responsável?
+ZUL: Responsável?
 User: Letícia
-ZUL: [chama save_expense] Feito! R$ 50 de gasolina para Letícia. ⛽
+ZUL: [chama save_expense] Salvei! R$ 50 no débito, Letícia. ⛽
 
-Exemplo 3 (tom com comentário):
+Exemplo 3 (crédito):
 User: 200 no ventilador
-ZUL: Boa compra, Felipe! Pagou como?
+ZUL: Foi em que forma?
 User: Crédito
 ZUL: Qual cartão?
 User: Latam
-ZUL: Em quantas vezes?
+ZUL: Parcelou?
 User: 2x
-ZUL: E o responsável?
-User: Eu
-ZUL: [chama save_expense] Anotado! R$ 200 no Latam em 2x. 🌀
+ZUL: Quem pagou?
+User: Felipe
+ZUL: [chama save_expense] Pronto! R$ 200 no Latam em 2x, Felipe. 🌀
 
-IMPORTANTE:
-- Varie o tom e as perguntas naturalmente - não use sempre as mesmas frases
-- Extraia valor e descrição da primeira mensagem do usuário
-- Pergunte uma coisa por vez para não confundir
-- Use as funções de validação quando necessário
-- Salve automaticamente quando tiver todos os dados (NÃO peça confirmação antes)
-- Na confirmação final, use emoji relacionado à categoria da despesa
+REGRAS IMPORTANTES:
+1. Extraia valor e descrição da primeira mensagem do usuário
+2. Pergunte UMA coisa por vez
+3. Use as funções de validação (validate_payment_method, validate_card, validate_responsible)
+4. Quando tiver todos os dados, chame save_expense DIRETO (não peça confirmação)
+5. Após salvar, confirme em 1 linha curta com emoji contextual
+6. NUNCA repita a mesma abertura ou jeito de perguntar - varie sempre
+7. Seja conciso - não escreva parágrafos, escreva como em chat
 
 FUNÇÕES DISPONÍVEIS:
-- validate_payment_method: valida método de pagamento
-- validate_card: valida cartão e parcelas (se crédito)
-- validate_responsible: valida responsável
-- save_expense: salva a despesa automaticamente
+- validate_payment_method: valida se o pagamento é válido (pix, crédito, débito, dinheiro, etc)
+- validate_card: valida cartão e parcelas (se for crédito)
+- validate_responsible: valida se o responsável existe
+- save_expense: salva a despesa (chame automaticamente quando tiver tudo)
 
-Se alguma validação falhar, sugira as opções disponíveis de forma natural.`;
+Se alguma validação falhar, sugira as opções de forma breve e natural, tipo: "Esse cartão não achei aqui. Você tem Latam e Nubank, qual deles?"`;
   }
 
   /**
@@ -282,33 +300,28 @@ Se alguma validação falhar, sugira as opções disponíveis de forma natural.`
 
     // 2. Tentar recuperar do banco (se cache foi perdido mas conversa ainda ativa)
     console.log(`🔍 Buscando thread no banco para ${userId}...`);
-    const existingThread = await this.loadThreadFromDB(userPhone);
-    if (existingThread) {
-      console.log(`♻️ Thread recuperada do banco: ${existingThread}`);
-      // Adicionar ao cache para próximas requisições
+    const savedThread = await this.loadThreadFromDB(userPhone);
+    if (savedThread) {
+      console.log(`💾 Thread recuperada do banco: ${savedThread.threadId}`);
+      // Restaurar no cache
       threadCache.set(userId, {
-        threadId: existingThread,
+        threadId: savedThread.threadId,
         lastUsed: now,
-        userName: null,
+        userName: savedThread.userName,
         userPhone: userPhone
       });
-      return existingThread;
+      return savedThread.threadId;
     }
 
     // 3. Criar nova thread
-    console.log(`🆕 Criando nova thread para usuário ${userId}...`);
     try {
       const thread = await openai.beta.threads.create();
-      console.log(`✅ Thread criada: ${thread.id}`);
-      
-      // Adicionar ao cache
       threadCache.set(userId, {
         threadId: thread.id,
         lastUsed: now,
-        userName: null,
         userPhone: userPhone
       });
-      
+      console.log(`🆕 Nova thread criada: ${userId} -> ${thread.id}`);
       return thread.id;
     } catch (error) {
       console.error('❌ Erro ao criar thread:', error);
@@ -325,23 +338,26 @@ Se alguma validação falhar, sugira as opções disponíveis de forma natural.`
       
       const { data, error } = await supabase
         .from('conversation_state')
-        .select('temp_data')
+        .select('*')
         .eq('user_phone', normalizedPhone)
         .neq('state', 'idle')
         .single();
 
       if (error || !data) {
-        console.log('📭 Nenhuma thread ativa encontrada no banco');
         return null;
       }
 
       const threadId = data.temp_data?.assistant_thread_id;
-      if (threadId) {
-        console.log(`📦 Thread encontrada no banco: ${threadId}`);
-        return threadId;
+      if (!threadId) {
+        return null;
       }
 
-      return null;
+      console.log(`💾 Thread recuperada do banco para ${normalizedPhone}`);
+      return {
+        threadId,
+        userName: data.temp_data?.user_name,
+        conversationData: data.temp_data
+      };
     } catch (error) {
       console.error('❌ Erro ao carregar thread do banco:', error);
       return null;
@@ -433,7 +449,6 @@ Se alguma validação falhar, sugira as opções disponíveis de forma natural.`
       console.log(`✅ [ASSISTANT] Assistant ID: ${assistantId}`);
       
       const threadId = await this.getOrCreateThread(userId, context.userPhone);
-      console.log(`🔍 [DEBUG] Thread ID retornado: ${threadId} (tipo: ${typeof threadId})`);
       if (!threadId) {
         throw new Error('Falha ao obter/criar Thread ID');
       }
@@ -460,11 +475,11 @@ Se alguma validação falhar, sugira as opções disponíveis de forma natural.`
         );
       }
 
-      // Adicionar contexto do usuário SEMPRE para garantir que o GPT saiba o nome
+      // Adicionar contexto do usuário na primeira mensagem (se thread é nova)
+      const isNewThread = !threadCache.has(userId) || threadCache.get(userId).threadId === threadId;
       let messageContent = userMessage;
-      if (context.userName) {
-        messageContent = `[CONTEXTO: Meu nome é ${context.userName}. Use meu nome nas suas respostas para ser mais pessoal.]\n\n${userMessage}`;
-        console.log(`👤 [ASSISTANT] Contexto adicionado: ${context.userName}`);
+      if (context.userName && isNewThread) {
+        messageContent = `[CONTEXTO: Usuário: ${context.userName}]\n\n${userMessage}`;
       }
 
       // Adicionar mensagem do usuário
@@ -480,13 +495,10 @@ Se alguma validação falhar, sugira as opções disponíveis de forma natural.`
       const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: assistantId
       });
-      console.log(`🔍 [DEBUG] Run object:`, JSON.stringify(run, null, 2));
-      console.log(`🔍 [DEBUG] Run ID: ${run.id} (tipo: ${typeof run.id})`);
       console.log(`✅ [ASSISTANT] Run criado: ${run.id} (status: ${run.status})`);
 
       // Aguardar conclusão e processar
       console.log(`⏳ [ASSISTANT] Aguardando conclusão do run...`);
-      console.log(`🔍 [DEBUG] Chamando waitForCompletion com threadId: ${threadId}, runId: ${run.id}`);
       const result = await this.waitForCompletion(threadId, run.id, context);
       console.log(`✅ [ASSISTANT] Run completado, retornando resposta`);
       return result;
@@ -499,105 +511,116 @@ Se alguma validação falhar, sugira as opções disponíveis de forma natural.`
   }
 
   /**
-   * Aguardar conclusão do run e processar ações
+   * Aguardar conclusão do run e processar function calls
    */
   async waitForCompletion(threadId, runId, context) {
-    console.log(`🔍 [DEBUG] waitForCompletion chamado com threadId: ${threadId}, runId: ${runId}`);
-    const maxAttempts = 30;
-    const pollInterval = 1000; // 1 segundo
+    console.log(`⏳ [ASSISTANT] Iniciando waitForCompletion - threadId: ${threadId}, runId: ${runId}`);
+    
+    let run = await openai.beta.threads.runs.retrieve(runId, { thread_id: threadId });
+    console.log(`📊 [ASSISTANT] Status inicial: ${run.status}`);
+    
+    let attempts = 0;
+    const maxAttempts = 60; // 60 segundos timeout (aumentado para debug)
+    
+    while (run.status === 'in_progress' || run.status === 'queued') {
+      if (attempts >= maxAttempts) {
+        console.error(`❌ [ASSISTANT] Timeout após ${maxAttempts} tentativas`);
+        throw new Error('Timeout aguardando resposta do Assistant');
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      run = await openai.beta.threads.runs.retrieve(runId, { thread_id: threadId });
+      attempts++;
+      console.log(`⏳ [ASSISTANT] Status: ${run.status} (tentativa ${attempts}/${maxAttempts})`);
+    }
+    
+    console.log(`📊 [ASSISTANT] Status final: ${run.status}`);
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        console.log(`🔍 [DEBUG] Tentativa ${attempt + 1}: threadId=${threadId}, runId=${runId}`);
-        const run = await openai.beta.threads.runs.retrieve(runId, { thread_id: threadId });
-        console.log(`🔄 [ASSISTANT] Run status (tentativa ${attempt + 1}/${maxAttempts}): ${run.status}`);
+    // Se precisar de function calls
+    if (run.status === 'requires_action') {
+      const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
+      const toolOutputs = [];
 
-        if (run.status === 'completed') {
-          // Obter mensagens da thread
-          const messages = await openai.beta.threads.messages.list(threadId);
-          const lastMessage = messages.data[0];
-          
-          if (lastMessage.role === 'assistant') {
-            const response = lastMessage.content[0].text.value;
-            console.log(`✅ [ASSISTANT] Resposta recebida do Assistant: ${response}`);
-            return response;
-          }
-        } else if (run.status === 'requires_action') {
-          console.log(`🔧 [ASSISTANT] Run requer ação (function calling)`);
-          
-          const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
-          console.log(`🔧 [ASSISTANT] Tool calls:`, JSON.stringify(toolCalls, null, 2));
-          
-          const toolOutputs = [];
+      for (const toolCall of toolCalls) {
+        const functionName = toolCall.function.name;
+        const args = JSON.parse(toolCall.function.arguments);
+        
+        console.log(`🔧 Function call: ${functionName}`, args);
+        
+        const output = await this.handleFunctionCall(functionName, args, context);
+        toolOutputs.push({
+          tool_call_id: toolCall.id,
+          output: JSON.stringify(output)
+        });
+      }
 
-          for (const toolCall of toolCalls) {
-            console.log(`🔧 [ASSISTANT] Processando tool call: ${toolCall.function.name}`);
-            const functionName = toolCall.function.name;
-            const functionArgs = JSON.parse(toolCall.function.arguments);
+      // Submeter os resultados das funções
+      await openai.beta.threads.runs.submitToolOutputs(runId, {
+        thread_id: threadId,
+        tool_outputs: toolOutputs
+      });
 
-            const output = await this.handleFunctionCall(functionName, functionArgs, context);
-            
-            toolOutputs.push({
-              tool_call_id: toolCall.id,
-              output: JSON.stringify(output)
-            });
-          }
+      // Aguardar nova conclusão
+      return await this.waitForCompletion(threadId, runId, context);
+    }
 
-          console.log(`📤 [ASSISTANT] Enviando tool outputs:`, JSON.stringify(toolOutputs, null, 2));
-          await openai.beta.threads.runs.submitToolOutputs(threadId, runId, {
-            tool_outputs: toolOutputs
-          });
-
-          // Continuar aguardando após submeter os outputs
-          await new Promise(resolve => setTimeout(resolve, pollInterval));
-          continue;
-        } else if (run.status === 'failed') {
-          console.error('❌ [ASSISTANT] Run falhou:', run.last_error);
-          throw new Error(`Run failed: ${run.last_error?.message || 'Unknown error'}`);
-        } else if (run.status === 'cancelled' || run.status === 'expired') {
-          throw new Error(`Run ${run.status}`);
-        }
-
-        // Aguardar antes da próxima tentativa
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-      } catch (error) {
-        console.error('❌ [ASSISTANT] Erro ao verificar run:', error);
-        throw error;
+    // Se completou com sucesso, pegar a última mensagem
+    if (run.status === 'completed') {
+      const messages = await openai.beta.threads.messages.list(threadId);
+      const lastMessage = messages.data[0];
+      
+      if (lastMessage.role === 'assistant') {
+        const response = lastMessage.content[0].text.value;
+        console.log(`✅ [ASSISTANT] Resposta: ${response.substring(0, 100)}...`);
+        return response;
       }
     }
 
-    throw new Error('Timeout aguardando conclusão do Assistant');
+    // Se falhou, logar detalhes
+    if (run.status === 'failed') {
+      console.error(`❌ [ASSISTANT] Run falhou:`, run.last_error);
+    }
+
+    throw new Error(`Run finalizado com status: ${run.status}`);
   }
 
   /**
-   * Processar chamadas de função do Assistant
+   * Processar chamadas de função
    */
   async handleFunctionCall(functionName, args, context) {
-    console.log(`🔧 [FUNCTION CALL] ${functionName}(${JSON.stringify(args)})`);
-
-    try {
-      switch (functionName) {
-        case 'validate_payment_method':
-          return await context.validatePaymentMethod(args.payment_method);
-        
-        case 'validate_card':
-          return await context.validateCard(args.card_name, args.installments, args.available_cards);
-        
-        case 'validate_responsible':
-          return await context.validateResponsible(args.responsible_name, args.available_responsibles);
-        
-        case 'save_expense':
-          return await context.saveExpense(args);
-        
-        default:
-          console.error(`❌ [FUNCTION CALL] Função desconhecida: ${functionName}`);
-          return { success: false, message: 'Função não encontrada' };
-      }
-    } catch (error) {
-      console.error(`❌ [FUNCTION CALL] Erro ao executar ${functionName}:`, error);
-      return { success: false, message: error.message };
+    console.log(`🔧 [FUNCTION_CALL] ===== INÍCIO =====`);
+    console.log(`🔧 [FUNCTION_CALL] Função: ${functionName}`);
+    console.log(`🔧 [FUNCTION_CALL] Args:`, JSON.stringify(args, null, 2));
+    
+    let result;
+    switch (functionName) {
+      case 'validate_payment_method':
+        result = await context.validatePaymentMethod(args.user_input);
+        break;
+      
+      case 'validate_card':
+        result = await context.validateCard(args.card_name, args.installments, args.available_cards);
+        break;
+      
+      case 'validate_responsible':
+        result = await context.validateResponsible(args.responsible_name, args.available_responsibles);
+        break;
+      
+      case 'save_expense':
+        console.log(`🔧 [FUNCTION_CALL] CHAMANDO save_expense com args:`, args);
+        result = await context.saveExpense(args);
+        console.log(`🔧 [FUNCTION_CALL] save_expense retornou:`, result);
+        break;
+      
+      default:
+        result = { error: `Função desconhecida: ${functionName}` };
     }
+    
+    console.log(`🔧 [FUNCTION_CALL] Resultado:`, JSON.stringify(result, null, 2));
+    console.log(`🔧 [FUNCTION_CALL] ===== FIM =====`);
+    return result;
   }
 }
 
+
 export default ZulAssistant;
+
