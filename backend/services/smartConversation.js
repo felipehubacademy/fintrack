@@ -856,18 +856,16 @@ Retorne APENAS JSON:`;
         }
       };
 
-      // 4. Enviar mensagem para o Assistant
-      console.log('🔄 [ASSISTANT] Enviando para ZUL Assistant...');
-      console.log('🔄 [ASSISTANT] User ID:', user.id);
-      console.log('🔄 [ASSISTANT] Text:', text);
-      console.log('🔄 [ASSISTANT] Context keys:', Object.keys(context));
+      // 4. Enviar mensagem para GPT-4 conversacional
+      console.log('🔄 [GPT-4] Enviando para chat completion...');
+      console.log('🔄 [GPT-4] User ID:', user.id);
+      console.log('🔄 [GPT-4] Text:', text);
       
-      const assistantResponse = await this.zulAssistant.sendMessage(user.id, text, context);
-      console.log('✅ [ASSISTANT] Resposta recebida do Assistant:', assistantResponse);
+      const response = await this.zulAssistant.sendConversationalMessage(user.id, text, context, userPhone);
+      console.log('✅ [GPT-4] Resposta:', response);
       
-      // 5. Enviar resposta PURA do Assistant (sem camada artificial)
-      console.log('💬 [ZUL] Resposta natural:', assistantResponse);
-      await this.sendWhatsAppMessage(userPhone, assistantResponse);
+      // 5. Enviar resposta para o usuário
+      await this.sendWhatsAppMessage(userPhone, response);
 
     } catch (error) {
       console.error('❌ [ASSISTANT] Erro no processamento:', error);

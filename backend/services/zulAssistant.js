@@ -413,7 +413,276 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
   }
 
   /**
-   * Enviar mensagem para o Assistant e obter resposta
+   * Enviar mensagem conversacional usando GPT-4 Chat Completion (NÃO Assistant API)
+   */
+  async sendConversationalMessage(userId, userMessage, context = {}, userPhone) {
+    try {
+      console.log('💬 [GPT-4] Iniciando conversa...');
+      
+      // Carregar histórico da conversa do banco
+      const history = await this.loadConversationHistory(userPhone);
+      
+      // Preparar mensagens para GPT-4
+      const messages = [
+        {
+          role: 'system',
+          content: this.getConversationalInstructions(context)
+        },
+        ...history,
+        {
+          role: 'user',
+          content: userMessage
+        }
+      ];
+      
+      console.log('💬 [GPT-4] Histórico carregado:', history.length, 'mensagens');
+      
+      // Chamar GPT-4 com function calling
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: messages,
+        functions: this.getFunctions(),
+        function_call: 'auto',
+        temperature: 0.9, // Mais criativo e variado
+        max_tokens: 200
+      });
+      
+      const assistantMessage = completion.choices[0].message;
+      
+      // Se chamou função
+      if (assistantMessage.function_call) {
+        console.log('🔧 [GPT-4] Function call:', assistantMessage.function_call.name);
+        
+        const functionName = assistantMessage.function_call.name;
+        const functionArgs = JSON.parse(assistantMessage.function_call.arguments);
+        
+        const functionResult = await this.handleFunctionCall(functionName, functionArgs, context);
+        
+        // Se salvou despesa, limpar histórico
+        if (functionName === 'save_expense' && functionResult.success) {
+          await this.clearConversationHistory(userPhone);
+          
+          // Retornar mensagem de confirmação
+          return assistantMessage.content || 'Salvei! 👍';
+        }
+        
+        // Continuar conversa com resultado da função
+        messages.push(assistantMessage);
+        messages.push({
+          role: 'function',
+          name: functionName,
+          content: JSON.stringify(functionResult)
+        });
+        
+        const followUp = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: messages,
+          temperature: 0.9,
+          max_tokens: 200
+        });
+        
+        const response = followUp.choices[0].message.content;
+        
+        // Salvar no histórico
+        await this.saveToHistory(userPhone, userMessage, response);
+        
+        return response;
+      }
+      
+      // Resposta normal sem function call
+      const response = assistantMessage.content;
+      
+      // Salvar no histórico
+      await this.saveToHistory(userPhone, userMessage, response);
+      
+      return response;
+      
+    } catch (error) {
+      console.error('❌ [GPT-4] Erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Carregar histórico da conversa
+   */
+  async loadConversationHistory(userPhone) {
+    try {
+      const normalizedPhone = this.normalizePhone(userPhone);
+      
+      const { data } = await supabase
+        .from('conversation_state')
+        .select('temp_data')
+        .eq('user_phone', normalizedPhone)
+        .neq('state', 'idle')
+        .single();
+      
+      if (data?.temp_data?.messages) {
+        return data.temp_data.messages;
+      }
+      
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Salvar mensagem no histórico
+   */
+  async saveToHistory(userPhone, userMessage, assistantResponse) {
+    try {
+      const normalizedPhone = this.normalizePhone(userPhone);
+      
+      const history = await this.loadConversationHistory(userPhone);
+      
+      history.push(
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: assistantResponse }
+      );
+      
+      // Limitar histórico a últimas 10 mensagens
+      const limitedHistory = history.slice(-10);
+      
+      await supabase
+        .from('conversation_state')
+        .upsert({
+          user_phone: normalizedPhone,
+          state: 'active',
+          temp_data: {
+            messages: limitedHistory,
+            last_message: userMessage,
+            timestamp: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_phone'
+        });
+      
+      console.log('💾 [GPT-4] Histórico salvo');
+    } catch (error) {
+      console.error('❌ Erro ao salvar histórico:', error);
+    }
+  }
+
+  /**
+   * Limpar histórico da conversa
+   */
+  async clearConversationHistory(userPhone) {
+    try {
+      const normalizedPhone = this.normalizePhone(userPhone);
+      
+      await supabase
+        .from('conversation_state')
+        .update({
+          state: 'idle',
+          temp_data: {}
+        })
+        .eq('user_phone', normalizedPhone);
+      
+      console.log('🗑️ [GPT-4] Histórico limpo');
+    } catch (error) {
+      console.error('❌ Erro ao limpar histórico:', error);
+    }
+  }
+
+  /**
+   * Instruções conversacionais (system message)
+   */
+  getConversationalInstructions(context) {
+    const { userName, organizationId } = context;
+    const firstName = userName ? userName.split(' ')[0] : '';
+    
+    return `Você é ZUL, assistente financeiro conversando via WhatsApp com ${firstName || 'o usuário'}.
+
+OBJETIVO: Registrar despesas conversando naturalmente.
+
+INFORMAÇÕES NECESSÁRIAS:
+- Valor e descrição
+- Forma de pagamento
+- Responsável (quem pagou)
+- Se crédito: cartão e parcelas
+
+COMO CONVERSAR:
+- Seja NATURAL e VARIADO - cada conversa diferente
+- Use nome "${firstName}" quando fizer sentido
+- Perguntas curtas e diretas
+- Se usuário der múltiplas infos juntas ("100 no mercado, pix, eu"), extraia tudo
+- NUNCA pergunte algo já respondido
+- Quando tiver tudo, chame save_expense
+
+EXEMPLOS (varie MUITO):
+"Quanto foi?"
+"Como pagou?"
+"Pagamento?"
+"Foi você?"
+"Quem pagou essa?"
+"Tá, e o cartão?"
+
+Seja imprevisível. Converse de verdade.`;
+  }
+
+  /**
+   * Definir funções disponíveis para GPT-4
+   */
+  getFunctions() {
+    return [
+      {
+        name: 'validate_payment_method',
+        description: 'Validar método de pagamento',
+        parameters: {
+          type: 'object',
+          properties: {
+            user_input: { type: 'string' }
+          },
+          required: ['user_input']
+        }
+      },
+      {
+        name: 'validate_card',
+        description: 'Validar cartão e parcelas',
+        parameters: {
+          type: 'object',
+          properties: {
+            card_name: { type: 'string' },
+            installments: { type: 'number' }
+          },
+          required: ['card_name', 'installments']
+        }
+      },
+      {
+        name: 'validate_responsible',
+        description: 'Validar responsável',
+        parameters: {
+          type: 'object',
+          properties: {
+            responsible_name: { type: 'string' }
+          },
+          required: ['responsible_name']
+        }
+      },
+      {
+        name: 'save_expense',
+        description: 'Salvar despesa quando tiver todas as informações',
+        parameters: {
+          type: 'object',
+          properties: {
+            amount: { type: 'number' },
+            description: { type: 'string' },
+            payment_method: { type: 'string' },
+            responsible: { type: 'string' },
+            card_name: { type: 'string' },
+            installments: { type: 'number' },
+            category: { type: 'string' }
+          },
+          required: ['amount', 'description', 'payment_method', 'responsible']
+        }
+      }
+    ];
+  }
+
+  /**
+   * Enviar mensagem para o Assistant e obter resposta (ANTIGO - mantido para compatibilidade)
    */
   async sendMessage(userId, userMessage, context = {}) {
     try {
