@@ -713,16 +713,50 @@ Retorne APENAS JSON:`;
           try {
             console.log('💾 [SAVE_EXPENSE] ===== INÍCIO =====');
             console.log('💾 [SAVE_EXPENSE] Dados recebidos:', JSON.stringify(expenseData, null, 2));
-            console.log('💾 [SAVE_EXPENSE] User ID:', user.id);
-            console.log('💾 [SAVE_EXPENSE] Organization ID:', user.organization_id);
             
-            // ❌ VALIDAÇÃO: cost_center_id é OBRIGATÓRIO
-            if (!expenseData.cost_center_id && expenseData.responsible !== 'Compartilhado') {
-              console.error('❌ [SAVE_EXPENSE] cost_center_id não fornecido!');
+            // 🔍 VALIDAR E NORMALIZAR payment_method
+            const paymentResult = await context.validatePaymentMethod(expenseData.payment_method);
+            if (!paymentResult.valid) {
               return {
                 success: false,
-                error: 'cost_center_id é obrigatório. Você DEVE chamar validate_responsible primeiro e passar o cost_center_id retornado.'
+                error: `Forma de pagamento inválida. Tente: ${paymentResult.available_methods.join(', ')}`
               };
+            }
+            const normalizedPayment = paymentResult.normalized_method;
+            console.log('✅ [SAVE_EXPENSE] Pagamento validado:', normalizedPayment);
+            
+            // 🔍 VALIDAR responsible e mapear para cost_center_id
+            const responsibleResult = await context.validateResponsible(expenseData.responsible);
+            if (!responsibleResult.valid) {
+              return {
+                success: false,
+                error: `Responsável inválido. Opções: ${responsibleResult.available_responsibles.join(', ')}`
+              };
+            }
+            const costCenterId = responsibleResult.cost_center_id;
+            const responsibleName = responsibleResult.responsible;
+            const isShared = responsibleResult.is_shared || false;
+            console.log('✅ [SAVE_EXPENSE] Responsável validado:', responsibleName, '(ID:', costCenterId, ')');
+            
+            // 🔍 VALIDAR cartão se for crédito
+            let cardId = null;
+            if (normalizedPayment === 'credit_card') {
+              if (!expenseData.card_name) {
+                return {
+                  success: false,
+                  error: 'Para crédito, preciso do nome do cartão. Qual cartão você usou?'
+                };
+              }
+              
+              const cardResult = await context.validateCard(expenseData.card_name, expenseData.installments || 1);
+              if (!cardResult.valid) {
+                return {
+                  success: false,
+                  error: `Cartão "${expenseData.card_name}" não encontrado. Opções: ${cardResult.available_cards.join(', ')}`
+                };
+              }
+              cardId = cardResult.card_id;
+              console.log('✅ [SAVE_EXPENSE] Cartão validado:', expenseData.card_name, '(ID:', cardId, ')');
             }
             
             // Inferir categoria baseada na descrição
@@ -767,59 +801,37 @@ Retorne APENAS JSON:`;
               }
             }
             
-            // Verificar se é compartilhado
-            const isShared = this.normalizeName(expenseData.responsible) === 'compartilhado';
-            
-            // Usar cost_center_id do expenseData (já validado) ou buscar pelo nome
-            let costCenterId = expenseData.cost_center_id || null;
-            
-            if (!costCenterId && !isShared) {
-              // Fallback: buscar cost center pelo nome
-              const costCenter = costCenters.find(cc => 
-                this.normalizeName(cc.name) === this.normalizeName(expenseData.responsible)
-              );
-              costCenterId = costCenter?.id || null;
-              console.log('⚠️ [SAVE_EXPENSE] Cost center ID não fornecido, buscado pelo nome:', costCenterId);
-            } else if (costCenterId) {
-              console.log('✅ [SAVE_EXPENSE] Cost center ID fornecido (já validado):', costCenterId);
-            }
+            // Verificar se é compartilhado (já determinado pela validação)
             
             // Se for cartão de crédito e tiver parcelas, criar installments
-            if (expenseData.payment_method === 'credit_card' && expenseData.installments > 1) {
-              // Usar card_id fornecido ou buscar pelo nome
-              let card = null;
-              if (expenseData.card_id) {
-                card = cards?.find(c => c.id === expenseData.card_id);
-                console.log('✅ [SAVE_EXPENSE] Card ID fornecido (já validado):', expenseData.card_id);
-              } else {
-                card = cards?.find(c => 
-                  this.normalizeName(c.name) === this.normalizeName(expenseData.card_name)
-                );
-                console.log('⚠️ [SAVE_EXPENSE] Card ID não fornecido, buscado pelo nome:', card?.id);
-              }
-              
-              if (card) {
+            if (normalizedPayment === 'credit_card' && expenseData.installments > 1) {
+              if (cardId) {
+                const card = cards?.find(c => c.id === cardId);
+                
                 await this.createInstallments(
                   user,
                   {
                     valor: expenseData.amount,
                     descricao: expenseData.description,
                     categoria: expenseData.category,
-                    responsavel: expenseData.responsible,
+                    responsavel: responsibleName,
                     data: 'hoje',
                     cartao: card.name,
                     parcelas: expenseData.installments,
-                    card_id: card.id
+                    card_id: cardId
                   },
-                  { id: costCenterId, name: expenseData.responsible },
+                  { id: costCenterId, name: responsibleName },
                   category?.id || null
                 );
                 
-                // ✅ Limpar thread após sucesso (nova conversa na próxima vez)
+                // ✅ Limpar thread após sucesso
                 await this.zulAssistant.clearThread(user.id, userPhone);
-                console.log('🗑️ Thread limpa após criar parcelas');
                 
-                return { success: true, installments: true };
+                return { 
+                  success: true, 
+                  installments: true,
+                  message: `Salvei! ${expenseData.amount} no ${card.name} em ${expenseData.installments}x 💳`
+                };
               }
             }
             
@@ -836,10 +848,10 @@ Retorne APENAS JSON:`;
               split: isShared,
               amount: expenseData.amount,
               description: this.capitalizeDescription(expenseData.description),
-              payment_method: expenseData.payment_method,
+              payment_method: normalizedPayment,
               category_id: category?.id || null,
               category: category?.name || null,
-              owner: this.getCanonicalName(expenseData.responsible),
+              owner: this.getCanonicalName(responsibleName),
               date: this.parseDate('hoje'),
               status: 'confirmed',
               confirmed_at: this.getBrazilDateTime().toISOString(),
@@ -863,12 +875,29 @@ Retorne APENAS JSON:`;
             
             console.log('✅ [SAVE_EXPENSE] Despesa salva com sucesso! ID:', data.id);
             
-            // ✅ Limpar thread após sucesso (nova conversa na próxima vez)
+            // ✅ Limpar thread após sucesso
             await this.zulAssistant.clearThread(user.id, userPhone);
-            console.log('🗑️ [SAVE_EXPENSE] Thread limpa após salvar despesa');
-            console.log('💾 [SAVE_EXPENSE] ===== FIM =====');
             
-            return { success: true, expense_id: data.id };
+            // Mensagem personalizada
+            const contextEmoji = {
+              'mercado': '🛒',
+              'supermercado': '🛒',
+              'restaurante': '🍽️',
+              'gasolina': '⛽',
+              'posto': '⛽',
+              'uber': '🚗',
+              'farmácia': '💊',
+              'remédio': '💊'
+            };
+            
+            const desc = expenseData.description.toLowerCase();
+            const emoji = Object.keys(contextEmoji).find(key => desc.includes(key));
+            
+            return { 
+              success: true, 
+              expense_id: data.id,
+              message: `Anotado! R$ ${expenseData.amount} - ${expenseData.description} ${emoji ? contextEmoji[emoji] : '✅'}`
+            };
             
           } catch (error) {
             console.error('❌ [SAVE_EXPENSE] ERRO CRÍTICO:', error);

@@ -491,8 +491,8 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
         if (functionName === 'save_expense' && functionResult.success) {
           await this.clearConversationHistory(userPhone);
           
-          // Retornar mensagem de confirmação
-          return assistantMessage.content || 'Salvei! 👍';
+          // Retornar mensagem personalizada ou padrão
+          return functionResult.message || 'Salvei! 👍';
         }
         
         // Continuar conversa com resultado da função
@@ -671,53 +671,50 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
     const { userName, organizationId } = context;
     const firstName = userName ? userName.split(' ')[0] : '';
     
-    return `Você é ZUL, assistente financeiro conversando via WhatsApp com ${firstName || 'o usuário'}.
+    return `Você é ZUL, assistente pessoal de finanças conversando via WhatsApp com ${firstName || 'o usuário'}.
 
-OBJETIVO: Registrar despesas conversando naturalmente.
+🎯 OBJETIVO: Anotar despesas conversando naturalmente, tipo um amigo ajudando.
 
-🎯 INFORMAÇÕES OBRIGATÓRIAS:
-1. Valor (numérico)
-2. Descrição (o que foi comprado)
-3. Forma de pagamento (dinheiro, pix, débito, crédito)
-4. Responsável (quem pagou)
+📋 INFORMAÇÕES NECESSÁRIAS:
+- Valor e o que foi
+- Como pagou (pix, dinheiro, débito, crédito)
+- Quem pagou (nome ou "eu")
+- Se crédito: qual cartão e parcelas
 
-⚠️ SE CRÉDITO:
-5. Nome do cartão
-6. Número de parcelas
+💬 COMO CONVERSAR:
+- Seja natural, descontraído, use emoji quando fizer sentido
+- Perguntas CURTAS e diretas
+- Se usuário der várias infos juntas, pegue tudo
+- NUNCA repita perguntas
+- Quando tiver tudo → CHAME save_expense DIRETO
+- NUNCA diga "vou validar", "um momento", "vou verificar" - só chame a função
 
-🚨 VALIDAÇÃO OBRIGATÓRIA:
-ANTES de chamar save_expense, você DEVE:
-1. Chamar validate_payment_method(user_input) para validar o pagamento
-2. Se crédito: Chamar validate_card(card_name, installments) para validar cartão
-3. Chamar validate_responsible(responsible_name) para validar responsável
-
-❌ NUNCA chame save_expense sem validar TODAS as informações primeiro!
-❌ NUNCA aceite "eu", "Felipe", "Letícia" sem validar!
-❌ NUNCA aceite cartões sem validar se existem!
-
-✅ FLUXO CORRETO:
+✅ EXEMPLOS BOM:
 User: "Gastei 150 no mercado"
-You: "Pagamento?"
-User: "pix"
-You: [CHAMA validate_payment_method("pix")] → recebe método normalizado
-You: "Quem pagou?"
+You: "Como pagou?"
+User: "pix"  
+You: "Foi você?"
 User: "eu"
-You: [CHAMA validate_responsible("eu")] → recebe cost_center_id
-You: [CHAMA save_expense com dados VALIDADOS]
+You: [CHAMA save_expense] "Anotado! 150 no mercado 🛒"
 
-🔧 FUNÇÕES DISPONÍVEIS:
-- validate_payment_method: Valida e normaliza método (retorna valid, normalized_method)
-- validate_card: Valida cartão e parcelas (retorna valid, card_id)
-- validate_responsible: Valida responsável e mapeia "eu" para o cost_center correto (retorna valid, cost_center_id, name)
-- save_expense: Salva APENAS com dados JÁ VALIDADOS
+User: "100 no Uber com pix, eu"
+You: [CHAMA save_expense] "Salvei! 100 de Uber 🚗"
 
-🗣️ VARIAÇÃO nas perguntas:
-"Quanto?"
-"Pagamento?"
+❌ NUNCA FAÇA:
+"Vou validar..."
+"Um momento..."
+"Deixe-me verificar..."
+"Posso salvar?"
+
+🎯 SEJA TIPO:
+"Beleza! 😊"
+"Show!"
+"Anotado! 📝"
+"Salvei! ✅"
+"Como pagou?"
 "Foi você?"
-"Qual cartão?"
 
-Seja direto e natural. Mas SEMPRE VALIDE!`;
+CONVERSE DE VERDADE. Seja humano.`;
   }
 
   /**
@@ -726,42 +723,8 @@ Seja direto e natural. Mas SEMPRE VALIDE!`;
   getFunctions() {
     return [
       {
-        name: 'validate_payment_method',
-        description: 'Validar método de pagamento',
-        parameters: {
-          type: 'object',
-          properties: {
-            user_input: { type: 'string' }
-          },
-          required: ['user_input']
-        }
-      },
-      {
-        name: 'validate_card',
-        description: 'Validar cartão e parcelas',
-        parameters: {
-          type: 'object',
-          properties: {
-            card_name: { type: 'string' },
-            installments: { type: 'number' }
-          },
-          required: ['card_name', 'installments']
-        }
-      },
-      {
-        name: 'validate_responsible',
-        description: 'Validar responsável',
-        parameters: {
-          type: 'object',
-          properties: {
-            responsible_name: { type: 'string' }
-          },
-          required: ['responsible_name']
-        }
-      },
-      {
         name: 'save_expense',
-        description: 'Salvar despesa quando tiver todas as informações VALIDADAS. Use os valores retornados pelas funções de validação.',
+        description: 'Salvar despesa quando tiver TODAS as informações (valor, descrição, pagamento, responsável). Validação acontece automaticamente dentro da função.',
         parameters: {
           type: 'object',
           properties: {
@@ -775,34 +738,26 @@ Seja direto e natural. Mas SEMPRE VALIDE!`;
             },
             payment_method: { 
               type: 'string',
-              description: 'Método de pagamento JÁ VALIDADO (use normalized_method retornado por validate_payment_method)'
+              description: 'Forma de pagamento que o usuário disse (pix, dinheiro, débito, crédito, etc)'
             },
             responsible: { 
               type: 'string',
-              description: 'Nome do responsável JÁ VALIDADO (use responsible retornado por validate_responsible)'
-            },
-            cost_center_id: {
-              type: 'string',
-              description: 'ID do cost center JÁ VALIDADO (use cost_center_id retornado por validate_responsible)'
+              description: 'Quem pagou: nome exato (ex: "Felipe", "Letícia") ou "eu" (será mapeado automaticamente)'
             },
             card_name: { 
               type: 'string',
-              description: 'Nome do cartão (se crédito)' 
-            },
-            card_id: {
-              type: 'string',
-              description: 'ID do cartão JÁ VALIDADO (use card_id retornado por validate_card)'
+              description: 'Nome do cartão (OBRIGATÓRIO se payment_method for crédito)' 
             },
             installments: { 
               type: 'number',
-              description: 'Número de parcelas (se crédito)' 
+              description: 'Número de parcelas (OBRIGATÓRIO se payment_method for crédito, default: 1)' 
             },
             category: { 
               type: 'string',
-              description: 'Categoria da despesa (opcional, será inferida se não fornecida)' 
+              description: 'Categoria (opcional, será inferida automaticamente)' 
             }
           },
-          required: ['amount', 'description', 'payment_method', 'responsible', 'cost_center_id']
+          required: ['amount', 'description', 'payment_method', 'responsible']
         }
       }
     ];
@@ -967,27 +922,12 @@ Seja direto e natural. Mas SEMPRE VALIDE!`;
     console.log(`🔧 [FUNCTION_CALL] Args:`, JSON.stringify(args, null, 2));
     
     let result;
-    switch (functionName) {
-      case 'validate_payment_method':
-        result = await context.validatePaymentMethod(args.user_input);
-        break;
-      
-      case 'validate_card':
-        result = await context.validateCard(args.card_name, args.installments, args.available_cards);
-        break;
-      
-      case 'validate_responsible':
-        result = await context.validateResponsible(args.responsible_name, args.available_responsibles);
-        break;
-      
-      case 'save_expense':
-        console.log(`🔧 [FUNCTION_CALL] CHAMANDO save_expense com args:`, args);
-        result = await context.saveExpense(args);
-        console.log(`🔧 [FUNCTION_CALL] save_expense retornou:`, result);
-        break;
-      
-      default:
-        result = { error: `Função desconhecida: ${functionName}` };
+    if (functionName === 'save_expense') {
+      console.log(`🔧 [FUNCTION_CALL] CHAMANDO save_expense com args:`, args);
+      result = await context.saveExpense(args);
+      console.log(`🔧 [FUNCTION_CALL] save_expense retornou:`, result);
+    } else {
+      result = { error: `Função desconhecida: ${functionName}` };
     }
     
     console.log(`🔧 [FUNCTION_CALL] Resultado:`, JSON.stringify(result, null, 2));
