@@ -354,136 +354,155 @@ Retorne APENAS JSON:`;
   }
 
   /**
-   * Aplicar personalidade do ZUL nas respostas
+   * Aplicar personalidade do ZUL nas respostas (versão heurística e natural)
    */
   applyZulPersonality(assistantResponse, userName) {
-    // Extrair o primeiro nome do usuário
+    const response = (assistantResponse || '').trim();
+    if (!response) {
+      return '';
+    }
+
     const firstName = userName ? userName.split(' ')[0] : '';
-    
-    // Mapear respostas do Assistant para personalidade do ZUL com variações
-    const getPaymentQuestion = () => {
-      const variations = [
-        `Entendi${firstName ? `, ${firstName}` : ''}. Como você pagou essa despesa?`,
-        `Perfeito${firstName ? `, ${firstName}` : ''}. Qual foi a forma de pagamento?`,
-        `Ótimo${firstName ? `, ${firstName}` : ''}. Como você pagou?`,
-        `Certo${firstName ? `, ${firstName}` : ''}. Qual método de pagamento você usou?`
+    const nameSuffix = firstName ? `, ${firstName}` : '';
+    const pick = (options) => options[Math.floor(Math.random() * options.length)];
+    const lower = response.toLowerCase();
+
+    const composeQuestion = (questions) => {
+      const openings = [
+        `Entendi${nameSuffix}.`,
+        `Perfeito${nameSuffix}.`,
+        `Ótimo${nameSuffix}.`,
+        `Beleza${nameSuffix}.`,
+        `Certo${nameSuffix}.`,
+        `Tudo bem${nameSuffix}.`,
       ];
-      return variations[Math.floor(Math.random() * variations.length)];
+      const bridges = [
+        '',
+        ' Me conta: ',
+        ' Me diz, ',
+        ' Só pra eu registrar: ',
+        ' Agora me fala: ',
+      ];
+
+      const opening = pick(openings);
+      const bridge = pick(bridges);
+      const question = pick(questions);
+
+      if (bridge.trim() === '') {
+        return `${opening} ${question}`;
+      }
+
+      if (bridge.trim().endsWith(',')) {
+        return `${opening}${bridge}${question}`;
+      }
+
+      return `${opening}${bridge}${question}`;
     };
 
-    const getResponsibleQuestion = () => {
-      const variations = [
-        `Perfeito. Quem foi o responsável por essa compra?`,
-        `Ótimo. Quem pagou essa despesa?`,
-        `Certo. Quem foi o responsável?`,
-        `Entendi. Quem fez essa compra?`
-      ];
-      return variations[Math.floor(Math.random() * variations.length)];
-    };
+    const decorateConfirmation = (message) => {
+      if (!message) return '';
 
-    const getCardQuestion = () => {
-      const variations = [
-        `Qual cartão você usou?`,
-        `Em qual cartão foi?`,
-        `Qual cartão?`,
-        `Qual foi o cartão?`
-      ];
-      return variations[Math.floor(Math.random() * variations.length)];
-    };
+      const amountMatch = message.match(/R\$\s?([\d.,]+)/i);
+      const descriptionMatch = message.match(/(?:no|na|em) ([^.,]+)/i);
+      const responsibleMatch = message.match(/para ([^.,]+)/i);
 
-    const getInstallmentQuestion = () => {
-      const variations = [
-        `Em quantas parcelas?`,
-        `Quantas vezes?`,
-        `Parcelou em quantas vezes?`,
-        `Em quantas vezes foi?`
+      const baseVariants = [
+        'Pronto! {body}',
+        'Feito! {body}',
+        'Anotado! {body}',
+        'Registro concluído! {body}',
       ];
-      return variations[Math.floor(Math.random() * variations.length)];
-    };
 
-    const personalityMap = {
-      // Perguntas sobre pagamento
-      'Como você pagou?': getPaymentQuestion(),
-      'Foi em que forma?': getPaymentQuestion(),
-      'Pagou como?': getPaymentQuestion(),
-      'Qual foi a forma de pagamento?': getPaymentQuestion(),
-      
-      // Perguntas sobre responsável
-      'Quem pagou?': getResponsibleQuestion(),
-      'Responsável?': getResponsibleQuestion(),
-      'Foi você ou a Letícia?': getResponsibleQuestion(),
-      'Quem foi?': getResponsibleQuestion(),
-      
-      // Perguntas sobre cartão
-      'Qual cartão?': getCardQuestion(),
-      'Em qual cartão?': getCardQuestion(),
-      'Cartão?': getCardQuestion(),
-      
-      // Perguntas sobre parcelas
-      'Quantas vezes?': getInstallmentQuestion(),
-      'Parcelou?': getInstallmentQuestion(),
-      'Em quantas?': getInstallmentQuestion()
-    };
-    
-    // Aplicar mapeamento se encontrar correspondência exata
-    if (personalityMap[assistantResponse]) {
-      return personalityMap[assistantResponse];
-    }
-    
-    // Para confirmações finais, adicionar personalidade
-    if (assistantResponse.includes('Pronto!') || assistantResponse.includes('Feito!') || assistantResponse.includes('Salvei!')) {
-      // Extrair informações da confirmação com regex mais flexível
-      const amountMatch = assistantResponse.match(/R\$ ([\d,]+)/);
-      const descriptionMatch = assistantResponse.match(/de (\w+)/);
-      const paymentMatch = assistantResponse.match(/no (\w+)/);
-      const responsibleMatch = assistantResponse.match(/([A-Za-záàâãéèêíìîóòôõúùûçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ\s]+)\./);
-      const emojiMatch = assistantResponse.match(/([^\s]+)$/);
-      
-      if (amountMatch && descriptionMatch && paymentMatch && responsibleMatch) {
+      if (amountMatch && descriptionMatch) {
         const amount = amountMatch[1];
-        const description = descriptionMatch[1];
-        const payment = paymentMatch[1];
-        const responsible = responsibleMatch[1].trim();
-        const emoji = emojiMatch ? emojiMatch[1] : '💰';
+        const description = descriptionMatch[1].trim();
+        const responsible = responsibleMatch ? responsibleMatch[1].trim() : null;
+
+        const base = pick(baseVariants).replace('{body}', responsible
+          ? `R$ ${amount} em ${description} para ${responsible}.`
+          : `R$ ${amount} em ${description}.`);
+        const comment = this.getContextualComment(description);
+        const extra = comment ? `\n${comment}` : '';
         
-        // Gerar confirmação com personalidade do ZUL e variações
-        const confirmationVariations = [
-          `Pronto! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
-          `Feito! R$ ${amount} na ${description} para ${responsible}. ${emoji}`,
-          `Anotado! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`,
-          `Salvo! R$ ${amount} na ${description} para ${responsible}. ${emoji}`
+        // Adicionar follow-up amigável
+        const friendlyClosings = [
+          'Qualquer coisa é só me chamar.',
+          'Estou por aqui se surgir outra despesa.',
+          'Seguimos juntos no controle dos gastos.',
         ];
+        const closing = Math.random() > 0.5 ? `\n${pick(friendlyClosings)}` : '';
         
-        let confirmation = confirmationVariations[Math.floor(Math.random() * confirmationVariations.length)];
-        
-        // Adicionar comentário contextual baseado na categoria
-        const contextualComment = this.getContextualComment(description);
-        if (contextualComment) {
-          confirmation += `\n${contextualComment}`;
-        }
-        
-        return confirmation;
+        return `${base}${extra}${closing}`;
       }
-      
-      // Fallback: se não conseguir extrair, aplicar transformação simples
-      let transformedResponse = assistantResponse
-        .replace(/de (\w+)/, 'na $1')
-        .replace(/no (\w+)/, 'no $1');
-      
-      // Adicionar comentário contextual se possível
-      const descMatch = assistantResponse.match(/de (\w+)/);
-      if (descMatch) {
-        const contextualComment = this.getContextualComment(descMatch[1]);
-        if (contextualComment) {
-          transformedResponse += `\n${contextualComment}`;
-        }
-      }
-      
-      return transformedResponse;
+
+      // fallback: apenas garantir que há um toque humano
+      const friendlyClosings = [
+        'Qualquer coisa é só me chamar.',
+        'Estou por aqui se surgir outra despesa.',
+        'Seguimos juntos no controle dos gastos.',
+      ];
+
+      return `${message}\n${pick(friendlyClosings)}`;
+    };
+
+    const paymentKeywords = [/forma de pagamento/, /como (foi|você) pag/, /pagamento/];
+    const responsibleKeywords = [/respons[aá]vel/, /quem pagou/, /quem foi/];
+    const cardKeywords = [/cart[aã]o/];
+    const installmentKeywords = [/parcel/, /vezes/];
+
+    if (paymentKeywords.some((regex) => regex.test(lower))) {
+      return composeQuestion([
+        'Como você pagou essa despesa?',
+        'Qual foi a forma de pagamento?',
+        'Qual forma de pagamento devo registrar?',
+        'Usou qual forma de pagamento?',
+      ]);
     }
-    
-    // Se não encontrar mapeamento, retornar resposta original
-    return assistantResponse;
+
+    if (responsibleKeywords.some((regex) => regex.test(lower))) {
+      return composeQuestion([
+        'Quem ficou responsável por essa compra?',
+        'Quem pagou essa?',
+        'Registramos no nome de quem?',
+        'Foi você ou outra pessoa?',
+      ]);
+    }
+
+    if (cardKeywords.some((regex) => regex.test(lower)) && lower.includes('?')) {
+      return composeQuestion([
+        'Qual cartão você usou?',
+        'Em qual cartão devemos lançar?',
+        'Qual cartão entrou nessa?',
+        'Sabe me dizer qual cartão foi usado?',
+      ]);
+    }
+
+    if (installmentKeywords.some((regex) => regex.test(lower)) && lower.includes('?')) {
+      return composeQuestion([
+        'Em quantas parcelas ficou?',
+        'Parcelou em quantas vezes?',
+        'Quantas parcelas devo lançar?',
+        'Foi em quantas vezes no cartão?',
+      ]);
+    }
+
+    if (response.startsWith('[save_expense]')) {
+      const [command, ...rest] = response.split(']');
+      const body = rest.join(']').trim();
+      const decorated = decorateConfirmation(body);
+      return `${command}] ${decorated}`.trim();
+    }
+
+    if (response.includes('Pronto!') || response.includes('Feito!') || response.includes('Salvei!') || response.includes('Anotado!')) {
+      return decorateConfirmation(response);
+    }
+
+    // Como fallback, adicionar pequenas variações a perguntas curtas
+    if (response.endsWith('?') && response.split(' ').length <= 6) {
+      return composeQuestion([response.replace(/[?]/g, '').trim() + '?']);
+    }
+
+    return response;
   }
 
   /**
