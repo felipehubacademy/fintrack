@@ -509,7 +509,7 @@ Se alguma validação falhar, sugira as opções disponíveis de forma natural.`
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         console.log(`🔍 [DEBUG] Tentativa ${attempt + 1}: threadId=${threadId}, runId=${runId}`);
-        const run = await openai.beta.threads.runs.retrieve(threadId, runId);
+        const run = await openai.beta.threads.runs.retrieve(runId, { thread_id: threadId });
         console.log(`🔄 [ASSISTANT] Run status (tentativa ${attempt + 1}/${maxAttempts}): ${run.status}`);
 
         if (run.status === 'completed') {
