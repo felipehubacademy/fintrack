@@ -16,15 +16,29 @@ async function sendMessage(message) {
   console.log(`\n📤 Enviando: "${message}"`);
   const response = await axios.post(API_URL, { message });
   const logs = response.data.logs || [];
+  
+  // Mostrar TODOS os logs para debug
+  console.log('\n📋 TODOS OS LOGS:');
+  logs.forEach((log, index) => {
+    console.log(`   [${index}] ${log.message.substring(0, 200)}`);
+  });
+  
+  // Procurar logs de save_expense
+  const saveLogs = logs.filter(log => log.message.includes('[SAVE_EXPENSE]') || log.message.includes('[FUNCTION_CALL]'));
+  if (saveLogs.length > 0) {
+    console.log('\n🔍 LOGS SAVE_EXPENSE:');
+    saveLogs.forEach(log => console.log('  ', log.message));
+  }
+  
   const resposta = logs.find(log => log.message.includes('Resposta recebida do Assistant:'));
   
   if (resposta) {
     const texto = resposta.message.split('Assistant: ')[1];
-    console.log(`🤖 ZUL: ${texto}`);
+    console.log(`\n🤖 ZUL: ${texto}`);
     return texto;
   }
   
-  console.log('❌ Sem resposta do Assistant');
+  console.log('\n❌ Sem resposta do Assistant');
   return null;
 }
 

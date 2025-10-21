@@ -531,7 +531,10 @@ Retorne APENAS JSON:`;
 
         saveExpense: async (expenseData) => {
           try {
-            console.log('💾 [ASSISTANT] Salvando despesa:', expenseData);
+            console.log('💾 [SAVE_EXPENSE] ===== INÍCIO =====');
+            console.log('💾 [SAVE_EXPENSE] Dados recebidos:', JSON.stringify(expenseData, null, 2));
+            console.log('💾 [SAVE_EXPENSE] User ID:', user.id);
+            console.log('💾 [SAVE_EXPENSE] Organization ID:', user.organization_id);
             
             // Inferir categoria baseada na descrição
             const inferCategory = (description) => {
@@ -619,39 +622,55 @@ Retorne APENAS JSON:`;
             }
             
             // Despesa simples (não parcelada)
+            console.log('💾 [SAVE_EXPENSE] Criando expense record...');
+            console.log('💾 [SAVE_EXPENSE] Category:', category);
+            console.log('💾 [SAVE_EXPENSE] Cost Center ID:', costCenterId);
+            console.log('💾 [SAVE_EXPENSE] Is Shared:', isShared);
+            
+            const expenseRecord = {
+              organization_id: user.organization_id,
+              user_id: user.id,
+              cost_center_id: costCenterId,
+              split: isShared,
+              amount: expenseData.amount,
+              description: this.capitalizeDescription(expenseData.description),
+              payment_method: expenseData.payment_method,
+              category_id: category?.id || null,
+              category: category?.name || null,
+              owner: this.getCanonicalName(expenseData.responsible),
+              date: this.parseDate('hoje'),
+              status: 'confirmed',
+              confirmed_at: this.getBrazilDateTime().toISOString(),
+              confirmed_by: user.id,
+              source: 'whatsapp',
+              whatsapp_message_id: `msg_${Date.now()}`
+            };
+            
+            console.log('💾 [SAVE_EXPENSE] Inserindo no banco:', JSON.stringify(expenseRecord, null, 2));
+            
             const { data, error } = await supabase
               .from('expenses')
-              .insert({
-                organization_id: user.organization_id,
-                user_id: user.id,
-                cost_center_id: costCenterId,
-                split: isShared,
-                amount: expenseData.amount,
-                description: this.capitalizeDescription(expenseData.description),
-                payment_method: expenseData.payment_method,
-                category_id: category?.id || null,
-                category: category?.name || null,
-                owner: this.getCanonicalName(expenseData.responsible),
-                date: this.parseDate('hoje'),
-                status: 'confirmed',
-                confirmed_at: this.getBrazilDateTime().toISOString(),
-                confirmed_by: user.id,
-                source: 'whatsapp',
-                whatsapp_message_id: `msg_${Date.now()}`
-              })
+              .insert(expenseRecord)
               .select()
               .single();
             
-            if (error) throw error;
+            if (error) {
+              console.error('❌ [SAVE_EXPENSE] Erro no insert:', error);
+              throw error;
+            }
+            
+            console.log('✅ [SAVE_EXPENSE] Despesa salva com sucesso! ID:', data.id);
             
             // ✅ Limpar thread após sucesso (nova conversa na próxima vez)
             await this.zulAssistant.clearThread(user.id, userPhone);
-            console.log('🗑️ Thread limpa após salvar despesa');
+            console.log('🗑️ [SAVE_EXPENSE] Thread limpa após salvar despesa');
+            console.log('💾 [SAVE_EXPENSE] ===== FIM =====');
             
             return { success: true, expense_id: data.id };
             
           } catch (error) {
-            console.error('❌ Erro ao salvar despesa:', error);
+            console.error('❌ [SAVE_EXPENSE] ERRO CRÍTICO:', error);
+            console.error('❌ [SAVE_EXPENSE] Stack:', error.stack);
             return { success: false, error: error.message };
           }
         }
