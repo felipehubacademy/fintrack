@@ -557,15 +557,8 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
         return { error: `Função desconhecida: ${functionName}` };
     }
   }
-
-  /**
-   * Limpar thread de um usuário (para resetar conversa)
-   */
-  clearThread(userId) {
-    this.threads.delete(userId);
-    console.log(`🗑️ Thread do usuário ${userId} limpa`);
-  }
 }
+
 
 export default ZulAssistant;
 
