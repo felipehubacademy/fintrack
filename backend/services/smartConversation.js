@@ -354,6 +354,117 @@ Retorne APENAS JSON:`;
   }
 
   /**
+   * Aplicar personalidade do ZUL nas respostas
+   */
+  applyZulPersonality(assistantResponse, userName) {
+    // Extrair o primeiro nome do usuário
+    const firstName = userName ? userName.split(' ')[0] : '';
+    
+    // Mapear respostas do Assistant para personalidade do ZUL
+    const personalityMap = {
+      // Perguntas sobre pagamento
+      'Como você pagou?': `Entendi${firstName ? `, ${firstName}` : ''}. Como você pagou essa despesa?`,
+      'Foi em que forma?': `Entendi${firstName ? `, ${firstName}` : ''}. Como você pagou essa despesa?`,
+      'Pagou como?': `Entendi${firstName ? `, ${firstName}` : ''}. Como você pagou essa despesa?`,
+      'Qual foi a forma de pagamento?': `Entendi${firstName ? `, ${firstName}` : ''}. Como você pagou essa despesa?`,
+      
+      // Perguntas sobre responsável
+      'Quem pagou?': `Perfeito. Quem foi o responsável por essa compra?`,
+      'Responsável?': `Perfeito. Quem foi o responsável por essa compra?`,
+      'Foi você ou a Letícia?': `Perfeito. Quem foi o responsável por essa compra?`,
+      'Quem foi?': `Perfeito. Quem foi o responsável por essa compra?`,
+      
+      // Perguntas sobre cartão
+      'Qual cartão?': `Qual cartão você usou?`,
+      'Em qual cartão?': `Qual cartão você usou?`,
+      'Cartão?': `Qual cartão você usou?`,
+      
+      // Perguntas sobre parcelas
+      'Quantas vezes?': `Em quantas parcelas?`,
+      'Parcelou?': `Em quantas parcelas?`,
+      'Em quantas?': `Em quantas parcelas?`
+    };
+    
+    // Aplicar mapeamento se encontrar correspondência exata
+    if (personalityMap[assistantResponse]) {
+      return personalityMap[assistantResponse];
+    }
+    
+    // Para confirmações finais, adicionar personalidade
+    if (assistantResponse.includes('Pronto!') || assistantResponse.includes('Feito!') || assistantResponse.includes('Salvei!')) {
+      // Extrair informações da confirmação com regex mais flexível
+      const amountMatch = assistantResponse.match(/R\$ ([\d,]+)/);
+      const descriptionMatch = assistantResponse.match(/de (\w+)/);
+      const paymentMatch = assistantResponse.match(/no (\w+)/);
+      const responsibleMatch = assistantResponse.match(/(\w+)\./);
+      const emojiMatch = assistantResponse.match(/([^\s]+)$/);
+      
+      if (amountMatch && descriptionMatch && paymentMatch && responsibleMatch) {
+        const amount = amountMatch[1];
+        const description = descriptionMatch[1];
+        const payment = paymentMatch[1];
+        const responsible = responsibleMatch[1];
+        const emoji = emojiMatch ? emojiMatch[1] : '💰';
+        
+        // Gerar confirmação com personalidade do ZUL
+        let confirmation = `Pronto! R$ ${amount} na ${description} registrado para ${responsible}. ${emoji}`;
+        
+        // Adicionar comentário contextual baseado na categoria
+        const contextualComment = this.getContextualComment(description);
+        if (contextualComment) {
+          confirmation += `\n${contextualComment}`;
+        }
+        
+        return confirmation;
+      }
+      
+      // Fallback: se não conseguir extrair, aplicar transformação simples
+      let transformedResponse = assistantResponse
+        .replace(/de (\w+)/, 'na $1')
+        .replace(/no (\w+)/, 'no $1');
+      
+      // Adicionar comentário contextual se possível
+      const descMatch = assistantResponse.match(/de (\w+)/);
+      if (descMatch) {
+        const contextualComment = this.getContextualComment(descMatch[1]);
+        if (contextualComment) {
+          transformedResponse += `\n${contextualComment}`;
+        }
+      }
+      
+      return transformedResponse;
+    }
+    
+    // Se não encontrar mapeamento, retornar resposta original
+    return assistantResponse;
+  }
+
+  /**
+   * Obter comentário contextual baseado na descrição
+   */
+  getContextualComment(description) {
+    const desc = description.toLowerCase();
+    
+    const contextualComments = {
+      'farmácia': 'Agora vocês têm um controle mais claro dos gastos com saúde.',
+      'mercado': 'Assim fica mais fácil acompanhar os gastos com alimentação.',
+      'gasolina': 'Boa forma de monitorar os custos de transporte.',
+      'restaurante': 'Perfeito para controlar os gastos com alimentação fora de casa.',
+      'uber': 'Ótimo para acompanhar os gastos com transporte.',
+      'cinema': 'Boa forma de controlar os gastos com lazer.',
+      'farmacia': 'Agora vocês têm um controle mais claro dos gastos com saúde.'
+    };
+    
+    for (const [keyword, comment] of Object.entries(contextualComments)) {
+      if (desc.includes(keyword)) {
+        return comment;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
    * Enviar mensagem conversacional (sem botões)
    */
   async sendConversationalMessage(to, text) {
@@ -483,13 +594,13 @@ Retorne APENAS JSON:`;
           
           // Mapear "eu" para o cost center do usuário atual
           if (normalized === 'eu' || normalized === 'me' || normalized === 'mim') {
-            // 1. Buscar cost center por nome (primeiro nome do usuário)
-            const firstName = context.userName.split(' ')[0];
-            let userCostCenter = costCenters.find(cc => 
-              this.normalizeName(cc.name) === this.normalizeName(firstName) && cc.type === 'individual'
+            // Buscar cost center associado ao user_id do usuário atual
+            const userCostCenter = costCenters.find(cc => 
+              cc.user_id === context.userId && cc.type === 'individual'
             );
             
             if (userCostCenter) {
+              console.log(`✅ [MAPEAMENTO] "Eu" mapeado para: ${userCostCenter.name} (ID: ${userCostCenter.id})`);
               return {
                 valid: true,
                 responsible: userCostCenter.name,
@@ -498,9 +609,10 @@ Retorne APENAS JSON:`;
               };
             }
             
-            // 2. Se não encontrou, usar o primeiro cost center individual da org
+            // Fallback: usar o primeiro cost center individual da org
             const firstIndividual = costCenters.find(cc => cc.type === 'individual');
             if (firstIndividual) {
+              console.log(`⚠️ [MAPEAMENTO] Cost center do usuário não encontrado, usando fallback: ${firstIndividual.name}`);
               return {
                 valid: true,
                 responsible: firstIndividual.name,
@@ -508,6 +620,8 @@ Retorne APENAS JSON:`;
                 is_shared: false
               };
             }
+            
+            console.log(`❌ [MAPEAMENTO] Nenhum cost center individual encontrado para o usuário`);
           }
           
           // Buscar nos cost centers
@@ -682,11 +796,15 @@ Retorne APENAS JSON:`;
       console.log('🔄 [ASSISTANT] Text:', text);
       console.log('🔄 [ASSISTANT] Context keys:', Object.keys(context));
       
-      const response = await this.zulAssistant.sendMessage(user.id, text, context);
-      console.log('✅ [ASSISTANT] Resposta recebida do Assistant:', response);
+      const assistantResponse = await this.zulAssistant.sendMessage(user.id, text, context);
+      console.log('✅ [ASSISTANT] Resposta recebida do Assistant:', assistantResponse);
       
-      // 5. Enviar resposta para o usuário
-      await this.sendWhatsAppMessage(userPhone, response);
+      // 5. Aplicar personalidade do ZUL
+      const zulResponse = this.applyZulPersonality(assistantResponse, user.name);
+      console.log('🎭 [ZUL] Resposta com personalidade:', zulResponse);
+      
+      // 6. Enviar resposta personalizada para o usuário
+      await this.sendWhatsAppMessage(userPhone, zulResponse);
 
     } catch (error) {
       console.error('❌ [ASSISTANT] Erro no processamento:', error);
