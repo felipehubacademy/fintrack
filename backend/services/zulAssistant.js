@@ -483,7 +483,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
         top_p: 1.0,
         frequency_penalty: 0.25, // Evita repetição
         presence_penalty: 0.05,
-        max_tokens: 70 // Respostas curtas tipo WhatsApp
+        max_tokens: 150 // Aumentado para permitir function calls
       });
       
       const assistantMessage = completion.choices[0].message;
@@ -687,11 +687,14 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
     return `Você é Zul, assistente financeiro do MeuAzulão.
 Fale em português natural, com tom leve, claro e brasileiro.
 Seu objetivo é registrar despesas conversando, sem parecer um robô.
-Se faltar algum dado, pergunte apenas o que falta.
+
+IMPORTANTE: 
+- Se FALTAR algum dado → pergunte em texto
+- Se TIVER TODOS os dados → CHAME A FUNÇÃO save_expense (não responda texto)
+
 Evite frases mecânicas como "aguarde" ou "validando".
 Suas mensagens devem ser curtas (como no WhatsApp).
-Use emoji APENAS na confirmação final (após salvar) - nunca nas perguntas.
-Quando tiver todas as informações necessárias, confirme o registro de forma natural e chame a ferramenta save_expense.
+Use emoji APENAS na confirmação final (que vem da função) - nunca nas perguntas.
 
 --- DEVELOPER PROMPT ---
 
