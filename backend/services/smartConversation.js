@@ -23,7 +23,15 @@ class SmartConversation {
     this.openai = new OpenAIService();
     this.zulMessages = new ZulMessages();
     this.zulAssistant = new ZulAssistant();
+    
+    // Debug: ver exatamente o valor da variável
+    console.log('🔍 [CONSTRUCTOR] USE_ZUL_ASSISTANT raw:', JSON.stringify(process.env.USE_ZUL_ASSISTANT));
+    console.log('🔍 [CONSTRUCTOR] typeof:', typeof process.env.USE_ZUL_ASSISTANT);
+    console.log('🔍 [CONSTRUCTOR] length:', process.env.USE_ZUL_ASSISTANT?.length);
+    console.log('🔍 [CONSTRUCTOR] comparison result:', process.env.USE_ZUL_ASSISTANT === 'true');
+    
     this.useAssistant = process.env.USE_ZUL_ASSISTANT === 'true'; // Feature flag
+    console.log('🔍 [CONSTRUCTOR] useAssistant final:', this.useAssistant);
   }
 
   /**
