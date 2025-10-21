@@ -526,6 +526,17 @@ Retorne APENAS JSON:`;
             if (!category) {
               category = inferCategory(expenseData.description);
             }
+
+            // Fallback seguro: usar categoria padrão da organização ("Outros"/"Geral")
+            if (!category) {
+              const defaultCategory = categories.find(c => {
+                const n = (c.name || '').toLowerCase();
+                return n === 'outros' || n === 'geral' || n === 'diversos' || n === 'outras despesas';
+              });
+              if (defaultCategory) {
+                category = defaultCategory;
+              }
+            }
             
             // Verificar se é compartilhado
             const isShared = this.normalizeName(expenseData.responsible) === 'compartilhado';
@@ -582,7 +593,7 @@ Retorne APENAS JSON:`;
                 description: this.capitalizeDescription(expenseData.description),
                 payment_method: expenseData.payment_method,
                 category_id: category?.id || null,
-                category: expenseData.category,
+                category: category?.name || null,
                 owner: this.getCanonicalName(expenseData.responsible),
                 date: this.parseDate('hoje'),
                 status: 'confirmed',
