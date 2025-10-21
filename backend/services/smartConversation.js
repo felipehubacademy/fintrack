@@ -473,6 +473,21 @@ Retorne APENAS JSON:`;
             };
           }
           
+          // Mapear "eu" para o nome do usuário atual
+          if (normalized === 'eu' || normalized === 'me' || normalized === 'mim') {
+            const userCostCenter = costCenters.find(cc => 
+              this.normalizeName(cc.name) === this.normalizeName(context.userName)
+            );
+            if (userCostCenter) {
+              return {
+                valid: true,
+                responsible: userCostCenter.name,
+                cost_center_id: userCostCenter.id,
+                is_shared: false
+              };
+            }
+          }
+          
           // Buscar nos cost centers
           const found = costCenters.find(cc => 
             this.normalizeName(cc.name) === normalized
