@@ -32,22 +32,47 @@ export default async function handler(req, res) {
     console.log(`🔍 [TEST] useAssistant flag: ${smartConversation.useAssistant}`);
     console.log(`🔍 [TEST] USE_ZUL_ASSISTANT env: ${process.env.USE_ZUL_ASSISTANT}`);
 
+    // Capturar logs
+    const logs = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+    
+    console.log = (...args) => {
+      logs.push({ type: 'log', message: args.join(' ') });
+      originalLog(...args);
+    };
+    
+    console.error = (...args) => {
+      logs.push({ type: 'error', message: args.join(' ') });
+      originalError(...args);
+    };
+
     try {
       await smartConversation.handleMessage(testPayload.entry[0].changes[0].value.messages[0].text.body, testPayload.entry[0].changes[0].value.messages[0].from);
+      
+      // Restaurar console
+      console.log = originalLog;
+      console.error = originalError;
       
       return res.status(200).json({
         success: true,
         message: 'Test completed',
         useAssistant: smartConversation.useAssistant,
-        envVar: process.env.USE_ZUL_ASSISTANT
+        envVar: process.env.USE_ZUL_ASSISTANT,
+        logs: logs.slice(-20) // Últimos 20 logs
       });
     } catch (handleError) {
+      // Restaurar console
+      console.log = originalLog;
+      console.error = originalError;
+      
       console.error('❌ [TEST] Error in handleMessage:', handleError);
       return res.status(500).json({
         success: false,
         error: 'handleMessage failed',
         message: handleError.message,
-        stack: handleError.stack
+        stack: handleError.stack,
+        logs: logs.slice(-20)
       });
     }
 
