@@ -473,7 +473,7 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
     console.log(`📊 [ASSISTANT] Status inicial: ${run.status}`);
     
     let attempts = 0;
-    const maxAttempts = 30; // 30 segundos timeout
+    const maxAttempts = 60; // 60 segundos timeout (aumentado para debug)
     
     while (run.status === 'in_progress' || run.status === 'queued') {
       if (attempts >= maxAttempts) {
