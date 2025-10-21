@@ -904,6 +904,19 @@ Retorne APENAS JSON:`;
    * Validar método de pagamento
    */
   async validatePaymentMethod(userResponse) {
+    const input = (userResponse || '').toString().trim().toLowerCase();
+    const synonyms = [
+      { keys: ['pix'], value: 'pix' },
+      { keys: ['dinheiro', 'à vista', 'avista', 'cash', 'espécie', 'especie'], value: 'cash' },
+      { keys: ['debito', 'débito', 'cartao de debito', 'cartão de débito'], value: 'debit_card' },
+      { keys: ['credito', 'crédito', 'cartao', 'cartão', 'cartao de credito', 'cartão de crédito'], value: 'credit_card' },
+      { keys: ['transferencia', 'transferência', 'ted', 'pix ted', 'doc', 'bank'], value: 'bank_transfer' },
+      { keys: ['boleto'], value: 'boleto' }
+    ];
+    for (const map of synonyms) {
+      if (map.keys.some(k => input.includes(k))) return map.value;
+    }
+    // fallback normalizer
     const normalized = this.normalizePaymentMethod(userResponse);
     const validMethods = ['credit_card', 'debit_card', 'pix', 'cash', 'bank_transfer', 'boleto', 'other'];
     return validMethods.includes(normalized) ? normalized : null;
