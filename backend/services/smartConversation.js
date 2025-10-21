@@ -670,10 +670,16 @@ Retorne APENAS JSON:`;
    * Processar mensagem principal
    */
   async handleMessage(text, userPhone) {
+    console.log(`🔍 [DEBUG] useAssistant flag: ${this.useAssistant}`);
+    console.log(`🔍 [DEBUG] USE_ZUL_ASSISTANT env: ${process.env.USE_ZUL_ASSISTANT}`);
+    
     // Se USE_ZUL_ASSISTANT=true, usar o novo fluxo com Assistant
     if (this.useAssistant) {
+      console.log(`🤖 [DEBUG] Usando ZUL Assistant para: "${text}"`);
       return await this.handleMessageWithAssistant(text, userPhone);
     }
+    
+    console.log(`📱 [DEBUG] Usando fluxo antigo para: "${text}"`);
     
     // Fluxo antigo (fallback)
     try {
