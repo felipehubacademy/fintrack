@@ -443,7 +443,7 @@ Retorne APENAS JSON:`;
         const amount = amountMatch[1];
         const description = descriptionMatch[1];
         const payment = paymentMatch[1];
-        const responsible = responsibleMatch[1];
+        const responsible = responsibleMatch[1].trim();
         const emoji = emojiMatch ? emojiMatch[1] : '💰';
         
         // Gerar confirmação com personalidade do ZUL e variações
