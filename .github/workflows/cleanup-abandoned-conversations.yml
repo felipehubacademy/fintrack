@@ -1,0 +1,36 @@
+name: Cleanup Abandoned Conversations
+
+# Roda diariamente às 3h da manhã (horário UTC)
+on:
+  schedule:
+    - cron: '0 3 * * *'  # 3:00 AM UTC = 00:00 AM Brasília
+  workflow_dispatch:  # Permite execução manual
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install
+
+      - name: Run cleanup script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          node backend/scripts/cleanup-abandoned-conversations.js
+
+      - name: Summary
+        run: echo "✅ Limpeza de conversas abandonadas concluída!"
+

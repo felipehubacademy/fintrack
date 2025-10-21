@@ -537,7 +537,7 @@ Retorne APENAS JSON:`;
                 );
                 
                 // ✅ Limpar thread após sucesso (nova conversa na próxima vez)
-                this.zulAssistant.clearThread(user.id);
+                await this.zulAssistant.clearThread(user.id, userPhone);
                 console.log('🗑️ Thread limpa após criar parcelas');
                 
                 return { success: true, installments: true };
@@ -571,7 +571,7 @@ Retorne APENAS JSON:`;
             if (error) throw error;
             
             // ✅ Limpar thread após sucesso (nova conversa na próxima vez)
-            this.zulAssistant.clearThread(user.id);
+            await this.zulAssistant.clearThread(user.id, userPhone);
             console.log('🗑️ Thread limpa após salvar despesa');
             
             return { success: true, expense_id: data.id };

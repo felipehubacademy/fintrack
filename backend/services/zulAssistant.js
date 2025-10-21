@@ -1,11 +1,17 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 /**
  * ZUL - Assistente Financeiro usando GPT Assistant API
@@ -14,8 +20,8 @@ const openai = new OpenAI({
  * Tom: Próximo, pessoal e respeitoso (muito brasileiro!)
  */
 // Cache global para threads (persiste entre requisições no mesmo processo)
-const threadCache = new Map(); // userId -> { threadId, lastUsed }
-const THREAD_EXPIRY = 30 * 60 * 1000; // 30 minutos
+const threadCache = new Map(); // userId -> { threadId, lastUsed, userName, userPhone }
+const THREAD_CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutos (apenas para limpar cache em memória)
 
 class ZulAssistant {
   constructor() {
@@ -243,32 +249,48 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
   /**
    * Obter ou criar thread para um usuário
    */
-  async getOrCreateThread(userId) {
-    // Limpar threads expiradas
+  async getOrCreateThread(userId, userPhone) {
+    // Limpar threads antigas do cache (otimização de memória)
     const now = Date.now();
     for (const [key, value] of threadCache.entries()) {
-      if (now - value.lastUsed > THREAD_EXPIRY) {
-        console.log(`🗑️ Thread expirada removida: ${key}`);
+      if (now - value.lastUsed > THREAD_CACHE_EXPIRY) {
+        console.log(`🗑️ Thread antiga removida do cache: ${key}`);
         threadCache.delete(key);
       }
     }
 
-    // Verificar se já existe thread ativa
+    // 1. Verificar cache em memória primeiro (mais rápido)
     if (threadCache.has(userId)) {
       const cached = threadCache.get(userId);
-      console.log(`♻️ Thread reutilizada para usuário ${userId}: ${cached.threadId}`);
-      cached.lastUsed = now; // Atualizar tempo de uso
+      console.log(`♻️ Thread do cache: ${userId} -> ${cached.threadId}`);
+      cached.lastUsed = now;
       return cached.threadId;
     }
 
-    // Criar nova thread
+    // 2. Tentar recuperar do banco (se cache foi perdido mas conversa ainda ativa)
+    console.log(`🔍 Buscando thread no banco para ${userId}...`);
+    const savedThread = await this.loadThreadFromDB(userPhone);
+    if (savedThread) {
+      console.log(`💾 Thread recuperada do banco: ${savedThread.threadId}`);
+      // Restaurar no cache
+      threadCache.set(userId, {
+        threadId: savedThread.threadId,
+        lastUsed: now,
+        userName: savedThread.userName,
+        userPhone: userPhone
+      });
+      return savedThread.threadId;
+    }
+
+    // 3. Criar nova thread
     try {
       const thread = await openai.beta.threads.create();
       threadCache.set(userId, {
         threadId: thread.id,
-        lastUsed: now
+        lastUsed: now,
+        userPhone: userPhone
       });
-      console.log(`🆕 Nova thread criada para usuário ${userId}: ${thread.id}`);
+      console.log(`🆕 Nova thread criada: ${userId} -> ${thread.id}`);
       return thread.id;
     } catch (error) {
       console.error('❌ Erro ao criar thread:', error);
@@ -277,12 +299,91 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
   }
 
   /**
-   * Limpar thread do usuário (forçar nova conversa)
+   * Carregar thread do banco de dados
    */
-  clearThread(userId) {
+  async loadThreadFromDB(userPhone) {
+    try {
+      const { data, error } = await supabase
+        .from('conversation_state')
+        .select('*')
+        .eq('user_phone', userPhone)
+        .neq('state', 'idle')
+        .single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      const threadId = data.temp_data?.assistant_thread_id;
+      if (!threadId) {
+        return null;
+      }
+
+      console.log(`💾 Thread recuperada do banco para ${userPhone}`);
+      return {
+        threadId,
+        userName: data.temp_data?.user_name,
+        conversationData: data.temp_data
+      };
+    } catch (error) {
+      console.error('❌ Erro ao carregar thread do banco:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Salvar thread no banco de dados
+   */
+  async saveThreadToDB(userPhone, threadId, state = 'awaiting_payment_method', extraData = {}) {
+    try {
+      const { error } = await supabase
+        .from('conversation_state')
+        .upsert({
+          user_phone: userPhone,
+          state: state,
+          temp_data: {
+            assistant_thread_id: threadId,
+            ...extraData
+          },
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_phone'
+        });
+
+      if (error) {
+        console.error('❌ Erro ao salvar thread no banco:', error);
+      } else {
+        console.log(`💾 Thread salva no banco: ${userPhone} -> ${threadId}`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar thread:', error);
+    }
+  }
+
+  /**
+   * Limpar thread do usuário (após finalizar conversa com sucesso)
+   */
+  async clearThread(userId, userPhone) {
+    // Limpar do cache
     if (threadCache.has(userId)) {
-      console.log(`🗑️ Thread do usuário ${userId} removida manualmente`);
+      console.log(`🗑️ Thread removida do cache: ${userId}`);
       threadCache.delete(userId);
+    }
+
+    // Limpar do banco (marcar como idle)
+    if (userPhone) {
+      try {
+        await supabase
+          .from('conversation_state')
+          .update({ 
+            state: 'idle',
+            temp_data: {}
+          })
+          .eq('user_phone', userPhone);
+        console.log(`💾 Thread limpa no banco: ${userPhone}`);
+      } catch (error) {
+        console.error('❌ Erro ao limpar thread do banco:', error);
+      }
     }
   }
 
@@ -300,11 +401,32 @@ Seja natural, próximo e divertido! Você é como um amigo ajudando com as finan
       }
       console.log(`✅ [ASSISTANT] Assistant ID: ${assistantId}`);
       
-      const threadId = await this.getOrCreateThread(userId);
+      const threadId = await this.getOrCreateThread(userId, context.userPhone);
       if (!threadId) {
         throw new Error('Falha ao obter/criar Thread ID');
       }
       console.log(`✅ [ASSISTANT] Thread ID: ${threadId}`);
+
+      // Atualizar cache com informações do usuário
+      const cached = threadCache.get(userId);
+      if (cached && context.userName) {
+        cached.userName = context.userName;
+        cached.userPhone = context.userPhone;
+      }
+
+      // 💾 Salvar thread no banco para persistência
+      if (context.userPhone) {
+        await this.saveThreadToDB(
+          context.userPhone, 
+          threadId, 
+          'awaiting_payment_method',
+          {
+            user_name: context.userName,
+            last_message: userMessage,
+            timestamp: new Date().toISOString()
+          }
+        );
+      }
 
       // Adicionar contexto do usuário na primeira mensagem (se thread é nova)
       const isNewThread = !threadCache.has(userId) || threadCache.get(userId).threadId === threadId;
