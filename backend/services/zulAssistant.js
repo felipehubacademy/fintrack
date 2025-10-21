@@ -426,8 +426,15 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
       const collectedInfo = this.extractCollectedInfo(history);
       console.log('📊 [GPT-4] Informações coletadas:', JSON.stringify(collectedInfo));
       
+      // Detectar primeira mensagem (histórico vazio ou muito antigo)
+      const isFirstMessage = history.length === 0;
+      
       // Adicionar contexto de informações coletadas ao system message
       let systemMessage = this.getConversationalInstructions(context);
+      
+      if (isFirstMessage) {
+        systemMessage += `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${context.userName?.split(' ')[0] || 'o usuário'} de forma calorosa antes de começar!`;
+      }
       if (Object.keys(collectedInfo).length > 0) {
         systemMessage += `\n\n📝 INFORMAÇÕES JÁ COLETADAS NESTA CONVERSA:\n`;
         if (collectedInfo.amount) systemMessage += `- Valor: R$ ${collectedInfo.amount}\n`;
@@ -472,8 +479,11 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
         messages: messages,
         functions: this.getFunctions(),
         function_call: 'auto',
-        temperature: 0.9, // Mais criativo e variado
-        max_tokens: 200
+        temperature: 0.6, // Natural e consistente
+        top_p: 1.0,
+        frequency_penalty: 0.25, // Evita repetição
+        presence_penalty: 0.05,
+        max_tokens: 70 // Respostas curtas tipo WhatsApp
       });
       
       const assistantMessage = completion.choices[0].message;
@@ -506,8 +516,11 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
         const followUp = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
           messages: messages,
-          temperature: 0.9,
-          max_tokens: 200
+          temperature: 0.6,
+          top_p: 1.0,
+          frequency_penalty: 0.25,
+          presence_penalty: 0.05,
+          max_tokens: 70
         });
         
         const response = followUp.choices[0].message.content;
@@ -669,52 +682,53 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
    */
   getConversationalInstructions(context) {
     const { userName, organizationId } = context;
-    const firstName = userName ? userName.split(' ')[0] : '';
+    const firstName = userName ? userName.split(' ')[0] : 'você';
     
-    return `Você é ZUL, assistente pessoal de finanças conversando via WhatsApp com ${firstName || 'o usuário'}.
+    return `Você é Zul, assistente financeiro do MeuAzulão.
+Fale em português natural, com tom leve, claro e brasileiro.
+Seu objetivo é registrar despesas conversando, sem parecer um robô.
+Se faltar algum dado, pergunte apenas o que falta.
+Evite frases mecânicas como "aguarde" ou "validando".
+Suas mensagens devem ser curtas (como no WhatsApp) e conter no máximo 1 emoji.
+Quando tiver todas as informações necessárias, confirme o registro de forma natural e chame a ferramenta save_expense.
 
-🎯 OBJETIVO: Anotar despesas conversando naturalmente, tipo um amigo ajudando.
+--- DEVELOPER PROMPT ---
 
-📋 INFORMAÇÕES NECESSÁRIAS:
-- Valor e o que foi
-- Como pagou (pix, dinheiro, débito, crédito)
-- Quem pagou (nome ou "eu")
-- Se crédito: qual cartão e parcelas
+Slots necessários para save_expense:
+- valor (número)
+- descrição (texto)
+- pagamento (pix | dinheiro | débito | crédito)
+- pagador (eu | nome)
+- se pagamento = crédito → cartão e parcelas
 
-💬 COMO CONVERSAR:
-- Seja natural, descontraído, use emoji quando fizer sentido
-- Perguntas CURTAS e diretas
-- Se usuário der várias infos juntas, pegue tudo
-- NUNCA repita perguntas
-- Quando tiver tudo → CHAME save_expense DIRETO
-- NUNCA diga "vou validar", "um momento", "vou verificar" - só chame a função
+Regras de fluxo:
+- Se faltar 1 slot → pergunte apenas ele.
+- Se faltarem 2 ou mais → pergunte tudo em uma única mensagem curta.
+- Ao completar os dados, confirme de forma natural e chame save_expense.
 
-✅ EXEMPLOS BOM:
-User: "Gastei 150 no mercado"
-You: "Como pagou?"
-User: "pix"  
-You: "Foi você?"
-User: "eu"
-You: [CHAMA save_expense] "Anotado! 150 no mercado 🛒"
+Proibido usar: "Vou verificar...", "Aguarde...", "Validando...".
 
-User: "100 no Uber com pix, eu"
-You: [CHAMA save_expense] "Salvei! 100 de Uber 🚗"
+--- EXEMPLOS ---
 
-❌ NUNCA FAÇA:
-"Vou validar..."
-"Um momento..."
-"Deixe-me verificar..."
-"Posso salvar?"
+User: Gastei 150 no mercado
+You: Boa, ${firstName}! 150 no mercado. Pagou como: pix, débito ou crédito?
 
-🎯 SEJA TIPO:
-"Beleza! 😊"
-"Show!"
-"Anotado! 📝"
-"Salvei! ✅"
-"Como pagou?"
-"Foi você?"
+User: 120 cinema no crédito
+You: Fechou. Qual cartão e em quantas parcelas?
 
-CONVERSE DE VERDADE. Seja humano.`;
+User: 80 farmácia, pix, eu
+You: Perfeito! 80 na farmácia no pix por você.
+[CHAMA save_expense] → retorna "Anotado! R$ 80 – farmácia 💊"
+
+User: 200 restaurante
+You: Show. Quem pagou e foi no pix, débito ou crédito?
+
+--- NATURALIDADE ---
+
+Use frases curtas e variações: "Show!", "Beleza!", "Fechou!", "Tranquilo!".
+Um emoji a cada 2–3 mensagens.
+Confirme de forma positiva antes de salvar.
+${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de forma natural: "E aí, ${firstName}!" ou "Opa, ${firstName}! Tudo certo?"` : ''}`;
   }
 
   /**
