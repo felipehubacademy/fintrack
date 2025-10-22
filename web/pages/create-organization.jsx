@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
-import { ArrowLeft, Building2, User, Mail, Phone, Loader2, CheckCircle, Copy, Sparkles, Users } from 'lucide-react';
+import { ArrowLeft, Building2, User, Mail, Phone, Loader2, CheckCircle, Copy, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function CreateOrganization() {
   const router = useRouter();
@@ -11,11 +11,17 @@ export default function CreateOrganization() {
     name: '',
     adminName: '',
     adminEmail: '',
-    adminPhone: ''
+    adminPhone: '',
+    password: '',
+    confirmPassword: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [validation, setValidation] = useState({
     email: null,
-    phone: null
+    phone: null,
+    password: null,
+    confirmPassword: null
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -48,6 +54,14 @@ export default function CreateOrganization() {
     return numbers.length === 13;
   };
 
+  const validatePassword = (password) => {
+    return password.length >= 8;
+  };
+
+  const validateConfirmPassword = (password, confirmPassword) => {
+    return password === confirmPassword && password.length >= 8;
+  };
+
   const handleChange = (field, value) => {
     if (field === 'adminPhone') {
       const formatted = formatPhone(value);
@@ -56,6 +70,16 @@ export default function CreateOrganization() {
     } else if (field === 'adminEmail') {
       setFormData(prev => ({ ...prev, adminEmail: value }));
       setValidation(prev => ({ ...prev, email: validateEmail(value) }));
+    } else if (field === 'password') {
+      setFormData(prev => ({ ...prev, password: value }));
+      setValidation(prev => ({ 
+        ...prev, 
+        password: validatePassword(value),
+        confirmPassword: value && formData.confirmPassword ? validateConfirmPassword(value, formData.confirmPassword) : null
+      }));
+    } else if (field === 'confirmPassword') {
+      setFormData(prev => ({ ...prev, confirmPassword: value }));
+      setValidation(prev => ({ ...prev, confirmPassword: validateConfirmPassword(formData.password, value) }));
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
@@ -76,24 +100,19 @@ export default function CreateOrganization() {
     setError(null);
 
     try {
-      if (!validation.email || !validation.phone) {
+      if (!validation.email || !validation.phone || !validation.password || !validation.confirmPassword) {
         throw new Error('Por favor, preencha todos os campos corretamente');
       }
 
       // Criar conta do usuário
-      const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/callback`;
-      console.log('🔍 Redirect URL:', redirectUrl);
-      console.log('🔍 NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
-      
-      const { error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.adminEmail,
-        password: crypto.randomUUID(), // Senha temporária
+        password: formData.password,
         options: {
           data: {
             name: formData.adminName,
             phone: formData.adminPhone
-          },
-          emailRedirectTo: redirectUrl
+          }
         }
       });
 
@@ -157,7 +176,9 @@ export default function CreateOrganization() {
       }
 
       setInviteCode(inviteCodeGen);
-      setSuccess(true);
+      
+      // Redirecionar diretamente para o dashboard
+      router.push('/dashboard');
 
     } catch (err) {
       setError(err.message);
@@ -165,101 +186,6 @@ export default function CreateOrganization() {
       setLoading(false);
     }
   };
-
-  const copyInviteLink = () => {
-    const link = `${window.location.origin}/invite/${inviteCode}`;
-    navigator.clipboard.writeText(link);
-  };
-
-  // Success State
-  if (success && inviteCode) {
-    return (
-      <>
-        <Head>
-          <title>Organização Criada - MeuAzulão</title>
-        </Head>
-
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_110%)] opacity-30" />
-          
-          <div className="relative z-10 w-full max-w-lg">
-            <div className="bg-white rounded-3xl p-10 shadow-2xl border border-gray-200">
-              {/* Success Icon */}
-              <div className="text-center mb-8">
-                <div className="flex items-center justify-center mb-6">
-                  <div className="relative">
-                    <img 
-                      src="/images/logo_flat.svg" 
-                      alt="MeuAzulão" 
-                      className="w-20 h-20"
-                    />
-                    <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-lg">
-                      <CheckCircle className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Organização Criada!
-                </h1>
-                <p className="text-gray-600">
-                  Link mágico enviado para <span className="font-semibold">{formData.adminEmail}</span>
-                </p>
-              </div>
-
-              {/* Invite Code */}
-              <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 mb-6 border border-blue-100">
-                <div className="flex items-center justify-center space-x-2 mb-3">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  <p className="text-sm font-medium text-gray-700">Código de Convite</p>
-                </div>
-                <div className="bg-white rounded-xl p-4 mb-3">
-                  <p className="text-3xl font-mono font-bold text-center text-gray-900 tracking-wider">
-                    {inviteCode}
-                  </p>
-                </div>
-                <p className="text-xs text-center text-gray-600">
-                  Compartilhe este código para convidar sua família
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="space-y-3">
-                <button
-                  onClick={copyInviteLink}
-                  className="w-full inline-flex items-center justify-center px-6 py-3.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-semibold transform hover:scale-[1.02]"
-                >
-                  <Copy className="w-5 h-5 mr-2" />
-                  Copiar Link de Convite
-                </button>
-
-                <Link
-                  href="/login"
-                  className="w-full inline-flex items-center justify-center px-6 py-3.5 bg-gray-50 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all font-semibold transform hover:scale-[1.02]"
-                >
-                  Ir para Login
-                </Link>
-              </div>
-
-              {/* Warning */}
-              <div className="mt-6 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                <div className="flex items-start space-x-3">
-                  <Sparkles className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-yellow-900 mb-1">
-                      Importante
-                    </p>
-                    <p className="text-xs text-yellow-800">
-                      Verifique seu email e clique no link mágico antes de fazer login
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
 
   // Form State
   return (
@@ -421,6 +347,86 @@ export default function CreateOrganization() {
                 </p>
               </div>
 
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Senha
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Mínimo 8 caracteres"
+                    required
+                    value={formData.password}
+                    onChange={(e) => handleChange('password', e.target.value)}
+                    className={`w-full pl-12 pr-12 py-3.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      validation.password === false ? 'border-red-500' : 
+                      validation.password === true ? 'border-green-500' : 
+                      'border-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Mínimo 8 caracteres
+                </p>
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirmar Senha
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Digite a senha novamente"
+                    required
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                    className={`w-full pl-12 pr-12 py-3.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      validation.confirmPassword === false ? 'border-red-500' : 
+                      validation.confirmPassword === true ? 'border-green-500' : 
+                      'border-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+                {validation.confirmPassword === false && (
+                  <p className="text-xs text-red-600 mt-1">
+                    As senhas não coincidem
+                  </p>
+                )}
+              </div>
+
               {/* Error Message */}
               {error && (
                 <div className="p-4 rounded-xl bg-red-50 border border-red-200">
@@ -431,7 +437,7 @@ export default function CreateOrganization() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || !validation.email || !validation.phone}
+                disabled={loading || !validation.email || !validation.phone || !validation.password || !validation.confirmPassword}
                 className="w-full bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white font-semibold py-3.5 px-4 rounded-xl hover:shadow-lg hover:shadow-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-100"
               >
                 {loading ? (
@@ -448,13 +454,13 @@ export default function CreateOrganization() {
             {/* Footer Info */}
             <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
               <div className="flex items-start space-x-3">
-                <Mail className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm text-blue-900 font-medium mb-1">
-                    Você receberá um email
+                    Acesso seguro
                   </p>
                   <p className="text-xs text-blue-700">
-                    Enviaremos um link mágico para confirmar sua conta
+                    Sua senha será criptografada e protegida
                   </p>
                 </div>
               </div>

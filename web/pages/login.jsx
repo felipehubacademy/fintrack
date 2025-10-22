@@ -4,10 +4,12 @@ import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Head from 'next/head';
-import { ArrowLeft, Mail, Loader2, CheckCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, Mail, Loader2, CheckCircle, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -21,63 +23,33 @@ export default function Login() {
       setMessage('');
       setIsSuccess(false);
       
-      const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/callback`;
-      console.log('🔍 Login - Redirect URL:', redirectUrl);
-      console.log('🔍 Login - NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
-      
-      const { error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
+        password: password,
       });
 
       if (error) throw error;
       
-      setMessage('Link mágico enviado! Verifique seu email.');
-      setIsSuccess(true);
+      if (data?.session) {
+        router.push('/dashboard');
+      }
     } catch (error) {
-      setMessage(error.message || 'Erro ao enviar link de acesso');
+      setMessage(error.message || 'Email ou senha incorretos');
       setIsSuccess(false);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle magic link landing like /login#access_token=... or code exchange
+  // Auto-redirect if already signed in
   useEffect(() => {
-    const finalizeAuth = async () => {
-      try {
-        const hasHash = typeof window !== 'undefined' && window.location.hash && window.location.hash.includes('access_token');
-        const hasCode = typeof window !== 'undefined' && (new URL(window.location.href)).searchParams.get('code');
-        if (hasHash || hasCode) {
-          if (hasHash) {
-            const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-            const access_token = params.get('access_token');
-            const refresh_token = params.get('refresh_token');
-            if (access_token && refresh_token) {
-              const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
-              if (setErr) throw setErr;
-            }
-          } else {
-            const { error } = await supabase.auth.exchangeCodeForSession();
-            if (error) throw error;
-          }
-          router.replace('/dashboard');
-        }
-      } catch (err) {
-        // Silent; user can request link again
-        console.error('Auth finalize error:', err?.message || err);
-      }
-    };
-    finalizeAuth();
-    // Also auto-redirect if already signed in
-    (async () => {
+    const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         router.replace('/dashboard');
       }
-    })();
+    };
+    checkSession();
   }, [router]);
 
   return (
@@ -125,33 +97,8 @@ export default function Login() {
               </p>
             </div>
 
-            {/* Success State */}
-            {isSuccess ? (
-              <div className="text-center py-8 space-y-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    Link Enviado!
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    Verifique sua caixa de entrada em <span className="font-semibold">{email}</span>
-                  </p>
-                  <button
-                    onClick={() => {
-                      setIsSuccess(false);
-                      setMessage('');
-                      setEmail('');
-                    }}
-                    className="text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    Enviar para outro email
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
+            {/* Login Form */}
+            <>
                 {/* Login Form */}
                 <form onSubmit={handleLogin} className="space-y-6">
                   <div>
@@ -174,6 +121,42 @@ export default function Login() {
                     </div>
                   </div>
 
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                        Senha
+                      </label>
+                      <Link href="/reset-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                        Esqueceu a senha?
+                      </Link>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Lock className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="w-full pl-12 pr-12 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-gray-900 placeholder-gray-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={loading}
@@ -182,37 +165,22 @@ export default function Login() {
                     {loading ? (
                       <span className="flex items-center justify-center">
                         <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                        Enviando link...
+                        Entrando...
                       </span>
                     ) : (
-                      'Enviar Link de Acesso'
+                      'Entrar'
                     )}
                   </button>
                 </form>
 
                 {/* Error Message */}
-                {message && !isSuccess && (
+                {message && (
                   <div className="mt-6 p-4 rounded-xl bg-red-50 border border-red-200">
                     <p className="text-sm text-red-800 text-center">{message}</p>
                   </div>
                 )}
-
-                {/* Info */}
-                <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                  <div className="flex items-start space-x-3">
-                    <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-blue-900 font-medium mb-1">
-                        Login sem senha
-                      </p>
-                      <p className="text-xs text-blue-700">
-                        Você receberá um link mágico no seu email para acessar sua conta de forma segura
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </>
-            )}
+            </>
 
             {/* Divider */}
             <div className="relative my-8">
