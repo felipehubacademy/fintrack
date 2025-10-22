@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     };
 
     const inviteCode = generateInviteCode();
-    const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/invite/${inviteCode}`;
+    const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/invite/${inviteCode}`;
 
     // Salvar convite no banco usando a tabela pending_invites
     const { error: inviteError } = await supabase

@@ -85,19 +85,38 @@
 </Card>
 ```
 
-### 🎨 PALETA DE CORES
+### 🎨 PALETA DE CORES OFICIAL
 
-#### Primárias
-- **Azul:** `from-blue-500 to-blue-600`, `bg-blue-50`, `text-blue-600`
-- **Roxo:** `from-purple-500 to-purple-600`, `bg-purple-50`, `text-purple-600`
-- **Verde:** `from-green-500 to-green-600`, `bg-green-50`, `text-green-600`
-- **Laranja:** `from-orange-500 to-orange-600`, `bg-orange-50`, `text-orange-600`
+#### Cores da Marca
+| Nível | Nome | Código HEX | Uso Principal | Descrição |
+|-------|------|------------|---------------|-----------|
+| 🟦 Primária | **Flight Blue** | `#207DFF` | Corpo principal do pássaro, títulos, botões, ícone principal | Azul vibrante que transmite clareza, leveza e confiança. É a cor base da marca. |
+| 🔵 Secundária Escura | **Deep Sky** | `#0D2C66` | Sombra, profundidade, textos escuros e fundos contrastantes | Azul profundo que adiciona seriedade e sofisticação ao contraste. |
+| 🩵 Secundária Clara | **Feather Blue** | `#8FCBFF` | Reflexos, gradientes suaves e detalhes luminosos | Azul claro suave que confere volume e sensação de leveza. |
+| 💚 Acento | **Spring Accent** | `#5FFFA7` | Detalhes visuais, animações e ícones de destaque | Verde neon que traz energia, inovação e frescor — usar com moderação. |
+| ⚪ Neutro | **Fog Mist** | `#E9EEF5` | Fundos, áreas de respiro, interfaces e layouts limpos | Cinza-azulado claro e neutro, que garante contraste e equilíbrio visual. |
 
-#### Neutras
-- **Background:** `bg-gradient-to-br from-gray-50 to-gray-100`
-- **Cards:** `bg-white/80 backdrop-blur-sm`
-- **Text:** `text-gray-900`, `text-gray-600`, `text-gray-500`
-- **Borders:** `border-gray-200`
+#### Aplicação em Tailwind
+```css
+/* Adicionar ao tailwind.config.js */
+colors: {
+  brand: {
+    primary: '#207DFF',      // Flight Blue
+    dark: '#0D2C66',         // Deep Sky
+    light: '#8FCBFF',        // Feather Blue
+    accent: '#5FFFA7',       // Spring Accent
+    neutral: '#E9EEF5',      // Fog Mist
+  }
+}
+```
+
+#### Uso em Componentes
+- **Botões primários:** `bg-[#207DFF] hover:bg-[#0D2C66]`
+- **Títulos principais:** `text-[#207DFF]`
+- **Textos secundários:** `text-[#0D2C66]`
+- **Backgrounds:** `bg-[#E9EEF5]`
+- **Acentos e CTAs:** `text-[#5FFFA7]` ou `border-[#5FFFA7]`
+- **Gradientes:** `bg-gradient-to-r from-[#207DFF] to-[#8FCBFF]`
 
 ### 🚀 PADRÕES DE COMPONENTES
 

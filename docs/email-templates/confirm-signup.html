@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirme seu Cadastro - MeuAzulão</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; min-height: 100vh;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        
+        <!-- Main Container -->
+        <table role="presentation" style="max-width: 600px; width: 100%; background: white; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: #E9EEF5; padding: 48px 40px; text-align: center; border-bottom: 3px solid #207DFF; border-radius: 24px 24px 0 0;">
+              <img src="https://ompulmhcjfzlflbrlwpu.supabase.co/storage/v1/object/public/assets/logo_flat.svg" alt="MeuAzulão" style="width: 80px; height: 80px; margin-bottom: 24px; display: block; margin-left: auto; margin-right: auto;">
+              <h1 style="margin: 0; color: #0D2C66; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
+                Confirme seu Cadastro
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 48px 40px;">
+              <p style="margin: 0 0 24px; color: #1f2937; font-size: 16px; line-height: 1.6;">
+                Olá! 👋
+              </p>
+              <p style="margin: 0 0 32px; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Obrigado por se cadastrar no <strong style="color: #207DFF;">MeuAzulão</strong>! Para ativar sua conta, clique no botão abaixo:
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center" style="padding: 0 0 32px 0;">
+                    <a href="{{ .ConfirmationURL }}" 
+                       style="display: inline-block; background: #207DFF; color: white; text-decoration: none; padding: 16px 48px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(32, 125, 255, 0.3);">
+                      Confirmar Cadastro
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+
+              <!-- Welcome Box -->
+              <div style="background: linear-gradient(135deg, #E9EEF5 0%, #8FCBFF 100%); border-radius: 16px; padding: 24px; margin-bottom: 32px; border: 2px solid #207DFF;">
+                <p style="margin: 0 0 16px; color: #0D2C66; font-size: 16px; font-weight: 600;">
+                  🎯 Bem-vindo ao MeuAzulão!
+                </p>
+                <ul style="margin: 0; padding-left: 20px; color: #0D2C66; font-size: 14px; line-height: 1.8;">
+                  <li>📱 Registre despesas pelo WhatsApp com o Zul (IA)</li>
+                  <li>📊 Acompanhe gastos da família em tempo real</li>
+                  <li>💡 Receba análises inteligentes dos seus gastos</li>
+                  <li>🤝 Colabore com todos os membros da família</li>
+                </ul>
+              </div>
+
+              <!-- Warning -->
+              <div style="border-left: 4px solid #fbbf24; background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;">
+                  ⏰ <strong>Este link expira em 24 horas</strong> por segurança.
+                </p>
+              </div>
+
+              <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                Se você não criou uma conta no MeuAzulão, ignore este email com segurança.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background: #E9EEF5; padding: 32px 40px; border-top: 3px solid #207DFF; border-radius: 0 0 24px 24px;">
+              <table role="presentation" style="width: 100%;">
+                <tr>
+                  <td align="center">
+                    <p style="margin: 0 0 16px; color: #0D2C66; font-size: 16px; font-weight: 600;">
+                      💙 MeuAzulão
+                    </p>
+                    <p style="margin: 0 0 8px; color: #6b7280; font-size: 14px;">
+                      Controle financeiro inteligente para sua família
+                    </p>
+                    <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                      © 2025 MeuAzulão. Todos os direitos reservados.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+        
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

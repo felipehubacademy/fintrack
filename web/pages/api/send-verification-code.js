@@ -114,7 +114,7 @@ Para começar a usar o MeuAzulão, confirme seu WhatsApp:
 
 ou
 
-Clique aqui: ${process.env.NEXT_PUBLIC_SITE_URL}/verify?token=${token}
+Clique aqui: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/verify?token=${token}
 
 _Este código expira em 10 minutos._
 
