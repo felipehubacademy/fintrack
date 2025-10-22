@@ -34,7 +34,10 @@ export default function Login() {
       if (error) throw error;
       
       if (data?.session) {
-        console.log('✅ Sessão criada, redirecionando para dashboard...');
+        console.log('✅ Sessão criada, aguardando cookies...');
+        // Dar tempo para os cookies serem salvos
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('🚀 Redirecionando para dashboard...');
         window.location.href = '/dashboard';
       } else {
         console.log('⚠️ Login sem erro mas sem sessão');
