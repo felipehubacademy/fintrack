@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import Link from 'next/link';
+import Head from 'next/head';
+import { ArrowLeft, Building2, User, Mail, Phone, Loader2, CheckCircle, Copy, Sparkles, Users } from 'lucide-react';
 
 export default function CreateOrganization() {
   const router = useRouter();
@@ -17,17 +19,14 @@ export default function CreateOrganization() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
   const [inviteCode, setInviteCode] = useState(null);
 
   // Formatar telefone automaticamente
   const formatPhone = (value) => {
-    // Remove tudo que não é número
     const numbers = value.replace(/\D/g, '');
-    
-    // Limita a 13 dígitos (55 + 11 dígitos)
     const limited = numbers.slice(0, 13);
     
-    // Formata: +55 (11) 99999-9999
     if (limited.length <= 2) {
       return `+${limited}`;
     } else if (limited.length <= 4) {
@@ -39,19 +38,16 @@ export default function CreateOrganization() {
     }
   };
 
-  // Validar email em tempo real
   const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
   };
 
-  // Validar telefone em tempo real
   const validatePhone = (phone) => {
     const numbers = phone.replace(/\D/g, '');
-    return numbers.length === 13; // +55 (11) 99999-9999
+    return numbers.length === 13;
   };
 
-  // Handler para mudanças no formulário
   const handleChange = (field, value) => {
     if (field === 'adminPhone') {
       const formatted = formatPhone(value);
@@ -65,24 +61,27 @@ export default function CreateOrganization() {
     }
   };
 
+  const generateInviteCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // Validações finais
-      if (!validation.email) {
-        throw new Error('Email inválido');
-      }
-      if (!validation.phone) {
-        throw new Error('Telefone inválido. Use formato: +55 (11) 99999-9999');
+      if (!validation.email || !validation.phone) {
+        throw new Error('Por favor, preencha todos os campos corretamente');
       }
 
-      console.log('🔄 Criando organização...');
-
-      // 1. Criar usuário no Supabase Auth via Magic Link
-      const { data: authData, error: authError } = await supabase.auth.signInWithOtp({
+      // Enviar magic link
+      const { error: authError } = await supabase.auth.signInWithOtp({
         email: formData.adminEmail,
         options: {
           data: {
@@ -92,19 +91,13 @@ export default function CreateOrganization() {
         }
       });
 
-      if (authError) {
-        console.error('❌ Erro no auth:', authError);
-        throw new Error('Erro ao enviar magic link: ' + authError.message);
-      }
+      if (authError) throw authError;
 
-      console.log('✅ Magic link enviado para:', formData.adminEmail);
-
-      // 2. Criar organização diretamente no Supabase
+      // Criar organização
       const orgId = crypto.randomUUID();
       const userId = crypto.randomUUID();
       const inviteCodeGen = generateInviteCode();
 
-      // Criar organização
       const { error: orgError } = await supabase
         .from('organizations')
         .insert({
@@ -114,12 +107,7 @@ export default function CreateOrganization() {
           invite_code: inviteCodeGen
         });
 
-      if (orgError) {
-        console.error('❌ Erro ao criar organização:', orgError);
-        throw new Error('Erro ao criar organização: ' + orgError.message);
-      }
-
-      console.log('✅ Organização criada:', orgId);
+      if (orgError) throw orgError;
 
       // Criar usuário
       const { error: userError } = await supabase
@@ -133,280 +121,351 @@ export default function CreateOrganization() {
           role: 'admin'
         });
 
-      if (userError) {
-        console.error('❌ Erro ao criar usuário:', userError);
-        throw new Error('Erro ao criar usuário: ' + userError.message);
-      }
-
-      console.log('✅ Usuário criado:', userId);
+      if (userError) throw userError;
 
       // Criar centros de custo padrão
       const costCenters = [
-        { name: 'Felipe', type: 'individual', color: '#3B82F6' },
-        { name: 'Letícia', type: 'individual', color: '#EC4899' },
+        { name: 'Principal', type: 'individual', color: '#3B82F6' },
         { name: 'Compartilhado', type: 'shared', color: '#8B5CF6', split_percentage: 50.00 }
       ];
 
       for (const center of costCenters) {
-        const { error: ccError } = await supabase
-          .from('cost_centers')
-          .insert({
-            organization_id: orgId,
-            ...center
-          });
-
-        if (ccError) {
-          console.error('❌ Erro ao criar centro de custo:', ccError);
-        }
+        await supabase.from('cost_centers').insert({
+          organization_id: orgId,
+          ...center
+        });
       }
 
-      console.log('✅ Centros de custo criados');
-
-      // Criar categorias de orçamento padrão
+      // Criar categorias padrão
       const categories = [
         'Alimentação', 'Transporte', 'Saúde', 'Lazer',
         'Contas', 'Casa', 'Educação', 'Investimentos', 'Outros'
       ];
 
       for (const category of categories) {
-        const { error: catError } = await supabase
-          .from('budget_categories')
-          .insert({
-            organization_id: orgId,
-            name: category,
-            is_default: true
-          });
-
-        if (catError) {
-          console.error('❌ Erro ao criar categoria:', catError);
-        }
+        await supabase.from('budget_categories').insert({
+          organization_id: orgId,
+          name: category,
+          is_default: true
+        });
       }
 
-      console.log('✅ Categorias criadas');
-
-      // Mostrar código de convite
       setInviteCode(inviteCodeGen);
+      setSuccess(true);
 
     } catch (err) {
-      console.error('❌ Erro geral:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Gerar código de convite
-  const generateInviteCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
+  const copyInviteLink = () => {
+    const link = `${window.location.origin}/invite/${inviteCode}`;
+    navigator.clipboard.writeText(link);
   };
 
-  if (inviteCode) {
+  // Success State
+  if (success && inviteCode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="inline-block bg-gradient-to-r from-green-600 to-blue-600 rounded-full p-4 mb-4">
-              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Organização Criada!</h1>
-            <p className="text-gray-600 mb-6">
-              Enviamos um link de confirmação para <strong>{formData.adminEmail}</strong>
-            </p>
+      <>
+        <Head>
+          <title>Organização Criada - MeuAzulão</title>
+        </Head>
 
-            <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg p-6 mb-6">
-              <p className="text-sm text-gray-600 mb-2">Seu código de convite:</p>
-              <div className="font-mono text-3xl font-bold text-purple-600 tracking-wider">
-                {inviteCode}
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_110%)] opacity-30" />
+          
+          <div className="relative z-10 w-full max-w-lg">
+            <div className="bg-white rounded-3xl p-10 shadow-2xl border border-gray-200">
+              {/* Success Icon */}
+              <div className="text-center mb-8">
+                <div className="flex items-center justify-center mb-6">
+                  <div className="relative">
+                    <img 
+                      src="/images/logo_flat.svg" 
+                      alt="MeuAzulão" 
+                      className="w-20 h-20"
+                    />
+                    <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+                      <CheckCircle className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  Organização Criada!
+                </h1>
+                <p className="text-gray-600">
+                  Link mágico enviado para <span className="font-semibold">{formData.adminEmail}</span>
+                </p>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Compartilhe este código com sua família
-              </p>
-            </div>
 
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`http://localhost:3000/invite/${inviteCode}`);
-                  alert('Link copiado!');
-                }}
-                className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-all font-medium"
-              >
-                📋 Copiar Link de Convite
-              </button>
+              {/* Invite Code */}
+              <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 mb-6 border border-blue-100">
+                <div className="flex items-center justify-center space-x-2 mb-3">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  <p className="text-sm font-medium text-gray-700">Código de Convite</p>
+                </div>
+                <div className="bg-white rounded-xl p-4 mb-3">
+                  <p className="text-3xl font-mono font-bold text-center text-gray-900 tracking-wider">
+                    {inviteCode}
+                  </p>
+                </div>
+                <p className="text-xs text-center text-gray-600">
+                  Compartilhe este código para convidar sua família
+                </p>
+              </div>
 
-              <Link
-                href="/"
-                className="block w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-all font-medium text-center"
-              >
-                ✉️ Ir para Login
-              </Link>
-            </div>
+              {/* Actions */}
+              <div className="space-y-3">
+                <button
+                  onClick={copyInviteLink}
+                  className="w-full inline-flex items-center justify-center px-6 py-3.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-semibold transform hover:scale-[1.02]"
+                >
+                  <Copy className="w-5 h-5 mr-2" />
+                  Copiar Link de Convite
+                </button>
 
-            <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-              <p className="text-xs text-yellow-800">
-                <strong>⚠️ Importante:</strong> Verifique seu email e clique no link de confirmação antes de fazer login.
-              </p>
+                <Link
+                  href="/login"
+                  className="w-full inline-flex items-center justify-center px-6 py-3.5 bg-gray-50 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all font-semibold transform hover:scale-[1.02]"
+                >
+                  Ir para Login
+                </Link>
+              </div>
+
+              {/* Warning */}
+              <div className="mt-6 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                <div className="flex items-start space-x-3">
+                  <Sparkles className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-900 mb-1">
+                      Importante
+                    </p>
+                    <p className="text-xs text-yellow-800">
+                      Verifique seu email e clique no link mágico antes de fazer login
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
+  // Form State
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block mb-4">
-            <svg className="w-8 h-8 text-gray-600 hover:text-gray-800 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-          </Link>
-          <div className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 rounded-full p-4 mb-4">
-            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Criar Organização</h1>
-          <p className="text-gray-600">Configure sua família ou empresa</p>
-        </div>
+    <>
+      <Head>
+        <title>Criar Organização - MeuAzulão</title>
+        <meta name="description" content="Crie sua organização no MeuAzulão" />
+      </Head>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Nome da Organização */}
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-              Nome da Organização
-            </label>
-            <input
-              id="name"
-              type="text"
-              placeholder="Ex: Família Silva"
-              required
-              value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-            />
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Animated Background Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_110%)] opacity-30" />
+        
+        {/* Gradient Orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
 
-          {/* Nome do Admin */}
-          <div>
-            <label htmlFor="adminName" className="block text-sm font-medium text-gray-700 mb-2">
-              Seu Nome
-            </label>
-            <input
-              id="adminName"
-              type="text"
-              placeholder="Ex: João Silva"
-              required
-              value={formData.adminName}
-              onChange={(e) => handleChange('adminName', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-            />
-          </div>
+        {/* Back to Home */}
+        <Link 
+          href="/"
+          className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="font-medium">Voltar</span>
+        </Link>
 
-          {/* Email com validação */}
-          <div>
-            <label htmlFor="adminEmail" className="block text-sm font-medium text-gray-700 mb-2">
-              Seu Email
-            </label>
-            <div className="relative">
-              <input
-                id="adminEmail"
-                type="email"
-                placeholder="seu@email.com"
-                required
-                value={formData.adminEmail}
-                onChange={(e) => handleChange('adminEmail', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition ${
-                  validation.email === false ? 'border-red-500' : 
-                  validation.email === true ? 'border-green-500' : 
-                  'border-gray-300'
-                }`}
-              />
-              {validation.email !== null && (
-                <div className="absolute right-3 top-3">
-                  {validation.email ? (
-                    <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+        {/* Form Card */}
+        <div className="relative z-10 w-full max-w-lg">
+          <div className="bg-white rounded-3xl p-10 shadow-2xl border border-gray-200">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center mb-6">
+                <img 
+                  src="/images/logo_flat.svg" 
+                  alt="MeuAzulão" 
+                  className="w-20 h-20"
+                />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Criar Organização
+              </h1>
+              <p className="text-gray-600">
+                Configure sua família ou empresa
+              </p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Organization Name */}
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome da Organização
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Building2 className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="name"
+                    type="text"
+                    placeholder="Ex: Família Silva"
+                    required
+                    value={formData.name}
+                    onChange={(e) => handleChange('name', e.target.value)}
+                    className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Admin Name */}
+              <div>
+                <label htmlFor="adminName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Seu Nome
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="adminName"
+                    type="text"
+                    placeholder="Ex: João Silva"
+                    required
+                    value={formData.adminName}
+                    onChange={(e) => handleChange('adminName', e.target.value)}
+                    className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label htmlFor="adminEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                  Seu Email
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="adminEmail"
+                    type="email"
+                    placeholder="seu@email.com"
+                    required
+                    value={formData.adminEmail}
+                    onChange={(e) => handleChange('adminEmail', e.target.value)}
+                    className={`w-full pl-12 pr-12 py-3.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      validation.email === false ? 'border-red-500' : 
+                      validation.email === true ? 'border-green-500' : 
+                      'border-gray-300'
+                    }`}
+                  />
+                  {validation.email !== null && (
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
+                      {validation.email ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <div className="h-5 w-5 rounded-full border-2 border-red-500" />
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* WhatsApp com formatação automática */}
-          <div>
-            <label htmlFor="adminPhone" className="block text-sm font-medium text-gray-700 mb-2">
-              Seu WhatsApp
-            </label>
-            <div className="relative">
-              <input
-                id="adminPhone"
-                type="tel"
-                placeholder="+55 (11) 99999-9999"
-                required
-                value={formData.adminPhone}
-                onChange={(e) => handleChange('adminPhone', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition ${
-                  validation.phone === false ? 'border-red-500' : 
-                  validation.phone === true ? 'border-green-500' : 
-                  'border-gray-300'
-                }`}
-              />
-              {validation.phone !== null && (
-                <div className="absolute right-3 top-3">
-                  {validation.phone ? (
-                    <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+              {/* Phone */}
+              <div>
+                <label htmlFor="adminPhone" className="block text-sm font-medium text-gray-700 mb-2">
+                  Seu WhatsApp
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Phone className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="adminPhone"
+                    type="tel"
+                    placeholder="+55 (11) 99999-9999"
+                    required
+                    value={formData.adminPhone}
+                    onChange={(e) => handleChange('adminPhone', e.target.value)}
+                    className={`w-full pl-12 pr-12 py-3.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      validation.phone === false ? 'border-red-500' : 
+                      validation.phone === true ? 'border-green-500' : 
+                      'border-gray-300'
+                    }`}
+                  />
+                  {validation.phone !== null && (
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
+                      {validation.phone ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <div className="h-5 w-5 rounded-full border-2 border-red-500" />
+                      )}
+                    </div>
                   )}
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Digite apenas números, formataremos automaticamente
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
               )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading || !validation.email || !validation.phone}
+                className="w-full bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white font-semibold py-3.5 px-4 rounded-xl hover:shadow-lg hover:shadow-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-100"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                    Criando organização...
+                  </span>
+                ) : (
+                  'Criar Organização'
+                )}
+              </button>
+            </form>
+
+            {/* Footer Info */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <div className="flex items-start space-x-3">
+                <Mail className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-blue-900 font-medium mb-1">
+                    Você receberá um email
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    Enviaremos um link mágico para confirmar sua conta
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Digite apenas números, formataremos automaticamente
-            </p>
+
+            {/* Login Link */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Já tem uma conta?{' '}
+                <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Fazer login
+                </Link>
+              </p>
+            </div>
           </div>
-
-          {/* Erro */}
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Botão */}
-          <button
-            type="submit"
-            disabled={loading || !validation.email || !validation.phone}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? '⏳ Criando...' : '🚀 Criar Organização'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Ao criar, você receberá um email de confirmação
-          </p>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -12,7 +12,8 @@ import {
   Users, 
   Target,
   Tag,
-  UserCheck
+  UserCheck,
+  Mail
 } from 'lucide-react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
@@ -22,6 +23,7 @@ import CategoryManagementModal from '../../components/CategoryManagementModal';
 import CostCenterManagementModal from '../../components/CostCenterManagementModal';
 import NotificationSettingsModal from '../../components/NotificationSettingsModal';
 import NotificationModal from '../../components/NotificationModal';
+import InviteUserModal from '../../components/InviteUserModal';
 
 export default function ConfigPage() {
   const router = useRouter();
@@ -33,6 +35,7 @@ export default function ConfigPage() {
   const [showCostCenterModal, setShowCostCenterModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
@@ -79,6 +82,12 @@ export default function ConfigPage() {
           description: "Listar e gerenciar membros",
           action: "users",
           icon: UserCheck
+        },
+        {
+          title: "Convidar por Email",
+          description: "Enviar convite por email",
+          action: "invite",
+          icon: Mail
         },
       ]
     },
@@ -213,6 +222,8 @@ export default function ConfigPage() {
                           setShowCategoryModal(true);
                         } else if (action.action === 'cost-centers') {
                           setShowCostCenterModal(true);
+                        } else if (action.action === 'invite') {
+                          setShowInviteModal(true);
                         } else if (action.action === 'export') {
                           // TODO: Implementar exportação
                         }
@@ -268,6 +279,15 @@ export default function ConfigPage() {
         <NotificationModal 
           isOpen={showNotificationModal}
           onClose={() => setShowNotificationModal(false)}
+        />
+
+        <InviteUserModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          organization={{
+            ...organization,
+            currentUser: orgUser
+          }}
         />
       </main>
 

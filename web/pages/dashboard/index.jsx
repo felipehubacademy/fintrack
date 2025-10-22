@@ -45,11 +45,38 @@ export default function DashboardHome() {
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
+      checkOnboardingStatus();
       fetchAllExpenses();
     } else if (!orgLoading && orgError) {
       router.push('/');
     }
   }, [orgLoading, orgError, organization, selectedMonth]);
+
+  const checkOnboardingStatus = async () => {
+    if (!organization || !orgUser) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('onboarding_progress')
+        .select('*')
+        .eq('user_id', orgUser.id)
+        .eq('organization_id', organization.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('❌ Erro ao verificar onboarding:', error);
+        return;
+      }
+
+      // If no onboarding record exists or it's not completed, redirect to onboarding
+      if (!data || !data.is_completed) {
+        router.push('/onboarding/welcome');
+        return;
+      }
+    } catch (error) {
+      console.error('❌ Erro ao verificar status do onboarding:', error);
+    }
+  };
 
   // Realtime subscriptions: expenses, cost_centers, budget_categories
   useEffect(() => {
