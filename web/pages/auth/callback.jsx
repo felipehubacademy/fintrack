@@ -11,10 +11,25 @@ export default function AuthCallback() {
   useEffect(() => {
     const run = async () => {
       try {
-        // Handle magic link / OTP exchange and persist session
-        const { data, error } = await supabase.auth.exchangeCodeForSession();
+        // Prefer hash tokens (magic link) if present
+        const hash = typeof window !== 'undefined' ? window.location.hash : '';
+        if (hash && hash.includes('access_token')) {
+          const params = new URLSearchParams(hash.replace(/^#/, ''));
+          const access_token = params.get('access_token');
+          const refresh_token = params.get('refresh_token');
+          if (!access_token || !refresh_token) {
+            throw new Error('Tokens ausentes no callback');
+          }
+          const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (setErr) throw setErr;
+          setStatus('success');
+          router.replace('/dashboard');
+          return;
+        }
+
+        // Otherwise, handle PKCE code flow (code in query string)
+        const { error } = await supabase.auth.exchangeCodeForSession();
         if (error) throw error;
-        // Successful login, redirect to dashboard
         setStatus('success');
         router.replace('/dashboard');
       } catch (err) {

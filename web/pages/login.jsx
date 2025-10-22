@@ -51,8 +51,18 @@ export default function Login() {
         const hasHash = typeof window !== 'undefined' && window.location.hash && window.location.hash.includes('access_token');
         const hasCode = typeof window !== 'undefined' && (new URL(window.location.href)).searchParams.get('code');
         if (hasHash || hasCode) {
-          const { error } = await supabase.auth.exchangeCodeForSession();
-          if (error) throw error;
+          if (hasHash) {
+            const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+            const access_token = params.get('access_token');
+            const refresh_token = params.get('refresh_token');
+            if (access_token && refresh_token) {
+              const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
+              if (setErr) throw setErr;
+            }
+          } else {
+            const { error } = await supabase.auth.exchangeCodeForSession();
+            if (error) throw error;
+          }
           router.replace('/dashboard');
         }
       } catch (err) {
