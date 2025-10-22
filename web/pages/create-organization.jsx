@@ -80,14 +80,16 @@ export default function CreateOrganization() {
         throw new Error('Por favor, preencha todos os campos corretamente');
       }
 
-      // Enviar magic link
-      const { error: authError } = await supabase.auth.signInWithOtp({
+      // Criar conta do usuário
+      const { error: authError } = await supabase.auth.signUp({
         email: formData.adminEmail,
+        password: crypto.randomUUID(), // Senha temporária
         options: {
           data: {
             name: formData.adminName,
             phone: formData.adminPhone
-          }
+          },
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/dashboard`
         }
       });
 
