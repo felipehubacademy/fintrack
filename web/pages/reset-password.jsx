@@ -19,7 +19,7 @@ export default function ResetPassword() {
       setIsSuccess(false);
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/update-password`,
+        redirectTo: 'https://meuazulao.com.br/update-password',
       });
 
       if (error) throw error;
