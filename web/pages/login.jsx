@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -42,6 +43,32 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  // Handle magic link landing like /login#access_token=... or code exchange
+  useEffect(() => {
+    const finalizeAuth = async () => {
+      try {
+        const hasHash = typeof window !== 'undefined' && window.location.hash && window.location.hash.includes('access_token');
+        const hasCode = typeof window !== 'undefined' && (new URL(window.location.href)).searchParams.get('code');
+        if (hasHash || hasCode) {
+          const { error } = await supabase.auth.exchangeCodeForSession();
+          if (error) throw error;
+          router.replace('/dashboard');
+        }
+      } catch (err) {
+        // Silent; user can request link again
+        console.error('Auth finalize error:', err?.message || err);
+      }
+    };
+    finalizeAuth();
+    // Also auto-redirect if already signed in
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        router.replace('/dashboard');
+      }
+    })();
+  }, [router]);
 
   return (
     <>
