@@ -81,6 +81,10 @@ export default function CreateOrganization() {
       }
 
       // Criar conta do usuário
+      const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/dashboard`;
+      console.log('🔍 Redirect URL:', redirectUrl);
+      console.log('🔍 NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
+      
       const { error: authError } = await supabase.auth.signUp({
         email: formData.adminEmail,
         password: crypto.randomUUID(), // Senha temporária
@@ -89,7 +93,7 @@ export default function CreateOrganization() {
             name: formData.adminName,
             phone: formData.adminPhone
           },
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/dashboard`
+          emailRedirectTo: redirectUrl
         }
       });
 
