@@ -35,7 +35,7 @@ export default function Login() {
       
       if (data?.session) {
         console.log('✅ Sessão criada, redirecionando para dashboard...');
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       } else {
         console.log('⚠️ Login sem erro mas sem sessão');
         setMessage('Login realizado mas sem sessão. Tente novamente.');
