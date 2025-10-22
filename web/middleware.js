@@ -68,8 +68,11 @@ export async function middleware(req) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
-  // Permitir callback sem sessão
-  if (req.nextUrl.pathname.startsWith('/auth/callback')) {
+  // Permitir endpoints de autenticação sem sessão
+  if (
+    req.nextUrl.pathname.startsWith('/auth/callback') ||
+    req.nextUrl.pathname.includes('/auth/confirm')
+  ) {
     return response
   }
 
