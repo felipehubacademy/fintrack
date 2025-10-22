@@ -34,7 +34,20 @@ export default function Login() {
         router.push('/dashboard');
       }
     } catch (error) {
-      setMessage(error.message || 'Email ou senha incorretos');
+      // Se o erro for de credenciais inválidas, oferecer opção de reset
+      if (error.message?.includes('Invalid login credentials') || 
+          error.message?.includes('Email not confirmed')) {
+        setMessage(
+          <>
+            Email ou senha incorretos. Primeira vez fazendo login? {' '}
+            <Link href="/reset-password" className="font-semibold text-blue-700 hover:underline">
+              Crie sua senha aqui
+            </Link>
+          </>
+        );
+      } else {
+        setMessage(error.message || 'Email ou senha incorretos');
+      }
       setIsSuccess(false);
     } finally {
       setLoading(false);
@@ -176,7 +189,9 @@ export default function Login() {
                 {/* Error Message */}
                 {message && (
                   <div className="mt-6 p-4 rounded-xl bg-red-50 border border-red-200">
-                    <p className="text-sm text-red-800 text-center">{message}</p>
+                    <p className="text-sm text-red-800 text-center">
+                      {typeof message === 'string' ? message : message}
+                    </p>
                   </div>
                 )}
               </>
