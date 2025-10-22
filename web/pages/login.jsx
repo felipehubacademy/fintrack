@@ -111,91 +111,87 @@ export default function Login() {
             </div>
 
             {/* Login Form */}
-            <>
-                {/* Login Form */}
-                <form onSubmit={handleLogin} className="space-y-6">
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Mail className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input
-                        id="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-gray-900 placeholder-gray-400"
-                      />
-                    </div>
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
                   </div>
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-gray-900 placeholder-gray-400"
+                  />
+                </div>
+              </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                        Senha
-                      </label>
-                      <Link href="/reset-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                        Esqueceu a senha?
-                      </Link>
-                    </div>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Lock className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="w-full pl-12 pr-12 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-gray-900 placeholder-gray-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
-                      </button>
-                    </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                    Senha
+                  </label>
+                  <Link href="/reset-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Esqueceu a senha?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
                   </div>
-
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full pl-12 pr-12 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-gray-900 placeholder-gray-400"
+                  />
                   <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white font-semibold py-3.5 px-4 rounded-xl hover:shadow-lg hover:shadow-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-100"
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
                   >
-                    {loading ? (
-                      <span className="flex items-center justify-center">
-                        <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                        Entrando...
-                      </span>
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
                     ) : (
-                      'Entrar'
+                      <Eye className="h-5 w-5" />
                     )}
                   </button>
-                </form>
+                </div>
+              </div>
 
-                {/* Error Message */}
-                {message && (
-                  <div className="mt-6 p-4 rounded-xl bg-red-50 border border-red-200">
-                    <p className="text-sm text-red-800 text-center">
-                      {typeof message === 'string' ? message : message}
-                    </p>
-                  </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white font-semibold py-3.5 px-4 rounded-xl hover:shadow-lg hover:shadow-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-100"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                    Entrando...
+                  </span>
+                ) : (
+                  'Entrar'
                 )}
-              </>
-            </>
+              </button>
+            </form>
+
+            {/* Error Message */}
+            {message && (
+              <div className="mt-6 p-4 rounded-xl bg-red-50 border border-red-200">
+                <p className="text-sm text-red-800 text-center">
+                  {typeof message === 'string' ? message : message}
+                </p>
+              </div>
+            )}
 
             {/* Divider */}
             <div className="relative my-8">
