@@ -22,17 +22,26 @@ export default function Login() {
       setMessage('');
       setIsSuccess(false);
       
+      console.log('🔐 Tentando login com:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
       });
 
+      console.log('📊 Resposta do login:', { data, error });
+
       if (error) throw error;
       
       if (data?.session) {
+        console.log('✅ Sessão criada, redirecionando para dashboard...');
         router.push('/dashboard');
+      } else {
+        console.log('⚠️ Login sem erro mas sem sessão');
+        setMessage('Login realizado mas sem sessão. Tente novamente.');
       }
     } catch (error) {
+      console.error('❌ Erro no login:', error);
       // Se o erro for de credenciais inválidas, oferecer opção de reset
       if (error.message?.includes('Invalid login credentials') || 
           error.message?.includes('Email not confirmed')) {
