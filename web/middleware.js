@@ -63,6 +63,11 @@ export async function middleware(req) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
+  // Se o usuário está logado e está em /login, redirecionar para dashboard
+  if (session?.user && req.nextUrl.pathname === '/login') {
+    return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+
   // Se o usuário não está logado e está tentando acessar dashboard, redirecionar para login
   if (!session?.user && req.nextUrl.pathname.startsWith('/dashboard')) {
     return NextResponse.redirect(new URL('/login', req.url))
