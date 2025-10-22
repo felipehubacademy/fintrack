@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -54,16 +53,7 @@ export default function Login() {
     }
   };
 
-  // Auto-redirect if already signed in
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        router.replace('/dashboard');
-      }
-    };
-    checkSession();
-  }, [router]);
+  // Middleware já cuida do redirect, não precisa checar aqui
 
   return (
     <>
