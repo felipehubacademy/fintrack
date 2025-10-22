@@ -68,6 +68,11 @@ export async function middleware(req) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
+  // Permitir callback sem sessão
+  if (req.nextUrl.pathname.startsWith('/auth/callback')) {
+    return response
+  }
+
   // Se o usuário não está logado e está tentando acessar dashboard, redirecionar para login
   if (!session?.user && req.nextUrl.pathname.startsWith('/dashboard')) {
     return NextResponse.redirect(new URL('/login', req.url))

@@ -20,7 +20,7 @@ export default function Login() {
       setMessage('');
       setIsSuccess(false);
       
-      const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/dashboard`;
+      const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/callback`;
       console.log('🔍 Login - Redirect URL:', redirectUrl);
       console.log('🔍 Login - NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
       
