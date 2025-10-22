@@ -20,10 +20,14 @@ export default function Login() {
       setMessage('');
       setIsSuccess(false);
       
+      const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/dashboard`;
+      console.log('🔍 Login - Redirect URL:', redirectUrl);
+      console.log('🔍 Login - NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
+      
       const { error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/dashboard`,
+          emailRedirectTo: redirectUrl,
         },
       });
 
