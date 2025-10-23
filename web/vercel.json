@@ -25,12 +25,6 @@
       "permanent": true,
       "statusCode": 301
     },
-    {
-      "source": "https://www.meuazulao.com.br/(.*)",
-      "destination": "https://meuazulao.com.br/$1",
-      "permanent": true,
-      "statusCode": 301
-    }
   ],
   "headers": [
     {

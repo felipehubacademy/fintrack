@@ -5,7 +5,7 @@ export function middleware(request) {
   const hostname = request.headers.get('host');
   
   // Domínios que devem redirecionar para o principal
-  const alternativeDomains = ['meuazulao.com', 'www.meuazulao.com', 'www.meuazulao.com.br'];
+  const alternativeDomains = ['meuazulao.com', 'www.meuazulao.com'];
   const primaryDomain = 'meuazulao.com.br';
   
   // Verificar se está em um domínio alternativo
