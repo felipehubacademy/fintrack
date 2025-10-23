@@ -95,6 +95,16 @@ export default function Header({
               >
                 Orçamentos
               </Link>
+              <Link 
+                href="/dashboard/bills" 
+                className={`text-sm font-medium transition-colors ${
+                  isActive('/dashboard/bills') 
+                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
+                    : 'text-gray-700 hover:text-flight-blue'
+                }`}
+              >
+                Contas
+              </Link>
             </nav>
           </div>
           
