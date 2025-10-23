@@ -19,14 +19,13 @@ async function sendWhatsAppVerificationCode(to, code, userName) {
   }
 
   const normalizedTo = String(to || '').startsWith('+') ? String(to) : `+${String(to)}`;
-  const firstName = userName?.split(' ')[0] || 'usuário';
 
   const message = {
     messaging_product: 'whatsapp',
     to: normalizedTo,
     type: 'template',
     template: {
-      name: 'verification_code', // SUBSTITUA pelo nome do template aprovado
+      name: 'verification_code',
       language: {
         code: 'pt_BR'
       },
@@ -36,11 +35,7 @@ async function sendWhatsAppVerificationCode(to, code, userName) {
           parameters: [
             {
               type: 'text',
-              text: firstName // {{1}} = nome do usuário
-            },
-            {
-              type: 'text',
-              text: code // {{2}} = código de verificação
+              text: code // {{1}} = código de verificação
             }
           ]
         }
