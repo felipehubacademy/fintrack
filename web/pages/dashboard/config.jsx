@@ -13,7 +13,8 @@ import {
   Target,
   Tag,
   UserCheck,
-  Mail
+  Mail,
+  MessageCircle
 } from 'lucide-react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
@@ -23,6 +24,7 @@ import CategoryManagementModal from '../../components/CategoryManagementModal';
 import CostCenterManagementModal from '../../components/CostCenterManagementModal';
 import NotificationSettingsModal from '../../components/NotificationSettingsModal';
 import NotificationModal from '../../components/NotificationModal';
+import WhatsAppVerificationModal from '../../components/WhatsAppVerificationModal';
 
 export default function ConfigPage() {
   const router = useRouter();
@@ -32,6 +34,7 @@ export default function ConfigPage() {
   const [showCostCenterModal, setShowCostCenterModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
@@ -60,6 +63,24 @@ export default function ConfigPage() {
           description: "Gerenciar membros e convites",
           action: "users",
           icon: UserCheck
+        }
+      ]
+    },
+    {
+      title: "WhatsApp",
+      description: "Verificar número para conversar com o Zul",
+      icon: MessageCircle,
+      color: "bg-green-50",
+      iconColor: "text-green-600",
+      actions: [
+        {
+          title: orgUser?.phone_verified ? "WhatsApp Verificado" : "Verificar WhatsApp",
+          description: orgUser?.phone_verified 
+            ? `Número verificado: ${orgUser?.phone?.replace('55', '') || 'N/A'}` 
+            : "Configure seu número para usar o Zul",
+          action: "whatsapp",
+          icon: MessageCircle,
+          status: orgUser?.phone_verified ? "verified" : "pending"
         }
       ]
     },
@@ -183,7 +204,13 @@ export default function ConfigPage() {
                   ) : (
                     <Button
                       variant="outline"
-                      className="w-full h-auto p-4 flex flex-col items-center space-y-2 hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white"
+                      className={`w-full h-auto p-4 flex flex-col items-center space-y-2 hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md ${
+                        action.action === 'whatsapp' 
+                          ? action.status === 'verified'
+                            ? 'bg-green-500 hover:bg-green-600 border-2 border-green-500 text-white'
+                            : 'bg-orange-500 hover:bg-orange-600 border-2 border-orange-500 text-white'
+                          : 'bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white'
+                      }`}
                       disabled={action.action === 'export'}
                       onClick={() => {
                         if (action.action === 'notifications') {
@@ -194,12 +221,19 @@ export default function ConfigPage() {
                           setShowCategoryModal(true);
                         } else if (action.action === 'cost-centers') {
                           setShowCostCenterModal(true);
+                        } else if (action.action === 'whatsapp') {
+                          setShowWhatsAppModal(true);
                         } else if (action.action === 'export') {
                           // TODO: Implementar exportação
                         }
                       }}
                     >
-                      <action.icon className="h-5 w-5" />
+                      <div className="relative">
+                        <action.icon className="h-5 w-5" />
+                        {action.action === 'whatsapp' && action.status === 'verified' && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        )}
+                      </div>
                       <div className="text-center">
                         <div className="font-medium text-sm">
                           {action.title}
@@ -252,6 +286,16 @@ export default function ConfigPage() {
         <NotificationModal 
           isOpen={showNotificationModal}
           onClose={() => setShowNotificationModal(false)}
+        />
+
+        <WhatsAppVerificationModal
+          isOpen={showWhatsAppModal}
+          onClose={() => setShowWhatsAppModal(false)}
+          user={orgUser}
+          onVerified={() => {
+            // Refresh user data after verification
+            window.location.reload();
+          }}
         />
       </main>
 
