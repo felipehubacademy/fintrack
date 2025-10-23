@@ -190,39 +190,11 @@ export default function DashboardHome() {
 
       let expensesData = data || [];
 
-      // Fallback V1: se com filtro de organização não encontrar, tentar sem filtro
-      if (expensesData.length === 0 && organization?.id && organization.id !== 'default-org') {
-        console.warn('🔍 [DASHBOARD DEBUG] No expenses with organization filter. Retrying without org filter (legacy V1 fallback).');
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('expenses')
-          .select('*')
-          .or('status.eq.confirmed,status.eq.paid,status.is.null')
-          .gte('date', startOfMonth)
-          .lt('date', endExclusive.toISOString().split('T')[0])
-          .order('date', { ascending: false });
+      // REMOVIDO: Fallback perigoso que causava vazamento de dados entre organizações
 
-        if (fallbackError) {
-          console.error('🔍 [DASHBOARD DEBUG] Fallback query error:', fallbackError);
-        } else if (fallbackData) {
-          expensesData = fallbackData;
-          console.warn('🔍 [DASHBOARD DEBUG] Using fallback expenses (no org filter). Count:', expensesData.length);
-        }
-      }
-
-      // Fallback amplo (debug): se ainda vier vazio, tentar sem filtro de status
+      // Se não houver expenses, deixar vazio (não buscar de outras organizações!)
       if (expensesData.length === 0) {
-        console.warn('🔍 [DASHBOARD DEBUG] Still empty after fallbacks. Trying without status filter (debug only).');
-        const { data: anyStatusData, error: anyStatusError } = await supabase
-          .from('expenses')
-          .select('*')
-          .gte('date', startOfMonth)
-          .lt('date', endExclusive.toISOString().split('T')[0])
-          .order('date', { ascending: false });
-        if (!anyStatusError && anyStatusData) {
-          console.warn('🔍 [DASHBOARD DEBUG] anyStatusData count:', anyStatusData.length);
-          // usar como último recurso para renderizar gráficos
-          expensesData = anyStatusData;
-        }
+        console.log('✅ [DASHBOARD] No expenses found for this organization in the selected month.');
       }
 
       console.log('🔍 [DASHBOARD DEBUG] Expenses used for charts:', expensesData);
@@ -299,28 +271,9 @@ export default function DashboardHome() {
 
         let { data, error } = await monthlyQuery;
 
-        // Fallbacks para cenários com RLS/colunas faltantes
-        if (error || !data) {
-          console.warn('🔍 [DASHBOARD DEBUG] monthlyQuery error or empty. Retrying without org filter...');
-          let q2 = supabase
-            .from('expenses')
-            .select('*')
-            .or('status.eq.confirmed,status.eq.paid,status.is.null')
-            .gte('date', startOfMonth)
-            .lt('date', endExclusiveStr);
-          const r2 = await q2;
-          data = r2.data; error = r2.error;
-        }
-
-        if ((error && data == null) || data == null) {
-          console.warn('🔍 [DASHBOARD DEBUG] monthlyQuery still empty. Final retry without status filter.');
-          let q3 = supabase
-            .from('expenses')
-            .select('*')
-            .gte('date', startOfMonth)
-            .lt('date', endExclusiveStr);
-          const r3 = await q3;
-          data = r3.data; error = r3.error;
+        // REMOVIDO: Fallbacks perigosos que causavam vazamento de dados entre organizações
+        if (error) {
+          console.error('🔍 [DASHBOARD DEBUG] monthlyQuery error:', error);
         }
 
         if (!error && data) {

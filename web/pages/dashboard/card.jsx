@@ -90,7 +90,12 @@ export default function Dashboard() {
         .select('*')
         .order('date', { ascending: false });
       
-      console.log('🔍 Query base criada');
+      // CRITICAL: Filter by organization
+      if (organization?.id && organization.id !== 'default-org') {
+        query = query.eq('organization_id', organization.id);
+      }
+      
+      console.log('🔍 Query base criada com filtro de organização');
 
       // Filter by billing cycle
       if (filter.month) {
