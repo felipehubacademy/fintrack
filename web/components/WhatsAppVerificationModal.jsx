@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MessageCircle, CheckCircle, AlertCircle, Send, X } from 'lucide-react';
+import { MessageCircle, CheckCircle, AlertCircle, Send, X, Smartphone, ArrowRight, RefreshCw, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 export default function WhatsAppVerificationModal({ 
@@ -30,6 +30,7 @@ export default function WhatsAppVerificationModal({
   const [error, setError] = useState(null);
   const [warning, setWarning] = useState(null);
   const [countdown, setCountdown] = useState(0);
+  const [step, setStep] = useState(1); // 1: phone, 2: code, 3: success
   
   // Função de formatação precisa estar disponível antes do useState
   function formatPhone(value) {
@@ -73,6 +74,7 @@ export default function WhatsAppVerificationModal({
       setError(null);
       setWarning(null);
       setCountdown(0);
+      setStep(user?.phone_verified ? 3 : 1);
     }
   }, [isOpen, user]);
 
@@ -113,6 +115,7 @@ export default function WhatsAppVerificationModal({
       }
 
       setIsVerified(true);
+      setStep(3);
       if (onVerified) {
         onVerified();
       }
@@ -126,6 +129,7 @@ export default function WhatsAppVerificationModal({
   const handlePhoneChange = (e) => {
     const formatted = formatPhone(e.target.value);
     setPhone(formatted);
+    setError(null);
     
     // Verificar se o número é diferente do cadastrado
     if (registeredPhone && formatted.replace(/\D/g, '') !== registeredPhone.replace(/\D/g, '') && formatted.replace(/\D/g, '').length === 11) {
@@ -182,6 +186,7 @@ export default function WhatsAppVerificationModal({
 
       const data = await response.json();
       setCodeSent(true);
+      setStep(2);
       setCountdown(60); // 60 segundos para reenviar
     } catch (err) {
       setError(err.message);
@@ -193,138 +198,253 @@ export default function WhatsAppVerificationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-[#25D366] rounded-full flex items-center justify-center">
-              <MessageCircle className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Verificar WhatsApp
-              </h2>
-              <p className="text-sm text-gray-600">
-                {isVerified ? 'WhatsApp verificado' : 'Confirme seu número'}
-              </p>
-            </div>
-          </div>
+        <div className="relative p-6 border-b border-gray-100">
+          {/* Close Button */}
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-full"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
+
+          {/* Progress Steps */}
+          <div className="flex items-center justify-center mb-6 space-x-2">
+            <div className={`w-2 h-2 rounded-full transition-all ${step >= 1 ? 'bg-[#25D366] w-8' : 'bg-gray-300'}`}></div>
+            <div className={`w-2 h-2 rounded-full transition-all ${step >= 2 ? 'bg-[#25D366] w-8' : 'bg-gray-300'}`}></div>
+            <div className={`w-2 h-2 rounded-full transition-all ${step >= 3 ? 'bg-[#25D366] w-8' : 'bg-gray-300'}`}></div>
+          </div>
+
+          {/* Header Content */}
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center mb-4">
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all ${
+                step === 3 ? 'bg-gradient-to-br from-green-400 to-green-600 animate-pulse' : 'bg-gradient-to-br from-green-400 to-green-600'
+              }`}>
+                {step === 3 ? (
+                  <CheckCircle className="w-8 h-8 text-white" />
+                ) : (
+                  <MessageCircle className="w-8 h-8 text-white" />
+                )}
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {step === 1 && 'Verificar WhatsApp'}
+              {step === 2 && 'Digite o Código'}
+              {step === 3 && 'Tudo Pronto!'}
+            </h2>
+            <p className="text-gray-600">
+              {step === 1 && 'Informe seu número para conversar com o Zul'}
+              {step === 2 && 'Enviamos um código de 6 dígitos no WhatsApp'}
+              {step === 3 && 'Seu WhatsApp está verificado e pronto para uso'}
+            </p>
+          </div>
         </div>
 
         {/* Content */}
         <div className="p-6">
-          {isVerified ? (
-            <div className="text-center">
-              <div className="w-16 h-16 bg-[#25D366] rounded-full flex items-center justify-center mb-4 mx-auto">
-                <CheckCircle className="w-8 h-8 text-white" />
+          {step === 3 ? (
+            /* Success State */
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <div className="text-center py-4">
+                <div className="text-6xl mb-4">🎉</div>
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
+                  <p className="text-green-900 font-semibold mb-2">
+                    WhatsApp Verificado com Sucesso!
+                  </p>
+                  <p className="text-green-700 text-sm">
+                    Número: <span className="font-mono font-semibold">{phone}</span>
+                  </p>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                WhatsApp Verificado! 🎉
-              </h3>
-              <p className="text-gray-600 text-sm mb-6">
-                Seu número <span className="font-semibold text-[#25D366]">{phone}</span> está verificado e você pode conversar com o Zul.
-              </p>
+
+              <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+                <div className="flex items-start space-x-3">
+                  <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-blue-900 text-sm font-medium mb-1">
+                      Agora você pode usar o Zul!
+                    </p>
+                    <p className="text-blue-700 text-xs">
+                      Envie mensagens via WhatsApp para registrar despesas, ver relatórios e muito mais.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <button
                 onClick={onClose}
-                className="w-full bg-[#207DFF] text-white font-semibold py-3 px-4 rounded-xl hover:bg-[#207DFF]/90 transition-colors"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3.5 px-4 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
-                Fechar
+                Entendido
+              </button>
+            </div>
+          ) : step === 2 ? (
+            /* Code Input State */
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-2 duration-300">
+              {/* Code Input */}
+              <div>
+                <label className="block text-gray-700 text-sm font-semibold mb-3 text-center">
+                  Código de Verificação
+                </label>
+                <input
+                  type="text"
+                  placeholder="000000"
+                  value={verificationCode}
+                  onChange={(e) => {
+                    setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                    setError(null);
+                  }}
+                  onPaste={handleCodePaste}
+                  maxLength={6}
+                  autoFocus
+                  className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl text-gray-900 text-center text-2xl font-mono tracking-[0.5em] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+                <p className="text-center text-xs text-gray-500 mt-2">
+                  Código enviado para <span className="font-semibold text-gray-700">{phone}</span>
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 animate-in shake duration-200">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                    <p className="text-red-800 text-sm font-medium">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Verify Button */}
+              <button
+                onClick={() => verifyCode()}
+                disabled={loading || verificationCode.length !== 6}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    <span>Verificando...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    <span>Verificar Código</span>
+                  </>
+                )}
+              </button>
+
+              {/* Resend Button */}
+              <div className="text-center">
+                <button
+                  onClick={handleSendCode}
+                  disabled={countdown > 0 || loading}
+                  className="text-sm text-gray-600 hover:text-gray-900 disabled:text-gray-400 transition-colors font-medium"
+                >
+                  {countdown > 0 ? (
+                    <span className="flex items-center justify-center space-x-2">
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Reenviar em {countdown}s</span>
+                    </span>
+                  ) : (
+                    'Não recebeu? Reenviar código'
+                  )}
+                </button>
+              </div>
+
+              {/* Back Button */}
+              <button
+                onClick={() => {
+                  setStep(1);
+                  setCodeSent(false);
+                  setVerificationCode('');
+                  setError(null);
+                }}
+                className="w-full text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
+              >
+                ← Voltar para o número
               </button>
             </div>
           ) : (
-            <div className="space-y-6">
+            /* Phone Input State */
+            <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
               {/* Phone Input */}
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">
-                  Número do WhatsApp
+                <label className="block text-gray-700 text-sm font-semibold mb-2">
+                  <div className="flex items-center space-x-2">
+                    <Smartphone className="w-4 h-4 text-gray-500" />
+                    <span>Número do WhatsApp</span>
+                  </div>
                 </label>
-                <input
-                  type="tel"
-                  placeholder="(11) 99999-9999"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                  className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#207DFF] focus:border-transparent"
-                />
+                <div className="relative">
+                  <input
+                    type="tel"
+                    placeholder="(11) 99999-9999"
+                    value={phone}
+                    onChange={handlePhoneChange}
+                    autoFocus
+                    className="w-full px-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <MessageCircle className="w-5 h-5" />
+                  </div>
+                </div>
                 {warning && (
-                  <p className="text-amber-600 text-xs mt-2 flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    {warning}
-                  </p>
+                  <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-amber-800 text-xs flex items-start">
+                      <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
+                      <span>{warning}</span>
+                    </p>
+                  </div>
                 )}
               </div>
 
               {/* Error Message */}
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                  <p className="text-red-800 text-sm flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-2" />
-                    {error}
-                  </p>
-                </div>
-              )}
-
-              {/* Verification Code Input */}
-              {!codeSent ? (
-                <button
-                  onClick={handleSendCode}
-                  disabled={loading || !phone || phone.replace(/\D/g, '').length < 11}
-                  className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>{loading ? 'Enviando...' : 'Enviar Código'}</span>
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-medium mb-2">
-                      Código de Verificação
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="000000"
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      onPaste={handleCodePaste}
-                      maxLength={6}
-                      className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-xl text-gray-900 text-center text-xl font-mono tracking-widest placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#207DFF] focus:border-transparent"
-                    />
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 animate-in shake duration-200">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                    <p className="text-red-800 text-sm font-medium">{error}</p>
                   </div>
-
-                  <button
-                    onClick={() => verifyCode()}
-                    disabled={loading || verificationCode.length !== 6}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>{loading ? 'Verificando...' : 'Verificar'}</span>
-                  </button>
-
-                  <button
-                    onClick={handleSendCode}
-                    disabled={countdown > 0 || loading}
-                    className="w-full text-xs text-gray-600 hover:text-gray-900 disabled:text-gray-400 transition-colors"
-                  >
-                    {countdown > 0 
-                      ? `Reenviar em ${countdown}s` 
-                      : 'Reenviar código'
-                    }
-                  </button>
                 </div>
               )}
 
-              {/* Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-blue-800 text-sm">
-                  <strong>💡 Dica:</strong> O código será enviado via WhatsApp para o número informado. 
-                  Verifique se o número está correto antes de enviar.
-                </p>
+              {/* Send Code Button */}
+              <button
+                onClick={handleSendCode}
+                disabled={loading || !phone || phone.replace(/\D/g, '').length < 11}
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    <span>Enviando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Enviar Código</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+
+              {/* Info Card */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MessageCircle className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-blue-900 text-sm font-semibold mb-1">
+                      Como funciona?
+                    </p>
+                    <p className="text-blue-700 text-xs leading-relaxed">
+                      Enviaremos um código de 6 dígitos via WhatsApp. Você terá 10 minutos para validá-lo e começar a usar o Zul.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
