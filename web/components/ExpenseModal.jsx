@@ -48,40 +48,40 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
   }, [isOpen, organization]);
 
   const ownerOptions = useMemo(() => {
-    // Filtrar apenas cost_centers individuais
-    const individuals = (costCenters || [])
-      .filter(cc => cc.type === 'individual')
+    // Todos os cost centers (não há mais distinção de "type")
+    const allCenters = (costCenters || [])
+      .filter(cc => cc.is_active !== false) // Apenas ativos
       .map(cc => ({ 
         id: cc.id, 
         name: cc.name, 
-        type: cc.type, 
-        split_percentage: cc.split_percentage, 
-        color: cc.color 
+        default_split_percentage: cc.default_split_percentage, 
+        color: cc.color,
+        user_id: cc.user_id,
+        linked_email: cc.linked_email
       }));
     
     // Adicionar "Compartilhado" como opção especial (sem cost_center_id)
-    individuals.push({
+    allCenters.push({
       id: null,
       name: 'Compartilhado',
-      type: 'shared',
-      split_percentage: 0,
+      default_split_percentage: 0,
       color: '#8B5CF6',
       isShared: true
     });
     
-    return individuals;
+    return allCenters;
   }, [costCenters]);
 
   // Inicializar divisão quando "Compartilhado" for selecionado
   useEffect(() => {
     if (isShared && splitDetails.length === 0) {
-      // Buscar cost_centers individuais e criar divisão padrão
-      const individualCenters = (costCenters || []).filter(cc => cc.type === 'individual');
-      const defaultSplits = individualCenters.map(cc => ({
+      // Buscar todos os cost_centers ativos e criar divisão padrão
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      const defaultSplits = activeCenters.map(cc => ({
         cost_center_id: cc.id,
         name: cc.name,
         color: cc.color,
-        percentage: parseFloat(cc.split_percentage || 0),
+        percentage: parseFloat(cc.default_split_percentage || 0),
         amount: 0
       }));
       setSplitDetails(defaultSplits);

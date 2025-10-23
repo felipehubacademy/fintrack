@@ -13,7 +13,9 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    color: '#6366F1'
+    color: '#6366F1',
+    default_split_percentage: 50.0,
+    linked_email: ''
   });
 
   const colors = [
@@ -31,9 +33,13 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
     try {
       setLoading(true);
       
+      // Buscar cost centers com informações do usuário vinculado (se houver)
       const { data, error } = await supabase
         .from('cost_centers')
-        .select('*')
+        .select(`
+          *,
+          linked_user:user_id(name, email)
+        `)
         .eq('organization_id', organization.id)
         .order('name');
 
@@ -55,16 +61,31 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
       return;
     }
 
+    // Validar percentual
+    const percentage = parseFloat(formData.default_split_percentage);
+    if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+      alert('Percentual padrão deve estar entre 0 e 100');
+      return;
+    }
+
     try {
       if (editingCostCenter) {
-        // Editar responsável
+        // Editar responsável (não permite editar user_id ou linked_email se já vinculado)
+        const updateData = {
+          name: formData.name.trim(),
+          description: formData.description.trim() || null,
+          color: formData.color,
+          default_split_percentage: percentage
+        };
+
+        // Só permite alterar linked_email se não estiver vinculado a um usuário
+        if (!editingCostCenter.user_id && formData.linked_email) {
+          updateData.linked_email = formData.linked_email.trim();
+        }
+
         const { error } = await supabase
           .from('cost_centers')
-          .update({
-            name: formData.name.trim(),
-            description: formData.description.trim(),
-            color: formData.color
-          })
+          .update(updateData)
           .eq('id', editingCostCenter.id);
 
         if (error) throw error;
@@ -75,8 +96,11 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
           .insert({
             organization_id: organization.id,
             name: formData.name.trim(),
-            description: formData.description.trim(),
-            color: formData.color
+            description: formData.description.trim() || null,
+            color: formData.color,
+            default_split_percentage: percentage,
+            linked_email: formData.linked_email.trim() || null,
+            is_active: true
           });
 
         if (error) throw error;
@@ -86,7 +110,7 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
       resetForm();
     } catch (error) {
       console.error('Erro ao salvar responsável:', error);
-      alert('Erro ao salvar responsável');
+      alert('Erro ao salvar responsável: ' + error.message);
     }
   };
 
@@ -95,7 +119,9 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
     setFormData({
       name: costCenter.name,
       description: costCenter.description || '',
-      color: costCenter.color || '#6366F1'
+      color: costCenter.color || '#6366F1',
+      default_split_percentage: costCenter.default_split_percentage || 50.0,
+      linked_email: costCenter.linked_email || ''
     });
     setShowForm(true);
   };
@@ -124,7 +150,9 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
     setFormData({
       name: '',
       description: '',
-      color: '#6366F1'
+      color: '#6366F1',
+      default_split_percentage: 50.0,
+      linked_email: ''
     });
     setEditingCostCenter(null);
     setShowForm(false);
@@ -151,6 +179,23 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
           </CardHeader>
           
           <CardContent className="pt-6 space-y-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+            {/* Info Card */}
+            {!showForm && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <Users className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-blue-900 mb-1">Sobre Centros de Custo</h4>
+                    <p className="text-sm text-blue-800">
+                      Centros de custo permitem organizar e dividir despesas entre responsáveis. 
+                      Cada centro pode ter um percentual padrão para despesas compartilhadas, que pode ser ajustado individualmente.
+                      Quando um usuário aceita um convite, ele é automaticamente vinculado ao centro de custo com seu email.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Add/Edit Form */}
             {showForm && (
               <div className="bg-gray-50 rounded-lg p-4">
@@ -185,9 +230,55 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                       placeholder="Descrição opcional do responsável"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Percentual Padrão para Despesas Compartilhadas *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={formData.default_split_percentage}
+                        onChange={(e) => setFormData({ ...formData, default_split_percentage: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue pr-8"
+                        placeholder="50.00"
+                        required
+                      />
+                      <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Percentual sugerido para despesas compartilhadas (pode ser ajustado por despesa)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email para Vincular Usuário (Opcional)
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.linked_email}
+                      onChange={(e) => setFormData({ ...formData, linked_email: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue disabled:bg-gray-100"
+                      placeholder="email@exemplo.com"
+                      disabled={editingCostCenter?.user_id}
+                    />
+                    {editingCostCenter?.user_id ? (
+                      <p className="text-xs text-gray-500 mt-1">
+                        ✅ Já vinculado ao usuário: {editingCostCenter.linked_user?.name || editingCostCenter.linked_user?.email}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Quando um usuário com este email aceitar o convite, será automaticamente vinculado a este centro de custo
+                      </p>
+                    )}
+                  </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-星座">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Cor
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -254,25 +345,48 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {costCenters.map((costCenter) => (
-                    <div key={costCenter.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-3">
+                    <div key={costCenter.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-flight-blue/30 transition-colors">
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
                         <div 
-                          className="w-4 h-4 rounded-full"
+                          className="w-4 h-4 rounded-full flex-shrink-0"
                           style={{ backgroundColor: costCenter.color || '#6366F1' }}
                         />
-                        <div>
-                          <p className="font-medium text-gray-900">{costCenter.name}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <p className="font-medium text-gray-900 truncate">{costCenter.name}</p>
+                            {costCenter.user_id && (
+                              <Badge variant="success" className="text-xs">
+                                Vinculado
+                              </Badge>
+                            )}
+                          </div>
                           {costCenter.description && (
-                            <p className="text-sm text-gray-600">{costCenter.description}</p>
+                            <p className="text-sm text-gray-600 truncate">{costCenter.description}</p>
                           )}
+                          <div className="flex items-center space-x-3 mt-1">
+                            <p className="text-xs text-gray-500">
+                              {costCenter.default_split_percentage}% padrão
+                            </p>
+                            {costCenter.user_id && costCenter.linked_user && (
+                              <p className="text-xs text-green-600 truncate">
+                                👤 {costCenter.linked_user.name || costCenter.linked_user.email}
+                              </p>
+                            )}
+                            {costCenter.linked_email && !costCenter.user_id && (
+                              <p className="text-xs text-orange-500 truncate">
+                                📧 Aguardando: {costCenter.linked_email}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 flex-shrink-0">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(costCenter)}
+                          className="hover:bg-blue-50 hover:text-blue-600"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
