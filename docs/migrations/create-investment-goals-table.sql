@@ -5,6 +5,32 @@
 -- Execute no Supabase SQL Editor
 -- ============================================================================
 
+-- Verificar se users tem as colunas necessárias
+DO $$ 
+BEGIN
+  -- Adicionar whatsapp_phone se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'users' AND column_name = 'whatsapp_phone'
+  ) THEN
+    ALTER TABLE users 
+    ADD COLUMN whatsapp_phone VARCHAR(20);
+  END IF;
+  
+  -- Adicionar viewer role se não existir na constraint
+  IF EXISTS (
+    SELECT 1 FROM information_schema.check_constraints 
+    WHERE constraint_name LIKE '%role%' AND table_name = 'users'
+  ) THEN
+    -- Remover constraint antiga se existir
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+    -- Adicionar nova constraint com viewer
+    ALTER TABLE users 
+    ADD CONSTRAINT users_role_check 
+    CHECK (role IN ('admin', 'member', 'viewer'));
+  END IF;
+END $$;
+
 -- 1. Criar tabela investment_goals
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS investment_goals (

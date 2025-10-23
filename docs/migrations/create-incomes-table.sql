@@ -5,6 +5,28 @@
 -- Execute no Supabase SQL Editor
 -- ============================================================================
 
+-- Verificar se budget_categories tem as colunas necessárias
+DO $$ 
+BEGIN
+  -- Adicionar color se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'budget_categories' AND column_name = 'color'
+  ) THEN
+    ALTER TABLE budget_categories 
+    ADD COLUMN color VARCHAR(7) DEFAULT '#3B82F6';
+  END IF;
+  
+  -- Adicionar is_default se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'budget_categories' AND column_name = 'is_default'
+  ) THEN
+    ALTER TABLE budget_categories 
+    ADD COLUMN is_default BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
+
 -- 1. Criar tabela incomes
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS incomes (

@@ -5,6 +5,37 @@
 -- Execute no Supabase SQL Editor
 -- ============================================================================
 
+-- Verificar se cost_centers tem as colunas necessárias
+DO $$ 
+BEGIN
+  -- Adicionar default_split_percentage se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'cost_centers' AND column_name = 'default_split_percentage'
+  ) THEN
+    ALTER TABLE cost_centers 
+    ADD COLUMN default_split_percentage DECIMAL(5,2) DEFAULT 0.00;
+  END IF;
+  
+  -- Adicionar user_id se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'cost_centers' AND column_name = 'user_id'
+  ) THEN
+    ALTER TABLE cost_centers 
+    ADD COLUMN user_id UUID REFERENCES users(id);
+  END IF;
+  
+  -- Adicionar linked_email se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'cost_centers' AND column_name = 'linked_email'
+  ) THEN
+    ALTER TABLE cost_centers 
+    ADD COLUMN linked_email VARCHAR(255);
+  END IF;
+END $$;
+
 -- 1. Criar tabela bills
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS bills (
@@ -26,11 +57,11 @@ CREATE TABLE IF NOT EXISTS bills (
     -- Status e pagamento
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'overdue', 'cancelled')),
     paid_at TIMESTAMP WITH TIME ZONE,
-    payment_method TEXT CHECK (payment_method IN ('credit_card', 'debit_card', 'pix', 'cash', 'bank_transfer', 'boleto', 'other')),
+    payment_method TEXT CHECK (payment_method IN ('credit_card', 'debit_card', 'pix', 'cash', 'other')),
     
     -- Referências
     card_id UUID REFERENCES cards(id),
-    expense_id BIGINT REFERENCES expenses(id), -- Referência para expense criada ao pagar
+    expense_id BIGINT REFERENCES expenses(id), -- Referência para expense criada ao pagar (BIGINT)
     
     -- Notificações
     notified_at TIMESTAMP WITH TIME ZONE,
