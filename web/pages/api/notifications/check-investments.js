@@ -1,4 +1,54 @@
 import { supabase } from '../../../lib/supabaseClient';
+import axios from 'axios';
+
+const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
+
+/**
+ * Enviar mensagem WhatsApp usando a API oficial da Meta
+ */
+async function sendWhatsAppMessage(to, text) {
+  const phoneId = process.env.PHONE_ID;
+  const token = process.env.WHATSAPP_TOKEN;
+
+  if (!phoneId || !token) {
+    console.error('❌ Credenciais WhatsApp não configuradas');
+    return false;
+  }
+
+  // Normalize phone format to E.164 with leading +
+  const normalizedTo = String(to || '').startsWith('+') ? String(to) : `+${String(to)}`;
+
+  const message = {
+    messaging_product: 'whatsapp',
+    to: normalizedTo,
+    type: 'text',
+    text: {
+      body: text,
+    },
+  };
+
+  try {
+    const response = await axios.post(
+      `${WHATSAPP_API_URL}/${phoneId}/messages`,
+      message,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+    console.log(`✅ Mensagem enviada para ${normalizedTo}:`, response.data);
+    return true;
+  } catch (error) {
+    console.error(`❌ Erro ao enviar mensagem:`, error.message);
+    if (error.response) {
+      console.error('📄 Detalhes do erro:', error.response.data);
+    }
+    return false;
+  }
+}
 
 /**
  * API Endpoint: Check Investment Goals
@@ -142,12 +192,9 @@ export default async function handler(req, res) {
       message += `Acesse o FinTrack para registrar seu aporte! 📈\n`;
       message += `${process.env.NEXT_PUBLIC_APP_URL || 'https://fintrack.app'}/dashboard/investments`;
 
-      // Enviar WhatsApp (implementar integração real aqui)
+      // Enviar WhatsApp usando a API oficial da Meta
       console.log(`📱 Enviando notificação para ${user.whatsapp_phone}:`);
-      console.log(message);
-
-      // TODO: Implementar envio real via WhatsApp API
-      // await sendWhatsAppMessage(user.whatsapp_phone, message);
+      const sent = await sendWhatsAppMessage(user.whatsapp_phone, message);
 
       // Atualizar last_notified_at
       const goalIds = userGoals.map(g => g.id);
@@ -160,7 +207,8 @@ export default async function handler(req, res) {
         user_id: userId,
         user_name: user.name,
         goals_count: userGoals.length,
-        phone: user.whatsapp_phone
+        phone: user.whatsapp_phone,
+        sent: sent
       });
     }
 

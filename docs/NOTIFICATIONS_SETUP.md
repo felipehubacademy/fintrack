@@ -157,42 +157,74 @@ Content-Type: application/json
 }
 ```
 
-## 📱 Integração WhatsApp (TODO)
+## 📱 Integração WhatsApp ✅ ATIVA
 
-Atualmente, os endpoints de notificação **apenas logam** as mensagens no console.
+O sistema **já está integrado** com a **Meta WhatsApp Business API oficial**!
 
-Para enviar mensagens reais via WhatsApp, você precisa:
+### Configuração Atual
 
-1. **Escolher um provedor**:
-   - [Twilio WhatsApp API](https://www.twilio.com/whatsapp)
-   - [Meta WhatsApp Business API](https://developers.facebook.com/docs/whatsapp)
-   - [Evolution API](https://evolution-api.com/) (self-hosted)
+O projeto utiliza a API oficial da Meta WhatsApp Business:
+- **Phone Number ID**: `801805679687987`
+- **Número**: `+55 11 5192-8551`
+- **API URL**: `https://graph.facebook.com/v18.0`
 
-2. **Implementar a função de envio** em `backend/services/whatsappService.js`:
+### Variáveis de Ambiente Necessárias
 
-```javascript
-export async function sendWhatsAppMessage(phone, message) {
-  // Exemplo com Twilio
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const client = require('twilio')(accountSid, authToken);
+Certifique-se de que estas variáveis estão configuradas:
 
-  await client.messages.create({
-    from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-    to: `whatsapp:${phone}`,
-    body: message
-  });
-}
+```bash
+# WhatsApp Business API (Meta)
+WHATSAPP_TOKEN=seu-token-aqui
+PHONE_ID=801805679687987
+
+# URL da aplicação (para links nas mensagens)
+NEXT_PUBLIC_APP_URL=https://sua-url.vercel.app
 ```
 
-3. **Descomentar as chamadas** em:
-   - `web/pages/api/notifications/check-bills.js`
-   - `web/pages/api/notifications/check-investments.js`
+### Como Funciona
 
-```javascript
-// Descomentar esta linha:
-await sendWhatsAppMessage(user.whatsapp_phone, message);
+Os endpoints de notificação utilizam a função `sendWhatsAppMessage()` que:
+1. Normaliza o formato do telefone (adiciona + se necessário)
+2. Monta a mensagem no formato da API da Meta
+3. Envia via `POST` para `graph.facebook.com/v18.0/{PHONE_ID}/messages`
+4. Retorna `true` se enviado com sucesso, `false` em caso de erro
+
+### Formato das Mensagens
+
+As notificações são enviadas como mensagens de texto simples com formatação Markdown:
+- **Negrito**: `*texto*`
+- **Emojis**: ✅ 🔔 💰 📊 🎯
+- **Links**: URLs completos
+
+### Testando o Envio
+
+Para testar se o WhatsApp está funcionando:
+
+```bash
+# Teste manual (via cURL)
+curl -X POST https://sua-url.vercel.app/api/notifications/check-bills \
+  -H "Authorization: Bearer seu-cron-secret" \
+  -H "Content-Type: application/json"
+
+# Verifique os logs para ver se houve sucesso:
+# ✅ Mensagem enviada para +5511...
 ```
+
+### Troubleshooting WhatsApp
+
+**Mensagem não chega:**
+- Verifique se `WHATSAPP_TOKEN` está correto
+- Confirme que o usuário tem `whatsapp_phone` cadastrado
+- Veja se o número está no formato E.164 (com +55)
+- Consulte os logs para ver erros da API
+
+**Erro 401 Unauthorized:**
+- Token expirado ou inválido
+- Renove o token no Facebook Developer Console
+
+**Erro 403 Forbidden:**
+- Número não verificado para envio
+- Verifique configurações no WhatsApp Business Manager
 
 ## 📊 Monitoramento
 

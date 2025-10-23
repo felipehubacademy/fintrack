@@ -267,16 +267,18 @@ NEXT_PUBLIC_APP_URL=https://sua-url.vercel.app
 CRON_SECRET=mesmo-valor-do-github-secret
 ```
 
-### 4. (Opcional) Integrar WhatsApp
+### 4. ✅ WhatsApp Já Integrado!
 
-Atualmente, as notificações **apenas logam** no console.
+As notificações **já estão integradas** com a **Meta WhatsApp Business API oficial**!
 
-Para envio real, escolha um provedor:
-- **Twilio** WhatsApp API
-- **Meta** WhatsApp Business API
-- **Evolution API** (self-hosted)
+Certifique-se apenas de que estas variáveis estão configuradas:
+```bash
+WHATSAPP_TOKEN=seu-token-aqui
+PHONE_ID=801805679687987
+NEXT_PUBLIC_APP_URL=https://sua-url.vercel.app
+```
 
-Veja instruções detalhadas em `docs/NOTIFICATIONS_SETUP.md`.
+O sistema enviará mensagens reais via WhatsApp automaticamente!
 
 ---
 
