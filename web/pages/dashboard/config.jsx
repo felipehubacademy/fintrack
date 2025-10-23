@@ -23,46 +23,24 @@ import CategoryManagementModal from '../../components/CategoryManagementModal';
 import CostCenterManagementModal from '../../components/CostCenterManagementModal';
 import NotificationSettingsModal from '../../components/NotificationSettingsModal';
 import NotificationModal from '../../components/NotificationModal';
-import InviteUserModal from '../../components/InviteUserModal';
 
 export default function ConfigPage() {
   const router = useRouter();
   const { organization, user: orgUser, loading: orgLoading, error: orgError } = useOrganization();
-  const [inviteLink, setInviteLink] = useState('');
-  const [copied, setCopied] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCostCenterModal, setShowCostCenterModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
-      generateInviteLink();
       setIsDataLoaded(true);
     } else if (!orgLoading && orgError) {
       router.push('/');
     }
   }, [orgLoading, orgError, organization]);
-
-  const generateInviteLink = () => {
-    if (organization?.invite_code) {
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-      setInviteLink(`${baseUrl}/invite/${organization.invite_code}`);
-    }
-  };
-
-  const copyInviteLink = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Error copying link:', error);
-    }
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -79,16 +57,10 @@ export default function ConfigPage() {
       actions: [
         {
           title: "Gerenciar Usuários",
-          description: "Listar e gerenciar membros",
+          description: "Gerenciar membros e convites",
           action: "users",
           icon: UserCheck
-        },
-        {
-          title: "Convidar por Email",
-          description: "Enviar convite por email",
-          action: "invite",
-          icon: Mail
-        },
+        }
       ]
     },
     {
@@ -100,7 +72,7 @@ export default function ConfigPage() {
       actions: [
         {
           title: "Responsáveis",
-          description: "Gerenciar responsáveis",
+          description: "Gerenciar responsáveis financeiros",
           action: "cost-centers",
           icon: UserCheck
         },
@@ -222,8 +194,6 @@ export default function ConfigPage() {
                           setShowCategoryModal(true);
                         } else if (action.action === 'cost-centers') {
                           setShowCostCenterModal(true);
-                        } else if (action.action === 'invite') {
-                          setShowInviteModal(true);
                         } else if (action.action === 'export') {
                           // TODO: Implementar exportação
                         }
@@ -254,7 +224,10 @@ export default function ConfigPage() {
         <UserManagementModal
           isOpen={showUserModal}
           onClose={() => setShowUserModal(false)}
-          organization={organization}
+          organization={{
+            ...organization,
+            currentUser: orgUser
+          }}
         />
 
         <CategoryManagementModal
@@ -279,15 +252,6 @@ export default function ConfigPage() {
         <NotificationModal 
           isOpen={showNotificationModal}
           onClose={() => setShowNotificationModal(false)}
-        />
-
-        <InviteUserModal
-          isOpen={showInviteModal}
-          onClose={() => setShowInviteModal(false)}
-          organization={{
-            ...organization,
-            currentUser: orgUser
-          }}
         />
       </main>
 

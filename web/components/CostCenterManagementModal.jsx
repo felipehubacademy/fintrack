@@ -12,11 +12,11 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
   const [editingCostCenter, setEditingCostCenter] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
     color: '#6366F1',
     default_split_percentage: 50.0,
     linked_email: ''
   });
+  const [percentageError, setPercentageError] = useState('');
 
   const colors = [
     '#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B',
@@ -68,12 +68,23 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
       return;
     }
 
+    // Validar se a soma total dos percentuais não ultrapassa 100%
+    const currentTotal = costCenters
+      .filter(cc => editingCostCenter ? cc.id !== editingCostCenter.id : true) // Excluir o que está sendo editado
+      .reduce((sum, cc) => sum + (parseFloat(cc.default_split_percentage) || 0), 0);
+    
+    const newTotal = currentTotal + percentage;
+    
+    if (newTotal > 100) {
+      alert(`A soma dos percentuais não pode ultrapassar 100%.\n\nTotal atual: ${currentTotal.toFixed(1)}%\nNovo percentual: ${percentage.toFixed(1)}%\nResultado: ${newTotal.toFixed(1)}%\n\nPor favor, ajuste o percentual para no máximo ${(100 - currentTotal).toFixed(1)}%`);
+      return;
+    }
+
     try {
       if (editingCostCenter) {
         // Editar responsável (não permite editar user_id ou linked_email se já vinculado)
         const updateData = {
           name: formData.name.trim(),
-          description: formData.description.trim() || null,
           color: formData.color,
           default_split_percentage: percentage
         };
@@ -96,7 +107,6 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
           .insert({
             organization_id: organization.id,
             name: formData.name.trim(),
-            description: formData.description.trim() || null,
             color: formData.color,
             default_split_percentage: percentage,
             linked_email: formData.linked_email.trim() || null,
@@ -118,7 +128,6 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
     setEditingCostCenter(costCenter);
     setFormData({
       name: costCenter.name,
-      description: costCenter.description || '',
       color: costCenter.color || '#6366F1',
       default_split_percentage: costCenter.default_split_percentage || 50.0,
       linked_email: costCenter.linked_email || ''
@@ -146,14 +155,53 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
     }
   };
 
+  const validatePercentage = (value) => {
+    const percentage = parseFloat(value);
+    
+    if (isNaN(percentage)) {
+      setPercentageError('Digite um percentual válido');
+      return false;
+    }
+
+    if (percentage < 0 || percentage > 100) {
+      setPercentageError('Percentual deve estar entre 0 e 100');
+      return false;
+    }
+
+    // Calcular total atual (excluindo o que está sendo editado)
+    const currentTotal = (costCenters || [])
+      .filter(cc => editingCostCenter ? cc.id !== editingCostCenter.id : true)
+      .reduce((sum, cc) => sum + (parseFloat(cc.default_split_percentage) || 0), 0);
+    
+    const newTotal = currentTotal + percentage;
+    
+    if (newTotal > 100) {
+      const maxAllowed = 100 - currentTotal;
+      if (maxAllowed === 0) {
+        setPercentageError(`Máximo permitido: 0.0% (total atual da organização: ${currentTotal.toFixed(1)}%). Antes de selecionar a porcentagem do novo usuário, edite as porcentagens dos demais.`);
+      } else {
+        setPercentageError(`Máximo permitido: ${maxAllowed.toFixed(1)}% (total atual da organização: ${currentTotal.toFixed(1)}%)`);
+      }
+      return false;
+    }
+
+    setPercentageError('');
+    return true;
+  };
+
+  const handlePercentageChange = (value) => {
+    setFormData({ ...formData, default_split_percentage: value });
+    validatePercentage(value);
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
-      description: '',
       color: '#6366F1',
       default_split_percentage: 50.0,
       linked_email: ''
     });
+    setPercentageError('');
     setEditingCostCenter(null);
     setShowForm(false);
   };
@@ -185,11 +233,9 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                 <div className="flex items-start space-x-3">
                   <Users className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h4 className="font-medium text-blue-900 mb-1">Sobre Centros de Custo</h4>
+                    <h4 className="font-medium text-blue-900 mb-1">Sobre Responsáveis Financeiros</h4>
                     <p className="text-sm text-blue-800">
-                      Centros de custo permitem organizar e dividir despesas entre responsáveis. 
-                      Cada centro pode ter um percentual padrão para despesas compartilhadas, que pode ser ajustado individualmente.
-                      Quando um usuário aceita um convite, ele é automaticamente vinculado ao centro de custo com seu email.
+                      Responsáveis Financeiros representam os centros de custo da organização. O percentual padrão de cada centro indica sua participação nas despesas compartilhadas e a <strong>soma de todos deve ser 100%</strong>. Quando um usuário aceita um convite, ele é automaticamente vinculado ao centro de custo com seu email.
                     </p>
                   </div>
                 </div>
@@ -217,19 +263,6 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                       required
                     />
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Descrição
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                      placeholder="Descrição opcional do responsável"
-                    />
-                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -242,16 +275,26 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                         max="100"
                         step="0.01"
                         value={formData.default_split_percentage}
-                        onChange={(e) => setFormData({ ...formData, default_split_percentage: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue pr-8"
+                        onChange={(e) => handlePercentageChange(e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 pr-8 ${
+                          percentageError 
+                            ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                            : 'border-gray-300 focus:ring-flight-blue focus:border-flight-blue'
+                        }`}
                         placeholder="50.00"
                         required
                       />
                       <span className="absolute right-3 top-2.5 text-gray-500">%</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Percentual sugerido para despesas compartilhadas (pode ser ajustado por despesa)
-                    </p>
+                    {percentageError ? (
+                      <p className="text-xs text-red-600 mt-1 font-medium">
+                        ⚠️ {percentageError}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Percentual sugerido para despesas compartilhadas (pode ser ajustado por despesa)
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -307,7 +350,8 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                     </Button>
                     <Button 
                       type="submit" 
-                      className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+                      disabled={!!percentageError}
+                      className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {editingCostCenter ? 'Salvar' : 'Criar'}
                     </Button>
@@ -319,7 +363,22 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
             {/* Cost Centers List */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-medium text-gray-900">Responsáveis ({costCenters.length})</h3>
+                <div className="flex items-center space-x-3">
+                  <h3 className="font-medium text-gray-900">Responsáveis ({costCenters.length})</h3>
+                  {costCenters.length > 0 && (() => {
+                    const totalPercentage = costCenters.reduce((sum, cc) => sum + (parseFloat(cc.default_split_percentage) || 0), 0);
+                    const isValid = totalPercentage === 100;
+                    return (
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        isValid 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        Total: {totalPercentage.toFixed(1)}% {isValid ? '✓' : '⚠️'}
+                      </span>
+                    );
+                  })()}
+                </div>
                 {!showForm && (
                   <Button
                     onClick={() => setShowForm(true)}
@@ -360,9 +419,6 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                               </Badge>
                             )}
                           </div>
-                          {costCenter.description && (
-                            <p className="text-sm text-gray-600 truncate">{costCenter.description}</p>
-                          )}
                           <div className="flex items-center space-x-3 mt-1">
                             <p className="text-xs text-gray-500">
                               {costCenter.default_split_percentage}% padrão
@@ -373,8 +429,8 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
                               </p>
                             )}
                             {costCenter.linked_email && !costCenter.user_id && (
-                              <p className="text-xs text-orange-500 truncate">
-                                📧 Aguardando: {costCenter.linked_email}
+                              <p className="text-xs text-gray-500">
+                                Aguardando usuário
                               </p>
                             )}
                           </div>

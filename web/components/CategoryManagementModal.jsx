@@ -12,7 +12,6 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    icon: '',
     description: '',
     color: '#6366F1'
   });
@@ -21,6 +20,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     '#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B',
     '#10B981', '#06B6D4', '#8B5A2B', '#6B7280', '#F97316'
   ];
+
 
   useEffect(() => {
     if (isOpen && organization) {
@@ -63,7 +63,6 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
           .from('budget_categories')
           .update({
             name: formData.name.trim(),
-            icon: formData.icon.trim() || null,
             description: formData.description.trim() || null,
             color: formData.color
           })
@@ -77,9 +76,9 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
           .insert({
             organization_id: organization.id,
             name: formData.name.trim(),
-            icon: formData.icon.trim() || null,
             description: formData.description.trim() || null,
-            color: formData.color
+            color: formData.color,
+            is_default: false
           });
 
         if (error) throw error;
@@ -103,7 +102,6 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     setEditingCategory(category);
     setFormData({
       name: category.name,
-      icon: category.icon || '',
       description: category.description || '',
       color: category.color || '#6366F1'
     });
@@ -139,7 +137,6 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   const resetForm = () => {
     setFormData({
       name: '',
-      icon: '',
       description: '',
       color: '#6366F1'
     });
@@ -187,20 +184,6 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                       placeholder="Ex: Alimentação, Transporte..."
                       required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Emoji/Ícone
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.icon}
-                      onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-2xl text-center"
-                      placeholder="🎯"
-                      maxLength={4}
                     />
                   </div>
                   
@@ -289,14 +272,10 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                       category.is_default ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
                     }`}>
                       <div className="flex items-center space-x-3">
-                        {category.icon ? (
-                          <span className="text-2xl">{category.icon}</span>
-                        ) : (
-                          <div 
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: category.color || '#6366F1' }}
-                          />
-                        )}
+                        <div 
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: category.color || '#6366F1' }}
+                        />
                         <div>
                           <div className="flex items-center space-x-2">
                             <p className="font-medium text-gray-900">{category.name}</p>

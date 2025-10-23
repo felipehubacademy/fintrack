@@ -353,11 +353,12 @@ export default function CardsDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {cards.map((card) => {
             const limit = card.credit_limit || 0;
+            console.log('Card color:', card.color, 'Card name:', card.name);
             
             return (
               <Card key={card.id} className="border border-flight-blue/20 bg-white shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden">
                 {/* Card Visual */}
-                <div className={`h-36 bg-gradient-to-r ${card.color} p-6 text-white relative`}>
+                <div className={`h-36 ${card.color && card.color.startsWith('bg-') ? card.color : 'bg-blue-600'} p-6 text-white relative`}>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                     </div>

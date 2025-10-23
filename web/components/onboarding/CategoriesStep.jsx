@@ -3,36 +3,29 @@ import { Plus, Check, Tag, X, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 
 const defaultCategories = [
-  { name: 'Alimentação', icon: '🍽️', color: '#EF4444' },
-  { name: 'Transporte', icon: '🚗', color: '#3B82F6' },
-  { name: 'Saúde', icon: '🏥', color: '#10B981' },
-  { name: 'Lazer', icon: '🎬', color: '#8B5CF6' },
-  { name: 'Contas', icon: '💡', color: '#F59E0B' },
-  { name: 'Casa', icon: '🏠', color: '#06B6D4' },
-  { name: 'Educação', icon: '📚', color: '#84CC16' },
-  { name: 'Investimentos', icon: '📈', color: '#EC4899' },
-  { name: 'Outros', icon: '📦', color: '#6B7280' }
+  { name: 'Alimentação', color: '#EF4444' },
+  { name: 'Transporte', color: '#3B82F6' },
+  { name: 'Saúde', color: '#10B981' },
+  { name: 'Lazer', color: '#8B5CF6' },
+  { name: 'Contas', color: '#F59E0B' },
+  { name: 'Casa', color: '#06B6D4' },
+  { name: 'Educação', color: '#84CC16' },
+  { name: 'Investimentos', color: '#EC4899' },
+  { name: 'Outros', color: '#6B7280' }
 ];
 
 const suggestedCategories = [
-  { name: 'Pets', icon: '🐕', color: '#F97316' },
-  { name: 'Assinaturas', icon: '📱', color: '#8B5CF6' },
-  { name: 'Viagens', icon: '✈️', color: '#06B6D4' },
-  { name: 'Roupas', icon: '👕', color: '#EC4899' },
-  { name: 'Farmácia', icon: '💊', color: '#10B981' }
+  { name: 'Pets', color: '#F97316' },
+  { name: 'Assinaturas', color: '#8B5CF6' },
+  { name: 'Viagens', color: '#06B6D4' },
+  { name: 'Roupas', color: '#EC4899' },
+  { name: 'Farmácia', color: '#10B981' }
 ];
 
-const availableEmojis = [
-  '💰', '💳', '🏦', '💵', '💸', '🛒', '🎯', '⭐', '✨', '🎁',
-  '🍕', '☕', '🍔', '🥗', '🍜', '🎂', '🍺', '🍷', '🥤', '🧃',
-  '🚗', '🚕', '🚙', '🚌', '🚎', '🏍️', '🚲', '🛵', '✈️', '🚂',
-  '🏠', '🏡', '🏢', '🏬', '🏪', '🏨', '🏥', '⚡', '💡', '🔌',
-  '👕', '👔', '👗', '👠', '👟', '🎽', '👖', '🧥', '🧤', '👜',
-  '📱', '💻', '⌨️', '🖱️', '🖨️', '📷', '📺', '🎮', '🎧', '🎵',
-  '📚', '📖', '✏️', '📝', '📊', '📈', '📉', '🎓', '🏆', '🎬',
-  '⚽', '🏀', '🎾', '🏐', '🏈', '⚾', '🎳', '🎪', '🎭', '🎨',
-  '🐕', '🐈', '🐦', '🐠', '🐹', '🐰', '🦜', '🐢', '🐍', '🦎',
-  '💊', '💉', '🩺', '🔬', '🧪', '🧬', '🩹', '🧴', '💆', '🧘'
+const availableColors = [
+  '#EF4444', '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B',
+  '#06B6D4', '#84CC16', '#EC4899', '#6B7280', '#F97316',
+  '#8B5A2B', '#6366F1', '#14B8A6', '#F43F5E', '#A855F7'
 ];
 
 export default function CategoriesStep({ organization, onComplete, onDataChange }) {
@@ -40,7 +33,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
   const [selectedCategories, setSelectedCategories] = useState(new Set());
   const [customCategory, setCustomCategory] = useState('');
   const [customDescription, setCustomDescription] = useState('');
-  const [selectedEmoji, setSelectedEmoji] = useState('📦'); // Emoji padrão
+  const [selectedColor, setSelectedColor] = useState('#6B7280'); // Cor padrão
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -104,9 +97,8 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
 
     const newCategory = {
       name: customCategory.trim(),
-      icon: selectedEmoji,
       description: customDescription.trim() || null,
-      color: '#6B7280',
+      color: selectedColor,
       is_custom: true
     };
 
@@ -114,7 +106,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
     toggleCategory(customCategory.trim());
     setCustomCategory('');
     setCustomDescription('');
-    setSelectedEmoji('📦'); // Reset para o padrão
+    setSelectedColor('#6B7280'); // Reset para o padrão
   };
 
   const removeCustomCategory = (categoryName) => {
@@ -154,8 +146,8 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
             newCategories.map(category => ({
               organization_id: organization.id,
               name: category.name,
-              icon: category.icon, // Salvar emoji na coluna 'icon'
-              description: category.description || null, // Descrição textual (opcional)
+              description: category.description || null,
+              color: category.color,
               is_default: defaultCategories.some(dc => dc.name === category.name) // Marcar categorias padrão
             }))
           );
@@ -220,7 +212,10 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
               key={category.name}
               className="p-4 rounded-2xl border-2 border-[#207DFF] bg-[#207DFF]/5 shadow-lg flex items-center space-x-3 cursor-default"
             >
-              <div className="text-3xl">{category.icon}</div>
+              <div 
+                className="w-8 h-8 rounded-full flex-shrink-0"
+                style={{ backgroundColor: category.color }}
+              />
               <div className="flex-1 text-left">
                 <div className="font-semibold text-gray-900">{category.name}</div>
                 <div className="text-xs text-gray-500">Obrigatória</div>
@@ -240,7 +235,10 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
                 onClick={() => toggleCategory(category.name, false)}
                 className="p-4 rounded-2xl border-2 border-green-500 bg-green-50 shadow-lg flex items-center space-x-3 hover:bg-green-100 transition-all"
               >
-                <div className="text-3xl">{category.icon}</div>
+                <div 
+                  className="w-8 h-8 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: category.color }}
+                />
                 <div className="flex-1 text-left">
                   <div className="font-semibold text-gray-900">{category.name}</div>
                 </div>
@@ -259,7 +257,10 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
                 onClick={() => toggleCategory(category.name, false)}
                 className="p-4 rounded-2xl border-2 border-green-500 bg-green-50 shadow-lg flex items-center space-x-3 hover:bg-green-100 transition-all"
               >
-                <div className="text-3xl">{category.icon}</div>
+                <div 
+                  className="w-8 h-8 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: category.color }}
+                />
                 <div className="flex-1 text-left">
                   <div className="font-semibold text-gray-900">{category.name}</div>
                 </div>
@@ -278,34 +279,34 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
           <span>Criar Categoria Personalizada</span>
         </h3>
         
-        {/* Emoji Selector */}
+        {/* Color Selector */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Escolha um emoji
+            Escolha uma cor
           </label>
-          <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200 max-h-32 overflow-y-auto">
-            {availableEmojis.map((emoji) => (
+          <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
+            {availableColors.map((color) => (
               <button
-                key={emoji}
+                key={color}
                 type="button"
-                onClick={() => setSelectedEmoji(emoji)}
-                className={`text-2xl p-2 rounded-lg transition-all hover:scale-110 ${
-                  selectedEmoji === emoji 
-                    ? 'bg-[#207DFF] shadow-lg scale-110' 
-                    : 'bg-white hover:bg-gray-100'
+                onClick={() => setSelectedColor(color)}
+                className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
+                  selectedColor === color 
+                    ? 'border-gray-800 scale-110' 
+                    : 'border-gray-300 hover:border-gray-400'
                 }`}
-              >
-                {emoji}
-              </button>
+                style={{ backgroundColor: color }}
+              />
             ))}
           </div>
         </div>
 
         <div className="space-y-3">
           <div className="flex space-x-3">
-            <div className="w-14 h-12 bg-gray-100 border border-gray-300 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-              {selectedEmoji}
-            </div>
+            <div 
+              className="w-14 h-12 border border-gray-300 rounded-xl flex-shrink-0"
+              style={{ backgroundColor: selectedColor }}
+            />
             <input
               type="text"
               placeholder="Nome da categoria (Ex: Pets, Streaming, Academia...)"
@@ -354,7 +355,10 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
                   onClick={() => toggleCategory(category.name)}
                   className="p-4 rounded-2xl border-2 border-gray-200 bg-white hover:bg-gray-50 hover:border-[#207DFF]/40 hover:shadow-lg transition-all flex flex-col items-center space-y-2 text-center group"
                 >
-                  <div className="text-3xl">{category.icon}</div>
+                  <div 
+                    className="w-8 h-8 rounded-full"
+                    style={{ backgroundColor: category.color }}
+                  />
                   <div className="font-semibold text-gray-900 text-sm">{category.name}</div>
                 </button>
               ))}
