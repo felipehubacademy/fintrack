@@ -1,0 +1,66 @@
+name: Daily Notifications
+
+on:
+  schedule:
+    # Executa diariamente às 9h UTC (6h BRT) - Ajuste conforme necessário
+    - cron: '0 9 * * *'
+  
+  # Permite execução manual para testes
+  workflow_dispatch:
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check Bills Due Today
+        run: |
+          echo "🔔 Verificando contas a pagar..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.APP_URL }}/api/notifications/check-bills" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Erro ao verificar contas: HTTP $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Verificação de contas concluída"
+      
+      - name: Check Investment Goals
+        run: |
+          echo "🎯 Verificando metas de investimento..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.APP_URL }}/api/notifications/check-investments" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Erro ao verificar metas: HTTP $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Verificação de metas concluída"
+      
+      - name: Notification Summary
+        if: always()
+        run: |
+          echo "📊 Resumo das Notificações"
+          echo "=========================="
+          echo "✅ Job concluído!"
+          echo ""
+          echo "Logs disponíveis acima para detalhes."
+

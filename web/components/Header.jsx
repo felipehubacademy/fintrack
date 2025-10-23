@@ -125,6 +125,16 @@ export default function Header({
               >
                 Investimentos
               </Link>
+              <Link 
+                href="/dashboard/closing" 
+                className={`text-sm font-medium transition-colors ${
+                  isActive('/dashboard/closing') 
+                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
+                    : 'text-gray-700 hover:text-flight-blue'
+                }`}
+              >
+                Fechamento
+              </Link>
             </nav>
           </div>
           
