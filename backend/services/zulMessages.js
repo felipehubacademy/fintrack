@@ -472,6 +472,235 @@ class ZulMessages {
       `• "30 na farmácia"\n\n` +
       `Bora começar?`;
   }
+
+  // ============================================================================
+  // NOTIFICAÇÕES E RELATÓRIOS
+  // ============================================================================
+
+  /**
+   * Lembrete diário de engajamento
+   */
+  dailyReminder(userName, lastExpenseDate, streak) {
+    const name = userName ? userName.split(' ')[0] : 'aí';
+    const today = new Date().toLocaleDateString('pt-BR');
+    
+    let streakMessage = '';
+    if (streak > 0) {
+      streakMessage = `🔥 Você está em uma sequência de ${streak} dias seguidos! Continue assim!`;
+    } else if (lastExpenseDate) {
+      const lastDate = new Date(lastExpenseDate).toLocaleDateString('pt-BR');
+      streakMessage = `📅 Última despesa registrada: ${lastDate}`;
+    } else {
+      streakMessage = `📝 Que tal começar a registrar suas despesas hoje?`;
+    }
+    
+    return `Oi ${name}! Já registrou seus gastos de hoje? 📊\n\n${streakMessage}\n\nAcesse: ${process.env.NEXT_PUBLIC_APP_URL || 'https://fintrack.app'}`;
+  }
+
+  /**
+   * Alerta de orçamento
+   */
+  budgetAlert(userName, category, percentage, spent, limit) {
+    const name = userName ? userName.split(' ')[0] : 'aí';
+    const spentFormatted = Number(spent).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const limitFormatted = Number(limit).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    
+    let alertLevel = '';
+    let projectionMessage = '';
+    
+    if (percentage >= 100) {
+      alertLevel = '🚨 URGENTE';
+      projectionMessage = 'Você já ultrapassou o orçamento!';
+    } else if (percentage >= 90) {
+      alertLevel = '⚠️ ATENÇÃO';
+      const remaining = Number(limit) - Number(spent);
+      const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
+      const dailyAverage = remaining / Math.max(daysLeft, 1);
+      projectionMessage = `No ritmo atual, você vai ultrapassar em ${Math.ceil(remaining / Math.max(dailyAverage, 1))} dias.`;
+    } else if (percentage >= 80) {
+      alertLevel = '⚠️ CUIDADO';
+      projectionMessage = 'Você está próximo do limite do orçamento.';
+    }
+    
+    return `${alertLevel} *Alerta de Orçamento*\n\n` +
+      `${category}: ${percentage.toFixed(1)}% usado\n` +
+      `Gasto: R$ ${spentFormatted} de R$ ${limitFormatted}\n\n` +
+      `${projectionMessage}`;
+  }
+
+  /**
+   * Relatório semanal
+   */
+  weeklyReport(userName, totalSpent, topCategory, comparison) {
+    const name = userName ? userName.split(' ')[0] : 'aí';
+    const totalFormatted = Number(totalSpent).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const changePercent = comparison ? comparison.percentChange : 0;
+    const changeText = changePercent > 0 ? `+${changePercent.toFixed(1)}%` : `${changePercent.toFixed(1)}%`;
+    const changeEmoji = changePercent > 0 ? '📈' : changePercent < 0 ? '📉' : '➡️';
+    
+    let topCategoriesText = '';
+    if (topCategory && topCategory.length > 0) {
+      topCategoriesText = topCategory.map((cat, index) => 
+        `${index + 1}. ${cat.emoji} ${cat.name}: R$ ${Number(cat.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${cat.percentage}%)`
+      ).join('\n');
+    }
+    
+    const insight = this.generateWeeklyInsight(comparison, topCategory);
+    
+    return `📊 *Relatório Semanal*\n\n` +
+      `💰 Total: R$ ${totalFormatted} (${changeEmoji} ${changeText} vs semana passada)\n\n` +
+      `📈 Top Categorias:\n${topCategoriesText}\n\n` +
+      `💡 Insight: ${insight}`;
+  }
+
+  /**
+   * Relatório mensal
+   */
+  monthlyReport(userName, data) {
+    const name = userName ? userName.split(' ')[0] : 'aí';
+    const incomeFormatted = Number(data.totalIncome).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const expenseFormatted = Number(data.totalExpense).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const balanceFormatted = Number(data.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const balanceStatus = data.balance >= 0 ? 'Superávit' : 'Déficit';
+    const balanceEmoji = data.balance >= 0 ? '✅' : '⚠️';
+    
+    let topCategoriesText = '';
+    if (data.topCategories) {
+      const categories = Object.entries(data.topCategories).slice(0, 3);
+      topCategoriesText = categories.map(([name, info], index) => 
+        `${index + 1}. ${this.getContextEmoji(name)} ${name}: R$ ${Number(info.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${info.percentage}%)`
+      ).join('\n');
+    }
+    
+    const recommendations = this.generateMonthlyRecommendations(data);
+    
+    return `📈 *Relatório Mensal - ${data.monthName}*\n\n` +
+      `💰 Entradas: R$ ${incomeFormatted}\n` +
+      `💸 Saídas: R$ ${expenseFormatted}\n` +
+      `📊 Saldo: R$ ${balanceFormatted} (${balanceEmoji} ${balanceStatus})\n\n` +
+      `${topCategoriesText}\n\n` +
+      `${recommendations}`;
+  }
+
+  /**
+   * Insight financeiro
+   */
+  insightTip(userName, insight) {
+    const name = userName ? userName.split(' ')[0] : 'aí';
+    
+    return `💡 *Insight Financeiro*\n\n` +
+      `Oi ${name}! ${insight.text}\n\n` +
+      `${insight.action || 'Continue acompanhando seus gastos!'}`;
+  }
+
+  /**
+   * Lembrete de contas a pagar
+   */
+  billReminder(userName, bills) {
+    const name = userName ? userName.split(' ')[0] : 'aí';
+    const count = bills.length;
+    const countText = count === 1 ? '1 conta' : `${count} contas`;
+    
+    let billsList = '';
+    bills.forEach((bill, index) => {
+      const amount = Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+      billsList += `${index + 1}. *${bill.description}* - R$ ${amount}\n`;
+    });
+    
+    return `🔔 *Lembretes de Contas a Pagar*\n\n` +
+      `Olá ${name}! Você tem ${countText} vencendo hoje:\n\n` +
+      `${billsList}\n` +
+      `Acesse: ${process.env.NEXT_PUBLIC_APP_URL || 'https://fintrack.app'}/dashboard/bills`;
+  }
+
+  /**
+   * Lembrete de metas de investimento
+   */
+  investmentReminder(userName, goals) {
+    const name = userName ? userName.split(' ')[0] : 'aí';
+    
+    let message = `🎯 *Meta de Investimento*\n\n`;
+    
+    goals.forEach((goal, index) => {
+      const progress = ((Number(goal.current_amount) / Number(goal.target_amount)) * 100).toFixed(1);
+      const remaining = Number(goal.target_amount) - Number(goal.current_amount);
+      const remainingFormatted = remaining.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+      
+      message += `${index + 1}. *${goal.name}*\n`;
+      message += `   Progresso: ${progress}% concluída\n`;
+      message += `   Valor restante: R$ ${remainingFormatted}\n\n`;
+    });
+    
+    const motivationMessage = this.generateInvestmentMotivation(goals);
+    message += `${motivationMessage}`;
+    
+    return message;
+  }
+
+  // ============================================================================
+  // MÉTODOS AUXILIARES PARA INSIGHTS
+  // ============================================================================
+
+  /**
+   * Gerar insight semanal
+   */
+  generateWeeklyInsight(comparison, topCategory) {
+    if (!comparison) return 'Continue acompanhando seus gastos!';
+    
+    if (comparison.percentChange > 20) {
+      return 'Seus gastos aumentaram significativamente esta semana. Que tal revisar suas despesas?';
+    } else if (comparison.percentChange < -20) {
+      return 'Parabéns! Você economizou bastante esta semana. Continue assim!';
+    } else if (topCategory && topCategory.length > 0) {
+      const top = topCategory[0];
+      return `Sua maior categoria de gasto foi ${top.name} (${top.percentage}%). Considere otimizar se necessário.`;
+    }
+    
+    return 'Seus gastos estão estáveis. Continue acompanhando!';
+  }
+
+  /**
+   * Gerar recomendações mensais
+   */
+  generateMonthlyRecommendations(data) {
+    let recommendations = '💡 *Recomendações:*\n\n';
+    
+    if (data.balance < 0) {
+      recommendations += '⚠️ Você teve déficit este mês. Considere reduzir gastos ou aumentar receitas.\n\n';
+    } else if (data.balance > 0) {
+      recommendations += '✅ Excelente! Você teve superávit. Que tal investir o excedente?\n\n';
+    }
+    
+    if (data.budgetPerformance) {
+      const overBudget = Object.entries(data.budgetPerformance).filter(([_, info]) => info.status === 'over');
+      if (overBudget.length > 0) {
+        recommendations += `📊 Categorias que ultrapassaram o orçamento: ${overBudget.map(([name, _]) => name).join(', ')}\n\n`;
+      }
+    }
+    
+    recommendations += 'Continue acompanhando seus gastos para melhorar sua saúde financeira!';
+    
+    return recommendations;
+  }
+
+  /**
+   * Gerar motivação para investimentos
+   */
+  generateInvestmentMotivation(goals) {
+    const totalProgress = goals.reduce((sum, goal) => {
+      return sum + (Number(goal.current_amount) / Number(goal.target_amount)) * 100;
+    }, 0) / goals.length;
+    
+    if (totalProgress >= 90) {
+      return '🎉 Você está quase lá! Continue com os aportes!';
+    } else if (totalProgress >= 50) {
+      return '💪 Metade do caminho percorrido! Mantenha o foco!';
+    } else if (totalProgress >= 25) {
+      return '🚀 Bom começo! Cada aporte conta!';
+    } else {
+      return '🌟 Começar é o mais difícil, mas você já deu o primeiro passo!';
+    }
+  }
 }
 
 export default ZulMessages;
