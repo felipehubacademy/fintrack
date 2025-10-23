@@ -494,7 +494,7 @@ class ZulMessages {
       streakMessage = `📝 Que tal começar a registrar suas despesas hoje?`;
     }
     
-    return `Oi ${name}! Já registrou seus gastos de hoje? 📊\n\n${streakMessage}\n\nAcesse: ${process.env.NEXT_PUBLIC_APP_URL || 'https://fintrack.app'}`;
+    return `Oi ${name}! Já registrou seus gastos de hoje? 📊\n\n${streakMessage}\n\nAcesse: ${process.env.NEXT_PUBLIC_APP_URL || 'https://meuazulao.com.br'}`;
   }
 
   /**
@@ -610,7 +610,7 @@ class ZulMessages {
     return `🔔 *Lembretes de Contas a Pagar*\n\n` +
       `Olá ${name}! Você tem ${countText} vencendo hoje:\n\n` +
       `${billsList}\n` +
-      `Acesse: ${process.env.NEXT_PUBLIC_APP_URL || 'https://fintrack.app'}/dashboard/bills`;
+      `Acesse: ${process.env.NEXT_PUBLIC_APP_URL || 'https://meuazulao.com.br'}/dashboard/bills`;
   }
 
   /**

@@ -20,8 +20,10 @@ export function useOrganization() {
 
       // Buscar usuário atual
       const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+      console.log('🔍 [useOrganization] currentUser:', currentUser?.email || 'Nenhum usuário');
       if (authError) throw authError;
       if (!currentUser) {
+        console.log('❌ [useOrganization] Usuário não autenticado');
         setError('Usuário não autenticado');
         return;
       }
@@ -33,8 +35,14 @@ export function useOrganization() {
         .eq('email', currentUser.email)
         .maybeSingle();
 
+      console.log('🔍 [useOrganization] userRow:', userRow ? 'Encontrado' : 'Não encontrado');
+      if (userRow) {
+        console.log('🔍 [useOrganization] organization_id:', userRow.organization_id);
+      }
+
       if (userErr) throw userErr;
       if (!userRow?.organization_id) {
+        console.log('❌ [useOrganization] Usuário sem organização');
         setError('Organização não encontrada. Você precisa ser convidado para uma organização.');
         return;
       }

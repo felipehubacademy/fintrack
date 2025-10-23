@@ -108,10 +108,10 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     setShowForm(true);
   };
 
-  const handleDelete = async (categoryId, isDefault) => {
-    // Bloquear deleção de categorias padrão
-    if (isDefault) {
-      alert('Categorias padrão do sistema não podem ser excluídas');
+  const handleDelete = async (categoryId, isDefault, organizationId) => {
+    // Bloquear deleção apenas de categorias padrão GLOBAIS (sem organization_id)
+    if (isDefault && !organizationId) {
+      alert('Categorias padrão globais do sistema não podem ser excluídas');
       return;
     }
 
@@ -303,7 +303,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(category.id, category.is_default)}
+                            onClick={() => handleDelete(category.id, category.is_default, category.organization_id)}
                             className="text-red-600 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />

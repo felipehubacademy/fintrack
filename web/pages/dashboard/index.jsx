@@ -44,16 +44,24 @@ export default function DashboardHome() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
+    console.log('🔍 [Dashboard] useEffect triggered:', { orgLoading, orgError, organization: !!organization });
     if (!orgLoading && !orgError && organization) {
+      console.log('🔍 [Dashboard] Checking onboarding status...');
       checkOnboardingStatus();
       fetchAllExpenses();
     } else if (!orgLoading && orgError) {
+      console.log('❌ [Dashboard] Organization error, redirecting to login');
       router.push('/');
     }
   }, [orgLoading, orgError, organization, selectedMonth]);
 
   const checkOnboardingStatus = async () => {
-    if (!organization || !orgUser) return;
+    if (!organization || !orgUser) {
+      console.log('🔍 [Dashboard] Missing organization or user:', { organization: !!organization, orgUser: !!orgUser });
+      return;
+    }
+
+    console.log('🔍 [Dashboard] Checking onboarding for user:', orgUser.id, 'org:', organization.id);
 
     try {
       const { data, error } = await supabase
@@ -63,6 +71,8 @@ export default function DashboardHome() {
         .eq('organization_id', organization.id)
         .single();
 
+      console.log('🔍 [Dashboard] Onboarding query result:', { data, error });
+
       if (error && error.code !== 'PGRST116') {
         console.error('❌ Erro ao verificar onboarding:', error);
         return;
@@ -70,9 +80,12 @@ export default function DashboardHome() {
 
       // If no onboarding record exists or it's not completed, redirect to onboarding
       if (!data || !data.is_completed) {
+        console.log('🔍 [Dashboard] Onboarding not completed, redirecting to onboarding');
         router.push('/onboarding/welcome');
         return;
       }
+
+      console.log('✅ [Dashboard] Onboarding completed, staying on dashboard');
     } catch (error) {
       console.error('❌ Erro ao verificar status do onboarding:', error);
     }
