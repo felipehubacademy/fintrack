@@ -4,6 +4,12 @@ export function middleware(request) {
   const { pathname, search } = request.nextUrl;
   const hostname = request.headers.get('host');
   
+  // Não fazer redirecionamentos em desenvolvimento
+  if (hostname?.includes('localhost') || hostname?.includes('127.0.0.1')) {
+    const response = NextResponse.next();
+    return response;
+  }
+  
   // Domínios que devem redirecionar para o principal
   const alternativeDomains = ['meuazulao.com', 'www.meuazulao.com'];
   const primaryDomain = 'meuazulao.com.br';
