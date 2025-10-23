@@ -53,6 +53,12 @@ async function sendWelcomeMessage(phone, userName) {
 }
 
 export default async function handler(req, res) {
+  // Headers para evitar cache e permitir CORS
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
   // Permitir preflight requests (CORS)
   if (req.method === 'OPTIONS') {
     res.status(200).end();

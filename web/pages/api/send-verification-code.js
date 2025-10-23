@@ -6,6 +6,12 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
+  // Headers para evitar cache e permitir CORS
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
   console.log('🔍 [send-verification-code] Method:', req.method);
   console.log('🔍 [send-verification-code] Headers:', req.headers);
   
