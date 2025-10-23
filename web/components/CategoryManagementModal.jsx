@@ -109,9 +109,9 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   };
 
   const handleDelete = async (categoryId, isDefault, organizationId) => {
-    // Bloquear deleção apenas de categorias padrão GLOBAIS (sem organization_id)
-    if (isDefault && !organizationId) {
-      alert('Categorias padrão globais do sistema não podem ser excluídas');
+    // Bloquear deleção de categorias padrão (tanto globais quanto da organização)
+    if (isDefault) {
+      alert('Categorias padrão não podem ser excluídas');
       return;
     }
 
