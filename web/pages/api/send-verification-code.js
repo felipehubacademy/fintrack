@@ -1,9 +1,75 @@
 import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
+
+// Função para enviar WhatsApp com template
+async function sendWhatsAppVerificationCode(to, code, userName) {
+  const phoneId = process.env.PHONE_ID;
+  const token = process.env.WHATSAPP_TOKEN;
+
+  if (!phoneId || !token) {
+    console.error('❌ Credenciais WhatsApp não configuradas');
+    return false;
+  }
+
+  const normalizedTo = String(to || '').startsWith('+') ? String(to) : `+${String(to)}`;
+  const firstName = userName?.split(' ')[0] || 'usuário';
+
+  const message = {
+    messaging_product: 'whatsapp',
+    to: normalizedTo,
+    type: 'template',
+    template: {
+      name: 'verification_code', // SUBSTITUA pelo nome do template aprovado
+      language: {
+        code: 'pt_BR'
+      },
+      components: [
+        {
+          type: 'body',
+          parameters: [
+            {
+              type: 'text',
+              text: firstName // {{1}} = nome do usuário
+            },
+            {
+              type: 'text',
+              text: code // {{2}} = código de verificação
+            }
+          ]
+        }
+      ]
+    }
+  };
+
+  try {
+    const response = await axios.post(
+      `${WHATSAPP_API_URL}/${phoneId}/messages`,
+      message,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+    console.log(`✅ Template de verificação enviado para ${normalizedTo}:`, response.data);
+    return true;
+  } catch (error) {
+    console.error(`❌ Erro ao enviar template:`, error.message);
+    if (error.response) {
+      console.error('📄 Detalhes do erro:', error.response.data);
+    }
+    return false;
+  }
+}
 
 export default async function handler(req, res) {
   // Headers para evitar cache e permitir CORS
@@ -119,33 +185,18 @@ export default async function handler(req, res) {
       })
       .eq('id', userId);
 
-    // TODO: Enviar código via WhatsApp Business API
-    // Aqui você deve integrar com seu serviço de WhatsApp
-    const message = `🔐 *MeuAzulão - Verificação*
-
-Olá ${user.name}! 👋
-
-Para começar a usar o MeuAzulão, confirme seu WhatsApp:
-
-*Código:* \`${code}\`
-
-ou
-
-Clique aqui: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/verify?token=${token}
-
-_Este código expira em 10 minutos._
-
----
-💡 *Dica:* Após verificar, você poderá conversar com o Zul direto por aqui!`;
-
-    // Log para desenvolvimento (remover em produção)
+    // Log para desenvolvimento
     console.log('📱 Código de verificação:', code);
     console.log('🔗 Token:', token);
     console.log('📞 Telefone:', userPhone);
-    console.log('💬 Mensagem:', message);
+    console.log('👤 Usuário:', user.name);
 
-    // Simular envio bem-sucedido (substituir por chamada real à API WhatsApp)
-    // await sendWhatsAppMessage(userPhone, message);
+    // Enviar via WhatsApp Business API usando template
+    const sent = await sendWhatsAppVerificationCode(userPhone, code, user.name);
+    
+    if (!sent) {
+      console.warn('⚠️ Não foi possível enviar via WhatsApp, mas código foi gerado');
+    }
 
     return res.status(200).json({ 
       success: true,

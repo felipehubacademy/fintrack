@@ -7,8 +7,9 @@ const supabase = createClient(
 
 // Função para enviar mensagem de boas-vindas via WhatsApp
 async function sendWelcomeMessage(phone, userName) {
-  const WHATSAPP_API_URL = `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
-  const WHATSAPP_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneId = process.env.PHONE_ID;
+  const token = process.env.WHATSAPP_TOKEN;
+  const WHATSAPP_API_URL = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
 
   const firstName = userName?.split(' ')[0] || 'amigo(a)';
 
@@ -38,7 +39,7 @@ async function sendWelcomeMessage(phone, userName) {
   const response = await fetch(WHATSAPP_API_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
