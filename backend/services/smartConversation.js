@@ -658,11 +658,16 @@ Retorne APENAS JSON:`;
             };
           }
           
-          // Mapear "eu" para o cost center do usuário atual
-          if (normalized === 'eu' || normalized === 'me' || normalized === 'mim') {
-            // Buscar cost center associado ao user_id do usuário atual
+          // Mapear "eu" e variações para o cost center do usuário atual
+          const euVariations = ['eu', 'me', 'mim', 'eu mesmo', 'eu mesma', 'fui eu', 'foi eu'];
+          const isEu = euVariations.some(variation => normalized === variation || normalized.includes(variation));
+          
+          if (isEu) {
+            console.log(`🔍 [MAPEAMENTO] Detectado variação de "Eu": "${responsibleName}" → "${normalized}"`);
+            
+            // Buscar cost center associado ao user_id do usuário atual (sem filtrar por type)
             const userCostCenter = costCenters.find(cc => 
-              cc.user_id === context.userId && cc.type === 'individual'
+              cc.user_id === context.userId
             );
             
             if (userCostCenter) {
@@ -675,19 +680,21 @@ Retorne APENAS JSON:`;
               };
             }
             
-            // Fallback: usar o primeiro cost center individual da org
-            const firstIndividual = costCenters.find(cc => cc.type === 'individual');
-            if (firstIndividual) {
-              console.log(`⚠️ [MAPEAMENTO] Cost center do usuário não encontrado, usando fallback: ${firstIndividual.name}`);
+            // Fallback: usar o cost center com o nome do usuário
+            const userNameCenter = costCenters.find(cc => 
+              this.normalizeName(cc.name) === this.normalizeName(context.userName)
+            );
+            if (userNameCenter) {
+              console.log(`✅ [MAPEAMENTO FALLBACK] Usando cost center com nome do usuário: ${userNameCenter.name} (ID: ${userNameCenter.id})`);
               return {
                 valid: true,
-                responsible: firstIndividual.name,
-                cost_center_id: firstIndividual.id,
+                responsible: userNameCenter.name,
+                cost_center_id: userNameCenter.id,
                 is_shared: false
               };
             }
             
-            console.log(`❌ [MAPEAMENTO] Nenhum cost center individual encontrado para o usuário`);
+            console.log(`❌ [MAPEAMENTO] Nenhum cost center encontrado para o usuário ${context.userName} (ID: ${context.userId})`);
           }
           
           // Buscar nos cost centers
