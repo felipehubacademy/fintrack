@@ -9,7 +9,8 @@ export default function EditExpenseModal({
   expenseId,
   onClose, 
   onSuccess,
-  costCenters = []
+  costCenters = [],
+  categories = [] // Adicionar categorias via props
 }) {
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,7 +18,7 @@ export default function EditExpenseModal({
   const [editData, setEditData] = useState({
     owner: '',
     description: '',
-    category: '',
+    category_id: '', // Mudar para category_id ao invés de category (texto)
     payment_method: '',
     amount: '',
     date: ''
@@ -83,7 +84,7 @@ export default function EditExpenseModal({
       setEditData({
         owner: data.owner || '',
         description: data.description || '',
-        category: data.category || '',
+        category_id: data.category_id || '', // Usar category_id
         payment_method: data.payment_method || '',
         amount: data.amount || '',
         date: data.date || ''
@@ -198,9 +199,10 @@ export default function EditExpenseModal({
 
     setSaving(true);
     try {
-      // Determinar cost_center_id
+      // Determinar cost_center_id e category
       const selectedOption = ownerOptions.find(o => o.name === editData.owner);
       const costCenterId = selectedOption?.isShared ? null : selectedOption?.id;
+      const category = categories.find(c => c.id === editData.category_id);
 
       // Atualizar despesa
       const { error: updateError } = await supabase
@@ -210,7 +212,8 @@ export default function EditExpenseModal({
           cost_center_id: costCenterId,
           split: isShared,
           description: editData.description,
-          category: editData.category,
+          category_id: editData.category_id || null, // Salvar category_id
+          category: category?.name || null, // Salvar também o nome (legado)
           payment_method: editData.payment_method,
           amount: parseFloat(editData.amount),
           date: editData.date
@@ -329,13 +332,16 @@ export default function EditExpenseModal({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                <input
-                  type="text"
-                  value={editData.category}
-                  onChange={(e) => setEditData({ ...editData, category: e.target.value })}
+                <select
+                  value={editData.category_id}
+                  onChange={(e) => setEditData({ ...editData, category_id: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  placeholder="Ex: Alimentação, Transporte"
-                />
+                >
+                  <option value="">Selecione...</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

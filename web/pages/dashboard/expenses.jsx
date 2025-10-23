@@ -38,6 +38,7 @@ export default function FinanceDashboard() {
   const [cardsLoading, setCardsLoading] = useState(true);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [categories, setCategories] = useState([]);
   
   // Estado de ordenação
   const [sortConfig, setSortConfig] = useState({
@@ -61,6 +62,7 @@ export default function FinanceDashboard() {
       });
       fetchExpenses();
       fetchCards();
+      fetchCategories();
     }
   }, [user, filter, isV2Ready]);
 
@@ -203,6 +205,28 @@ export default function FinanceDashboard() {
       console.error('❌ [FINANCE] Erro ao buscar cartões:', error);
     } finally {
       setCardsLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    if (orgLoading || !isV2Ready) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('budget_categories')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('❌ [FINANCE] Erro ao buscar categorias:', error);
+        return;
+      }
+
+      console.log('✅ [FINANCE] Categorias carregadas:', data?.length || 0);
+      setCategories(data || []);
+    } catch (error) {
+      console.error('❌ [FINANCE] Erro ao buscar categorias:', error);
     }
   };
 
@@ -875,6 +899,7 @@ export default function FinanceDashboard() {
         isOpen={!!editingId}
         expenseId={editingId}
         costCenters={costCenters}
+        categories={categories}
         onClose={() => setEditingId(null)}
         onSuccess={() => {
           setEditingId(null);
