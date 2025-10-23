@@ -6,12 +6,23 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
+  console.log('🔍 [send-verification-code] Method:', req.method);
+  console.log('🔍 [send-verification-code] Headers:', req.headers);
+  
+  // Permitir preflight requests (CORS)
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
   if (req.method !== 'POST') {
+    console.log('❌ [send-verification-code] Method not allowed:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { userId, userPhone } = req.body;
+    console.log('🔍 [send-verification-code] Body:', { userId, userPhone });
 
     if (!userId || !userPhone) {
       return res.status(400).json({ error: 'userId e userPhone são obrigatórios' });
