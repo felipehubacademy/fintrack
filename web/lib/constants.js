@@ -4,7 +4,7 @@ export const APP_CONFIG = {
   PRIMARY_DOMAIN: 'meuazulao.com.br',
   
   // Domínios alternativos que redirecionam para o principal
-  ALTERNATIVE_DOMAINS: ['meuazulao.com', 'www.meuazulao.com', 'www.meuazulao.com.br'],
+  ALTERNATIVE_DOMAINS: ['meuazulao.com', 'www.meuazulao.com'],
   
   // URLs base
   BASE_URL: 'https://meuazulao.com.br',
@@ -30,8 +30,10 @@ export function isCorrectDomain() {
   if (typeof window === 'undefined') return true;
   
   const currentHost = window.location.hostname;
+  // Aceitar tanto meuazulao.com.br quanto www.meuazulao.com.br
   return currentHost === APP_CONFIG.PRIMARY_DOMAIN || 
-         currentHost === `www.${APP_CONFIG.PRIMARY_DOMAIN}`;
+         currentHost === `www.${APP_CONFIG.PRIMARY_DOMAIN}` ||
+         currentHost.includes('localhost'); // Aceitar localhost em dev
 }
 
 // Função para redirecionar para o domínio correto
