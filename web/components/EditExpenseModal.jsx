@@ -27,10 +27,10 @@ export default function EditExpenseModal({
 
   const isShared = editData.owner === 'Compartilhado';
 
-  // Preparar opções de responsável (individuais + Compartilhado)
+  // Preparar opções de responsável (todos os cost centers ativos + Compartilhado)
   const ownerOptions = useMemo(() => {
     const individuals = (costCenters || [])
-      .filter(cc => cc.type === 'individual')
+      .filter(cc => cc.is_active !== false && !cc.is_shared) // Filtrar apenas por is_active e não compartilhados
       .map(cc => ({ 
         id: cc.id, 
         name: cc.name, 
