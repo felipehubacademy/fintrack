@@ -4,9 +4,8 @@
 -- PROBLEMA: Trigger antigo foi criado para 'organization_members' que não existe
 -- SOLUÇÃO: Criar trigger na tabela 'users' para quando organization_id for definido
 
--- 1. REMOVER triggers antigos (se existirem)
-DROP TRIGGER IF EXISTS trigger_auto_link_cost_center ON organization_members;
-DROP TRIGGER IF EXISTS trigger_auto_create_cost_center ON organization_members;
+-- 1. REMOVER triggers antigos da tabela USERS (se existirem)
+-- NOTA: Não tentamos remover de 'organization_members' pois essa tabela NÃO EXISTE
 DROP TRIGGER IF EXISTS trigger_auto_link_cost_center ON users;
 DROP TRIGGER IF EXISTS trigger_auto_create_cost_center ON users;
 

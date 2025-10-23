@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -13,6 +13,13 @@ export default function Login() {
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const router = useRouter();
+
+  // Preencher email se vier da query string
+  useEffect(() => {
+    if (router.query.email) {
+      setEmail(router.query.email);
+    }
+  }, [router.query.email]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

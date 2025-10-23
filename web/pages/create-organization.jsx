@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
 import { ArrowLeft, Building2, User, Mail, Phone, Loader2, CheckCircle, Copy, Lock, Eye, EyeOff } from 'lucide-react';
+import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
+import DuplicateUserModal from '../components/DuplicateUserModal';
 
 export default function CreateOrganization() {
   const router = useRouter();
@@ -27,6 +29,10 @@ export default function CreateOrganization() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [inviteCode, setInviteCode] = useState(null);
+  const [duplicateData, setDuplicateData] = useState(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  
+  const { checkDuplicates, loading: duplicateLoading } = useDuplicateCheck();
 
   // Formatar telefone automaticamente
   const formatPhone = (value) => {
@@ -104,6 +110,17 @@ export default function CreateOrganization() {
         throw new Error('Por favor, preencha todos os campos corretamente');
       }
 
+      // Verificar duplicatas antes de criar a conta
+      // O email da organização será o mesmo do admin
+      const duplicateCheck = await checkDuplicates(formData.adminEmail, formData.adminPhone);
+      
+      if (duplicateCheck.hasDuplicates) {
+        setDuplicateData(duplicateCheck);
+        setShowDuplicateModal(true);
+        setLoading(false);
+        return;
+      }
+
       // Criar conta do usuário
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.adminEmail,
@@ -128,6 +145,7 @@ export default function CreateOrganization() {
         .insert({
           id: orgId,
           name: formData.name,
+          email: formData.adminEmail, // Email da organização = email do admin
           admin_id: userId,
           invite_code: inviteCodeGen
         });
@@ -185,6 +203,18 @@ export default function CreateOrganization() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoginExisting = (user) => {
+    setShowDuplicateModal(false);
+    // Redirecionar para login com email pré-preenchido
+    router.push(`/login?email=${encodeURIComponent(user.email)}`);
+  };
+
+  const handleCreateNew = () => {
+    setShowDuplicateModal(false);
+    // Continuar com o cadastro mesmo com duplicatas
+    handleSubmit(new Event('submit'));
   };
 
   // Form State
@@ -478,6 +508,15 @@ export default function CreateOrganization() {
           </div>
         </div>
       </div>
+
+      {/* Duplicate User Modal */}
+      <DuplicateUserModal
+        isOpen={showDuplicateModal}
+        onClose={() => setShowDuplicateModal(false)}
+        duplicateData={duplicateData}
+        onLoginExisting={handleLoginExisting}
+        onCreateNew={handleCreateNew}
+      />
     </>
   );
 }
