@@ -6,7 +6,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import ZulMessages from '../../../../backend/services/zulMessages.js';
+import ZulMessages from '../../../services/zulMessages.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,

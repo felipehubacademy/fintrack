@@ -258,7 +258,7 @@ export default function CreateOrganization() {
                 Criar Organização
               </h1>
               <p className="text-gray-600">
-                Configure sua família ou empresa
+                Configure sua Família ou Organização
               </p>
             </div>
 

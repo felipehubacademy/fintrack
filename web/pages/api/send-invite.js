@@ -125,34 +125,154 @@ export default async function handler(req, res) {
       });
     }
 
-    // Enviar email de convite usando cliente admin
-    console.log('📧 Tentando enviar email para:', email);
+    // Enviar email de convite via SendGrid
+    console.log('📧 Enviando email via SendGrid para:', email);
     console.log('🔗 URL do convite:', inviteUrl);
     
-    const { data: emailData, error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: {
-        organization_name: organization.name,
-        inviter_name: inviter.name,
-        invite_url: inviteUrl
-      },
-      redirectTo: inviteUrl
-    });
+    const emailHtml = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Convite - MeuAzulão</title>
+  <meta name="format-detection" content="telephone=no">
+  <meta name="format-detection" content="date=no">
+  <meta name="format-detection" content="address=no">
+  <meta name="format-detection" content="email=no">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; min-height: 100vh;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        
+        <!-- Main Container -->
+        <table role="presentation" style="max-width: 600px; width: 100%; background: white; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: #E9EEF5; padding: 48px 40px; text-align: center; border-bottom: 3px solid #207DFF; border-radius: 24px 24px 0 0;">
+              <h1 style="margin: 0; color: #207DFF; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
+                MeuAzulão
+              </h1>
+              <p style="margin: 8px 0 0 0; color: #0D2C66; font-size: 16px; font-weight: 500;">
+                Você Foi Convidado!
+              </p>
+            </td>
+          </tr>
 
-    if (emailError) {
-      console.error('❌ Erro COMPLETO ao enviar email:', JSON.stringify(emailError, null, 2));
-      console.error('❌ Tipo do erro:', emailError.constructor.name);
-      console.error('❌ Message:', emailError.message);
-      console.error('❌ Status:', emailError.status);
-      console.error('❌ Code:', emailError.code);
+          <!-- Content -->
+          <tr>
+            <td style="padding: 48px 40px;">
+              <p style="margin: 0 0 24px; color: #1f2937; font-size: 16px; line-height: 1.6;">
+                Olá!
+              </p>
+              <p style="margin: 0 0 32px; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Você foi convidado para participar da organização <strong style="color: #207DFF;">${organization.name}</strong> no MeuAzulão.
+              </p>
+
+              <!-- Features Box -->
+              <div style="background: linear-gradient(135deg, #E9EEF5 0%, #8FCBFF 100%); border-radius: 16px; padding: 24px; margin-bottom: 32px; border: 2px solid #207DFF;">
+                <p style="margin: 0 0 16px; color: #0D2C66; font-size: 16px; font-weight: 600;">
+                  🎯 Com o MeuAzulão você pode:
+                </p>
+                <ul style="margin: 0; padding-left: 20px; color: #0D2C66; font-size: 14px; line-height: 1.8;">
+                  <li>📱 Registrar despesas pelo WhatsApp com o Zul (IA)</li>
+                  <li>📊 Ver gastos da família em tempo real</li>
+                  <li>💡 Receber análises inteligentes dos seus gastos</li>
+                  <li>🤝 Colaborar com todos os membros da família</li>
+                </ul>
+              </div>
+
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center" style="padding: 0 0 32px 0;">
+                    <a href="${inviteUrl}" 
+                       style="display: inline-block; background: #207DFF; color: white; text-decoration: none; padding: 16px 48px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(32, 125, 255, 0.3);">
+                      Aceitar Convite
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Info Box -->
+              <div style="border-left: 4px solid #207DFF; background: #E9EEF5; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                <p style="margin: 0; color: #0D2C66; font-size: 14px; line-height: 1.5;">
+                  ℹ️ <strong>Primeira vez no MeuAzulão?</strong><br>
+                  Ao aceitar, você criará sua conta e passará por um onboarding rápido para conhecer todas as funcionalidades.
+                </p>
+              </div>
+
+              <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                Se você não esperava este convite, pode ignorar este email com segurança.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background: #E9EEF5; padding: 32px 40px; border-top: 3px solid #207DFF; border-radius: 0 0 24px 24px;">
+              <table role="presentation" style="width: 100%;">
+                <tr>
+                  <td align="center">
+                    <p style="margin: 0 0 16px; color: #0D2C66; font-size: 16px; font-weight: 600;">
+                      💙 MeuAzulão
+                    </p>
+                    <p style="margin: 0 0 8px; color: #6b7280; font-size: 14px;">
+                      Controle financeiro inteligente para sua família
+                    </p>
+                    <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                      © 2025 MeuAzulão. Todos os direitos reservados.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+        
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+
+    try {
+      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          personalizations: [{
+            to: [{ email: email }],
+            subject: `Você foi convidado para ${organization.name} no MeuAzulão`
+          }],
+          from: { email: 'noreply@meuazulao.com.br' },
+          content: [{
+            type: 'text/html',
+            value: emailHtml
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`SendGrid error: ${response.status} - ${errorText}`);
+      }
+
+      console.log('✅ Email enviado com sucesso via SendGrid!');
+    } catch (emailError) {
+      console.error('❌ Erro ao enviar email via SendGrid:', emailError);
       return res.status(500).json({ 
         error: 'Erro ao enviar email de convite',
-        details: emailError.message || emailError,
-        status: emailError.status,
-        code: emailError.code
+        details: emailError.message || emailError
       });
     }
-
-    console.log('✅ Email enviado com sucesso!', emailData);
 
     res.status(200).json({
       success: true,

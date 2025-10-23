@@ -44,8 +44,13 @@ export default function Login() {
         console.log('✅ Sessão criada, aguardando cookies...');
         // Dar tempo para os cookies serem salvos
         await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('🚀 Redirecionando para dashboard...');
-        window.location.href = '/dashboard';
+        
+        // Verificar se há redirect na URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirect = urlParams.get('redirect');
+        
+        console.log('🚀 Redirecionando para:', redirect || '/dashboard');
+        window.location.href = redirect || '/dashboard';
       } else {
         console.log('⚠️ Login sem erro mas sem sessão');
         setMessage('Login realizado mas sem sessão. Tente novamente.');

@@ -206,17 +206,87 @@ export default function InvitePage() {
         <Head>
           <title>Convite Inválido - MeuAzulão</title>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-fog-mist to-gray-100 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto px-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-8">
-              <div className="text-red-500 text-6xl mb-4">❌</div>
-              <h1 className="text-2xl font-bold text-deep-sky mb-4">Convite Inválido</h1>
-              <p className="text-gray-600 mb-6">{error}</p>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+          {/* Animated Background Grid */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_110%)] opacity-30" />
+          
+          {/* Gradient Orbs */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+
+          {/* Back to Home */}
+          <Link 
+            href="/"
+            className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="font-medium">Voltar</span>
+          </Link>
+
+          {/* Error Card */}
+          <div className="relative z-10 w-full max-w-lg">
+            <div className="bg-white rounded-3xl p-10 shadow-2xl border border-gray-200">
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center mb-6">
+                  <img 
+                    src="/images/logo_flat.svg" 
+                    alt="MeuAzulão" 
+                    className="w-20 h-20"
+                  />
+                </div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  Convite Inválido
+                </h1>
+                <p className="text-gray-600">
+                  Este convite não pode ser processado
+                </p>
+              </div>
+
+              {/* Error Message */}
+              <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                      <span className="text-red-600 text-lg">⚠️</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-red-900 font-semibold mb-2">
+                      O que aconteceu?
+                    </h3>
+                    <p className="text-red-800 text-sm leading-relaxed">
+                      {error.includes('inválido') ? 
+                        'Este link de convite não é válido ou foi gerado incorretamente.' :
+                        error.includes('expirado') ?
+                        'Este convite expirou. Convites são válidos por 7 dias.' :
+                        error.includes('usado') ?
+                        'Este convite já foi utilizado. Cada convite só pode ser usado uma vez.' :
+                        'Este convite não pode ser processado no momento.'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Help Text */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
+                <h3 className="text-blue-900 font-semibold mb-3">
+                  💡 O que você pode fazer?
+                </h3>
+                <ul className="text-blue-800 text-sm space-y-2">
+                  <li>• Peça um novo convite para quem te convidou</li>
+                  <li>• Verifique se o link foi copiado corretamente</li>
+                  <li>• Entre em contato com o administrador da organização</li>
+                </ul>
+              </div>
+
+              {/* Action Button */}
               <Link 
                 href="/" 
-                className="bg-gradient-to-r from-flight-blue to-feather-blue text-white px-6 py-3 rounded-xl hover:from-deep-sky hover:to-flight-blue inline-block transition-all"
+                className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all text-center block"
               >
-                Voltar ao início
+                Voltar ao Início
               </Link>
             </div>
           </div>
@@ -231,16 +301,62 @@ export default function InvitePage() {
         <Head>
           <title>Convite Aceito - MeuAzulão</title>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-fog-mist to-gray-100 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto px-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-8">
-              <div className="text-green-500 text-6xl mb-4">🎉</div>
-              <h1 className="text-2xl font-bold text-deep-sky mb-4">Bem-vindo à {organization.name}!</h1>
-              <p className="text-gray-600 mb-6">
-                Seu cadastro foi concluído com sucesso. Você será redirecionado para o dashboard em instantes.
-              </p>
-              <div className="animate-pulse">
-                <div className="w-8 h-8 border-4 border-flight-blue border-t-transparent rounded-full mx-auto"></div>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+          {/* Animated Background Grid */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_110%)] opacity-30" />
+          
+          {/* Gradient Orbs */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+
+          {/* Success Card */}
+          <div className="relative z-10 w-full max-w-lg">
+            <div className="bg-white rounded-3xl p-10 shadow-2xl border border-gray-200">
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center mb-6">
+                  <img 
+                    src="/images/logo_flat.svg" 
+                    alt="MeuAzulão" 
+                    className="w-20 h-20"
+                  />
+                </div>
+                <div className="text-6xl mb-4">🎉</div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  Bem-vindo à {organization.name}!
+                </h1>
+                <p className="text-gray-600">
+                  Seu cadastro foi concluído com sucesso
+                </p>
+              </div>
+
+              {/* Success Message */}
+              <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-green-600 text-lg">✅</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-green-900 font-semibold mb-2">
+                      Tudo certo!
+                    </h3>
+                    <p className="text-green-800 text-sm leading-relaxed">
+                      Você foi adicionado com sucesso à organização. Você será redirecionado para o dashboard em instantes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Loading */}
+              <div className="text-center">
+                <div className="animate-pulse">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+                </div>
+                <p className="text-gray-600 text-sm mt-4">
+                  Redirecionando...
+                </p>
               </div>
             </div>
           </div>
@@ -254,33 +370,49 @@ export default function InvitePage() {
       <Head>
         <title>Convite para {organization?.name} - MeuAzulão</title>
       </Head>
-      <div className="min-h-screen bg-gradient-to-br from-fog-mist to-gray-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-2xl p-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Animated Background Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_110%)] opacity-30" />
+        
+        {/* Gradient Orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+
+        {/* Back to Home */}
+        <Link 
+          href="/"
+          className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="font-medium">Voltar</span>
+        </Link>
+
+        {/* Form Card */}
+        <div className="relative z-10 w-full max-w-lg">
+          <div className="bg-white rounded-3xl p-10 shadow-2xl border border-gray-200">
             {/* Header */}
             <div className="text-center mb-8">
-              <Link href="/" className="inline-block mb-4">
-                <ArrowLeft className="w-6 h-6 text-gray-600 hover:text-deep-sky transition-colors" />
-              </Link>
-              
-              <div className="inline-block p-4 bg-gradient-to-r from-flight-blue to-feather-blue rounded-2xl mb-6">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
+              <div className="inline-flex items-center justify-center mb-6">
+                <img 
+                  src="/images/logo_flat.svg" 
+                  alt="MeuAzulão" 
+                  className="w-20 h-20"
+                />
               </div>
-              
-              <h1 className="text-2xl font-bold text-deep-sky mb-2">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Convite para {organization?.name}
               </h1>
               <p className="text-gray-600 mb-4">
-                Você foi convidado por <strong>{invite?.inviter?.name}</strong> para participar desta organização
+                Você foi convidado por <strong>{invite?.inviter?.name}</strong>
               </p>
               
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-6">
-                <p className="text-sm text-gray-600 mb-1">Email do convite:</p>
-                <p className="font-medium text-deep-sky">{invite?.email}</p>
+                <p className="text-sm text-gray-600 mb-1">Convidado por:</p>
+                <p className="font-medium text-gray-900">{invite?.inviter?.name}</p>
               </div>
             </div>
+
+            {/* Content */}
 
             {user ? (
               <div>
@@ -380,14 +512,22 @@ export default function InvitePage() {
             ) : (
               <div>
                 <p className="text-sm text-gray-600 mb-6 text-center">
-                  Faça login para aceitar o convite
+                  Crie sua conta para aceitar o convite
                 </p>
-                <Link 
-                  href={`/login?redirect=/invite/${code}`}
-                  className="w-full bg-gradient-to-r from-flight-blue to-feather-blue text-white py-3 px-6 rounded-xl hover:from-deep-sky hover:to-flight-blue inline-block text-center font-medium transition-all transform hover:scale-105"
-                >
-                  Fazer Login
-                </Link>
+                <div className="space-y-3">
+                  <Link 
+                    href={`/signup-invite?email=${invite?.email}&invite_code=${code}`}
+                    className="w-full bg-gradient-to-r from-flight-blue to-feather-blue text-white py-3 px-6 rounded-xl hover:from-deep-sky hover:to-flight-blue inline-block text-center font-medium transition-all transform hover:scale-105"
+                  >
+                    Criar Conta
+                  </Link>
+                  <Link 
+                    href={`/login?redirect=/invite/${code}`}
+                    className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-xl hover:bg-gray-200 inline-block text-center font-medium transition-all"
+                  >
+                    Já tenho conta - Fazer Login
+                  </Link>
+                </div>
               </div>
             )}
 

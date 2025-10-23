@@ -6,8 +6,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import EngagementAnalyzer from '../../../../backend/services/engagementAnalyzer.js';
-import ZulMessages from '../../../../backend/services/zulMessages.js';
+import EngagementAnalyzer from '../../../services/engagementAnalyzer.js';
+import ZulMessages from '../../../services/zulMessages.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
