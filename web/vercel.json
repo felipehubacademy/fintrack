@@ -12,20 +12,6 @@
       "dest": "/api/$1"
     }
   ],
-  "redirects": [
-    {
-      "source": "https://meuazulao.com/(.*)",
-      "destination": "https://meuazulao.com.br/$1",
-      "permanent": true,
-      "statusCode": 301
-    },
-    {
-      "source": "https://www.meuazulao.com/(.*)",
-      "destination": "https://meuazulao.com.br/$1",
-      "permanent": true,
-      "statusCode": 301
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
