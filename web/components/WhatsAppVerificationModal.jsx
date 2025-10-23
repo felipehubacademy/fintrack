@@ -150,14 +150,20 @@ export default function WhatsAppVerificationModal({
     setWarning(null);
 
     try {
-      const phoneWithCountryCode = '55' + phone.replace(/\D/g, '');
+      // Normalizar telefone (apenas números)
+      const normalizedPhone = phone.replace(/\D/g, '');
+      
+      // Garantir que comece com 55 (código do Brasil)
+      const phoneWithCountryCode = normalizedPhone.startsWith('55') 
+        ? normalizedPhone 
+        : '55' + normalizedPhone;
       
       // Se o número é diferente do cadastrado, atualizar no banco primeiro
-      if (registeredPhone && phone.replace(/\D/g, '') !== registeredPhone.replace(/\D/g, '')) {
+      if (registeredPhone && normalizedPhone !== registeredPhone.replace(/\D/g, '')) {
         const { error: updateError } = await supabase
           .from('users')
           .update({ 
-            phone: phoneWithCountryCode,
+            phone: phoneWithCountryCode, // Salvar com código do país: 5511999999999
             phone_verified: false // Reset verification status
           })
           .eq('id', user?.id);
@@ -167,7 +173,7 @@ export default function WhatsAppVerificationModal({
         }
         
         // Atualizar o número registrado no estado local
-        setRegisteredPhone(phone.replace(/\D/g, ''));
+        setRegisteredPhone(phoneWithCountryCode);
       }
 
       const response = await fetch('/api/send-verification-code', {

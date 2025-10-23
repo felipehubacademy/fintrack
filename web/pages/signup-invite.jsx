@@ -144,6 +144,9 @@ export default function SignupInvite() {
         return;
       }
 
+      // Normalizar telefone antes de criar conta (apenas números)
+      const normalizedPhone = formData.phone.replace(/\D/g, '');
+      
       // Criar conta do usuário
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
@@ -151,7 +154,7 @@ export default function SignupInvite() {
         options: {
           data: {
             name: formData.name,
-            phone: formData.phone
+            phone: normalizedPhone // Salvar apenas números
           }
         }
       });
@@ -169,7 +172,7 @@ export default function SignupInvite() {
           id: authData.user.id,
           email: email,
           name: formData.name,
-          phone: formData.phone,
+          phone: normalizedPhone, // Salvar apenas números: 5511999999999
           organization_id: organization.id,
           role: invite?.role || 'member',
           is_active: true

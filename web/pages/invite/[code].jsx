@@ -147,12 +147,15 @@ export default function InvitePage() {
         return;
       }
 
+      // Normalizar telefone antes de salvar (apenas números)
+      const normalizedPhone = formData.phone.replace(/\D/g, '');
+      
       // Atualizar dados do usuário
       const { error: userError } = await supabase
         .from('users')
         .update({
           name: formData.name,
-          phone: formData.phone,
+          phone: normalizedPhone, // Salvar apenas números: 5511999999999
           organization_id: organization.id,
           role: 'member',
           is_active: true
