@@ -105,6 +105,26 @@ export default function Header({
               >
                 Contas
               </Link>
+              <Link 
+                href="/dashboard/incomes" 
+                className={`text-sm font-medium transition-colors ${
+                  isActive('/dashboard/incomes') 
+                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
+                    : 'text-gray-700 hover:text-flight-blue'
+                }`}
+              >
+                Entradas
+              </Link>
+              <Link 
+                href="/dashboard/investments" 
+                className={`text-sm font-medium transition-colors ${
+                  isActive('/dashboard/investments') 
+                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
+                    : 'text-gray-700 hover:text-flight-blue'
+                }`}
+              >
+                Investimentos
+              </Link>
             </nav>
           </div>
           
