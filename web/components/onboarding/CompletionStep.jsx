@@ -1,115 +1,104 @@
-import { CheckCircle, Sparkles, TrendingUp, Users, MessageCircle } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function CompletionStep({ organization, onComplete }) {
-  const achievements = [
-    {
-      icon: CheckCircle,
-      title: 'Configuração Completa',
-      description: 'Sua organização está pronta para uso'
-    },
-    {
-      icon: MessageCircle,
-      title: 'WhatsApp Ativo',
-      description: 'Converse com o Zul a qualquer momento'
-    },
-    {
-      icon: Users,
-      title: 'Família Conectada',
-      description: 'Todos podem registrar despesas'
-    },
-    {
-      icon: TrendingUp,
-      title: 'Controle em Tempo Real',
-      description: 'Visualize suas finanças agora mesmo'
+  useEffect(() => {
+    // Criar confetes quando o componente montar
+    const confettiCount = 400;
+    const colors = ['#207DFF', '#5FFFA7', '#FF6B6B', '#FFD93D', '#A8E6CF'];
+    
+    for (let i = 0; i < confettiCount; i++) {
+      createConfetti(colors);
     }
-  ];
+  }, []);
+
+  const createConfetti = (colors) => {
+    const confetti = document.createElement('div');
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const animationDuration = 2 + Math.random() * 2;
+    const size = 8 + Math.random() * 8;
+    
+    // Ângulo aleatório de 0 a 360 graus
+    const angle = Math.random() * 360;
+    
+    // Calcular distância necessária para alcançar as bordas da tela
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    const maxDistance = Math.max(screenWidth, screenHeight);
+    const velocity = maxDistance * 0.6 + Math.random() * maxDistance * 0.4; // 60-100% da tela
+    
+    // Calcular posição final baseada no ângulo
+    const radians = (angle * Math.PI) / 180;
+    const endX = Math.cos(radians) * velocity;
+    const endY = Math.sin(radians) * velocity;
+    
+    confetti.style.cssText = `
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: ${size}px;
+      height: ${size}px;
+      background-color: ${color};
+      opacity: 0.9;
+      border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+      pointer-events: none;
+      z-index: 9999;
+      animation: confetti-explode-${angle.toFixed(0)} ${animationDuration}s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      transform: translate(-50%, -50%) rotate(${Math.random() * 360}deg);
+    `;
+    
+    // Criar animação única para este confete
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+      @keyframes confetti-explode-${angle.toFixed(0)} {
+        0% {
+          transform: translate(-50%, -50%) rotate(0deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(calc(-50% + ${endX}px), calc(-50% + ${endY}px)) rotate(${Math.random() * 1080}deg);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    
+    document.body.appendChild(confetti);
+    
+    // Remover confete e animação após a animação
+    setTimeout(() => {
+      confetti.remove();
+      styleSheet.remove();
+    }, animationDuration * 1000);
+  };
 
   return (
-    <div className="max-w-3xl mx-auto text-center space-y-8">
-      {/* Success Animation */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-32 h-32 bg-gradient-to-br from-green-500/30 to-blue-500/30 rounded-full animate-pulse" />
-        </div>
-        <div className="relative w-32 h-32 mx-auto bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/50 transform animate-[bounce_1s_ease-in-out]">
-          <CheckCircle className="w-16 h-16 text-white" />
-        </div>
+    <div className="max-w-3xl xl:max-w-4xl mx-auto text-center space-y-12 py-12">
+      {/* Success Emoji */}
+      <div className="text-8xl">
+        🎉
       </div>
 
       {/* Title */}
-      <div className="space-y-4">
-        <h2 className="text-4xl md:text-5xl font-bold text-white">
-          Tudo Pronto! 🎉
+      <div className="space-y-8">
+        <h2 className="text-5xl md:text-6xl xl:text-7xl font-bold text-gray-900">
+          Tudo Pronto!
         </h2>
-        <p className="text-xl text-white/80 max-w-2xl mx-auto">
-          O <span className="font-semibold text-blue-300">{organization?.name}</span> está configurado e pronto para usar
+        <p className="text-2xl xl:text-3xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+          <span className="font-bold text-[#207DFF]">{organization?.name}</span> está configurada
         </p>
-      </div>
-
-      {/* Achievements Grid */}
-      <div className="grid md:grid-cols-2 gap-4 pt-8">
-        {achievements.map((achievement, index) => (
-          <div 
-            key={index}
-            className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 text-left transform transition-all duration-300 hover:bg-white/15 hover:scale-105"
-            style={{ animationDelay: `${index * 100}ms` }}
-          >
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mb-4">
-              <achievement.icon className="w-6 h-6 text-white" />
-            </div>
-            <h3 className="text-lg font-semibold text-white mb-2">
-              {achievement.title}
-            </h3>
-            <p className="text-white/70 text-sm">
-              {achievement.description}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Next Steps */}
-      <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-xl border border-blue-400/30 rounded-2xl p-8 mt-8">
-        <div className="flex items-start space-x-4">
-          <div className="flex-shrink-0">
-            <Sparkles className="w-8 h-8 text-blue-300" />
-          </div>
-          <div className="text-left flex-1">
-            <h4 className="font-bold text-white text-xl mb-3">
-              Próximos Passos
-            </h4>
-            <ul className="space-y-3 text-white/80">
-              <li className="flex items-start space-x-3">
-                <span className="text-blue-300 font-bold">1.</span>
-                <span>Experimente registrar uma despesa conversando com o Zul no WhatsApp</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <span className="text-blue-300 font-bold">2.</span>
-                <span>Explore o dashboard e veja os gráficos em tempo real</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <span className="text-blue-300 font-bold">3.</span>
-                <span>Convide sua família para começarem juntos</span>
-              </li>
-            </ul>
-          </div>
-        </div>
       </div>
 
       {/* CTA */}
       <div className="pt-8">
         <button
           onClick={onComplete}
-          className="inline-flex items-center space-x-3 px-10 py-5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-2xl font-bold text-lg shadow-2xl hover:shadow-blue-500/50 transition-all transform hover:scale-105"
+          className="inline-flex items-center space-x-3 px-10 py-5 xl:px-12 xl:py-6 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-full text-xl xl:text-2xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
         >
-          <span>Ir para o Dashboard</span>
-          <Sparkles className="w-6 h-6" />
+          <span>Concluir</span>
+          <ArrowRight className="w-6 h-6 xl:w-7 xl:h-7" />
         </button>
       </div>
-
-      {/* Fun fact */}
-      <p className="text-white/50 text-sm pt-4">
-        💡 Dica: Você pode personalizar tudo nas configurações depois
-      </p>
     </div>
   );
 }

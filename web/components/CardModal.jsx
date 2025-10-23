@@ -19,7 +19,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
     bank: '',
     holder_name: '',
     billing_day: '',
-    best_day: '',
+    closing_day: '',
     credit_limit: '',
     color: 'bg-blue-600'
   });
@@ -33,7 +33,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         bank: editingCard.bank || '',
         holder_name: editingCard.holder_name || '',
         billing_day: editingCard.billing_day?.toString() || '',
-        best_day: editingCard.best_day?.toString() || '',
+        closing_day: editingCard.closing_day?.toString() || '',
         credit_limit: editingCard.credit_limit?.toString() || '',
         color: editingCard.color || 'from-blue-600 to-purple-600'
       });
@@ -43,7 +43,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         bank: '',
         holder_name: '',
         billing_day: '',
-        best_day: '',
+        closing_day: '',
         credit_limit: '',
         color: 'bg-blue-600'
       });
@@ -90,10 +90,15 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
 
     setLoading(true);
     try {
+      // Calcular o melhor dia de compra (dia seguinte ao fechamento)
+      const closingDay = parseInt(formData.closing_day);
+      const bestDay = closingDay === 31 ? 1 : closingDay + 1;
+
       const cardData = {
         ...formData,
         billing_day: parseInt(formData.billing_day),
-        best_day: formData.best_day ? parseInt(formData.best_day) : null,
+        closing_day: closingDay,
+        best_day: bestDay,
         credit_limit: parseFloat(formData.credit_limit)
       };
 
@@ -263,25 +268,28 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Melhor Dia para Compras
+                  Dia de Fechamento da Fatura
                 </label>
                 <input
                   type="number"
                   min="1"
                   max="31"
-                  value={formData.best_day}
-                  onChange={(e) => handleChange('best_day', e.target.value)}
+                  value={formData.closing_day}
+                  onChange={(e) => handleChange('closing_day', e.target.value)}
                   placeholder="10"
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
-                    errors.best_day ? 'border-red-500' : 'border-gray-300'
+                    errors.closing_day ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                {errors.best_day && (
+                {errors.closing_day && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
                     <AlertCircle className="h-4 w-4 mr-1" />
-                    {errors.best_day}
+                    {errors.closing_day}
                   </p>
                 )}
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 O melhor dia de compra será calculado automaticamente (dia seguinte ao fechamento)
+                </p>
               </div>
             </div>
 

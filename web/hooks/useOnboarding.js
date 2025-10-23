@@ -7,7 +7,7 @@ export function useOnboarding(user, organization) {
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  const totalSteps = 8; // 0-7
+  const totalSteps = 6; // 0-5
 
   // Fetch progress from database
   const fetchProgress = useCallback(async () => {
@@ -17,46 +17,56 @@ export function useOnboarding(user, organization) {
     }
 
     try {
+      // Buscar o registro mais recente (order by started_at desc, limit 1)
       const { data, error } = await supabase
         .from('onboarding_progress')
         .select('*')
         .eq('user_id', user.id)
         .eq('organization_id', organization.id)
-        .single();
+        .order('started_at', { ascending: false })
+        .limit(1);
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('❌ Erro ao buscar progresso do onboarding:', error);
+        setLoading(false);
         return;
       }
 
-      if (data) {
-        setProgress(data);
-        setCurrentStep(data.current_step || 0);
+      // Se encontrou registros, usar o primeiro (mais recente)
+      if (data && data.length > 0) {
+        const latestProgress = data[0];
+        setProgress(latestProgress);
+        setCurrentStep(latestProgress.current_step || 0);
       } else {
         // Criar registro inicial se não existir
         await createInitialProgress();
       }
     } catch (error) {
       console.error('❌ Erro ao buscar progresso:', error);
+      setLoading(false);
     } finally {
       setLoading(false);
     }
   }, [user, organization]);
 
-  // Create initial progress record
+  // Create initial progress record (upsert para evitar duplicatas)
   const createInitialProgress = async () => {
     if (!user || !organization) return;
 
     try {
       const { data, error } = await supabase
         .from('onboarding_progress')
-        .insert({
+        .upsert({
           user_id: user.id,
           organization_id: organization.id,
           current_step: 0,
           completed_steps: [],
           is_completed: false,
-          step_data: {}
+          step_data: {},
+          started_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,organization_id',
+          ignoreDuplicates: false // Atualiza se já existir
         })
         .select()
         .single();
@@ -67,21 +77,41 @@ export function useOnboarding(user, organization) {
       setCurrentStep(0);
     } catch (error) {
       console.error('❌ Erro ao criar progresso inicial:', error);
+      // Se mesmo com upsert der erro, apenas log (não bloqueia)
     }
   };
 
-  // Save progress to database
+  // Save progress to database (upsert para robustez)
   const saveProgress = useCallback(async (updates) => {
-    if (!progress || saving) return;
+    if (!user || !organization || saving) return;
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('onboarding_progress')
-        .update(updates)
-        .eq('id', progress.id);
+      // Se já tem progress com ID, fazer UPDATE
+      if (progress?.id) {
+        const { error } = await supabase
+          .from('onboarding_progress')
+          .update(updates)
+          .eq('id', progress.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Se não tem progress ainda, fazer UPSERT
+        const { data, error } = await supabase
+          .from('onboarding_progress')
+          .upsert({
+            user_id: user.id,
+            organization_id: organization.id,
+            ...updates
+          }, {
+            onConflict: 'user_id,organization_id'
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        setProgress(data);
+      }
 
       setProgress(prev => ({ ...prev, ...updates }));
     } catch (error) {
@@ -89,7 +119,7 @@ export function useOnboarding(user, organization) {
     } finally {
       setSaving(false);
     }
-  }, [progress, saving]);
+  }, [progress, saving, user, organization]);
 
   // Navigate between steps
   const goToStep = useCallback((step) => {
@@ -120,11 +150,42 @@ export function useOnboarding(user, organization) {
       newCompletedSteps.push(currentStep);
     }
 
+    // Sanitize stepData to remove circular references and non-serializable data
+    const sanitizeData = (obj) => {
+      if (!obj || typeof obj !== 'object') return obj;
+      
+      try {
+        // Test if it's JSON serializable
+        JSON.stringify(obj);
+        return obj;
+      } catch (e) {
+        // If not, create a clean copy with only primitive values
+        const clean = {};
+        for (const key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            const value = obj[key];
+            if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              clean[key] = value;
+            } else if (Array.isArray(value)) {
+              clean[key] = value.filter(v => 
+                v === null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+              );
+            } else if (typeof value === 'object' && value.constructor === Object) {
+              clean[key] = sanitizeData(value);
+            }
+          }
+        }
+        return clean;
+      }
+    };
+
+    const sanitizedStepData = sanitizeData(stepData);
+
     const updates = {
       completed_steps: newCompletedSteps,
       step_data: {
         ...progress.step_data,
-        ...stepData
+        ...sanitizedStepData
       }
     };
 
@@ -144,12 +205,22 @@ export function useOnboarding(user, organization) {
 
   // Complete onboarding
   const completeOnboarding = useCallback(async () => {
-    if (!progress) return;
+    console.log('🎉 Completando onboarding...', { progress });
+    
+    if (!progress) {
+      console.error('❌ Progress não encontrado');
+      return;
+    }
 
-    await saveProgress({
-      is_completed: true,
-      completed_at: new Date().toISOString()
-    });
+    try {
+      await saveProgress({
+        is_completed: true,
+        completed_at: new Date().toISOString()
+      });
+      console.log('✅ Onboarding completado com sucesso!');
+    } catch (error) {
+      console.error('❌ Erro ao completar onboarding:', error);
+    }
   }, [progress, saveProgress]);
 
   // Check if onboarding is completed

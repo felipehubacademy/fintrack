@@ -35,20 +35,20 @@ export default function Header({
 
   return (
     <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-1">
+      <div className="px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-8">
             {/* Logo e Nome */}
-            <div className="flex items-center">
-              <Logo className="h-24 w-24" />
-              <div className="ml-0">
+            <div className="flex items-center -ml-3">
+              <Logo className="h-24 w-24 -my-2" />
+              <div className="-ml-3">
                 <Link href="/dashboard">
-                  <h1 className="text-2xl font-bold text-deep-sky hover:text-flight-blue cursor-pointer transition-colors">
+                  <h1 className="text-xl font-bold text-deep-sky hover:text-flight-blue cursor-pointer transition-colors">
                     {organization?.name || 'MeuAzulão'}
                   </h1>
                 </Link>
                 {orgUser && (
-                  <p className="text-sm text-gray-600">{orgUser.name}</p>
+                  <p className="text-xs text-gray-600">{orgUser.name}</p>
                 )}
               </div>
             </div>

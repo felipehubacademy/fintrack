@@ -12,6 +12,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
+    icon: '',
     description: '',
     color: '#6366F1'
   });
@@ -62,7 +63,8 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
           .from('budget_categories')
           .update({
             name: formData.name.trim(),
-            description: formData.description.trim(),
+            icon: formData.icon.trim() || null,
+            description: formData.description.trim() || null,
             color: formData.color
           })
           .eq('id', editingCategory.id);
@@ -75,7 +77,8 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
           .insert({
             organization_id: organization.id,
             name: formData.name.trim(),
-            description: formData.description.trim(),
+            icon: formData.icon.trim() || null,
+            description: formData.description.trim() || null,
             color: formData.color
           });
 
@@ -91,16 +94,29 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   };
 
   const handleEdit = (category) => {
+    // Bloquear edição de categorias padrão
+    if (category.is_default) {
+      alert('Categorias padrão do sistema não podem ser editadas');
+      return;
+    }
+    
     setEditingCategory(category);
     setFormData({
       name: category.name,
+      icon: category.icon || '',
       description: category.description || '',
       color: category.color || '#6366F1'
     });
     setShowForm(true);
   };
 
-  const handleDelete = async (categoryId) => {
+  const handleDelete = async (categoryId, isDefault) => {
+    // Bloquear deleção de categorias padrão
+    if (isDefault) {
+      alert('Categorias padrão do sistema não podem ser excluídas');
+      return;
+    }
+
     if (!confirm('Tem certeza que deseja excluir esta categoria?')) {
       return;
     }
@@ -123,6 +139,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   const resetForm = () => {
     setFormData({
       name: '',
+      icon: '',
       description: '',
       color: '#6366F1'
     });
@@ -175,6 +192,20 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Emoji/Ícone
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.icon}
+                      onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-2xl text-center"
+                      placeholder="🎯"
+                      maxLength={4}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Descrição
                     </label>
                     <input
@@ -182,7 +213,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                      placeholder="Descrição opcional da categoria"
+                      placeholder="Ex: Gastos com alimentação fora de casa"
                     />
                   </div>
                   
@@ -254,37 +285,52 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {categories.map((category) => (
-                    <div key={category.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                    <div key={category.id} className={`flex items-center justify-between p-3 border rounded-lg ${
+                      category.is_default ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                    }`}>
                       <div className="flex items-center space-x-3">
-                        <div 
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: category.color || '#6366F1' }}
-                        />
+                        {category.icon ? (
+                          <span className="text-2xl">{category.icon}</span>
+                        ) : (
+                          <div 
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: category.color || '#6366F1' }}
+                          />
+                        )}
                         <div>
-                          <p className="font-medium text-gray-900">{category.name}</p>
+                          <div className="flex items-center space-x-2">
+                            <p className="font-medium text-gray-900">{category.name}</p>
+                            {category.is_default && (
+                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                                Padrão
+                              </Badge>
+                            )}
+                          </div>
                           {category.description && (
                             <p className="text-sm text-gray-600">{category.description}</p>
                           )}
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(category)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(category.id)}
-                          className="text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {!category.is_default && (
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(category)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(category.id, category.is_default)}
+                            className="text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -22,10 +22,25 @@ const suggestedCategories = [
   { name: 'Farmácia', icon: '💊', color: '#10B981' }
 ];
 
+const availableEmojis = [
+  '💰', '💳', '🏦', '💵', '💸', '🛒', '🎯', '⭐', '✨', '🎁',
+  '🍕', '☕', '🍔', '🥗', '🍜', '🎂', '🍺', '🍷', '🥤', '🧃',
+  '🚗', '🚕', '🚙', '🚌', '🚎', '🏍️', '🚲', '🛵', '✈️', '🚂',
+  '🏠', '🏡', '🏢', '🏬', '🏪', '🏨', '🏥', '⚡', '💡', '🔌',
+  '👕', '👔', '👗', '👠', '👟', '🎽', '👖', '🧥', '🧤', '👜',
+  '📱', '💻', '⌨️', '🖱️', '🖨️', '📷', '📺', '🎮', '🎧', '🎵',
+  '📚', '📖', '✏️', '📝', '📊', '📈', '📉', '🎓', '🏆', '🎬',
+  '⚽', '🏀', '🎾', '🏐', '🏈', '⚾', '🎳', '🎪', '🎭', '🎨',
+  '🐕', '🐈', '🐦', '🐠', '🐹', '🐰', '🦜', '🐢', '🐍', '🦎',
+  '💊', '💉', '🩺', '🔬', '🧪', '🧬', '🩹', '🧴', '💆', '🧘'
+];
+
 export default function CategoriesStep({ organization, onComplete, onDataChange }) {
   const [categories, setCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState(new Set());
   const [customCategory, setCustomCategory] = useState('');
+  const [customDescription, setCustomDescription] = useState('');
+  const [selectedEmoji, setSelectedEmoji] = useState('📦'); // Emoji padrão
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -46,9 +61,23 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
       if (error) throw error;
 
       const existingCategories = data || [];
-      setCategories(existingCategories);
+      
+      // Separar categorias customizadas (que não são padrão nem sugeridas)
+      const customCategories = existingCategories.filter(cat => 
+        !defaultCategories.some(dc => dc.name === cat.name) &&
+        !suggestedCategories.some(sc => sc.name === cat.name)
+      ).map(cat => ({
+        ...cat,
+        is_custom: true
+      }));
+      
+      setCategories(customCategories);
       
       const selected = new Set(existingCategories.map(c => c.name));
+      
+      // Sempre incluir categorias essenciais (obrigatórias)
+      defaultCategories.forEach(cat => selected.add(cat.name));
+      
       setSelectedCategories(selected);
     } catch (error) {
       console.error('❌ Erro ao carregar categorias:', error);
@@ -57,7 +86,10 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
     }
   };
 
-  const toggleCategory = (categoryName) => {
+  const toggleCategory = (categoryName, isEssential = false) => {
+    // Não permitir desmarcar categorias essenciais
+    if (isEssential) return;
+    
     const newSelected = new Set(selectedCategories);
     if (newSelected.has(categoryName)) {
       newSelected.delete(categoryName);
@@ -72,54 +104,72 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
 
     const newCategory = {
       name: customCategory.trim(),
-      icon: '📦',
+      icon: selectedEmoji,
+      description: customDescription.trim() || null,
       color: '#6B7280',
       is_custom: true
     };
 
     setCategories([...categories, newCategory]);
-    setSelectedCategories(prev => new Set([...prev, newCategory.name]));
+    toggleCategory(customCategory.trim());
     setCustomCategory('');
+    setCustomDescription('');
+    setSelectedEmoji('📦'); // Reset para o padrão
   };
 
-  const addSuggested = (category) => {
-    if (selectedCategories.has(category.name)) return;
-    
-    setCategories([...categories, { ...category, is_custom: true }]);
-    setSelectedCategories(prev => new Set([...prev, category.name]));
+  const removeCustomCategory = (categoryName) => {
+    setCategories(categories.filter(c => c.name !== categoryName));
+    const newSelected = new Set(selectedCategories);
+    newSelected.delete(categoryName);
+    setSelectedCategories(newSelected);
   };
 
   const saveCategories = async () => {
-    if (!organization) return;
+    if (!organization || selectedCategories.size === 0) return;
 
     setSaving(true);
-    try {
-      const allCategories = [...defaultCategories, ...categories.filter(c => c.is_custom)];
-      const categoriesToSave = allCategories.filter(cat => selectedCategories.has(cat.name));
 
-      await supabase
+    try {
+      const categoriesToSave = [
+        ...defaultCategories.filter(c => selectedCategories.has(c.name)),
+        ...suggestedCategories.filter(c => selectedCategories.has(c.name)),
+        ...categories.filter(c => c.is_custom && selectedCategories.has(c.name))
+      ];
+
+      // Verificar quais categorias já existem
+      const { data: existingCategories } = await supabase
         .from('budget_categories')
-        .delete()
+        .select('name')
         .eq('organization_id', organization.id);
 
-      if (categoriesToSave.length > 0) {
-        const insertData = categoriesToSave.map(cat => ({
-          organization_id: organization.id,
-          name: cat.name,
-          color: cat.color,
-          is_default: !cat.is_custom
-        }));
+      const existingNames = new Set(existingCategories?.map(c => c.name) || []);
 
-        await supabase
+      // Inserir apenas categorias novas
+      const newCategories = categoriesToSave.filter(c => !existingNames.has(c.name));
+
+      if (newCategories.length > 0) {
+        const { error } = await supabase
           .from('budget_categories')
-          .insert(insertData);
+          .insert(
+            newCategories.map(category => ({
+              organization_id: organization.id,
+              name: category.name,
+              icon: category.icon, // Salvar emoji na coluna 'icon'
+              description: category.description || null, // Descrição textual (opcional)
+              is_default: defaultCategories.some(dc => dc.name === category.name) // Marcar categorias padrão
+            }))
+          );
+
+        if (error) throw error;
       }
 
       if (onDataChange) {
-        onDataChange({ categories_selected: categoriesToSave.length });
+        onDataChange({ categories: categoriesToSave });
       }
 
-      onComplete();
+      if (onComplete) {
+        onComplete();
+      }
     } catch (error) {
       console.error('❌ Erro ao salvar categorias:', error);
     } finally {
@@ -132,155 +182,199 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+        <div className="w-16 h-16 border-4 border-[#207DFF]/30 border-t-[#207DFF] rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div className="text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-purple-500/30">
-          <Tag className="w-10 h-10 text-white" />
-        </div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+        <h2 className="text-3xl md:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
           Organize por Categorias
         </h2>
-        <p className="text-white/80 text-lg">
+        <p className="text-gray-600 text-lg xl:text-xl">
           Selecione as categorias que fazem sentido para você
         </p>
       </div>
 
       {/* Selected Counter */}
       {selectedCategories.size > 0 && (
-        <div className="bg-green-500/20 backdrop-blur-xl border border-green-400/30 rounded-2xl p-4 text-center">
-          <p className="text-green-200 font-semibold">
+        <div className="bg-[#5FFFA7]/10 border border-[#5FFFA7]/30 rounded-2xl p-4 xl:p-5 text-center shadow-lg">
+          <p className="text-[#207DFF] font-semibold text-base xl:text-lg">
             ✓ {selectedCategories.size} categoria{selectedCategories.size > 1 ? 's' : ''} selecionada{selectedCategories.size > 1 ? 's' : ''}
           </p>
         </div>
       )}
 
-      {/* Default Categories */}
+      {/* Selected Categories */}
       <div>
-        <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
-          <span>Categorias Essenciais</span>
+        <h3 className="text-xl xl:text-2xl font-bold text-gray-900 mb-4">
+          Categorias Selecionadas
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 xl:gap-4">
+          {/* Essential Categories (locked) */}
           {defaultCategories.map((category) => (
-            <button
+            <div
               key={category.name}
-              onClick={() => toggleCategory(category.name)}
-              className={`
-                p-4 rounded-2xl border-2 transition-all flex items-center space-x-3 group
-                ${selectedCategories.has(category.name)
-                  ? 'border-white/40 bg-white/20 backdrop-blur-xl shadow-lg scale-105'
-                  : 'border-white/20 bg-white/10 backdrop-blur-xl hover:bg-white/15 hover:border-white/30'
-                }
-              `}
+              className="p-4 rounded-2xl border-2 border-[#207DFF] bg-[#207DFF]/5 shadow-lg flex items-center space-x-3 cursor-default"
             >
               <div className="text-3xl">{category.icon}</div>
               <div className="flex-1 text-left">
-                <div className="font-semibold text-white">{category.name}</div>
+                <div className="font-semibold text-gray-900">{category.name}</div>
+                <div className="text-xs text-gray-500">Obrigatória</div>
               </div>
-              {selectedCategories.has(category.name) && (
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                  <Check className="w-4 h-4 text-white" />
-                </div>
-              )}
-            </button>
+              <div className="w-6 h-6 xl:w-7 xl:h-7 bg-[#207DFF] rounded-full flex items-center justify-center">
+                <Check className="w-4 h-4 xl:w-5 xl:h-5 text-white" />
+              </div>
+            </div>
           ))}
+          
+          {/* Selected Suggested Categories (removable) */}
+          {suggestedCategories
+            .filter(c => selectedCategories.has(c.name))
+            .map((category) => (
+              <button
+                key={category.name}
+                onClick={() => toggleCategory(category.name, false)}
+                className="p-4 rounded-2xl border-2 border-green-500 bg-green-50 shadow-lg flex items-center space-x-3 hover:bg-green-100 transition-all"
+              >
+                <div className="text-3xl">{category.icon}</div>
+                <div className="flex-1 text-left">
+                  <div className="font-semibold text-gray-900">{category.name}</div>
+                </div>
+                <div className="w-6 h-6 xl:w-7 xl:h-7 bg-green-500 rounded-full flex items-center justify-center">
+                  <Check className="w-4 h-4 xl:w-5 xl:h-5 text-white" />
+                </div>
+              </button>
+            ))}
+          
+          {/* Selected Custom Categories (removable) */}
+          {categories
+            .filter(c => c.is_custom && selectedCategories.has(c.name))
+            .map((category) => (
+              <button
+                key={category.name}
+                onClick={() => toggleCategory(category.name, false)}
+                className="p-4 rounded-2xl border-2 border-green-500 bg-green-50 shadow-lg flex items-center space-x-3 hover:bg-green-100 transition-all"
+              >
+                <div className="text-3xl">{category.icon}</div>
+                <div className="flex-1 text-left">
+                  <div className="font-semibold text-gray-900">{category.name}</div>
+                </div>
+                <div className="w-6 h-6 xl:w-7 xl:h-7 bg-green-500 rounded-full flex items-center justify-center">
+                  <Check className="w-4 h-4 xl:w-5 xl:h-5 text-white" />
+                </div>
+              </button>
+            ))}
         </div>
       </div>
 
       {/* Add Custom Category */}
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6">
-        <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
-          <Sparkles className="w-5 h-5 text-yellow-300" />
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 xl:p-8 shadow-lg">
+        <h3 className="text-xl xl:text-2xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+          <Sparkles className="w-5 h-5 xl:w-6 xl:h-6 text-[#207DFF]" />
           <span>Criar Categoria Personalizada</span>
         </h3>
-        <div className="flex space-x-3">
-          <input
-            type="text"
-            placeholder="Ex: Pets, Streaming, Academia..."
-            value={customCategory}
-            onChange={(e) => setCustomCategory(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addCustomCategory()}
-            className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          />
-          <button
-            onClick={addCustomCategory}
-            disabled={!customCategory.trim()}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Adicionar</span>
-          </button>
-        </div>
-
-        {/* Custom Categories List */}
-        {categories.filter(c => c.is_custom).length > 0 && (
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-            {categories.filter(c => c.is_custom).map((category) => (
-              <div
-                key={category.name}
-                className="p-4 rounded-2xl border-2 border-green-400/30 bg-green-500/20 backdrop-blur-xl flex items-center space-x-3"
+        
+        {/* Emoji Selector */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Escolha um emoji
+          </label>
+          <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200 max-h-32 overflow-y-auto">
+            {availableEmojis.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => setSelectedEmoji(emoji)}
+                className={`text-2xl p-2 rounded-lg transition-all hover:scale-110 ${
+                  selectedEmoji === emoji 
+                    ? 'bg-[#207DFF] shadow-lg scale-110' 
+                    : 'bg-white hover:bg-gray-100'
+                }`}
               >
-                <div className="text-2xl">{category.icon}</div>
-                <div className="flex-1">
-                  <div className="font-semibold text-white">{category.name}</div>
-                  <div className="text-green-300 text-xs">Personalizada</div>
-                </div>
-                <button
-                  onClick={() => {
-                    setCategories(categories.filter(c => c.name !== category.name));
-                    setSelectedCategories(prev => {
-                      const newSet = new Set(prev);
-                      newSet.delete(category.name);
-                      return newSet;
-                    });
-                  }}
-                  className="p-2 text-red-300 hover:text-red-200 hover:bg-red-500/20 rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+                {emoji}
+              </button>
             ))}
           </div>
-        )}
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex space-x-3">
+            <div className="w-14 h-12 bg-gray-100 border border-gray-300 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+              {selectedEmoji}
+            </div>
+            <input
+              type="text"
+              placeholder="Nome da categoria (Ex: Pets, Streaming, Academia...)"
+              value={customCategory}
+              onChange={(e) => setCustomCategory(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && addCustomCategory()}
+              className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#207DFF] focus:border-transparent"
+            />
+          </div>
+          
+          <div className="flex space-x-3">
+            <div className="w-14 flex-shrink-0"></div>
+            <input
+              type="text"
+              placeholder="Descrição (opcional, ex: Gastos com pets e veterinário)"
+              value={customDescription}
+              onChange={(e) => setCustomDescription(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && addCustomCategory()}
+              className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#207DFF] focus:border-transparent text-sm"
+            />
+            <button
+              onClick={addCustomCategory}
+              disabled={!customCategory.trim()}
+              className="px-6 py-3 xl:px-8 xl:py-4 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-xl font-semibold text-base xl:text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-md"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Adicionar</span>
+            </button>
+          </div>
+        </div>
+
       </div>
 
       {/* Suggested Categories */}
-      <div>
-        <h3 className="text-xl font-bold text-white mb-4">Sugestões Populares</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {suggestedCategories.filter(s => !selectedCategories.has(s.name)).map((category) => (
-            <button
-              key={category.name}
-              onClick={() => addSuggested(category)}
-              className="p-4 rounded-2xl border-2 border-dashed border-white/30 bg-white/5 hover:bg-white/10 hover:border-white/40 transition-all flex items-center space-x-3"
-            >
-              <div className="text-2xl">{category.icon}</div>
-              <div className="flex-1 text-left">
-                <div className="font-semibold text-white">{category.name}</div>
-              </div>
-              <Plus className="w-5 h-5 text-white/60" />
-            </button>
-          ))}
+      {suggestedCategories.some(c => !selectedCategories.has(c.name)) && (
+        <div>
+          <h3 className="text-xl xl:text-2xl font-bold text-gray-900 mb-4">
+            Sugestões para Você
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 xl:gap-4">
+            {suggestedCategories
+              .filter(c => !selectedCategories.has(c.name))
+              .map((category) => (
+                <button
+                  key={category.name}
+                  onClick={() => toggleCategory(category.name)}
+                  className="p-4 rounded-2xl border-2 border-gray-200 bg-white hover:bg-gray-50 hover:border-[#207DFF]/40 hover:shadow-lg transition-all flex flex-col items-center space-y-2 text-center group"
+                >
+                  <div className="text-3xl">{category.icon}</div>
+                  <div className="font-semibold text-gray-900 text-sm">{category.name}</div>
+                </button>
+              ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Info Box */}
-      <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-xl border border-blue-400/30 rounded-2xl p-6">
+      <div className="bg-white border border-[#207DFF]/20 rounded-2xl p-6 xl:p-8 shadow-lg">
         <div className="flex items-start space-x-4">
-          <Tag className="w-6 h-6 text-blue-300 flex-shrink-0 mt-1" />
+          <div className="flex-shrink-0">
+            <Tag className="w-6 h-6 xl:w-7 xl:h-7 text-[#207DFF]" />
+          </div>
           <div className="text-left">
-            <h4 className="font-semibold text-white mb-2">
-              Por que categorizar?
+            <h4 className="font-semibold text-gray-900 mb-2 text-base xl:text-lg">
+              Dica Importante
             </h4>
-            <p className="text-white/80 text-sm">
-              As categorias ajudam você a entender para onde seu dinheiro está indo. 
-              O Zul usa isso para criar análises inteligentes e identificar padrões! 📊
+            <p className="text-gray-600 text-sm xl:text-base">
+              Escolha categorias que façam sentido para o seu dia a dia. 
+              Você pode adicionar, editar ou remover categorias a qualquer momento nas configurações! 🏷️
             </p>
           </div>
         </div>
@@ -291,9 +385,9 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
         <button
           onClick={saveCategories}
           disabled={!canProceed || saving}
-          className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-2xl font-bold text-lg shadow-2xl hover:shadow-purple-500/50 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          className="px-8 py-4 xl:px-10 xl:py-5 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-full font-bold text-lg xl:text-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          {saving ? 'Salvando...' : canProceed ? `Salvar ${selectedCategories.size} Categorias` : 'Selecione pelo menos uma'}
+          {saving ? 'Salvando...' : canProceed ? 'Salvar e Continuar' : 'Selecione pelo menos uma'}
         </button>
       </div>
     </div>

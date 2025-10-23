@@ -9,6 +9,7 @@ export default function Categories() {
   const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError } = useOrganization();
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState('');
+  const [newIcon, setNewIcon] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -31,6 +32,7 @@ export default function Categories() {
         .insert({
           organization_id: organization.id,
           name: newCategory.trim(),
+          icon: newIcon.trim() || null,
           description: newDescription.trim() || null
         })
         .select()
@@ -40,6 +42,7 @@ export default function Categories() {
 
       setCategories(prev => [...prev, data]);
       setNewCategory('');
+      setNewIcon('');
       setNewDescription('');
     } catch (error) {
       console.error('Erro ao criar categoria:', error);
@@ -49,7 +52,13 @@ export default function Categories() {
     }
   }
 
-  async function handleDeleteCategory(categoryId) {
+  async function handleDeleteCategory(categoryId, isDefault) {
+    // Bloquear deleção de categorias padrão
+    if (isDefault) {
+      setError('Categorias padrão do sistema não podem ser excluídas');
+      return;
+    }
+
     if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
 
     setSaving(true);
@@ -125,7 +134,7 @@ export default function Categories() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Nome da Categoria
@@ -141,6 +150,19 @@ export default function Categories() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Emoji/Ícone (opcional)
+              </label>
+              <input
+                type="text"
+                value={newIcon}
+                onChange={(e) => setNewIcon(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-2xl text-center"
+                placeholder="🎯"
+                maxLength={4}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Descrição (opcional)
               </label>
               <input
@@ -148,7 +170,7 @@ export default function Categories() {
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Descrição da categoria"
+                placeholder="Ex: Gastos com viagens e turismo"
                 maxLength={100}
               />
             </div>
@@ -180,18 +202,34 @@ export default function Categories() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {categories.map((category) => (
-                <div key={category.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div key={category.id} className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                  category.is_default ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                }`}>
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-medium text-gray-900">{category.name}</h3>
-                    <button
-                      onClick={() => handleDeleteCategory(category.id)}
-                      disabled={saving}
-                      className="text-red-500 hover:text-red-700 disabled:opacity-50"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    <div className="flex-1 flex items-start space-x-2">
+                      {category.icon && (
+                        <span className="text-2xl">{category.icon}</span>
+                      )}
+                      <div>
+                        <h3 className="font-medium text-gray-900">{category.name}</h3>
+                        {category.is_default && (
+                          <span className="inline-block mt-1 text-xs text-blue-600 font-medium">
+                            Categoria Padrão
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {!category.is_default && (
+                      <button
+                        onClick={() => handleDeleteCategory(category.id, category.is_default)}
+                        disabled={saving}
+                        className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                   {category.description && (
                     <p className="text-sm text-gray-600 mb-2">{category.description}</p>
@@ -212,7 +250,8 @@ export default function Categories() {
             <li>• As categorias são específicas da sua organização</li>
             <li>• A IA usará essas categorias para classificar despesas automaticamente</li>
             <li>• Você pode criar até 20 categorias personalizadas</li>
-            <li>• Categorias com despesas não podem ser excluídas</li>
+            <li>• Categorias padrão do sistema não podem ser excluídas</li>
+            <li>• Categorias com despesas associadas não podem ser excluídas</li>
           </ul>
         </Card>
       </div>

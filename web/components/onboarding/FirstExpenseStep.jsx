@@ -125,27 +125,27 @@ export default function FirstExpenseStep({ organization, user, onComplete, onDat
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="w-16 h-16 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin"></div>
+        <div className="w-16 h-16 border-4 border-[#207DFF]/30 border-t-[#207DFF] rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (success) {
     return (
-      <div className="max-w-2xl mx-auto text-center space-y-8 py-12">
+      <div className="max-w-3xl xl:max-w-4xl mx-auto text-center space-y-8 py-12">
         <div className="relative">
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-32 h-32 bg-gradient-to-br from-green-500/30 to-blue-500/30 rounded-full animate-pulse" />
+            <div className="w-32 h-32 xl:w-40 xl:h-40 bg-gradient-to-br from-[#5FFFA7]/30 to-[#207DFF]/30 rounded-full animate-pulse" />
           </div>
-          <div className="relative w-32 h-32 mx-auto bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/50">
-            <CheckCircle className="w-16 h-16 text-white animate-[bounce_1s_ease-in-out]" />
+          <div className="relative w-32 h-32 xl:w-40 xl:h-40 mx-auto bg-gradient-to-br from-[#5FFFA7] to-[#207DFF] rounded-full flex items-center justify-center shadow-2xl shadow-[#5FFFA7]/50">
+            <CheckCircle className="w-16 h-16 xl:w-20 xl:h-20 text-white animate-[bounce_1s_ease-in-out]" />
           </div>
         </div>
         <div>
-          <h2 className="text-4xl font-bold text-white mb-3">
+          <h2 className="text-4xl xl:text-5xl font-bold text-white mb-3">
             Primeira Despesa Registrada! 🎉
           </h2>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-lg xl:text-xl">
             Agora você já pode ver suas análises no dashboard
           </p>
         </div>
@@ -154,22 +154,22 @@ export default function FirstExpenseStep({ organization, user, onComplete, onDat
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div className="text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-orange-500/30">
-          <TrendingUp className="w-10 h-10 text-white" />
+        <div className="w-20 h-20 xl:w-24 xl:h-24 bg-gradient-to-br from-[#207DFF] to-[#8FCBFF] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-[#207DFF]/40">
+          <TrendingUp className="w-10 h-10 xl:w-12 xl:h-12 text-white" />
         </div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+        <h2 className="text-3xl md:text-4xl xl:text-5xl font-bold text-white mb-3">
           Registre sua Primeira Despesa
         </h2>
-        <p className="text-white/80 text-lg">
+        <p className="text-white/80 text-lg xl:text-xl">
           Vamos testar como funciona o registro manual
         </p>
       </div>
 
       {/* Form */}
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 md:p-8 space-y-6">
+      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 md:p-8 xl:p-10 space-y-6">
         {/* Description */}
         <div>
           <label className="block text-white/80 text-sm font-medium mb-2">
@@ -263,7 +263,7 @@ export default function FirstExpenseStep({ organization, user, onComplete, onDat
         <button
           onClick={saveExpense}
           disabled={!canSave || saving}
-          className="w-full px-6 py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl font-bold text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none flex items-center justify-center space-x-2"
+          className="w-full px-6 py-4 xl:py-5 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] hover:from-[#207DFF] hover:to-[#207DFF] text-white rounded-xl font-bold text-lg xl:text-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#207DFF]/30 hover:shadow-xl hover:shadow-[#207DFF]/50 transform hover:scale-105 disabled:transform-none flex items-center justify-center space-x-2"
         >
           {saving ? (
             <>
@@ -280,14 +280,14 @@ export default function FirstExpenseStep({ organization, user, onComplete, onDat
       </div>
 
       {/* Info Box */}
-      <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-xl border border-blue-400/30 rounded-2xl p-6">
+      <div className="bg-gradient-to-r from-[#207DFF]/20 to-[#8FCBFF]/20 backdrop-blur-xl border border-[#207DFF]/30 rounded-2xl p-6 xl:p-8">
         <div className="flex items-start space-x-4">
-          <Sparkles className="w-6 h-6 text-yellow-300 flex-shrink-0 mt-1" />
+          <Sparkles className="w-6 h-6 xl:w-7 xl:h-7 text-[#5FFFA7] flex-shrink-0 mt-1" />
           <div className="text-left">
-            <h4 className="font-semibold text-white mb-2">
+            <h4 className="font-semibold text-white mb-2 text-base xl:text-lg">
               Dica do Zul
             </h4>
-            <p className="text-white/80 text-sm">
+            <p className="text-white/80 text-sm xl:text-base">
               Você também pode fazer isso conversando comigo no WhatsApp! 
               Basta enviar: <span className="font-mono bg-white/10 px-2 py-1 rounded">"Gastei 50 no mercado"</span>
             </p>
