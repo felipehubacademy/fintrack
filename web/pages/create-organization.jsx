@@ -121,6 +121,9 @@ export default function CreateOrganization() {
         return;
       }
 
+      // Normalizar telefone antes de criar conta
+      const normalizedPhone = formData.adminPhone.replace(/\D/g, '');
+      
       // Criar conta do usuário
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.adminEmail,
@@ -128,7 +131,7 @@ export default function CreateOrganization() {
         options: {
           data: {
             name: formData.adminName,
-            phone: formData.adminPhone
+            phone: normalizedPhone // Salvar apenas números
           }
         }
       });
@@ -160,7 +163,7 @@ export default function CreateOrganization() {
           organization_id: orgId,
           name: formData.adminName,
           email: formData.adminEmail,
-          phone: formData.adminPhone,
+          phone: normalizedPhone, // Salvar apenas números: 5511999999999
           role: 'admin'
         });
 
