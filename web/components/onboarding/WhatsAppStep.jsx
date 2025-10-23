@@ -128,18 +128,24 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
     setWarning(null);
 
     try {
-      const phoneWithCountryCode = '55' + phone.replace(/\D/g, '');
+      // Normalizar telefone (apenas números)
+      const normalizedPhone = phone.replace(/\D/g, '');
+      
+      // Garantir que comece com 55 (código do Brasil)
+      const phoneWithCountryCode = normalizedPhone.startsWith('55') 
+        ? normalizedPhone 
+        : '55' + normalizedPhone;
       
       console.log('📱 Enviando código para:', phoneWithCountryCode);
       console.log('👤 User ID:', user?.id);
       
       // Se o número é diferente do cadastrado, atualizar no banco primeiro
-      if (registeredPhone && phone.replace(/\D/g, '') !== registeredPhone.replace(/\D/g, '')) {
+      if (registeredPhone && normalizedPhone !== registeredPhone.replace(/\D/g, '')) {
         console.log('🔄 Atualizando telefone no banco...');
         const { error: updateError } = await supabase
           .from('users')
           .update({ 
-            phone: phoneWithCountryCode,
+            phone: phoneWithCountryCode, // Salvar com código do país: 5511999999999
             phone_verified: false // Reset verification status
           })
           .eq('id', user?.id);
@@ -151,7 +157,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
         
         console.log('✅ Telefone atualizado no banco');
         // Atualizar o número registrado no estado local
-        setRegisteredPhone(phone.replace(/\D/g, ''));
+        setRegisteredPhone(phoneWithCountryCode);
       }
 
       console.log('📤 Enviando requisição para /api/send-verification-code');
