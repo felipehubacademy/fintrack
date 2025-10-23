@@ -1,5 +1,6 @@
 import '../styles/globals.css';
 import Head from 'next/head';
+import { NotificationProvider } from '../contexts/NotificationContext';
 
 function MyApp({ Component, pageProps }) {
   return (
@@ -58,7 +59,9 @@ function MyApp({ Component, pageProps }) {
           }}
         />
       </Head>
-      <Component {...pageProps} />
+      <NotificationProvider>
+        <Component {...pageProps} />
+      </NotificationProvider>
     </>
   );
 }

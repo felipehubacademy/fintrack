@@ -6,7 +6,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import EngagementAnalyzer from '../../../../backend/services/engagementAnalyzer.js';
+import EngagementAnalyzer from '../../services/engagementAnalyzer.js';
 import ZulMessages from '../../../../backend/services/zulMessages.js';
 
 const supabase = createClient(

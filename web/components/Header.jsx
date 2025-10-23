@@ -2,20 +2,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
-import { Bell, Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 import Logo from './Logo';
 import Link from 'next/link';
+import NotificationBell from './NotificationBell';
 
 export default function Header({ 
   organization, 
   user: orgUser, 
-  pageTitle = null,
-  showNotificationModal = false,
-  setShowNotificationModal = () => {},
-  onUnreadCountChange = () => {}
+  pageTitle = null
 }) {
   const router = useRouter();
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -27,11 +24,6 @@ export default function Header({
     return router.pathname === path;
   };
 
-  // Handler para atualizar contador de notificações
-  const handleUnreadCountChange = (count) => {
-    setUnreadNotifications(count);
-    onUnreadCountChange(count);
-  };
 
   return (
     <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
@@ -139,21 +131,13 @@ export default function Header({
           </div>
           
           <div className="flex items-center space-x-3">
-            <div className="relative">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setShowNotificationModal(true)}
-              >
-                <Bell className="h-4 w-4" />
-              </Button>
-              {/* Contador tde notificações não lidas */}
-              {unreadNotifications > 0 && (
-                <div className="absolute -top-1 -right-1 bg-flight-blue text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                  {unreadNotifications}
-                </div>
-              )}
-            </div>
+            {/* Sistema de Notificações */}
+            {orgUser && organization && (
+              <NotificationBell 
+                userId={orgUser.id} 
+                organizationId={organization.id} 
+              />
+            )}
             <Link href="/dashboard/config">
               <Button variant="ghost" size="icon">
                 <Settings className="h-4 w-4" />
