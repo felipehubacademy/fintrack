@@ -5,6 +5,7 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import StatsCard from '../../components/ui/StatsCard';
 import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
@@ -301,72 +302,36 @@ export default function MonthlyClosing() {
         </Card>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Total Income */}
-          <Card className="border-2 border-green-200 bg-green-50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
-                <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
-                Total de Entradas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-700">
-                R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <p className="text-sm text-gray-600 mt-1">
-                {data.incomes.length} entrada(s)
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-3 w-full">
+          <StatsCard
+            title="Total de Entradas"
+            value={`R$ ${data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            icon={TrendingUp}
+            color="text-green-600"
+            bgColor="bg-green-50"
+            borderColor="border-green-200"
+            description={`${data.incomes.length} entrada(s)`}
+          />
 
-          {/* Total Expense */}
-          <Card className="border-2 border-red-200 bg-red-50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
-                <TrendingDown className="h-4 w-4 mr-2 text-red-600" />
-                Total de Saídas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-700">
-                R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <p className="text-sm text-gray-600 mt-1">
-                {data.expenses.length} despesa(s)
-              </p>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Total de Saídas"
+            value={`R$ ${data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            icon={TrendingDown}
+            color="text-red-600"
+            bgColor="bg-red-50"
+            borderColor="border-red-200"
+            description={`${data.expenses.length} despesa(s)`}
+          />
 
-          {/* Balance */}
-          <Card className={`border-2 ${
-            data.balance >= 0 
-              ? 'border-blue-200 bg-blue-50' 
-              : 'border-orange-200 bg-orange-50'
-          }`}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
-                <DollarSign className={`h-4 w-4 mr-2 ${
-                  data.balance >= 0 ? 'text-blue-600' : 'text-orange-600'
-                }`} />
-                Saldo do Mês
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-bold ${
-                data.balance >= 0 ? 'text-blue-700' : 'text-orange-700'
-              }`}>
-                R$ {Math.abs(data.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <Badge className={`mt-2 ${
-                data.balance >= 0 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'bg-orange-100 text-orange-800'
-              }`}>
-                {data.balance >= 0 ? 'Superávit' : 'Déficit'}
-              </Badge>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Saldo do Mês"
+            value={`R$ ${Math.abs(data.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            icon={DollarSign}
+            color={data.balance >= 0 ? "text-blue-600" : "text-orange-600"}
+            bgColor={data.balance >= 0 ? "bg-blue-50" : "bg-orange-50"}
+            borderColor={data.balance >= 0 ? "border-blue-200" : "border-orange-200"}
+            description={data.balance >= 0 ? 'Superávit' : 'Déficit'}
+          />
         </div>
 
         {/* Breakdown por Centro de Custo */}

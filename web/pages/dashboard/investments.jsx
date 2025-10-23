@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import StatsCard from '../../components/ui/StatsCard';
 import InvestmentGoalModal from '../../components/InvestmentGoalModal';
 import InvestmentProgressCard from '../../components/InvestmentProgressCard';
 import LoadingLogo from '../../components/LoadingLogo';
@@ -250,46 +251,33 @@ export default function InvestmentsDashboard() {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border border-flight-blue/20 bg-flight-blue/5">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Metas Ativas
-              </CardTitle>
-              <Target className="h-4 w-4 text-flight-blue" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{activeGoals.length}</div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-3 w-full">
+          <StatsCard
+            title="Metas Ativas"
+            value={activeGoals.length}
+            icon={Target}
+            color="text-flight-blue"
+            bgColor="bg-flight-blue/5"
+            borderColor="border-flight-blue/20"
+          />
 
-          <Card className="border border-green-200 bg-green-50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total Investido
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-900">
-                R$ {totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Total Investido"
+            value={`R$ ${totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            icon={TrendingUp}
+            color="text-green-600"
+            bgColor="bg-green-50"
+            borderColor="border-green-200"
+          />
 
-          <Card className="border border-flight-blue/20 bg-flight-blue/5">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Metas do Mês
-              </CardTitle>
-              <Target className="h-4 w-4 text-flight-blue" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                R$ {totalTargetAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Metas do Mês"
+            value={`R$ ${totalTargetAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            icon={Target}
+            color="text-flight-blue"
+            bgColor="bg-flight-blue/5"
+            borderColor="border-flight-blue/20"
+          />
         </div>
 
         {/* Goals List */}

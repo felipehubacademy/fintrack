@@ -80,24 +80,13 @@ BEGIN
     RAISE NOTICE '✅ Adicionada coluna whatsapp_phone em users';
   END IF;
   
-  -- Atualizar constraint de role para incluir 'viewer'
-  IF EXISTS (
-    SELECT 1 FROM information_schema.check_constraints 
-    WHERE constraint_name LIKE '%role%' AND table_name = 'users'
-  ) THEN
-    -- Verificar se já inclui viewer
-    IF NOT EXISTS (
-      SELECT 1 FROM information_schema.check_constraints 
-      WHERE constraint_name LIKE '%role%' AND table_name = 'users'
-      AND check_clause LIKE '%viewer%'
-    ) THEN
-      ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-      ALTER TABLE users 
-      ADD CONSTRAINT users_role_check 
-      CHECK (role IN ('admin', 'member', 'viewer'));
-      RAISE NOTICE '✅ Atualizada constraint de role em users para incluir viewer';
-    END IF;
-  END IF;
+  -- Atualizar constraint de role para incluir 'viewer' (simplificado)
+  -- Remover constraint antiga se existir e adicionar nova
+  ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+  ALTER TABLE users 
+  ADD CONSTRAINT users_role_check 
+  CHECK (role IN ('admin', 'member', 'viewer'));
+  RAISE NOTICE '✅ Atualizada constraint de role em users para incluir viewer';
 END $$;
 
 -- 1.4. Adicionar colunas em pending_invites se não existirem
@@ -123,23 +112,13 @@ BEGIN
     RAISE NOTICE '✅ Adicionada coluna role em pending_invites';
   END IF;
   
-  -- Atualizar constraint de role se necessário
-  IF EXISTS (
-    SELECT 1 FROM information_schema.check_constraints 
-    WHERE constraint_name LIKE '%role%' AND table_name = 'pending_invites'
-  ) THEN
-    IF NOT EXISTS (
-      SELECT 1 FROM information_schema.check_constraints 
-      WHERE constraint_name LIKE '%role%' AND table_name = 'pending_invites'
-      AND check_clause LIKE '%viewer%'
-    ) THEN
-      ALTER TABLE pending_invites DROP CONSTRAINT IF EXISTS pending_invites_role_check;
-      ALTER TABLE pending_invites 
-      ADD CONSTRAINT pending_invites_role_check 
-      CHECK (role IN ('admin', 'member', 'viewer'));
-      RAISE NOTICE '✅ Atualizada constraint de role em pending_invites para incluir viewer';
-    END IF;
-  END IF;
+  -- Atualizar constraint de role (simplificado)
+  -- Remover constraint antiga se existir e adicionar nova
+  ALTER TABLE pending_invites DROP CONSTRAINT IF EXISTS pending_invites_role_check;
+  ALTER TABLE pending_invites 
+  ADD CONSTRAINT pending_invites_role_check 
+  CHECK (role IN ('admin', 'member', 'viewer'));
+  RAISE NOTICE '✅ Atualizada constraint de role em pending_invites para incluir viewer';
 END $$;
 
 -- ============================================================================
@@ -397,7 +376,7 @@ BEGIN
     
     -- Validar que não ultrapassa 100%
     IF total_percentage > 100 THEN
-        RAISE EXCEPTION 'Soma dos percentuais não pode ultrapassar 100%% (atual: %%)', total_percentage;
+        RAISE EXCEPTION 'Soma dos percentuais não pode ultrapassar 100%% (atual: %)', total_percentage;
     END IF;
     
     RETURN NEW;
