@@ -123,19 +123,20 @@ export default function InvestmentGoalModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-        <Card className="border-0 shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5">
-            <CardTitle className="text-gray-900 font-semibold flex items-center space-x-2">
-              <Target className="h-5 w-5 text-flight-blue" />
-              <span>{editingGoal ? 'Editar Meta' : 'Nova Meta de Investimento'}</span>
-            </CardTitle>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-
-          <CardContent className="pt-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header fixo */}
+        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-lg flex items-center space-x-2">
+            <Target className="h-5 w-5 text-flight-blue" />
+            <span>{editingGoal ? 'Editar Meta' : 'Nova Meta de Investimento'}</span>
+          </h2>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-y-auto p-6 pt-0">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Nome da Meta */}
               <div>
@@ -300,28 +301,27 @@ export default function InvestmentGoalModal({
                 </div>
               )}
 
-              {/* Botões */}
-              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={onClose} 
-                  disabled={loading}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={loading}
-                  className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
-                >
-                  {loading ? 'Salvando...' : editingGoal ? 'Atualizar Meta' : 'Criar Meta'}
-                </Button>
-              </div>
             </form>
-          </CardContent>
-        </Card>
+        </div>
+        
+        {/* Footer fixo */}
+        <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+          >
+            {loading ? 'Salvando...' : editingGoal ? 'Atualizar Meta' : 'Criar Meta'}
+          </Button>
+        </div>
       </div>
     </div>
   );

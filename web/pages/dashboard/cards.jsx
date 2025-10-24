@@ -125,15 +125,14 @@ export default function CardsDashboard() {
           endDate = end.toISOString().split('T')[0];
         }
 
-        // somar despesas confirmadas desse cartão no ciclo
+        // somar TODAS as despesas confirmadas desse cartão (incluindo parcelas futuras)
+        // pois o crédito é consumido imediatamente na compra parcelada
         const { data: expenses } = await supabase
           .from('expenses')
           .select('amount')
           .eq('payment_method', 'credit_card')
           .eq('card_id', card.id)
-          .eq('status', 'confirmed')
-          .gte('date', startDate)
-          .lte('date', endDate);
+          .eq('status', 'confirmed');
 
         const used = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
         const limit = Number(card.credit_limit || 0);

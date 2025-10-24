@@ -18,7 +18,8 @@ import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 export default function FinanceDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const { organization, costCenters, loading: orgLoading, error: orgError, user: orgUser } = useOrganization();
+  const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError, user: orgUser } = useOrganization();
+  
   
   // Fallback para quando V2 não está configurado
   const isV2Ready = organization && organization.id !== 'default-org';
@@ -48,7 +49,19 @@ export default function FinanceDashboard() {
 
   useEffect(() => {
     checkUser();
-  }, []);
+    
+    // Verificar se há parâmetros de filtro na URL
+    if (router.isReady) {
+      const { card } = router.query;
+      if (card) {
+        setFilter(prev => ({
+          ...prev,
+          payment_method: 'credit_card',
+          card_id: card
+        }));
+      }
+    }
+  }, [router.isReady, router.query]);
 
   useEffect(() => {
     if (user) {
@@ -61,10 +74,23 @@ export default function FinanceDashboard() {
         isV2Ready 
       });
       fetchExpenses();
-      fetchCards();
       fetchCategories();
     }
   }, [user, filter, isV2Ready]);
+
+  // Buscar cartões quando a organização estiver disponível
+  useEffect(() => {
+    if (organization?.id && organization.id !== 'default-org') {
+      fetchCards();
+    }
+  }, [organization?.id]);
+
+  // Buscar categorias quando a organização estiver disponível
+  useEffect(() => {
+    if (organization?.id && organization.id !== 'default-org') {
+      fetchCategories();
+    }
+  }, [organization?.id]);
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -175,20 +201,16 @@ export default function FinanceDashboard() {
   };
 
   const fetchCards = async () => {
-    if (orgLoading) return;
-    
     setCardsLoading(true);
     try {
-      console.log('🔍 [FINANCE] Starting fetchCards...');
-      
       let query = supabase
         .from('cards')
         .select('*')
         .eq('is_active', true)
         .order('name', { ascending: true });
 
-      // Escopo por organização (V2) - só se V2 estiver configurado
-      if (isV2Ready) {
+      // Escopo por organização
+      if (organization?.id && organization.id !== 'default-org') {
         query = query.eq('organization_id', organization.id);
       }
 
@@ -199,7 +221,6 @@ export default function FinanceDashboard() {
         return;
       }
 
-      console.log('✅ [FINANCE] Cartões carregados:', data?.length || 0);
       setCards(data || []);
     } catch (error) {
       console.error('❌ [FINANCE] Erro ao buscar cartões:', error);
@@ -209,7 +230,9 @@ export default function FinanceDashboard() {
   };
 
   const fetchCategories = async () => {
-    if (orgLoading || !isV2Ready) return;
+    if (!organization?.id || organization.id === 'default-org') {
+      return;
+    }
     
     try {
       const { data, error } = await supabase
@@ -223,7 +246,6 @@ export default function FinanceDashboard() {
         return;
       }
 
-      console.log('✅ [FINANCE] Categorias carregadas:', data?.length || 0);
       setCategories(data || []);
     } catch (error) {
       console.error('❌ [FINANCE] Erro ao buscar categorias:', error);
@@ -654,7 +676,24 @@ export default function FinanceDashboard() {
             {/* Filtro Por Cartão - só aparece quando Forma = Cartão de Crédito */}
             {filter.payment_method === 'credit_card' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Por Cartão</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Por Cartão
+                    {filter.card_id && (
+                      <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Filtrado
+                      </span>
+                    )}
+                  </label>
+                  {filter.card_id && (
+                    <button
+                      onClick={() => setFilter({ ...filter, card_id: null })}
+                      className="text-xs text-gray-500 hover:text-gray-700 underline"
+                    >
+                      Limpar filtro
+                    </button>
+                  )}
+                </div>
                 <select
                   value={filter.card_id || 'all'}
                   onChange={(e) => setFilter({ ...filter, card_id: e.target.value === 'all' ? null : e.target.value })}
@@ -767,7 +806,7 @@ export default function FinanceDashboard() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {expense.card_id ? (() => {
                         const card = cards.find(c => c.id === expense.card_id);
-                        return card ? card.name : '-';
+                        return card ? card.name : (cardsLoading ? 'Carregando...' : '-');
                       })() : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -892,6 +931,7 @@ export default function FinanceDashboard() {
         isOpen={showExpenseModal}
         onClose={() => setShowExpenseModal(false)}
         onSuccess={() => { setShowExpenseModal(false); fetchExpenses(); fetchCards(); }}
+        categories={categories}
       />
 
       {/* Modal de edição */}

@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 
-export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
+export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = [] }) {
+  
   const { organization, user: orgUser, costCenters, loading: orgLoading } = useOrganization();
+  
   const [cards, setCards] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
@@ -30,17 +31,17 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
 
   useEffect(() => {
     if (!isOpen) return;
-    // Load categories and cards for org
+    // Load cards for org
     const load = async () => {
       if (organization?.id && organization.id !== 'default-org') {
-        const [{ data: cats }, { data: cardsData }] = await Promise.all([
-          supabase.from('budget_categories').select('*').eq('organization_id', organization.id).order('name'),
-          supabase.from('cards').select('*').eq('organization_id', organization.id).eq('is_active', true).order('name')
-        ]);
-        setCategories(cats || []);
+        const { data: cardsData } = await supabase
+          .from('cards')
+          .select('*')
+          .eq('organization_id', organization.id)
+          .eq('is_active', true)
+          .order('name');
         setCards(cardsData || []);
       } else {
-        setCategories([]);
         setCards([]);
       }
     };
@@ -84,6 +85,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
         percentage: parseFloat(cc.default_split_percentage || 0),
         amount: 0
       }));
+      
       setSplitDetails(defaultSplits);
     } else if (!isShared) {
       // Limpar splits se não for compartilhado
@@ -102,6 +104,23 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
       })));
     }
   }, [form.amount, isShared]);
+
+  // Recriar splitDetails quando showSplitConfig muda para true
+  useEffect(() => {
+    if (isShared && showSplitConfig && splitDetails.length === 0) {
+      const totalAmount = parseFloat(form.amount) || 0;
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      const defaultSplits = activeCenters.map(cc => ({
+        cost_center_id: cc.id,
+        name: cc.name,
+        color: cc.color,
+        percentage: parseFloat(cc.default_split_percentage || 0),
+        amount: (totalAmount * parseFloat(cc.default_split_percentage || 0)) / 100
+      }));
+      
+      setSplitDetails(defaultSplits);
+    }
+  }, [isShared, showSplitConfig, costCenters, form.amount]);
 
   // Calcular total de percentuais
   const totalPercentage = useMemo(() => {
@@ -123,45 +142,57 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
 
   const resetToDefaultSplit = () => {
     const totalAmount = parseFloat(form.amount) || 0;
-    const individualCenters = costCenters.filter(cc => cc.type === 'individual');
-    const defaultSplits = individualCenters.map(cc => ({
+    const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+    const defaultSplits = activeCenters.map(cc => ({
       cost_center_id: cc.id,
       name: cc.name,
       color: cc.color,
-      percentage: parseFloat(cc.split_percentage || 0),
-      amount: (totalAmount * parseFloat(cc.split_percentage || 0)) / 100
+      percentage: parseFloat(cc.default_split_percentage || 0),
+      amount: (totalAmount * parseFloat(cc.default_split_percentage || 0)) / 100
     }));
     setSplitDetails(defaultSplits);
     setShowSplitConfig(false);
   };
 
-  if (!isOpen) return null;
-
   const handleSave = async () => {
-    if (!organization?.id || !orgUser?.id) return;
-    if (!form.description || !form.amount || !form.date) return;
-    if (!form.owner_name) return;
+    if (!organization?.id || !orgUser?.id) {
+      alert('Erro: Organização ou usuário não encontrados');
+      return;
+    }
+    if (!form.description || !form.amount || !form.date) {
+      alert('Erro: Preencha todos os campos obrigatórios');
+      return;
+    }
+    if (!form.owner_name) {
+      alert('Erro: Selecione um responsável');
+      return;
+    }
     
     // Validar splits se for compartilhado
     if (isShared && totalPercentage !== 100) {
-      alert('A divisão deve somar exatamente 100%');
+      alert(`A divisão deve somar exatamente 100%. Atual: ${totalPercentage}%`);
       return;
     }
     
     setSaving(true);
+    
     try {
       // Resolve IDs by selections
       const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
       const category = categories.find(c => c.id === form.category_id);
-      if (!selectedOption) throw new Error('Responsável inválido');
+      
+      if (!selectedOption) {
+        throw new Error('Responsável inválido');
+      }
       
       // Para "Compartilhado", cost_center_id é NULL
       const costCenter = selectedOption.isShared ? null : selectedOption;
 
       if (isCredit) {
         if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
+        
         // Call create_installments RPC
-        const { error } = await supabase.rpc('create_installments', {
+        const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
           p_amount: Number(form.amount),
           p_installments: Number(form.installments),
           p_description: form.description,
@@ -175,6 +206,24 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
           p_whatsapp_message_id: null
         });
         if (error) throw error;
+
+        // Se for compartilhado, salvar splits para a despesa principal
+        if (isShared && splitDetails.length > 0) {
+          const splitsToInsert = splitDetails.map(split => ({
+            expense_id: parentExpenseId,
+            cost_center_id: split.cost_center_id,
+            percentage: split.percentage,
+            amount: split.amount
+          }));
+
+          const { error: splitError } = await supabase
+            .from('expense_splits')
+            .insert(splitsToInsert);
+
+          if (splitError) {
+            throw splitError;
+          }
+        }
       } else {
         // Insert single expense
         const insertData = {
@@ -203,8 +252,8 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
         
         if (error) throw error;
 
-        // Se for compartilhado e tiver personalização, salvar splits
-        if (isShared && showSplitConfig && splitDetails.length > 0) {
+        // Se for compartilhado, sempre salvar splits (padrão ou personalizado)
+        if (isShared && splitDetails.length > 0) {
           const splitsToInsert = splitDetails.map(split => ({
             expense_id: expense.id,
             cost_center_id: split.cost_center_id,
@@ -216,38 +265,40 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
             .from('expense_splits')
             .insert(splitsToInsert);
 
-          if (splitError) throw splitError;
+          if (splitError) {
+            throw splitError;
+          }
         }
       }
       onClose?.();
       onSuccess?.();
     } catch (e) {
       alert('Erro ao salvar despesa: ' + (e.message || 'Erro desconhecido'));
-      // eslint-disable-next-line no-console
-      console.error(e);
     } finally {
       setSaving(false);
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-hidden border border-flight-blue/20">
-        <Card className="border-0 shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
-            <CardTitle className="flex items-center space-x-3">
-              <span className="text-gray-900 font-semibold">Nova Despesa</span>
-            </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={onClose}
-              className="text-gray-700 hover:bg-gray-100"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent className="pt-6">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
+        {/* Header fixo */}
+        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-lg">Nova Despesa</h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose}
+            className="text-gray-700 hover:bg-gray-100"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-y-auto p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
@@ -424,26 +475,26 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess }) {
                 )}
               </div>
             )}
-
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={onClose}
-                disabled={saving}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
-              >
-                {saving ? 'Salvando...' : 'Salvar'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        </div>
+        
+        {/* Footer fixo */}
+        <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={saving}
+            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+          >
+            {saving ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </div>
       </div>
     </div>
   );

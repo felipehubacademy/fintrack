@@ -1,8 +1,4 @@
--- Corrigir status das parcelas na função create_installments
--- REGRA: Se for 1x (à vista no crédito) -> confirmed
---        Se for 2x+: primeira parcela -> confirmed, demais -> pending
-
--- Drop da função existente primeiro
+-- Corrigir função create_installments para retornar BIGINT
 DROP FUNCTION IF EXISTS create_installments(numeric,integer,text,date,uuid,uuid,uuid,text,uuid,uuid,text);
 
 CREATE OR REPLACE FUNCTION create_installments(
@@ -12,8 +8,8 @@ CREATE OR REPLACE FUNCTION create_installments(
     p_date DATE,
     p_card_id UUID,
     p_category_id UUID,
-    p_cost_center_id UUID,  -- NULL quando compartilhado
-    p_owner TEXT,           -- 'Compartilhado' quando compartilhado
+    p_cost_center_id UUID,
+    p_owner TEXT,
     p_organization_id UUID,
     p_user_id UUID,
     p_whatsapp_message_id TEXT DEFAULT NULL
@@ -25,13 +21,9 @@ DECLARE
     i INTEGER;
     is_shared BOOLEAN;
 BEGIN
-    -- Verificar se é despesa compartilhada
     is_shared := (p_cost_center_id IS NULL AND LOWER(p_owner) = 'compartilhado');
-    
-    -- Calcular valor da parcela
     installment_amount := ROUND(p_amount / p_installments, 2);
     
-    -- Criar despesa "pai" (primeira parcela) - SEMPRE CONFIRMED
     INSERT INTO expenses (
         amount, description, date, payment_method, card_id,
         category_id, cost_center_id, owner, organization_id, user_id,
@@ -49,16 +41,14 @@ BEGIN
         ),
         NULL,
         is_shared,
-        'confirmed',  -- Primeira parcela sempre confirmada (seja 1x ou 2x+)
-        NOW(),        -- confirmed_at
-        p_user_id,    -- confirmed_by
-        'manual'      -- source
+        'confirmed',
+        NOW(),
+        p_user_id,
+        'manual'
     ) RETURNING id INTO parent_id;
     
-    -- Atualizar a primeira parcela para referenciar a si mesma
     UPDATE expenses SET parent_expense_id = parent_id WHERE id = parent_id;
     
-    -- Criar parcelas futuras APENAS se for 2x ou mais (2+) - PENDING
     IF p_installments > 1 THEN
         FOR i IN 2..p_installments LOOP
             installment_date := p_date + (i - 1) * INTERVAL '1 month';
@@ -77,7 +67,7 @@ BEGIN
                     'total_amount', p_amount
                 ),
                 parent_id,
-                'pending',  -- Parcelas futuras ficam pending
+                'pending',
                 is_shared,
                 'manual'
             );
@@ -87,5 +77,3 @@ BEGIN
     RETURN parent_id;
 END;
 $$ LANGUAGE plpgsql;
-
-COMMENT ON FUNCTION create_installments IS 'Cria parcelas: 1x=confirmed, 2x+=primeira confirmed e demais pending';

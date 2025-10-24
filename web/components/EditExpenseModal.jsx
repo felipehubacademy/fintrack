@@ -12,6 +12,7 @@ export default function EditExpenseModal({
   costCenters = [],
   categories = [] // Adicionar categorias via props
 }) {
+  
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -128,12 +129,12 @@ export default function EditExpenseModal({
   // Inicializar divisão quando "Compartilhado" for selecionado
   useEffect(() => {
     if (isShared && splitDetails.length === 0) {
-      const individualCenters = costCenters.filter(cc => cc.type === 'individual');
-      const defaultSplits = individualCenters.map(cc => ({
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      const defaultSplits = activeCenters.map(cc => ({
         cost_center_id: cc.id,
         name: cc.name,
         color: cc.color,
-        percentage: parseFloat(cc.split_percentage || 0),
+        percentage: parseFloat(cc.default_split_percentage || 0),
         amount: 0
       }));
       setSplitDetails(defaultSplits);
@@ -155,6 +156,22 @@ export default function EditExpenseModal({
     }
   }, [editData.amount, isShared]);
 
+  // Recriar splitDetails quando showSplitConfig muda para true
+  useEffect(() => {
+    if (isShared && showSplitConfig && splitDetails.length === 0) {
+      const totalAmount = parseFloat(editData.amount) || 0;
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      const defaultSplits = activeCenters.map(cc => ({
+        cost_center_id: cc.id,
+        name: cc.name,
+        color: cc.color,
+        percentage: parseFloat(cc.default_split_percentage || 0),
+        amount: (totalAmount * parseFloat(cc.default_split_percentage || 0)) / 100
+      }));
+      setSplitDetails(defaultSplits);
+    }
+  }, [isShared, showSplitConfig, costCenters, editData.amount]);
+
   const totalPercentage = useMemo(() => {
     return splitDetails.reduce((sum, split) => sum + (parseFloat(split.percentage) || 0), 0);
   }, [splitDetails]);
@@ -174,13 +191,13 @@ export default function EditExpenseModal({
 
   const resetToDefaultSplit = () => {
     const totalAmount = parseFloat(editData.amount) || 0;
-    const individualCenters = costCenters.filter(cc => cc.type === 'individual');
-    const defaultSplits = individualCenters.map(cc => ({
+    const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+    const defaultSplits = activeCenters.map(cc => ({
       cost_center_id: cc.id,
       name: cc.name,
       color: cc.color,
-      percentage: parseFloat(cc.split_percentage || 0),
-      amount: (totalAmount * parseFloat(cc.split_percentage || 0)) / 100
+      percentage: parseFloat(cc.default_split_percentage || 0),
+      amount: (totalAmount * parseFloat(cc.default_split_percentage || 0)) / 100
     }));
     setSplitDetails(defaultSplits);
     setShowSplitConfig(false);
@@ -279,23 +296,22 @@ export default function EditExpenseModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-hidden border border-flight-blue/20">
-        <Card className="border-0 shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
-            <CardTitle className="flex items-center space-x-3">
-              <span className="text-gray-900 font-semibold">Editar Despesa</span>
-            </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={onClose}
-              className="text-gray-700 hover:bg-gray-100"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          
-          <CardContent className="pt-6 max-h-[calc(90vh-140px)] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
+        {/* Header fixo */}
+        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-lg">Editar Despesa</h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose}
+            className="text-gray-700 hover:bg-gray-100"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-y-auto p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
@@ -338,7 +354,7 @@ export default function EditExpenseModal({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
                   <option value="">Selecione...</option>
-                  {categories.map(cat => (
+                  {categories?.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
@@ -443,26 +459,26 @@ export default function EditExpenseModal({
                 )}
               </div>
             )}
-
-            <div className="flex justify-end space-x-3 pt-8 border-t border-gray-200 mt-6">
-              <Button
-                variant="outline"
-                onClick={onClose}
-                disabled={saving}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
-              >
-                {saving ? 'Salvando...' : 'Salvar Alterações'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        </div>
+        
+        {/* Footer fixo */}
+        <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={saving}
+            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+          >
+            {saving ? 'Salvando...' : 'Salvar Alterações'}
+          </Button>
+        </div>
       </div>
     </div>
   );

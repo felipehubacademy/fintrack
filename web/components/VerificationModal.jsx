@@ -108,9 +108,9 @@ export default function VerificationModal({ user, onVerified }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 border border-gray-200">
-        {/* Header */}
-        <div className="text-center mb-8">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-gray-200 flex flex-col max-h-[90vh]">
+        {/* Header fixo */}
+        <div className="text-center p-8 pb-6 flex-shrink-0">
           <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Smartphone className="w-8 h-8 text-white" />
           </div>
@@ -122,8 +122,9 @@ export default function VerificationModal({ user, onVerified }) {
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={verifyCode} className="space-y-6">
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-y-auto px-8 pb-6">
+          <form onSubmit={verifyCode} className="space-y-6">
           {/* Code Input */}
           <div>
             <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
@@ -222,11 +223,12 @@ export default function VerificationModal({ user, onVerified }) {
               </p>
             </div>
           </div>
+          </form>
         </div>
 
-        {/* Footer Note */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
+        {/* Footer fixo */}
+        <div className="p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-3xl flex-shrink-0">
+          <p className="text-xs text-gray-500 text-center">
             Precisamos verificar seu WhatsApp para enviar notificações e permitir que você converse com o Zul
           </p>
         </div>

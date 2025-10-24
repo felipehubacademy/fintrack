@@ -18,9 +18,9 @@ export default function DuplicateUserModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        {/* Header fixo */}
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl flex-shrink-0">
           <div className="flex items-center space-x-3">
             <AlertTriangle className="w-8 h-8" />
             <div>
@@ -30,8 +30,8 @@ export default function DuplicateUserModal({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Email Duplicate */}
           {hasEmailDuplicate && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -139,33 +139,36 @@ export default function DuplicateUserModal({
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="bg-gray-50 px-6 py-4 rounded-b-2xl flex flex-col sm:flex-row gap-3 justify-end">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="w-full sm:w-auto"
-          >
-            Cancelar
-          </Button>
-          
-          {hasEmailDuplicate && (
+        
+        {/* Footer fixo */}
+        <div className="p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl flex-shrink-0">
+          <div className="flex flex-col sm:flex-row gap-3 justify-end">
             <Button
-              onClick={() => onLoginExisting(checks.email.user)}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+              onClick={onClose}
+              variant="outline"
+              className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50"
             >
-              <ArrowRight className="w-4 h-4 mr-2" />
-              Fazer Login
+              Cancelar
             </Button>
-          )}
-          
-          <Button
-            onClick={onCreateNew}
-            variant="outline"
-            className="w-full sm:w-auto border-orange-300 text-orange-700 hover:bg-orange-50"
-          >
-            Continuar Cadastro
-          </Button>
+            
+            {hasEmailDuplicate && (
+              <Button
+                onClick={() => onLoginExisting(checks.email.user)}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+              >
+                <ArrowRight className="w-4 h-4 mr-2" />
+                Fazer Login
+              </Button>
+            )}
+            
+            <Button
+              onClick={onCreateNew}
+              variant="outline"
+              className="w-full sm:w-auto border-orange-300 text-orange-700 hover:bg-orange-50"
+            >
+              Continuar Cadastro
+            </Button>
+          </div>
         </div>
       </div>
     </div>

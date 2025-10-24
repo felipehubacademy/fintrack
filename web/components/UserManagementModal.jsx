@@ -185,23 +185,22 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-hidden border border-flight-blue/20">
-        <Card className="border-0 shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
-            <CardTitle className="flex items-center space-x-3">
-              <span className="text-gray-900 font-semibold">Gerenciar Usuários</span>
-            </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={onClose}
-              className="text-gray-700 hover:bg-gray-100"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          
-          <CardContent className="pt-6 space-y-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
+        {/* Header fixo */}
+        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-lg">Gerenciar Usuários</h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose}
+            className="text-gray-700 hover:bg-gray-100"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-6">
             {/* Message */}
             {message.text && (
               <div className={`p-3 rounded-lg ${
@@ -438,8 +437,18 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </div>
+        
+        {/* Footer fixo */}
+        <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            Fechar
+          </Button>
+        </div>
       </div>
     </div>
   );

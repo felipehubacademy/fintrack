@@ -1,8 +1,5 @@
--- Corrigir status das parcelas na função create_installments
--- REGRA: Se for 1x (à vista no crédito) -> confirmed
---        Se for 2x+: primeira parcela -> confirmed, demais -> pending
-
--- Drop da função existente primeiro
+-- Corrigir função create_installments para que todas as parcelas sejam confirmadas
+-- e consumam o crédito do cartão imediatamente
 DROP FUNCTION IF EXISTS create_installments(numeric,integer,text,date,uuid,uuid,uuid,text,uuid,uuid,text);
 
 CREATE OR REPLACE FUNCTION create_installments(
@@ -12,8 +9,8 @@ CREATE OR REPLACE FUNCTION create_installments(
     p_date DATE,
     p_card_id UUID,
     p_category_id UUID,
-    p_cost_center_id UUID,  -- NULL quando compartilhado
-    p_owner TEXT,           -- 'Compartilhado' quando compartilhado
+    p_cost_center_id UUID,
+    p_owner TEXT,
     p_organization_id UUID,
     p_user_id UUID,
     p_whatsapp_message_id TEXT DEFAULT NULL
@@ -24,22 +21,25 @@ DECLARE
     installment_date DATE;
     i INTEGER;
     is_shared BOOLEAN;
+    category_name TEXT;
 BEGIN
-    -- Verificar se é despesa compartilhada
     is_shared := (p_cost_center_id IS NULL AND LOWER(p_owner) = 'compartilhado');
-    
-    -- Calcular valor da parcela
     installment_amount := ROUND(p_amount / p_installments, 2);
     
-    -- Criar despesa "pai" (primeira parcela) - SEMPRE CONFIRMED
+    -- Buscar nome da categoria se category_id foi fornecido
+    IF p_category_id IS NOT NULL THEN
+        SELECT name INTO category_name FROM budget_categories WHERE id = p_category_id;
+    END IF;
+    
+    -- Criar despesa "pai" (primeira parcela) - CONFIRMADA
     INSERT INTO expenses (
         amount, description, date, payment_method, card_id,
-        category_id, cost_center_id, owner, organization_id, user_id,
+        category_id, category, cost_center_id, owner, organization_id, user_id,
         whatsapp_message_id, installment_info, parent_expense_id, split,
         status, confirmed_at, confirmed_by, source
     ) VALUES (
         installment_amount, p_description, p_date, 'credit_card', p_card_id,
-        p_category_id, p_cost_center_id, p_owner, p_organization_id, p_user_id,
+        p_category_id, category_name, p_cost_center_id, p_owner, p_organization_id, p_user_id,
         p_whatsapp_message_id,
         jsonb_build_object(
             'total_installments', p_installments,
@@ -49,27 +49,28 @@ BEGIN
         ),
         NULL,
         is_shared,
-        'confirmed',  -- Primeira parcela sempre confirmada (seja 1x ou 2x+)
-        NOW(),        -- confirmed_at
-        p_user_id,    -- confirmed_by
-        'manual'      -- source
+        'confirmed',  -- ✅ PRIMEIRA PARCELA CONFIRMADA
+        NOW(),
+        p_user_id,
+        'manual'
     ) RETURNING id INTO parent_id;
     
     -- Atualizar a primeira parcela para referenciar a si mesma
     UPDATE expenses SET parent_expense_id = parent_id WHERE id = parent_id;
     
-    -- Criar parcelas futuras APENAS se for 2x ou mais (2+) - PENDING
+    -- Criar parcelas futuras APENAS se for 2x ou mais (2+) - TODAS CONFIRMADAS
     IF p_installments > 1 THEN
         FOR i IN 2..p_installments LOOP
             installment_date := p_date + (i - 1) * INTERVAL '1 month';
             
             INSERT INTO expenses (
                 amount, description, date, payment_method, card_id,
-                category_id, cost_center_id, owner, organization_id, user_id,
-                installment_info, parent_expense_id, status, split, source
+                category_id, category, cost_center_id, owner, organization_id, user_id,
+                installment_info, parent_expense_id, status, split, source,
+                confirmed_at, confirmed_by  -- ✅ PARCELAS FUTURAS TAMBÉM CONFIRMADAS
             ) VALUES (
                 installment_amount, p_description, installment_date, 'credit_card', p_card_id,
-                p_category_id, p_cost_center_id, p_owner, p_organization_id, p_user_id,
+                p_category_id, category_name, p_cost_center_id, p_owner, p_organization_id, p_user_id,
                 jsonb_build_object(
                     'total_installments', p_installments,
                     'current_installment', i,
@@ -77,9 +78,11 @@ BEGIN
                     'total_amount', p_amount
                 ),
                 parent_id,
-                'pending',  -- Parcelas futuras ficam pending
+                'confirmed',  -- ✅ PARCELAS FUTURAS CONFIRMADAS
                 is_shared,
-                'manual'
+                'manual',
+                NOW(),        -- ✅ confirmed_at
+                p_user_id     -- ✅ confirmed_by
             );
         END LOOP;
     END IF;
@@ -87,5 +90,3 @@ BEGIN
     RETURN parent_id;
 END;
 $$ LANGUAGE plpgsql;
-
-COMMENT ON FUNCTION create_installments IS 'Cria parcelas: 1x=confirmed, 2x+=primeira confirmed e demais pending';

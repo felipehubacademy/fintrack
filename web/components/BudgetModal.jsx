@@ -67,23 +67,22 @@ export default function BudgetModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl border border-flight-blue/20">
-        <Card className="border-0 shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
-            <CardTitle className="flex items-center space-x-3">
-              <span className="text-gray-900 font-semibold">{editingBudget ? 'Editar Orçamento' : 'Novo Orçamento'}</span>
-            </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={onClose}
-              className="text-gray-700 hover:bg-gray-100"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          
-          <CardContent className="pt-6">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl border border-flight-blue/20 flex flex-col max-h-[90vh]">
+        {/* Header fixo */}
+        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-lg">{editingBudget ? 'Editar Orçamento' : 'Novo Orçamento'}</h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose}
+            className="text-gray-700 hover:bg-gray-100"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-y-auto p-6 pt-0">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -125,27 +124,27 @@ export default function BudgetModal({
                 <p><strong>Funcionalidade:</strong> Orçamento da família para esta categoria. Todas as despesas da categoria serão somadas, independente de quem gastou.</p>
               </div>
               
-              <div className="flex justify-end space-x-3 pt-8 border-t border-gray-200">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={onClose}
-                  disabled={saving}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  type="submit"
-                  disabled={saving}
-                  className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
-                >
-                  {saving ? 'Salvando...' : (editingBudget ? 'Salvar' : 'Criar')}
-                </Button>
-              </div>
             </form>
-          </CardContent>
-        </Card>
+        </div>
+        
+        {/* Footer fixo */}
+        <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={saving}
+            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+          >
+            {saving ? 'Salvando...' : (editingBudget ? 'Salvar' : 'Criar')}
+          </Button>
+        </div>
       </div>
     </div>
   );
