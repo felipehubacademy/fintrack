@@ -9,7 +9,7 @@ import BankTransactionModal from '../../components/BankTransactionModal';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import LoadingLogo from '../../components/LoadingLogo';
-import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2 } from 'lucide-react';
 import StatsCard from '../../components/ui/StatsCard';
 
 export default function BankAccounts() {
@@ -144,7 +144,7 @@ export default function BankAccounts() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <StatsCard
             title="Total em Contas"
             value={`R$ ${stats.totalBalance.toFixed(2)}`}
@@ -162,11 +162,6 @@ export default function BankAccounts() {
             value={`R$ ${stats.negativeBalance.toFixed(2)}`}
             icon={TrendingDown}
             trend="down"
-          />
-          <StatsCard
-            title="Total de Contas"
-            value={stats.totalAccounts}
-            icon={Building2}
           />
         </div>
 
@@ -189,35 +184,20 @@ export default function BankAccounts() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {accounts.map(account => (
-              <Card key={account.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className={`p-2 rounded-lg ${
-                        account.account_type === 'checking' 
-                          ? 'bg-blue-100' 
-                          : 'bg-green-100'
-                      }`}>
-                        <Building2 className={`h-5 w-5 ${
-                          account.account_type === 'checking' 
-                            ? 'text-blue-600' 
-                            : 'text-green-600'
-                        }`} />
-                      </div>
-                      <div>
+              <Card key={account.id} className="border border-flight-blue/20 bg-white shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden">
+                <CardContent className="bg-flight-blue/5 p-6">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      {!account.is_active && (
+                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                          Inativa
+                        </span>
+                      )}
+                      <div className="text-right ml-auto">
                         <h3 className="font-semibold text-gray-900">{account.name}</h3>
                         <p className="text-sm text-gray-500">{account.bank}</p>
                       </div>
                     </div>
-                    {!account.is_active && (
-                      <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
-                        Inativa
-                      </span>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Tipo</p>
                       <p className="text-sm font-medium text-gray-900">
@@ -228,7 +208,7 @@ export default function BankAccounts() {
                       <p className="text-xs text-gray-500 mb-1">Saldo Atual</p>
                       <p className={`text-2xl font-bold ${
                         parseFloat(account.current_balance || 0) >= 0
-                          ? 'text-green-600'
+                          ? 'text-flight-blue'
                           : 'text-red-600'
                       }`}>
                         R$ {parseFloat(account.current_balance || 0).toFixed(2)}
@@ -238,36 +218,34 @@ export default function BankAccounts() {
                       <p className="text-xs text-gray-500 mb-1">Propriedade</p>
                       <p className="text-sm text-gray-700">{getOwnerLabel(account)}</p>
                     </div>
-                    <div className="flex flex-col space-y-2 pt-2">
+                    <div className="grid grid-cols-3 gap-2 pt-2">
                       <Button
-                        variant="outline"
                         size="sm"
                         onClick={() => {
                           setSelectedAccountForTransaction(account);
                           setIsTransactionModalOpen(true);
                         }}
-                        className="w-full"
+                        className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
                       >
                         Nova Transação
                       </Button>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenModal(account)}
-                          className="flex-1"
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleActive(account)}
-                          className="flex-1"
-                        >
-                          {account.is_active ? 'Desativar' : 'Ativar'}
-                        </Button>
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenModal(account)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleActive(account)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Desativar
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -302,4 +280,5 @@ export default function BankAccounts() {
     </div>
   );
 }
+
 

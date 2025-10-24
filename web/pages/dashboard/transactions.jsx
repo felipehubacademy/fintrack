@@ -1312,7 +1312,6 @@ export default function TransactionsDashboard() {
                       {getSortIcon('payment_method')}
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cartão</th>
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
                     onClick={() => handleSort('owner')}
@@ -1359,21 +1358,35 @@ export default function TransactionsDashboard() {
                       {!isIncome && (
                         <>
                           {transaction.payment_method === 'cash' && 'Dinheiro'}
-                          {transaction.payment_method === 'debit_card' && 'Cartão de Débito'}
+                          {transaction.payment_method === 'debit_card' && (
+                            transaction.card_id ? (() => {
+                              const card = cards.find(c => c.id === transaction.card_id);
+                              return card ? `Débito - ${card.name}` : 'Débito';
+                            })() : 'Débito'
+                          )}
                           {transaction.payment_method === 'pix' && 'PIX'}
-                          {transaction.payment_method === 'credit_card' && 'Cartão de Crédito'}
+                          {transaction.payment_method === 'credit_card' && (
+                            transaction.card_id ? (() => {
+                              const card = cards.find(c => c.id === transaction.card_id);
+                              return card ? `Crédito - ${card.name}` : 'Crédito';
+                            })() : 'Crédito'
+                          )}
                           {transaction.payment_method === 'bank_transfer' && 'Transferência'}
                           {transaction.payment_method === 'boleto' && 'Boleto'}
                           {transaction.payment_method === 'other' && 'Outros'}
                         </>
                       )}
-                      {isIncome && '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {!isIncome && transaction.card_id ? (() => {
-                        const card = cards.find(c => c.id === transaction.card_id);
-                        return card ? card.name : (cardsLoading ? 'Carregando...' : '-');
-                      })() : '-'}
+                      {isIncome && (
+                        <>
+                          {transaction.payment_method === 'cash' && 'Dinheiro'}
+                          {transaction.payment_method === 'pix' && 'PIX'}
+                          {transaction.payment_method === 'deposit' && 'Depósito'}
+                          {transaction.payment_method === 'bank_transfer' && 'Transferência'}
+                          {transaction.payment_method === 'boleto' && 'Boleto'}
+                          {transaction.payment_method === 'other' && 'Outros'}
+                          {!transaction.payment_method && '-'}
+                        </>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {(() => {

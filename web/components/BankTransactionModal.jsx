@@ -14,7 +14,8 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
-    category: ''
+    category: '',
+    payment_method: 'cash'
   });
   
   const [saving, setSaving] = useState(false);
@@ -31,7 +32,8 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
       amount: '',
       description: '',
       date: new Date().toISOString().split('T')[0],
-      category: ''
+      category: '',
+      payment_method: 'cash'
     });
   };
 
@@ -75,6 +77,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
       const { data, error } = await supabase.rpc('create_bank_transaction', {
         p_bank_account_id: account.id,
         p_transaction_type: formData.transaction_type,
+        p_payment_method: formData.payment_method,
         p_amount: parseFloat(formData.amount),
         p_description: formData.description,
         p_date: formData.date,
@@ -232,6 +235,26 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 />
+              </div>
+
+              {/* Forma de Pagamento/Recebimento */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Forma de {formData.transaction_type === 'manual_credit' ? 'Recebimento' : 'Pagamento'} *
+                </label>
+                <select
+                  value={formData.payment_method}
+                  onChange={(e) => handleChange('payment_method', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  required
+                >
+                  <option value="cash">Dinheiro</option>
+                  <option value="pix">PIX</option>
+                  <option value="deposit">Depósito</option>
+                  <option value="bank_transfer">Transferência Bancária</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="other">Outros</option>
+                </select>
               </div>
 
               {/* Data */}

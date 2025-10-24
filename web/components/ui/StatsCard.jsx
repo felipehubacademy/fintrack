@@ -24,7 +24,7 @@ export default function StatsCard({
         </div>
       </CardHeader>
       <CardContent className="p-3 pt-0">
-        <div className="text-2xl font-bold text-gray-900 mb-1">
+        <div className={`text-2xl font-bold mb-1 ${trend === 'down' ? 'text-red-600' : 'text-gray-900'}`}>
           {value}
         </div>
         {trend && trendValue && (

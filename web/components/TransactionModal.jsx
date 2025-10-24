@@ -43,7 +43,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           category: editingTransaction.category || '',
           owner_name: editingTransaction.is_shared ? 'Compartilhado' : (editingTransaction.cost_center?.name || ''),
           category_id: '',
-          payment_method: 'cash',
+          payment_method: editingTransaction.payment_method || 'cash',
           card_id: '',
           installments: 1,
         });
@@ -224,6 +224,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             amount: parseFloat(form.amount),
             date: form.date,
             category: form.category || null,
+            payment_method: form.payment_method,
             cost_center_id: form.is_shared ? null : costCenter?.id,
             is_shared: form.is_shared,
             organization_id: organization.id,
@@ -438,33 +439,68 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
             {/* Categoria - mudar baseado no tipo */}
             {transactionType === 'income' ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                <select
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                >
-                  <option value="">Selecione...</option>
-                  {incomeCategories.map(cat => (
-                    <option key={cat.id} value={cat.name}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  >
+                    <option value="">Selecione...</option>
+                    {incomeCategories.map(cat => (
+                      <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Recebimento</label>
+                  <select
+                    value={form.payment_method}
+                    onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  >
+                    <option value="cash">Dinheiro</option>
+                    <option value="pix">PIX</option>
+                    <option value="deposit">Depósito</option>
+                    <option value="bank_transfer">Transferência Bancária</option>
+                    <option value="boleto">Boleto</option>
+                    <option value="other">Outros</option>
+                  </select>
+                </div>
+              </>
             ) : (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                <select
-                  value={form.category_id}
-                  onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                >
-                  <option value="">Selecione...</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                  <select
+                    value={form.category_id}
+                    onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  >
+                    <option value="">Selecione...</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+                  <select
+                    value={form.payment_method}
+                    onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  >
+                    <option value="cash">Dinheiro</option>
+                    <option value="debit_card">Cartão de Débito</option>
+                    <option value="pix">PIX</option>
+                    <option value="credit_card">Cartão de Crédito</option>
+                    <option value="boleto">Boleto</option>
+                    <option value="bank_transfer">Transferência Bancária</option>
+                    <option value="other">Outros</option>
+                  </select>
+                </div>
+              </>
             )}
 
             <div>
@@ -484,23 +520,6 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             {/* Campos específicos de despesa */}
             {transactionType === 'expense' && (
               <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
-                  <select
-                    value={form.payment_method}
-                    onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  >
-                    <option value="cash">Dinheiro</option>
-                    <option value="debit_card">Cartão de Débito</option>
-                    <option value="pix">PIX</option>
-                    <option value="credit_card">Cartão de Crédito</option>
-                    <option value="boleto">Boleto</option>
-                    <option value="bank_transfer">Transferência Bancária</option>
-                    <option value="other">Outros</option>
-                  </select>
-                </div>
-
                 {isCredit && (
                   <>
                     <div>

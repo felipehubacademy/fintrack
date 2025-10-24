@@ -117,6 +117,16 @@ export default function Header({
                       <span>Transações</span>
                     </Link>
                     <Link 
+                      href="/dashboard/bank-accounts"
+                      onClick={() => setFinanceDropdownOpen(false)}
+                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                      }`}
+                    >
+                      <Wallet className="h-4 w-4" />
+                      <span>Contas Bancárias</span>
+                    </Link>
+                    <Link 
                       href="/dashboard/cards"
                       onClick={() => setFinanceDropdownOpen(false)}
                       className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
@@ -135,16 +145,6 @@ export default function Header({
                     >
                       <FileText className="h-4 w-4" />
                       <span>Contas a Pagar</span>
-                    </Link>
-                    <Link 
-                      href="/dashboard/bank-accounts"
-                      onClick={() => setFinanceDropdownOpen(false)}
-                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
-                        isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
-                      }`}
-                    >
-                      <Wallet className="h-4 w-4" />
-                      <span>Contas Bancárias</span>
                     </Link>
                   </div>
                 )}
@@ -300,6 +300,16 @@ export default function Header({
                         <span>Transações</span>
                       </Link>
                       <Link
+                        href="/dashboard/bank-accounts"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
+                          isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Wallet className="h-4 w-4 flex-shrink-0" />
+                        <span>Contas Bancárias</span>
+                      </Link>
+                      <Link
                         href="/dashboard/cards"
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
@@ -318,16 +328,6 @@ export default function Header({
                       >
                         <FileText className="h-4 w-4 flex-shrink-0" />
                         <span>Contas a Pagar</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/bank-accounts"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
-                          isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <Wallet className="h-4 w-4 flex-shrink-0" />
-                        <span>Contas Bancárias</span>
                       </Link>
                     </div>
                   )}
