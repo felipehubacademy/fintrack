@@ -189,7 +189,7 @@ export default async function handler(req, res) {
         }
       });
 
-      message += `Acesse o FinTrack para registrar seu aporte! 📈\n`;
+      message += `Acesse o MeuAzulão para registrar seu aporte! 📈\n`;
       message += `${process.env.NEXT_PUBLIC_APP_URL || 'https://fintrack.app'}/dashboard/investments`;
 
       // Enviar WhatsApp usando a API oficial da Meta

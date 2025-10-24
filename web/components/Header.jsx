@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
-import { Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut, ChevronDown, Wallet, TrendingUp, Target, CreditCard, Receipt, FileText } from 'lucide-react';
 import Logo from './Logo';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
@@ -13,6 +13,27 @@ export default function Header({
   pageTitle = null
 }) {
   const router = useRouter();
+  const [financeDropdownOpen, setFinanceDropdownOpen] = useState(false);
+  const [planningDropdownOpen, setPlanningDropdownOpen] = useState(false);
+  const financeRef = useRef(null);
+  const planningRef = useRef(null);
+
+  // Fechar dropdowns ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (financeRef.current && !financeRef.current.contains(event.target)) {
+        setFinanceDropdownOpen(false);
+      }
+      if (planningRef.current && !planningRef.current.contains(event.target)) {
+        setPlanningDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -22,6 +43,11 @@ export default function Header({
   // Determinar página ativa
   const isActive = (path) => {
     return router.pathname === path;
+  };
+
+  // Verificar se algum link do dropdown está ativo
+  const isDropdownActive = (paths) => {
+    return paths.some(path => isActive(path));
   };
 
 
@@ -34,11 +60,9 @@ export default function Header({
             <div className="flex items-center -ml-3">
               <Logo className="h-24 w-24 -my-2" />
               <div className="-ml-3">
-                <Link href="/dashboard">
-                  <h1 className="text-xl font-bold text-deep-sky hover:text-flight-blue cursor-pointer transition-colors">
-                    {organization?.name || 'MeuAzulão'}
-                  </h1>
-                </Link>
+                <h1 className="text-xl font-bold text-deep-sky">
+                  {organization?.name || 'MeuAzulão'}
+                </h1>
                 {orgUser && (
                   <p className="text-xs text-gray-600">{orgUser.name}</p>
                 )}
@@ -47,6 +71,7 @@ export default function Header({
 
             {/* Menu de Navegação */}
             <nav className="hidden md:flex items-center space-x-6">
+              {/* Painel Principal */}
               <Link 
                 href="/dashboard" 
                 className={`text-sm font-medium transition-colors ${
@@ -57,76 +82,132 @@ export default function Header({
               >
                 Painel Principal
               </Link>
-              <Link 
-                href="/dashboard/expenses" 
-                className={`text-sm font-medium transition-colors ${
-                  isActive('/dashboard/expenses') 
-                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
-                    : 'text-gray-700 hover:text-flight-blue'
-                }`}
-              >
-                Despesas
-              </Link>
-              <Link 
-                href="/dashboard/cards" 
-                className={`text-sm font-medium transition-colors ${
-                  isActive('/dashboard/cards') 
-                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
-                    : 'text-gray-700 hover:text-flight-blue'
-                }`}
-              >
-                Cartões
-              </Link>
-              <Link 
-                href="/dashboard/budgets" 
-                className={`text-sm font-medium transition-colors ${
-                  isActive('/dashboard/budgets') 
-                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
-                    : 'text-gray-700 hover:text-flight-blue'
-                }`}
-              >
-                Orçamentos
-              </Link>
-              <Link 
-                href="/dashboard/bills" 
-                className={`text-sm font-medium transition-colors ${
-                  isActive('/dashboard/bills') 
-                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
-                    : 'text-gray-700 hover:text-flight-blue'
-                }`}
-              >
-                Contas
-              </Link>
-              <Link 
-                href="/dashboard/incomes" 
-                className={`text-sm font-medium transition-colors ${
-                  isActive('/dashboard/incomes') 
-                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
-                    : 'text-gray-700 hover:text-flight-blue'
-                }`}
-              >
-                Entradas
-              </Link>
-              <Link 
-                href="/dashboard/investments" 
-                className={`text-sm font-medium transition-colors ${
-                  isActive('/dashboard/investments') 
-                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
-                    : 'text-gray-700 hover:text-flight-blue'
-                }`}
-              >
-                Investimentos
-              </Link>
-              <Link 
-                href="/dashboard/closing" 
-                className={`text-sm font-medium transition-colors ${
-                  isActive('/dashboard/closing') 
-                    ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
-                    : 'text-gray-700 hover:text-flight-blue'
-                }`}
-              >
-                Fechamento
-              </Link>
+
+              {/* Dropdown Financeiro */}
+              <div className="relative" ref={financeRef}>
+                <button
+                  onClick={() => {
+                    setFinanceDropdownOpen(!financeDropdownOpen);
+                    setPlanningDropdownOpen(false);
+                  }}
+                  className={`text-sm font-medium transition-colors flex items-center space-x-1 ${
+                    isDropdownActive(['/dashboard/expenses', '/dashboard/cards', '/dashboard/bills', '/dashboard/incomes', '/dashboard/bank-accounts'])
+                      ? 'text-flight-blue border-b-2 border-flight-blue pb-1'
+                      : 'text-gray-700 hover:text-flight-blue'
+                  }`}
+                >
+                  <span>Financeiro</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${financeDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {financeDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <Link 
+                      href="/dashboard/expenses"
+                      onClick={() => setFinanceDropdownOpen(false)}
+                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        isActive('/dashboard/expenses') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                      }`}
+                    >
+                      <Receipt className="h-4 w-4" />
+                      <span>Despesas</span>
+                    </Link>
+                    <Link 
+                      href="/dashboard/cards"
+                      onClick={() => setFinanceDropdownOpen(false)}
+                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        isActive('/dashboard/cards') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                      }`}
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      <span>Cartões</span>
+                    </Link>
+                    <Link 
+                      href="/dashboard/bills"
+                      onClick={() => setFinanceDropdownOpen(false)}
+                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        isActive('/dashboard/bills') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                      }`}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Contas a Pagar</span>
+                    </Link>
+                    <Link 
+                      href="/dashboard/incomes"
+                      onClick={() => setFinanceDropdownOpen(false)}
+                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        isActive('/dashboard/incomes') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                      }`}
+                    >
+                      <TrendingUp className="h-4 w-4" />
+                      <span>Entradas</span>
+                    </Link>
+                    <Link 
+                      href="/dashboard/bank-accounts"
+                      onClick={() => setFinanceDropdownOpen(false)}
+                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                      }`}
+                    >
+                      <Wallet className="h-4 w-4" />
+                      <span>Contas Bancárias</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Dropdown Planejamento */}
+              <div className="relative" ref={planningRef}>
+                <button
+                  onClick={() => {
+                    setPlanningDropdownOpen(!planningDropdownOpen);
+                    setFinanceDropdownOpen(false);
+                  }}
+                  className={`text-sm font-medium transition-colors flex items-center space-x-1 ${
+                    isDropdownActive(['/dashboard/budgets', '/dashboard/investments', '/dashboard/closing'])
+                      ? 'text-flight-blue border-b-2 border-flight-blue pb-1'
+                      : 'text-gray-700 hover:text-flight-blue'
+                  }`}
+                >
+                  <span>Planejamento</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${planningDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {planningDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <Link 
+                      href="/dashboard/budgets"
+                      onClick={() => setPlanningDropdownOpen(false)}
+                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        isActive('/dashboard/budgets') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                      }`}
+                    >
+                      <Target className="h-4 w-4" />
+                      <span>Orçamentos</span>
+                    </Link>
+                    <Link 
+                      href="/dashboard/investments"
+                      onClick={() => setPlanningDropdownOpen(false)}
+                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        isActive('/dashboard/investments') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                      }`}
+                    >
+                      <TrendingUp className="h-4 w-4" />
+                      <span>Investimentos</span>
+                    </Link>
+                    <Link 
+                      href="/dashboard/closing"
+                      onClick={() => setPlanningDropdownOpen(false)}
+                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        isActive('/dashboard/closing') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                      }`}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Fechamento</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
             </nav>
           </div>
           

@@ -1,5 +1,5 @@
 /**
- * Engagement Analyzer - FinTrack
+ * Engagement Analyzer - MeuAzulão
  * Sistema de análise de padrões de uso e re-engajamento
  * 
  * Analisa quando e como os usuários interagem com o sistema
@@ -299,7 +299,7 @@ class EngagementAnalyzer {
         `${name}, que tal retomar o controle financeiro? 🚀`
       ],
       [this.engagementLevels.INACTIVE]: [
-        `Oi ${name}! Sentimos sua falta! Que tal voltar a usar o FinTrack? 😊`,
+        `Oi ${name}! Sentimos sua falta! Que tal voltar a usar o MeuAzulão? 😊`,
         `E aí ${name}! Vamos retomar o controle das suas finanças? 💪`,
         `${name}, que tal começar de novo a acompanhar seus gastos? 🌟`
       ]

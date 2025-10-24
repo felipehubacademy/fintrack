@@ -139,7 +139,7 @@ export default async function handler(req, res) {
         message += `   💰 R$ ${Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\n`;
       });
 
-      message += `Acesse o FinTrack para registrar o pagamento! ✅\n`;
+      message += `Acesse o MeuAzulão para registrar o pagamento! ✅\n`;
       message += `${process.env.NEXT_PUBLIC_APP_URL || 'https://fintrack.app'}/dashboard/bills`;
 
       // Enviar WhatsApp usando a API oficial da Meta
