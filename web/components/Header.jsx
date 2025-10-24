@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
-import { Settings, LogOut, ChevronDown, Wallet, TrendingUp, Target, CreditCard, Receipt, FileText, Menu, X, Bell } from 'lucide-react';
+import { Settings, LogOut, ChevronDown, Menu, X, FileText, Receipt, CreditCard, TrendingUp, Wallet, Target } from 'lucide-react';
 import Logo from './Logo';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
@@ -243,7 +243,7 @@ export default function Header({
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <Menu className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -261,17 +261,10 @@ export default function Header({
           />
           
           {/* Drawer */}
-          <div className="fixed inset-y-0 left-0 w-80 bg-white shadow-2xl z-[70] md:hidden transform transition-transform duration-300 ease-in-out">
+          <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-2xl z-[70] md:hidden">
             <div className="flex flex-col h-full">
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <div className="flex items-center space-x-2">
-                  <Logo className="h-12 w-12" />
-                  <div>
-                    <h2 className="text-lg font-bold text-deep-sky">{organization?.name || 'MeuAzulão'}</h2>
-                    <p className="text-xs text-gray-600">{orgUser?.name}</p>
-                  </div>
-                </div>
+              {/* Close Button */}
+              <div className="flex justify-end p-4 border-b border-gray-200">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -287,13 +280,10 @@ export default function Header({
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center space-x-3 px-4 py-3 transition-colors ${
+                  className={`px-4 py-3 transition-colors ${
                     isActive('/dashboard') ? 'bg-flight-blue/5 text-flight-blue border-r-2 border-flight-blue' : 'text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="w-8 h-8 bg-flight-blue/10 rounded-lg flex items-center justify-center">
-                    <FileText className="h-4 w-4 text-flight-blue" />
-                  </div>
                   <span className="font-medium">Painel Principal</span>
                 </Link>
 
@@ -303,12 +293,7 @@ export default function Header({
                     onClick={() => setMobileFinanceOpen(!mobileFinanceOpen)}
                     className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                        <Receipt className="h-4 w-4 text-green-600" />
-                      </div>
-                      <span className="font-medium">Financeiro</span>
-                    </div>
+                    <span className="font-medium">Financeiro</span>
                     <ChevronDown className={`h-4 w-4 transition-transform ${mobileFinanceOpen ? 'rotate-180' : ''}`} />
                   </button>
 
@@ -317,52 +302,47 @@ export default function Header({
                       <Link
                         href="/dashboard/expenses"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                        className={`px-4 py-2.5 pl-12 transition-colors ${
                           isActive('/dashboard/expenses') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        <Receipt className="h-4 w-4" />
-                        <span>Despesas</span>
+                        Despesas
                       </Link>
                       <Link
                         href="/dashboard/cards"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                        className={`px-4 py-2.5 pl-12 transition-colors ${
                           isActive('/dashboard/cards') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        <CreditCard className="h-4 w-4" />
-                        <span>Cartões</span>
+                        Cartões
                       </Link>
                       <Link
                         href="/dashboard/bills"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                        className={`px-4 py-2.5 pl-12 transition-colors ${
                           isActive('/dashboard/bills') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        <FileText className="h-4 w-4" />
-                        <span>Contas a Pagar</span>
+                        Contas a Pagar
                       </Link>
                       <Link
                         href="/dashboard/incomes"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                        className={`px-4 py-2.5 pl-12 transition-colors ${
                           isActive('/dashboard/incomes') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        <TrendingUp className="h-4 w-4" />
-                        <span>Entradas</span>
+                        Entradas
                       </Link>
                       <Link
                         href="/dashboard/bank-accounts"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                        className={`px-4 py-2.5 pl-12 transition-colors ${
                           isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        <Wallet className="h-4 w-4" />
-                        <span>Contas Bancárias</span>
+                        Contas Bancárias
                       </Link>
                     </div>
                   )}
@@ -374,12 +354,7 @@ export default function Header({
                     onClick={() => setMobilePlanningOpen(!mobilePlanningOpen)}
                     className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <Target className="h-4 w-4 text-purple-600" />
-                      </div>
-                      <span className="font-medium">Planejamento</span>
-                    </div>
+                    <span className="font-medium">Planejamento</span>
                     <ChevronDown className={`h-4 w-4 transition-transform ${mobilePlanningOpen ? 'rotate-180' : ''}`} />
                   </button>
 
@@ -388,32 +363,29 @@ export default function Header({
                       <Link
                         href="/dashboard/budgets"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                        className={`px-4 py-2.5 pl-12 transition-colors ${
                           isActive('/dashboard/budgets') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        <Target className="h-4 w-4" />
-                        <span>Orçamentos</span>
+                        Orçamentos
                       </Link>
                       <Link
                         href="/dashboard/investments"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                        className={`px-4 py-2.5 pl-12 transition-colors ${
                           isActive('/dashboard/investments') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        <TrendingUp className="h-4 w-4" />
-                        <span>Investimentos</span>
+                        Investimentos
                       </Link>
                       <Link
                         href="/dashboard/closing"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                        className={`px-4 py-2.5 pl-12 transition-colors ${
                           isActive('/dashboard/closing') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        <FileText className="h-4 w-4" />
-                        <span>Fechamento</span>
+                        Fechamento
                       </Link>
                     </div>
                   )}
