@@ -458,6 +458,11 @@ export default function BillsDashboard() {
                               Recorrente
                             </Badge>
                           )}
+                          {bill.is_shared && (
+                            <Badge className="bg-purple-100 text-purple-800">
+                              Compartilhado
+                            </Badge>
+                          )}
                         </div>
                         
                         <div className="flex items-center space-x-4 text-sm text-gray-600">
@@ -486,7 +491,11 @@ export default function BillsDashboard() {
                             </span>
                           )}
                           
-                          {bill.cost_center && (
+                          {bill.is_shared ? (
+                            <span className="text-purple-600 font-medium">
+                              Compartilhado
+                            </span>
+                          ) : bill.cost_center && (
                             <span className="text-gray-500">
                               {bill.cost_center.name}
                             </span>

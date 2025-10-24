@@ -27,6 +27,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
     due_date: '',
     category_id: '',
     cost_center_id: '',
+    is_shared: false,
     is_recurring: false,
     recurrence_frequency: 'monthly',
     payment_method: '',
@@ -44,6 +45,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         due_date: editingBill.due_date || '',
         category_id: editingBill.category_id || '',
         cost_center_id: editingBill.cost_center_id || '',
+        is_shared: editingBill.is_shared || false,
         is_recurring: editingBill.is_recurring || false,
         recurrence_frequency: editingBill.recurrence_frequency || 'monthly',
         payment_method: editingBill.payment_method || '',
@@ -61,6 +63,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       due_date: '',
       category_id: '',
       cost_center_id: '',
+      is_shared: false,
       is_recurring: false,
       recurrence_frequency: 'monthly',
       payment_method: '',
@@ -100,7 +103,8 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         amount: parseFloat(formData.amount),
         due_date: formData.due_date,
         category_id: formData.category_id || null,
-        cost_center_id: formData.cost_center_id || null,
+        cost_center_id: formData.is_shared ? null : (formData.cost_center_id || null),
+        is_shared: formData.is_shared,
         is_recurring: formData.is_recurring,
         recurrence_frequency: formData.is_recurring ? formData.recurrence_frequency : null,
         payment_method: formData.payment_method || null,
@@ -234,18 +238,43 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Centro de Custo
+                    Responsável
                   </label>
-                  <select
-                    value={formData.cost_center_id}
-                    onChange={(e) => handleChange('cost_center_id', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  >
-                    <option value="">Selecione...</option>
-                    {costCenters.map(cc => (
-                      <option key={cc.id} value={cc.id}>{cc.name}</option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <select
+                      value={formData.is_shared ? 'shared' : formData.cost_center_id}
+                      onChange={(e) => {
+                        if (e.target.value === 'shared') {
+                          handleChange('is_shared', true);
+                          handleChange('cost_center_id', '');
+                        } else {
+                          handleChange('is_shared', false);
+                          handleChange('cost_center_id', e.target.value);
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="shared">Compartilhado</option>
+                      {costCenters.map(cc => (
+                        <option key={cc.id} value={cc.id}>{cc.name}</option>
+                      ))}
+                    </select>
+                    
+                    {formData.is_shared && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-start space-x-2">
+                          <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                          <div className="text-sm text-blue-700">
+                            <p className="font-medium">Conta Compartilhada</p>
+                            <p className="text-blue-600 mt-1">
+                              Esta conta será dividida entre todos os responsáveis financeiros conforme suas porcentagens padrão.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
