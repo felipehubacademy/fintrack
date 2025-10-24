@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
-import { Settings, LogOut, ChevronDown, Wallet, TrendingUp, Target, CreditCard, Receipt, FileText } from 'lucide-react';
+import { Settings, LogOut, ChevronDown, Wallet, TrendingUp, Target, CreditCard, Receipt, FileText, Menu, X, Bell } from 'lucide-react';
 import Logo from './Logo';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
@@ -15,6 +15,9 @@ export default function Header({
   const router = useRouter();
   const [financeDropdownOpen, setFinanceDropdownOpen] = useState(false);
   const [planningDropdownOpen, setPlanningDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileFinanceOpen, setMobileFinanceOpen] = useState(false);
+  const [mobilePlanningOpen, setMobilePlanningOpen] = useState(false);
   const financeRef = useRef(null);
   const planningRef = useRef(null);
 
@@ -219,7 +222,7 @@ export default function Header({
                 organizationId={organization.id} 
               />
             )}
-            <Link href="/dashboard/config">
+            <Link href="/dashboard/config" className="hidden md:block">
               <Button variant="ghost" size="icon">
                 <Settings className="h-4 w-4" />
               </Button>
@@ -227,13 +230,218 @@ export default function Header({
             <Button 
               variant="ghost" 
               onClick={handleLogout} 
-              className="text-red-600 hover:bg-red-50 px-3 py-2 text-sm"
+              className="hidden md:flex text-red-600 hover:bg-red-50 px-3 py-2 text-sm"
             >
               Sair
+            </Button>
+
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Drawer */}
+      {mobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          
+          {/* Drawer */}
+          <div className="fixed inset-y-0 left-0 w-80 bg-white shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <div className="flex items-center space-x-2">
+                  <Logo className="h-12 w-12" />
+                  <div>
+                    <h2 className="text-lg font-bold text-deep-sky">{organization?.name || 'MeuAzulão'}</h2>
+                    <p className="text-xs text-gray-600">{orgUser?.name}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+
+              {/* Menu Items */}
+              <div className="flex-1 overflow-y-auto py-4">
+                {/* Painel Principal */}
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 transition-colors ${
+                    isActive('/dashboard') ? 'bg-flight-blue/5 text-flight-blue border-r-2 border-flight-blue' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="w-8 h-8 bg-flight-blue/10 rounded-lg flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-flight-blue" />
+                  </div>
+                  <span className="font-medium">Painel Principal</span>
+                </Link>
+
+                {/* Financeiro Section */}
+                <div className="border-t border-gray-200 mt-2">
+                  <button
+                    onClick={() => setMobileFinanceOpen(!mobileFinanceOpen)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <Receipt className="h-4 w-4 text-green-600" />
+                      </div>
+                      <span className="font-medium">Financeiro</span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${mobileFinanceOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {mobileFinanceOpen && (
+                    <div className="bg-gray-50">
+                      <Link
+                        href="/dashboard/expenses"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                          isActive('/dashboard/expenses') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Receipt className="h-4 w-4" />
+                        <span>Despesas</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/cards"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                          isActive('/dashboard/cards') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        <span>Cartões</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/bills"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                          isActive('/dashboard/bills') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>Contas a Pagar</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/incomes"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                          isActive('/dashboard/incomes') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <TrendingUp className="h-4 w-4" />
+                        <span>Entradas</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/bank-accounts"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                          isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Wallet className="h-4 w-4" />
+                        <span>Contas Bancárias</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
+                {/* Planejamento Section */}
+                <div className="border-t border-gray-200">
+                  <button
+                    onClick={() => setMobilePlanningOpen(!mobilePlanningOpen)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Target className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <span className="font-medium">Planejamento</span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${mobilePlanningOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {mobilePlanningOpen && (
+                    <div className="bg-gray-50">
+                      <Link
+                        href="/dashboard/budgets"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                          isActive('/dashboard/budgets') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Target className="h-4 w-4" />
+                        <span>Orçamentos</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/investments"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                          isActive('/dashboard/investments') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <TrendingUp className="h-4 w-4" />
+                        <span>Investimentos</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/closing"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2.5 pl-12 transition-colors ${
+                          isActive('/dashboard/closing') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>Fechamento</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="border-t border-gray-200 p-4 space-y-2">
+                <Link
+                  href="/dashboard/config"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <Settings className="h-5 w-5" />
+                  <span className="font-medium">Configurações</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="font-medium">Sair</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </header>
   );
 }
