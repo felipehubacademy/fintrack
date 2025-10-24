@@ -9,7 +9,7 @@ const PAYMENT_METHODS = [
   { value: 'credit_card', label: 'Cartão de Crédito' },
   { value: 'debit_card', label: 'Cartão de Débito' },
   { value: 'boleto', label: 'Boleto' },
-  { value: 'bank_transfer', label: 'Transferência' },
+  { value: 'bank_transfer', label: 'Transferência Bancária' },
   { value: 'cash', label: 'Dinheiro' },
   { value: 'other', label: 'Outro' }
 ];
@@ -107,7 +107,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         is_shared: formData.is_shared,
         is_recurring: formData.is_recurring,
         recurrence_frequency: formData.is_recurring ? formData.recurrence_frequency : null,
-        payment_method: formData.payment_method || null,
+        payment_method: formData.payment_method || 'other', // Default para 'other' se não selecionado
         card_id: formData.card_id || null
       };
 
@@ -238,7 +238,23 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Responsável
+                    <div className="flex items-center space-x-2">
+                      <span>Responsável</span>
+                      {formData.is_shared && (
+                        <div className="relative group">
+                          <AlertCircle className="h-4 w-4 text-red-500 cursor-help" />
+                          <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-white text-gray-800 text-xs rounded-lg shadow-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 w-64">
+                            <div className="text-left">
+                              <div className="font-medium text-gray-900">Conta Compartilhada</div>
+                              <div className="text-gray-600 mt-1 leading-relaxed">
+                                Será dividida entre todos os responsáveis financeiros conforme suas porcentagens padrão.
+                              </div>
+                            </div>
+                            <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </label>
                   <div className="space-y-2">
                     <select
@@ -260,20 +276,6 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                         <option key={cc.id} value={cc.id}>{cc.name}</option>
                       ))}
                     </select>
-                    
-                    {formData.is_shared && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-start space-x-2">
-                          <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                          <div className="text-sm text-blue-700">
-                            <p className="font-medium">Conta Compartilhada</p>
-                            <p className="text-blue-600 mt-1">
-                              Esta conta será dividida entre todos os responsáveis financeiros conforme suas porcentagens padrão.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

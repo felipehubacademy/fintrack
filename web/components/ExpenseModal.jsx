@@ -372,6 +372,8 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                   <option value="debit_card">Cartão de Débito</option>
                   <option value="pix">PIX</option>
                   <option value="credit_card">Cartão de Crédito</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="bank_transfer">Transferência Bancária</option>
                   <option value="other">Outros</option>
                 </select>
               </div>

@@ -19,6 +19,8 @@ export default function EditExpense() {
     { value: 'credit_card', label: 'Cartão de Crédito' },
     { value: 'debit_card', label: 'Cartão de Débito' },
     { value: 'pix', label: 'PIX' },
+    { value: 'boleto', label: 'Boleto' },
+    { value: 'bank_transfer', label: 'Transferência Bancária' },
     { value: 'cash', label: 'Dinheiro' },
     { value: 'other', label: 'Outro' }
   ];

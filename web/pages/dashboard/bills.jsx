@@ -214,7 +214,7 @@ export default function BillsDashboard() {
 
   const createRecurringBill = async (bill) => {
     try {
-      let nextDueDate = new Date(bill.due_date);
+      let nextDueDate = new Date(bill.due_date + 'T00:00:00');
       
       switch (bill.recurrence_frequency) {
         case 'monthly':
@@ -295,7 +295,11 @@ export default function BillsDashboard() {
 
   const getDaysUntilDue = (dueDate) => {
     const today = new Date();
-    const due = new Date(dueDate);
+    today.setHours(0, 0, 0, 0); // Reset para início do dia
+    
+    const due = new Date(dueDate + 'T00:00:00');
+    due.setHours(0, 0, 0, 0); // Reset para início do dia
+    
     const diffTime = due - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
@@ -468,7 +472,7 @@ export default function BillsDashboard() {
                         <div className="flex items-center space-x-4 text-sm text-gray-600">
                           <span className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1" />
-                            Vence: {new Date(bill.due_date).toLocaleDateString('pt-BR')}
+                            Vence: {new Date(bill.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
                             {bill.status === 'pending' && daysUntil >= 0 && (
                               <span className={`ml-2 ${daysUntil <= 3 ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
                                 ({daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`})
