@@ -29,7 +29,8 @@ export default function FinanceDashboard() {
     month: '2025-10', // Temporariamente fixo para outubro 2025
     owner: 'all',
     payment_method: 'all',
-    card_id: null
+    card_id: null,
+    category_id: null
   });
   const [editingId, setEditingId] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -169,6 +170,11 @@ export default function FinanceDashboard() {
       // Filtro por cartão (só se payment_method = credit_card)
       if (filter.payment_method === 'credit_card' && filter.card_id) {
         query = query.eq('card_id', filter.card_id);
+      }
+
+      // Filtro por categoria
+      if (filter.category_id) {
+        query = query.eq('category_id', filter.category_id);
       }
 
       // Escopo por organização (V2) - só se V2 estiver configurado
@@ -616,24 +622,26 @@ export default function FinanceDashboard() {
               <span>Filtros</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mês</label>
+          <CardContent className="px-6">
+            <div className="flex flex-wrap gap-6 w-full">
+            <div className="space-y-3 flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700">Mês</label>
               <input
                 type="month"
                 value={filter.month}
                 onChange={(e) => setFilter({ ...filter, month: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full h-12 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                style={{ height: '48px', boxSizing: 'border-box' }}
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Responsável</label>
+            <div className="space-y-3 flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700">Responsável</label>
               <select
                 value={filter.owner}
                 onChange={(e) => setFilter({ ...filter, owner: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                style={{ height: '48px', boxSizing: 'border-box' }}
               >
                 <option value="all">Todos</option>
                 {isV2Ready ? (
@@ -657,12 +665,53 @@ export default function FinanceDashboard() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+            <div className="space-y-3 flex-1 min-w-[200px]">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">
+                  Categoria
+                  {filter.category_id && (
+                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      Filtrado
+                    </span>
+                  )}
+                </label>
+                {filter.category_id && (
+                  <button
+                    onClick={() => setFilter({ ...filter, category_id: null })}
+                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+                  >
+                    Limpar filtro
+                  </button>
+                )}
+              </div>
+              <select
+                value={filter.category_id || 'all'}
+                onChange={(e) => setFilter({ ...filter, category_id: e.target.value === 'all' ? null : e.target.value })}
+                className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                style={{ height: '48px', boxSizing: 'border-box' }}
+              >
+                <option value="all">Todas as categorias</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-3 flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700">Forma de Pagamento</label>
               <select
                 value={filter.payment_method}
-                onChange={(e) => setFilter({ ...filter, payment_method: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                onChange={(e) => {
+                  const newPaymentMethod = e.target.value;
+                  setFilter({ 
+                    ...filter, 
+                    payment_method: newPaymentMethod,
+                    // Limpar filtro de cartão se não for crédito
+                    card_id: newPaymentMethod !== 'credit_card' ? null : filter.card_id
+                  });
+                }}
+                className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                style={{ height: '48px', boxSizing: 'border-box' }}
               >
                 <option value="all">Todas</option>
                 <option value="cash">Dinheiro</option>
@@ -673,39 +722,42 @@ export default function FinanceDashboard() {
               </select>
             </div>
 
-            {/* Filtro Por Cartão - só aparece quando Forma = Cartão de Crédito */}
-            {filter.payment_method === 'credit_card' && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Por Cartão
-                    {filter.card_id && (
-                      <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Filtrado
-                      </span>
-                    )}
-                  </label>
+            <div className="space-y-3 flex-1 min-w-[200px]">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">
+                  Por Cartão
                   {filter.card_id && (
-                    <button
-                      onClick={() => setFilter({ ...filter, card_id: null })}
-                      className="text-xs text-gray-500 hover:text-gray-700 underline"
-                    >
-                      Limpar filtro
-                    </button>
+                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      Filtrado
+                    </span>
                   )}
-                </div>
-                <select
-                  value={filter.card_id || 'all'}
-                  onChange={(e) => setFilter({ ...filter, card_id: e.target.value === 'all' ? null : e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="all">Todos os cartões</option>
-                  {cards.map(card => (
-                    <option key={card.id} value={card.id}>{card.name}</option>
-                  ))}
-                </select>
+                </label>
+                {filter.card_id && (
+                  <button
+                    onClick={() => setFilter({ ...filter, card_id: null })}
+                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+                  >
+                    Limpar filtro
+                  </button>
+                )}
               </div>
-            )}
+              <select
+                value={filter.card_id || 'all'}
+                onChange={(e) => setFilter({ ...filter, card_id: e.target.value === 'all' ? null : e.target.value })}
+                disabled={filter.payment_method !== 'credit_card'}
+                className={`w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                  filter.payment_method !== 'credit_card' 
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+                    : 'bg-white text-gray-900'
+                }`}
+                style={{ height: '48px', boxSizing: 'border-box' }}
+              >
+                <option value="all">Todos os cartões</option>
+                {cards.map(card => (
+                  <option key={card.id} value={card.id}>{card.name}</option>
+                ))}
+              </select>
+            </div>
             </div>
           </CardContent>
         </Card>

@@ -19,7 +19,8 @@ import {
   Trash2,
   LogOut,
   Settings,
-  Bell
+  Bell,
+  Copy
 } from 'lucide-react';
 import Link from 'next/link';
 import BudgetModal from '../../components/BudgetModal';
@@ -87,38 +88,21 @@ export default function BudgetsDashboard() {
         return;
       }
 
-      // Calcular valores gastos para cada orçamento
-      const budgetsWithSpent = await Promise.all(
-        (budgetsData || []).map(async (budget) => {
-          // Buscar despesas do mês para esta categoria (sem filtro por cost_center)
-          const endOfMonth = new Date(parseInt(year), monthNumber, 0).toISOString().split('T')[0];
+      // Usar current_spent do banco (calculado pelo trigger)
+      const budgetsWithSpent = (budgetsData || []).map(budget => {
+        const spent = parseFloat(budget.current_spent || 0);
+        const limit = parseFloat(budget.limit_amount || 0);
 
-          const { data: expensesData, error: expensesError } = await supabase
-            .from('expenses')
-            .select('amount')
-            .eq('organization_id', organization.id)
-            .eq('status', 'confirmed')
-            .eq('category_id', budget.category_id)
-            .gte('date', startOfMonth)
-            .lte('date', endOfMonth);
-
-          if (expensesError) {
-            console.error('Error fetching expenses for budget:', expensesError);
-          }
-
-          const spent = (expensesData || []).reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
-
-          return {
-            id: budget.id,
-            category: budget.category?.name || 'Sem categoria',
-            category_id: budget.category_id, // Keep ID for editing
-            amount: parseFloat(budget.limit_amount),
-            spent: spent,
-            month: selectedMonth,
-            status: getBudgetStatus(spent, parseFloat(budget.limit_amount))
-          };
-        })
-      );
+        return {
+          id: budget.id,
+          category: budget.category?.name || 'Sem categoria',
+          category_id: budget.category_id, // Keep ID for editing
+          amount: limit,
+          spent: spent,
+          month: selectedMonth,
+          status: getBudgetStatus(spent, limit)
+        };
+      });
 
       setBudgets(budgetsWithSpent);
     } catch (error) {
@@ -175,13 +159,21 @@ export default function BudgetsDashboard() {
           month_year: monthYear
         });
 
-      if (error) throw error;
+      if (error) {
+        // Verificar se é erro de duplicação
+        if (error.code === '23505' && error.message.includes('budgets_unique_category_month')) {
+          const categoryName = budgetData.category_name || 'esta categoria';
+          alert(`❌ Já existe um orçamento para ${categoryName} em ${selectedMonth}.\n\n💡 Dica: Crie uma nova categoria se precisar de um orçamento diferente para o mesmo tipo de gasto.`);
+          return;
+        }
+        throw error;
+      }
 
       await fetchBudgets();
-      alert('Orçamento criado com sucesso!');
+      alert('✅ Orçamento criado com sucesso!');
     } catch (error) {
       console.error('Erro ao criar orçamento:', error);
-      alert('Erro ao criar orçamento');
+      alert('❌ Erro ao criar orçamento: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
@@ -195,13 +187,21 @@ export default function BudgetsDashboard() {
         })
         .eq('id', budgetData.id);
 
-      if (error) throw error;
+      if (error) {
+        // Verificar se é erro de duplicação (se mudou a categoria)
+        if (error.code === '23505' && error.message.includes('budgets_unique_category_month')) {
+          const categoryName = budgetData.category_name || 'esta categoria';
+          alert(`❌ Já existe um orçamento para ${categoryName} em ${selectedMonth}.\n\n💡 Dica: Crie uma nova categoria se precisar de um orçamento diferente para o mesmo tipo de gasto.`);
+          return;
+        }
+        throw error;
+      }
 
       await fetchBudgets();
-      alert('Orçamento atualizado com sucesso!');
+      alert('✅ Orçamento atualizado com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar orçamento:', error);
-      alert('Erro ao atualizar orçamento');
+      alert('❌ Erro ao atualizar orçamento: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
@@ -221,6 +221,85 @@ export default function BudgetsDashboard() {
         console.error('Erro ao excluir orçamento:', error);
         alert('Erro ao excluir orçamento');
       }
+    }
+  };
+
+  const handleCopyPreviousMonth = async () => {
+    try {
+      // Calcular o mês anterior
+      const [currentYear, currentMonth] = selectedMonth.split('-').map(Number);
+      let previousYear = currentYear;
+      let previousMonth = currentMonth - 1;
+      
+      if (previousMonth === 0) {
+        previousMonth = 12;
+        previousYear = currentYear - 1;
+      }
+
+      // Formatar datas para month_year (YYYY-MM-DD)
+      const currentMonthYear = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`;
+      const previousMonthYear = `${previousYear}-${previousMonth.toString().padStart(2, '0')}-01`;
+
+      // Buscar orçamentos do mês anterior
+      const { data: previousBudgets, error: fetchError } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .eq('month_year', previousMonthYear);
+
+      if (fetchError) throw fetchError;
+
+      if (!previousBudgets || previousBudgets.length === 0) {
+        alert(`Não há orçamentos no mês anterior (${previousMonth.toString().padStart(2, '0')}/${previousYear}) para copiar.`);
+        return;
+      }
+
+      // Verificar se já existem orçamentos no mês atual
+      const { data: currentBudgets, error: currentError } = await supabase
+        .from('budgets')
+        .select('id')
+        .eq('organization_id', organization.id)
+        .eq('month_year', currentMonthYear);
+
+      if (currentError) throw currentError;
+
+      if (currentBudgets && currentBudgets.length > 0) {
+        if (!confirm(`Já existem orçamentos para ${selectedMonth}. Deseja substituí-los pelos orçamentos de ${previousMonth.toString().padStart(2, '0')}/${previousYear}?`)) {
+          return;
+        }
+
+        // Excluir orçamentos atuais
+        const { error: deleteError } = await supabase
+          .from('budgets')
+          .delete()
+          .eq('organization_id', organization.id)
+          .eq('month_year', currentMonthYear);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // Copiar orçamentos do mês anterior para o mês atual
+      const budgetsToInsert = previousBudgets.map(budget => ({
+        organization_id: organization.id,
+        category_id: budget.category_id,
+        cost_center_id: budget.cost_center_id,
+        limit_amount: budget.limit_amount, // Usar limit_amount ao invés de amount
+        month_year: currentMonthYear,
+        created_at: new Date().toISOString()
+      }));
+
+      const { error: insertError } = await supabase
+        .from('budgets')
+        .insert(budgetsToInsert);
+
+      if (insertError) throw insertError;
+
+      // Atualizar a lista de orçamentos
+      await fetchBudgets();
+      alert(`Orçamentos de ${previousMonth.toString().padStart(2, '0')}/${previousYear} copiados com sucesso para ${selectedMonth}!`);
+    } catch (error) {
+      console.error('Erro ao copiar orçamentos:', error);
+      alert('Erro ao copiar orçamentos do mês anterior');
     }
   };
 
@@ -305,6 +384,14 @@ export default function BudgetsDashboard() {
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-transparent"
                 />
+                <Button 
+                  onClick={handleCopyPreviousMonth}
+                  variant="outline"
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar Mês Anterior
+                </Button>
                 <Button 
                   onClick={() => setShowBudgetModal(true)}
                   className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
