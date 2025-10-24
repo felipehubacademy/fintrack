@@ -206,18 +206,13 @@ export default function Categories() {
                   category.is_default ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
                 }`}>
                   <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1 flex items-start space-x-2">
-                      {category.icon && (
-                        <span className="text-2xl">{category.icon}</span>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">{category.name}</h3>
+                      {category.is_default && (
+                        <span className="inline-block mt-1 text-xs text-blue-600 font-medium">
+                          Categoria Padrão
+                        </span>
                       )}
-                      <div>
-                        <h3 className="font-medium text-gray-900">{category.name}</h3>
-                        {category.is_default && (
-                          <span className="inline-block mt-1 text-xs text-blue-600 font-medium">
-                            Categoria Padrão
-                          </span>
-                        )}
-                      </div>
                     </div>
                     {!category.is_default && (
                       <button

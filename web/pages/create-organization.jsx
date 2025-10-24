@@ -184,14 +184,22 @@ export default function CreateOrganization() {
 
       // Criar categorias padrão
       const categories = [
-        'Alimentação', 'Transporte', 'Saúde', 'Lazer',
-        'Contas', 'Casa', 'Educação', 'Investimentos', 'Outros'
+        { name: 'Alimentação', color: '#EF4444' },
+        { name: 'Transporte', color: '#F59E0B' },
+        { name: 'Saúde', color: '#10B981' },
+        { name: 'Lazer', color: '#8B5CF6' },
+        { name: 'Contas', color: '#06B6D4' },
+        { name: 'Casa', color: '#8B5A2B' },
+        { name: 'Educação', color: '#EC4899' },
+        { name: 'Investimentos', color: '#10B981' },
+        { name: 'Outros', color: '#6B7280' }
       ];
 
       for (const category of categories) {
         await supabase.from('budget_categories').insert({
           organization_id: orgId,
-          name: category,
+          name: category.name,
+          color: category.color,
           is_default: true
         });
       }

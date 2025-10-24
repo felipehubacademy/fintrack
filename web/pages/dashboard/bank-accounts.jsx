@@ -283,6 +283,7 @@ export default function BankAccounts() {
         onClose={handleCloseModal}
         account={editingAccount}
         costCenters={costCenters}
+        organizationId={organization?.id}
         onSuccess={fetchAccounts}
       />
       
@@ -293,6 +294,7 @@ export default function BankAccounts() {
           setSelectedAccountForTransaction(null);
         }}
         account={selectedAccountForTransaction}
+        organizationId={organization?.id}
         onSuccess={fetchAccounts}
       />
       

@@ -4,8 +4,10 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Tag, Plus, Edit, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function CategoryManagementModal({ isOpen, onClose, organization }) {
+  const { success, error: showError, warning } = useNotificationContext();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -52,7 +54,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      alert('Nome da categoria é obrigatório');
+      warning('Nome da categoria é obrigatório');
       return;
     }
 
@@ -86,16 +88,17 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
 
       await fetchCategories();
       resetForm();
+      success(editingCategory ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar categoria:', error);
-      alert('Erro ao salvar categoria');
+      showError('Erro ao salvar categoria');
     }
   };
 
   const handleEdit = (category) => {
     // Bloquear edição de categorias padrão
     if (category.is_default) {
-      alert('Categorias padrão do sistema não podem ser editadas');
+      warning('Categorias padrão do sistema não podem ser editadas');
       return;
     }
     
@@ -111,7 +114,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   const handleDelete = async (categoryId, isDefault, organizationId) => {
     // Bloquear deleção de categorias padrão (tanto globais quanto da organização)
     if (isDefault) {
-      alert('Categorias padrão não podem ser excluídas');
+      warning('Categorias padrão não podem ser excluídas');
       return;
     }
 
@@ -128,9 +131,10 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
       if (error) throw error;
 
       await fetchCategories();
+      success('Categoria excluída com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir categoria:', error);
-      alert('Erro ao excluir categoria');
+      showError('Erro ao excluir categoria');
     }
   };
 

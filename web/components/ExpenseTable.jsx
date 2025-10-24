@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function ExpenseTable({ expenses, loading, onUpdate }) {
+  const { success, error: showError, warning } = useNotificationContext();
   const router = useRouter();
   const [editingId, setEditingId] = useState(null);
   const [editOwner, setEditOwner] = useState('');
@@ -50,7 +52,7 @@ export default function ExpenseTable({ expenses, loading, onUpdate }) {
 
   const handleSave = async () => {
     if (!editOwner) {
-      alert('Selecione um responsável');
+      warning('Selecione um responsável');
       return;
     }
 
@@ -75,9 +77,10 @@ export default function ExpenseTable({ expenses, loading, onUpdate }) {
       // Atualizar lista
       if (onUpdate) onUpdate();
 
+      success('Despesa atualizada com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar:', error);
-      alert('Erro ao atualizar despesa');
+      showError('Erro ao atualizar despesa');
     } finally {
       setSaving(false);
     }

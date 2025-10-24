@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, AlertCircle } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 const BudgetModal = ({ 
   isOpen, 
@@ -10,7 +11,9 @@ const BudgetModal = ({
   budget = null, 
   categories = [], 
   selectedMonth = '2025-10' 
-}) => {
+  }) => {
+  const { success, error: showError, warning, info } = useNotificationContext();
+  
   const [formData, setFormData] = useState({
     category_id: '',
     limit_amount: '',
@@ -41,7 +44,7 @@ const BudgetModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.category_id || !formData.limit_amount) {
-      alert('Preencha todos os campos obrigatórios');
+      warning('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -61,13 +64,13 @@ const BudgetModal = ({
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
-      alert('Digite o nome da nova categoria');
+      warning('Digite o nome da nova categoria');
       return;
     }
 
     // Aqui você pode implementar a criação de categoria
     // Por enquanto, apenas sugere ao usuário
-    alert(`💡 Para criar a categoria "${newCategoryName}", vá em Configurações > Categorias e crie uma nova categoria. Depois volte aqui para criar o orçamento.`);
+    info(`Para criar a categoria "${newCategoryName}", vá em Configurações > Categorias e crie uma nova categoria. Depois volte aqui para criar o orçamento.`);
     setShowNewCategory(false);
     setNewCategoryName('');
   };

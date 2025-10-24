@@ -4,8 +4,10 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Users, Plus, Edit, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function CostCenterManagementModal({ isOpen, onClose, organization }) {
+  const { success, error: showError, warning } = useNotificationContext();
   const [costCenters, setCostCenters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -57,14 +59,14 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      alert('Nome do responsável é obrigatório');
+      warning('Nome do responsável é obrigatório');
       return;
     }
 
     // Validar percentual
     const percentage = parseFloat(formData.default_split_percentage);
     if (isNaN(percentage) || percentage < 0 || percentage > 100) {
-      alert('Percentual padrão deve estar entre 0 e 100');
+      warning('Percentual padrão deve estar entre 0 e 100');
       return;
     }
 
@@ -76,7 +78,7 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
     const newTotal = currentTotal + percentage;
     
     if (newTotal > 100) {
-      alert(`A soma dos percentuais não pode ultrapassar 100%.\n\nTotal atual: ${currentTotal.toFixed(1)}%\nNovo percentual: ${percentage.toFixed(1)}%\nResultado: ${newTotal.toFixed(1)}%\n\nPor favor, ajuste o percentual para no máximo ${(100 - currentTotal).toFixed(1)}%`);
+      warning(`A soma dos percentuais não pode ultrapassar 100%. Total atual: ${currentTotal.toFixed(1)}%, Novo percentual: ${percentage.toFixed(1)}%, Resultado: ${newTotal.toFixed(1)}%. Ajuste o percentual para no máximo ${(100 - currentTotal).toFixed(1)}%`);
       return;
     }
 
@@ -118,9 +120,10 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
 
       await fetchCostCenters();
       resetForm();
+      success(editingCostCenter ? 'Responsável atualizado com sucesso!' : 'Responsável criado com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar responsável:', error);
-      alert('Erro ao salvar responsável: ' + error.message);
+      showError('Erro ao salvar responsável: ' + error.message);
     }
   };
 
@@ -149,9 +152,10 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
       if (error) throw error;
 
       await fetchCostCenters();
+      success('Responsável excluído com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir responsável:', error);
-      alert('Erro ao excluir responsável');
+      showError('Erro ao excluir responsável');
     }
   };
 

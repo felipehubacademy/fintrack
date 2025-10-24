@@ -173,12 +173,12 @@ CREATE OR REPLACE FUNCTION create_bank_transaction(
     p_amount DECIMAL,
     p_description TEXT,
     p_date DATE,
+    p_organization_id UUID,
+    p_user_id UUID,
     p_expense_id BIGINT DEFAULT NULL,
     p_bill_id UUID DEFAULT NULL,
     p_income_id UUID DEFAULT NULL,
-    p_related_account_id UUID DEFAULT NULL,
-    p_organization_id UUID,
-    p_user_id UUID
+    p_related_account_id UUID DEFAULT NULL
 ) RETURNS BIGINT AS $$
 DECLARE
     v_current_balance DECIMAL(10,2);
@@ -266,12 +266,12 @@ BEGIN
         p_amount,
         p_description || ' → Transferência para outra conta',
         p_date,
+        p_organization_id,
+        p_user_id,
         NULL, -- expense_id
         NULL, -- bill_id
         NULL, -- income_id
-        p_to_account_id, -- related_account_id
-        p_organization_id,
-        p_user_id
+        p_to_account_id -- related_account_id
     );
 
     -- Criar transação de crédito na conta destino
@@ -281,12 +281,12 @@ BEGIN
         p_amount,
         p_description || ' ← Transferência de outra conta',
         p_date,
+        p_organization_id,
+        p_user_id,
         NULL, -- expense_id
         NULL, -- bill_id
         NULL, -- income_id
-        p_from_account_id, -- related_account_id
-        p_organization_id,
-        p_user_id
+        p_from_account_id -- related_account_id
     );
 
     RETURN jsonb_build_object(

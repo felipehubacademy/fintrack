@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader } from './ui/Card';
 import { X, AlertCircle } from 'lucide-react';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
-export default function BankAccountModal({ isOpen, onClose, account, costCenters = [], onSuccess }) {
+export default function BankAccountModal({ isOpen, onClose, account, costCenters = [], organizationId, onSuccess }) {
+  const { success, error: showError, warning } = useNotificationContext();
   const [formData, setFormData] = useState({
     name: '',
     bank: '',
@@ -91,17 +93,17 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
     e.preventDefault();
     
     if (!formData.name || !formData.bank || !formData.initial_balance) {
-      alert('Preencha todos os campos obrigatórios');
+      warning('Preencha todos os campos obrigatórios');
       return;
     }
 
     if (formData.owner_type === 'individual' && !formData.cost_center_id) {
-      alert('Selecione um responsável para conta individual');
+      warning('Selecione um responsável para conta individual');
       return;
     }
 
     if (formData.owner_type === 'shared' && totalPercentage !== 100) {
-      alert(`A soma das porcentagens deve ser 100%. Atual: ${totalPercentage}%`);
+      warning(`A soma das porcentagens deve ser 100%. Atual: ${totalPercentage}%`);
       return;
     }
 
@@ -111,13 +113,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userRow?.organization_id) throw new Error('Organização não encontrada');
+      if (!organizationId) throw new Error('Organização não encontrada');
 
       const accountData = {
         name: formData.name,
@@ -128,7 +124,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
         current_balance: parseFloat(formData.initial_balance),
         owner_type: formData.owner_type,
         cost_center_id: formData.owner_type === 'individual' ? formData.cost_center_id : null,
-        organization_id: userRow.organization_id,
+        organization_id: organizationId,
         user_id: user.id
       };
 
@@ -178,11 +174,12 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
       }
 
       resetForm();
+      success(account ? 'Conta bancária atualizada com sucesso!' : 'Conta bancária criada com sucesso!');
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('Erro ao salvar conta bancária:', error);
-      alert('Erro ao salvar conta bancária: ' + (error.message || 'Erro desconhecido'));
+      showError('Erro ao salvar conta bancária: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setSaving(false);
     }

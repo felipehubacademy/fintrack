@@ -204,16 +204,16 @@ INSERT INTO cost_centers (id, organization_id, name, color) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- 13. Criar categorias de orçamento padrão
-INSERT INTO budget_categories (id, organization_id, name, description) VALUES
-    ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Alimentação', 'Supermercado, restaurantes, delivery'),
-    ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Transporte', 'Gasolina, Uber, transporte público'),
-    ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Saúde', 'Farmácia, médico, exames'),
-    ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Lazer', 'Cinema, viagens, entretenimento'),
-    ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Contas', 'Luz, água, internet, telefone'),
-    ('00000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'Casa', 'Aluguel, manutenção, móveis'),
-    ('00000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001', 'Educação', 'Cursos, livros, material escolar'),
-    ('00000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000001', 'Investimentos', 'Aplicações, poupança'),
-    ('00000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001', 'Outros', 'Gastos diversos')
+INSERT INTO budget_categories (id, organization_id, name, description, color) VALUES
+    ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Alimentação', 'Supermercado, restaurantes, delivery', '#EF4444'),
+    ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Transporte', 'Gasolina, Uber, transporte público', '#F59E0B'),
+    ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Saúde', 'Farmácia, médico, exames', '#10B981'),
+    ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Lazer', 'Cinema, viagens, entretenimento', '#8B5CF6'),
+    ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Contas', 'Luz, água, internet, telefone', '#06B6D4'),
+    ('00000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'Casa', 'Aluguel, manutenção, móveis', '#8B5A2B'),
+    ('00000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001', 'Educação', 'Cursos, livros, material escolar', '#EC4899'),
+    ('00000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000001', 'Investimentos', 'Aplicações, poupança', '#10B981'),
+    ('00000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001', 'Outros', 'Gastos diversos', '#6B7280')
 ON CONFLICT (id) DO NOTHING;
 
 -- 14. Migrar despesas existentes para V2 (atualizar com organização padrão)

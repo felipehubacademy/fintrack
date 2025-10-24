@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X } from 'lucide-react';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function EditExpenseModal({ 
   isOpen, 
@@ -12,6 +13,7 @@ export default function EditExpenseModal({
   costCenters = [],
   categories = [] // Adicionar categorias via props
 }) {
+  const { success, error: showError, warning } = useNotificationContext();
   
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -119,7 +121,7 @@ export default function EditExpenseModal({
       }
     } catch (error) {
       console.error('Erro ao buscar despesa:', error);
-      alert('Erro ao carregar despesa');
+      showError('Erro ao carregar despesa');
       onClose();
     } finally {
       setLoading(false);
@@ -216,12 +218,12 @@ export default function EditExpenseModal({
 
   const handleSave = async () => {
     if (!editData.owner || !editData.description || !editData.amount || !editData.date) {
-      alert('Preencha todos os campos obrigatórios');
+      warning('Preencha todos os campos obrigatórios');
       return;
     }
 
     if (isShared && totalPercentage !== 100) {
-      alert('A divisão deve somar exatamente 100%');
+      warning('A divisão deve somar exatamente 100%');
       return;
     }
 
@@ -287,9 +289,10 @@ export default function EditExpenseModal({
 
       onSuccess();
       onClose();
+      success('Despesa atualizada com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      alert('Erro ao salvar despesa');
+      showError('Erro ao salvar despesa');
     } finally {
       setSaving(false);
     }

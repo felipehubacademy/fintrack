@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader } from './ui/Card';
 import { X, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
-export default function BankTransactionModal({ isOpen, onClose, account, onSuccess }) {
+export default function BankTransactionModal({ isOpen, onClose, account, organizationId, onSuccess }) {
+  const { success, error: showError, warning } = useNotificationContext();
   const [formData, setFormData] = useState({
     transaction_type: 'manual_credit',
     amount: '',
@@ -37,7 +39,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, onSucce
     e.preventDefault();
     
     if (!formData.amount || !formData.description || !formData.date) {
-      alert('Preencha todos os campos obrigatórios');
+      warning('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -47,13 +49,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, onSucce
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userRow?.organization_id) throw new Error('Organização não encontrada');
+      if (!organizationId) throw new Error('Organização não encontrada');
 
       // Chamar função RPC para criar transação
       const { data, error } = await supabase.rpc('create_bank_transaction', {
@@ -62,22 +58,23 @@ export default function BankTransactionModal({ isOpen, onClose, account, onSucce
         p_amount: parseFloat(formData.amount),
         p_description: formData.description,
         p_date: formData.date,
+        p_organization_id: organizationId,
+        p_user_id: user.id,
         p_expense_id: null,
         p_bill_id: null,
         p_income_id: null,
-        p_related_account_id: null,
-        p_organization_id: userRow.organization_id,
-        p_user_id: user.id
+        p_related_account_id: null
       });
 
       if (error) throw error;
 
       resetForm();
+      success('Transação criada com sucesso!');
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('Erro ao criar transação:', error);
-      alert('Erro ao criar transação: ' + (error.message || 'Erro desconhecido'));
+      showError('Erro ao criar transação: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setSaving(false);
     }

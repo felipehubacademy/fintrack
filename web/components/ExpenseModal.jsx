@@ -4,10 +4,12 @@ import { useOrganization } from '../hooks/useOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X } from 'lucide-react';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = [] }) {
   
   const { organization, user: orgUser, costCenters, loading: orgLoading } = useOrganization();
+  const { success, error: showError, warning } = useNotificationContext();
   
   const [cards, setCards] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -166,21 +168,21 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
 
   const handleSave = async () => {
     if (!organization?.id || !orgUser?.id) {
-      alert('Erro: Organização ou usuário não encontrados');
+      showError('Organização ou usuário não encontrados');
       return;
     }
     if (!form.description || !form.amount || !form.date) {
-      alert('Erro: Preencha todos os campos obrigatórios');
+      warning('Preencha todos os campos obrigatórios');
       return;
     }
     if (!form.owner_name) {
-      alert('Erro: Selecione um responsável');
+      warning('Selecione um responsável');
       return;
     }
-    
+
     // Validar splits se for compartilhado
     if (isShared && totalPercentage !== 100) {
-      alert(`A divisão deve somar exatamente 100%. Atual: ${totalPercentage}%`);
+      warning(`A divisão deve somar exatamente 100%. Atual: ${totalPercentage}%`);
       return;
     }
     
@@ -285,9 +287,10 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         }
       }
       onClose?.();
+      success('Despesa salva com sucesso!');
       onSuccess?.();
     } catch (e) {
-      alert('Erro ao salvar despesa: ' + (e.message || 'Erro desconhecido'));
+      showError('Erro ao salvar despesa: ' + (e.message || 'Erro desconhecido'));
     } finally {
       setSaving(false);
     }

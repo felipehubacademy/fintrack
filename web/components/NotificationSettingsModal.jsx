@@ -4,8 +4,10 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Bell, X, Mail, MessageSquare, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function NotificationSettingsModal({ isOpen, onClose, organization, user }) {
+  const { success, error: showError } = useNotificationContext();
   const [settings, setSettings] = useState({
     emailNotifications: true,
     whatsappNotifications: true,
@@ -59,11 +61,11 @@ export default function NotificationSettingsModal({ isOpen, onClose, organizatio
 
       if (error) throw error;
 
-      alert('Configurações salvas com sucesso!');
+      success('Configurações salvas com sucesso!');
       onClose();
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
-      alert('Erro ao salvar configurações');
+      showError('Erro ao salvar configurações');
     } finally {
       setSaving(false);
     }
