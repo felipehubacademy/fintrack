@@ -261,7 +261,7 @@ export default function Header({
           />
           
           {/* Drawer */}
-          <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-2xl z-[70] md:hidden">
+          <div className="fixed inset-y-0 right-0 w-[280px] max-w-[85vw] bg-white shadow-2xl z-[70] md:hidden">
             <div className="flex flex-col h-full">
               {/* Close Button */}
               <div className="flex justify-end p-4 border-b border-gray-200">
@@ -280,7 +280,7 @@ export default function Header({
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 transition-colors ${
+                  className={`block px-4 py-3 transition-colors whitespace-nowrap ${
                     isActive('/dashboard') ? 'bg-flight-blue/5 text-flight-blue border-r-2 border-flight-blue' : 'text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -291,10 +291,10 @@ export default function Header({
                 <div className="border-t border-gray-200 mt-2">
                   <button
                     onClick={() => setMobileFinanceOpen(!mobileFinanceOpen)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap"
                   >
                     <span className="font-medium">Financeiro</span>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${mobileFinanceOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 transition-transform flex-shrink-0 ${mobileFinanceOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {mobileFinanceOpen && (
@@ -302,47 +302,52 @@ export default function Header({
                       <Link
                         href="/dashboard/expenses"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`px-4 py-2.5 pl-12 transition-colors ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/expenses') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        Despesas
+                        <Receipt className="h-4 w-4 flex-shrink-0" />
+                        <span>Despesas</span>
                       </Link>
                       <Link
                         href="/dashboard/cards"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`px-4 py-2.5 pl-12 transition-colors ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/cards') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        Cartões
+                        <CreditCard className="h-4 w-4 flex-shrink-0" />
+                        <span>Cartões</span>
                       </Link>
                       <Link
                         href="/dashboard/bills"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`px-4 py-2.5 pl-12 transition-colors ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/bills') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        Contas a Pagar
+                        <FileText className="h-4 w-4 flex-shrink-0" />
+                        <span>Contas a Pagar</span>
                       </Link>
                       <Link
                         href="/dashboard/incomes"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`px-4 py-2.5 pl-12 transition-colors ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/incomes') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        Entradas
+                        <TrendingUp className="h-4 w-4 flex-shrink-0" />
+                        <span>Entradas</span>
                       </Link>
                       <Link
                         href="/dashboard/bank-accounts"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`px-4 py-2.5 pl-12 transition-colors ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        Contas Bancárias
+                        <Wallet className="h-4 w-4 flex-shrink-0" />
+                        <span>Contas Bancárias</span>
                       </Link>
                     </div>
                   )}
@@ -352,10 +357,10 @@ export default function Header({
                 <div className="border-t border-gray-200">
                   <button
                     onClick={() => setMobilePlanningOpen(!mobilePlanningOpen)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap"
                   >
                     <span className="font-medium">Planejamento</span>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${mobilePlanningOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 transition-transform flex-shrink-0 ${mobilePlanningOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {mobilePlanningOpen && (
@@ -363,29 +368,32 @@ export default function Header({
                       <Link
                         href="/dashboard/budgets"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`px-4 py-2.5 pl-12 transition-colors ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/budgets') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        Orçamentos
+                        <Target className="h-4 w-4 flex-shrink-0" />
+                        <span>Orçamentos</span>
                       </Link>
                       <Link
                         href="/dashboard/investments"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`px-4 py-2.5 pl-12 transition-colors ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/investments') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        Investimentos
+                        <TrendingUp className="h-4 w-4 flex-shrink-0" />
+                        <span>Investimentos</span>
                       </Link>
                       <Link
                         href="/dashboard/closing"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`px-4 py-2.5 pl-12 transition-colors ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/closing') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        Fechamento
+                        <FileText className="h-4 w-4 flex-shrink-0" />
+                        <span>Fechamento</span>
                       </Link>
                     </div>
                   )}
@@ -397,7 +405,7 @@ export default function Header({
                 <Link
                   href="/dashboard/config"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors whitespace-nowrap"
                 >
                   <Settings className="h-5 w-5" />
                   <span className="font-medium">Configurações</span>
@@ -407,7 +415,7 @@ export default function Header({
                     setMobileMenuOpen(false);
                     handleLogout();
                   }}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors whitespace-nowrap"
                 >
                   <LogOut className="h-5 w-5" />
                   <span className="font-medium">Sair</span>
