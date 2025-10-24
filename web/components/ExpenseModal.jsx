@@ -78,6 +78,9 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
     if (isShared && splitDetails.length === 0) {
       // Buscar todos os cost_centers ativos e criar divisão padrão
       const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      console.log('🔍 [EXPENSE MODAL] Active centers:', activeCenters);
+      console.log('🔍 [EXPENSE MODAL] Default split percentages:', activeCenters.map(cc => ({ name: cc.name, percentage: cc.default_split_percentage })));
+      
       const defaultSplits = activeCenters.map(cc => ({
         cost_center_id: cc.id,
         name: cc.name,
@@ -86,6 +89,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         amount: 0
       }));
       
+      console.log('🔍 [EXPENSE MODAL] Default splits created:', defaultSplits);
       setSplitDetails(defaultSplits);
     } else if (!isShared) {
       // Limpar splits se não for compartilhado
@@ -98,12 +102,18 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   useEffect(() => {
     if (isShared && form.amount && splitDetails.length > 0) {
       const totalAmount = parseFloat(form.amount) || 0;
-      setSplitDetails(prev => prev.map(split => ({
+      console.log('🔍 [EXPENSE MODAL] Recalculating splits for amount:', totalAmount);
+      console.log('🔍 [EXPENSE MODAL] Current splitDetails before recalculation:', splitDetails);
+      
+      const updatedSplits = splitDetails.map(split => ({
         ...split,
         amount: (totalAmount * split.percentage) / 100
-      })));
+      }));
+      
+      console.log('🔍 [EXPENSE MODAL] Updated splitDetails after recalculation:', updatedSplits);
+      setSplitDetails(updatedSplits);
     }
-  }, [form.amount, isShared]);
+  }, [form.amount, isShared, splitDetails.length]);
 
   // Recriar splitDetails quando showSplitConfig muda para true
   useEffect(() => {
@@ -209,12 +219,14 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
 
         // Se for compartilhado, salvar splits para a despesa principal
         if (isShared && splitDetails.length > 0) {
+          console.log('🔍 [EXPENSE MODAL] Saving splits for credit card expense:', splitDetails);
           const splitsToInsert = splitDetails.map(split => ({
             expense_id: parentExpenseId,
             cost_center_id: split.cost_center_id,
             percentage: split.percentage,
             amount: split.amount
           }));
+          console.log('🔍 [EXPENSE MODAL] Splits to insert:', splitsToInsert);
 
           const { error: splitError } = await supabase
             .from('expense_splits')
@@ -254,12 +266,14 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
 
         // Se for compartilhado, sempre salvar splits (padrão ou personalizado)
         if (isShared && splitDetails.length > 0) {
+          console.log('🔍 [EXPENSE MODAL] Saving splits for non-credit expense:', splitDetails);
           const splitsToInsert = splitDetails.map(split => ({
             expense_id: expense.id,
             cost_center_id: split.cost_center_id,
             percentage: split.percentage,
             amount: split.amount
           }));
+          console.log('🔍 [EXPENSE MODAL] Splits to insert:', splitsToInsert);
 
           const { error: splitError } = await supabase
             .from('expense_splits')

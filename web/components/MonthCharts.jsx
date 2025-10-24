@@ -4,10 +4,6 @@ import { buildOwnerColorMap, buildCategoryColorMap, paymentMethodColor, normaliz
 
 export default function MonthCharts({ expenses, selectedMonth, onMonthChange, costCenters = [], categories = [] }) {
   const [hoverCategory, setHoverCategory] = useState(null);
-  // Debug logs
-  console.log('🔍 [MONTHCHARTS DEBUG] expenses:', expenses);
-  console.log('🔍 [MONTHCHARTS DEBUG] expenses.length:', expenses?.length);
-  console.log('🔍 [MONTHCHARTS DEBUG] costCenters:', costCenters);
   
   const parseAmount = (raw) => {
     if (raw == null) return 0;
@@ -78,8 +74,8 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
   const ownerTotals = {};
   const displayNameByCanon = {};
 
-  // Determinar owners individuais conhecidos
-  const individualCenters = (costCenters || []).filter(c => c && c.type === 'individual');
+  // Determinar owners individuais conhecidos (ativos e não compartilhados)
+  const individualCenters = (costCenters || []).filter(c => c && c.is_active !== false && !c.is_shared);
   
   // Criar mapa de cost_center_id -> name para lookup rápido
   const costCenterMap = {};
@@ -87,6 +83,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
     costCenterMap[cc.id] = cc.name;
     displayNameByCanon[canon(cc.name)] = cc.name;
   });
+  
 
   // Processar cada despesa
   (expenses || []).forEach(expense => {
@@ -100,6 +97,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
         expense.expense_splits.forEach(split => {
           const ccName = costCenterMap[split.cost_center_id] || split.cost_center?.name || 'Outros';
           const ccKey = canon(ccName);
+          
           if (!ownerTotals[ccKey]) ownerTotals[ccKey] = 0;
           ownerTotals[ccKey] += parseAmount(split.amount);
           if (!displayNameByCanon[ccKey]) displayNameByCanon[ccKey] = ccName;
@@ -110,6 +108,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
           const percentage = parseFloat(cc.split_percentage || 0);
           const share = (amount * percentage) / 100;
           const ccKey = canon(cc.name);
+          
           if (!ownerTotals[ccKey]) ownerTotals[ccKey] = 0;
           ownerTotals[ccKey] += share;
         });

@@ -130,6 +130,9 @@ export default function EditExpenseModal({
   useEffect(() => {
     if (isShared && splitDetails.length === 0) {
       const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      console.log('🔍 [EDIT EXPENSE MODAL] Active centers:', activeCenters);
+      console.log('🔍 [EDIT EXPENSE MODAL] Default split percentages:', activeCenters.map(cc => ({ name: cc.name, percentage: cc.default_split_percentage })));
+      
       const defaultSplits = activeCenters.map(cc => ({
         cost_center_id: cc.id,
         name: cc.name,
@@ -137,6 +140,8 @@ export default function EditExpenseModal({
         percentage: parseFloat(cc.default_split_percentage || 0),
         amount: 0
       }));
+      
+      console.log('🔍 [EDIT EXPENSE MODAL] Default splits created:', defaultSplits);
       setSplitDetails(defaultSplits);
     } else if (!isShared && editData.owner !== expense?.owner) {
       // Limpar splits se mudou de compartilhado para individual
@@ -149,12 +154,18 @@ export default function EditExpenseModal({
   useEffect(() => {
     if (isShared && editData.amount && splitDetails.length > 0) {
       const totalAmount = parseFloat(editData.amount) || 0;
-      setSplitDetails(prev => prev.map(split => ({
+      console.log('🔍 [EDIT EXPENSE MODAL] Recalculating splits for amount:', totalAmount);
+      console.log('🔍 [EDIT EXPENSE MODAL] Current splitDetails before recalculation:', splitDetails);
+      
+      const updatedSplits = splitDetails.map(split => ({
         ...split,
         amount: (totalAmount * split.percentage) / 100
-      })));
+      }));
+      
+      console.log('🔍 [EDIT EXPENSE MODAL] Updated splitDetails after recalculation:', updatedSplits);
+      setSplitDetails(updatedSplits);
     }
-  }, [editData.amount, isShared]);
+  }, [editData.amount, isShared, splitDetails.length]);
 
   // Recriar splitDetails quando showSplitConfig muda para true
   useEffect(() => {
@@ -251,12 +262,14 @@ export default function EditExpenseModal({
 
         // Criar novos splits SE tiver personalização
         if (showSplitConfig && splitDetails.length > 0) {
+          console.log('🔍 [EDIT EXPENSE MODAL] Saving splits for expense:', splitDetails);
           const splitsToInsert = splitDetails.map(split => ({
             expense_id: expenseId,
             cost_center_id: split.cost_center_id,
             percentage: split.percentage,
             amount: split.amount
           }));
+          console.log('🔍 [EDIT EXPENSE MODAL] Splits to insert:', splitsToInsert);
 
           const { error: insertError } = await supabase
             .from('expense_splits')

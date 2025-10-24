@@ -145,11 +145,6 @@ export default function DashboardHome() {
       endExclusive.setMonth(endExclusive.getMonth() + 1);
       // endExclusive é o 1º dia do próximo mês; usaremos '<' para evitar problemas de fuso
 
-      console.log('🔍 [DASHBOARD DEBUG] selectedMonth:', selectedMonth);
-      console.log('🔍 [DASHBOARD DEBUG] startOfMonth:', startOfMonth);
-      console.log('🔍 [DASHBOARD DEBUG] endExclusive:', endExclusive.toISOString().split('T')[0]);
-      console.log('🔍 [DASHBOARD DEBUG] organization.id:', organization.id);
-      console.log('🔍 [DASHBOARD DEBUG] organization:', organization);
 
       // Buscar despesas (compatível V1/V2) com expense_splits
       let query = supabase
@@ -170,21 +165,14 @@ export default function DashboardHome() {
         .order('date', { ascending: false });
 
       // Adicionar filtro V2 se organização tem ID real (não mock)
-      console.log('🔍 [DASHBOARD DEBUG] Checking organization filter...');
-      console.log('🔍 [DASHBOARD DEBUG] organization?.id exists:', !!organization?.id);
-      console.log('🔍 [DASHBOARD DEBUG] organization.id !== default-org:', organization?.id !== 'default-org');
-      
       if (organization?.id && organization.id !== 'default-org') {
         query = query.eq('organization_id', organization.id);
-        console.log('🔍 [DASHBOARD DEBUG] Added organization filter:', organization.id);
-      } else {
-        console.log('🔍 [DASHBOARD DEBUG] No organization filter applied');
       }
 
       const { data, error } = await query;
 
       if (error) {
-        console.error('🔍 [DASHBOARD DEBUG] Query error:', error);
+        console.error('Error fetching expenses:', error);
         throw error;
       }
 
@@ -197,7 +185,6 @@ export default function DashboardHome() {
         console.log('✅ [DASHBOARD] No expenses found for this organization in the selected month.');
       }
 
-      console.log('🔍 [DASHBOARD DEBUG] Expenses used for charts:', expensesData);
       setMonthExpenses(expensesData);
 
       // Separar cartão e a vista
@@ -210,11 +197,6 @@ export default function DashboardHome() {
         e.payment_method === 'boleto' || 
         e.payment_method === 'other'
       );
-
-      console.log('🔍 [DASHBOARD DEBUG] Card expenses:', card.length, 'items');
-      console.log('🔍 [DASHBOARD DEBUG] Cash expenses:', cash.length, 'items');
-      console.log('🔍 [DASHBOARD DEBUG] Card details:', card);
-      console.log('🔍 [DASHBOARD DEBUG] Cash details:', cash);
 
       setCardExpenses(card);
       setCashExpenses(cash);
@@ -273,7 +255,7 @@ export default function DashboardHome() {
 
         // REMOVIDO: Fallbacks perigosos que causavam vazamento de dados entre organizações
         if (error) {
-          console.error('🔍 [DASHBOARD DEBUG] monthlyQuery error:', error);
+          console.error('Error fetching monthly data:', error);
         }
 
         if (!error && data) {
@@ -297,12 +279,6 @@ export default function DashboardHome() {
             )
             .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
 
-          console.log(`🔍 [MONTHLY DEBUG] ${monthStr}:`, {
-            totalExpenses: confirmedExpenses.length,
-            cardTotal,
-            cashTotal,
-            grandTotal: cardTotal + cashTotal
-          });
 
           months.push({
             month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
@@ -391,12 +367,6 @@ export default function DashboardHome() {
     .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
     
   const grandTotal = cardTotal + cashTotal;
-  
-  console.log('🔍 [STATS DEBUG] monthExpenses:', monthExpenses.length);
-  console.log('🔍 [STATS DEBUG] confirmedMonthExpenses:', confirmedMonthExpenses.length);
-  console.log('🔍 [STATS DEBUG] cardTotal:', cardTotal);
-  console.log('🔍 [STATS DEBUG] cashTotal:', cashTotal);
-  console.log('🔍 [STATS DEBUG] grandTotal:', grandTotal);
 
   // Recalcular dados do mês anterior baseado no mês selecionado
   useEffect(() => {
@@ -426,15 +396,6 @@ export default function DashboardHome() {
   // Usar despesas brutas do mês diretamente nos gráficos
   const expensesForCharts = monthExpenses || [];
 
-  // Debug logs
-  console.log('🔍 [DASHBOARD DEBUG] selectedMonth:', selectedMonth);
-  console.log('🔍 [DASHBOARD DEBUG] monthlyData:', monthlyData);
-  console.log('🔍 [DASHBOARD DEBUG] cardExpenses:', cardExpenses);
-  console.log('🔍 [DASHBOARD DEBUG] cashExpenses:', cashExpenses);
-  console.log('🔍 [DASHBOARD DEBUG] expensesForCharts:', expensesForCharts);
-  console.log('🔍 [DASHBOARD DEBUG] cardTotal:', cardTotal);
-  console.log('🔍 [DASHBOARD DEBUG] cashTotal:', cashTotal);
-  console.log('🔍 [DASHBOARD DEBUG] grandTotal:', grandTotal);
 
   if (orgLoading || !isDataLoaded) {
     return (
