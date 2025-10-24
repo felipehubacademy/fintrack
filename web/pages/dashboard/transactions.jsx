@@ -19,6 +19,7 @@ export default function TransactionsDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError, user: orgUser } = useOrganization();
+  const [openTooltip, setOpenTooltip] = useState(null);
   
   
   // Fallback para quando V2 não está configurado
@@ -48,6 +49,20 @@ export default function TransactionsDashboard() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [categories, setCategories] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Fechar tooltip ao clicar fora em mobile
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openTooltip && !event.target.closest('.relative.group')) {
+        setOpenTooltip(null);
+      }
+    };
+    
+    if (openTooltip) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openTooltip]);
   
   // Estado de ordenação
   const [sortConfig, setSortConfig] = useState({
@@ -715,7 +730,10 @@ export default function TransactionsDashboard() {
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4">
           {/* Card Total de Entradas - AZUL */}
           <div className="relative group">
-            <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <Card 
+              className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+              onClick={() => setOpenTooltip(openTooltip === 'entradas' ? null : 'entradas')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-900">
                   Total de Entradas
@@ -739,7 +757,7 @@ export default function TransactionsDashboard() {
             </Card>
             
             {/* Tooltip */}
-            <div className="absolute z-50 invisible group-hover:visible bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px]">
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'entradas' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
               <div className="space-y-2">
                 {costCenters
@@ -785,7 +803,10 @@ export default function TransactionsDashboard() {
 
           {/* Card Total de Despesas - CINZA */}
           <div className="relative group">
-            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
+            <Card 
+              className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+              onClick={() => setOpenTooltip(openTooltip === 'despesas' ? null : 'despesas')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
                   Total de Despesas
@@ -809,7 +830,7 @@ export default function TransactionsDashboard() {
             </Card>
             
             {/* Tooltip */}
-            <div className="absolute z-50 invisible group-hover:visible bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px]">
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'despesas' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
               <div className="space-y-2">
                 {uniqueOwners.map((owner) => {
@@ -843,7 +864,10 @@ export default function TransactionsDashboard() {
 
           {/* Card À Vista - CINZA */}
           <div className="relative group">
-            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
+            <Card 
+              className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+              onClick={() => setOpenTooltip(openTooltip === 'avista' ? null : 'avista')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
                   À Vista
@@ -866,7 +890,7 @@ export default function TransactionsDashboard() {
             </Card>
             
             {/* Tooltip */}
-            <div className="absolute z-50 invisible group-hover:visible bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px]">
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'avista' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
               <div className="space-y-2">
                 {uniqueOwners
@@ -929,7 +953,10 @@ export default function TransactionsDashboard() {
 
           {/* Card Crédito - CINZA */}
           <div className="relative group">
-            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
+            <Card 
+              className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+              onClick={() => setOpenTooltip(openTooltip === 'credito' ? null : 'credito')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
                   Crédito
@@ -952,7 +979,7 @@ export default function TransactionsDashboard() {
             </Card>
             
             {/* Tooltip */}
-            <div className="absolute z-50 invisible group-hover:visible bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px]">
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'credito' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
               <div className="space-y-2">
                 {uniqueOwners
