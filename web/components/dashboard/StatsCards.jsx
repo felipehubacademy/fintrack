@@ -29,7 +29,7 @@ export default function StatsCards({
     {
       title: "Total de Entradas",
       value: `R$ ${(totalIncomes || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: ArrowUpCircle,
+      icon: ArrowDownCircle,
       trend: incomesGrowth > 0 ? "up" : incomesGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(incomesGrowth || 0).toFixed(1)}%`,
       color: "text-flight-blue",
@@ -39,7 +39,7 @@ export default function StatsCards({
     {
       title: "Total de Despesas",
       value: `- R$ ${(totalExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: ArrowDownCircle,
+      icon: ArrowUpCircle,
       trend: expensesGrowth > 0 ? "up" : expensesGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(expensesGrowth || 0).toFixed(1)}%`,
       color: "text-gray-600",

@@ -712,197 +712,306 @@ export default function TransactionsDashboard() {
         </Card>
 
         {/* Summary Cards reorganizados */}
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4">
+          {/* Card Total de Entradas - AZUL */}
+          <div className="relative group">
+            <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className="text-sm font-medium text-gray-900">
+                  Total de Entradas
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-flight-blue/10">
+                  <TrendingUp className="h-4 w-4 text-flight-blue" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  R$ {Number(
+                    incomes
+                      .filter(i => i.status === 'confirmed')
+                      .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0)
+                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Total de todas as entradas
+                </p>
+              </CardContent>
+            </Card>
+            
+            {/* Tooltip */}
+            <div className="absolute z-50 invisible group-hover:visible bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px]">
+              <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
+              <div className="space-y-2">
+                {costCenters
+                  .filter(cc => cc && cc.is_active !== false && !cc.is_shared)
+                  .map((cc) => {
+                    const individualTotal = incomes
+                      .filter(i => !i.is_shared && i.cost_center_id === cc.id && i.status === 'confirmed')
+                      .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+                    
+                    const sharedTotal = incomes
+                      .filter(i => i.is_shared && i.status === 'confirmed')
+                      .flatMap(i => i.income_splits || [])
+                      .filter(s => s.cost_center_id === cc.id)
+                      .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+                    
+                    const total = individualTotal + sharedTotal;
+                    const totalIncomes = incomes
+                      .filter(i => i.status === 'confirmed')
+                      .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+                    const percentage = totalIncomes > 0 ? ((total / totalIncomes) * 100).toFixed(1) : 0;
+                    
+                    return { cc, total, percentage };
+                  })
+                  .filter(item => item.total > 0)
+                  .map(({ cc, total, percentage }) => (
+                    <div key={cc.id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: cc.color || '#207DFF' }}
+                        />
+                        <span className="text-gray-700">{cc.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-500 ml-2">{percentage}%</span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+
           {/* Card Total de Despesas - CINZA */}
-          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total de Despesas
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-gray-100">
-                <Target className="h-4 w-4 text-gray-600" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                - R$ {Number(
-                  expenses
+          <div className="relative group">
+            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Total de Despesas
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-gray-100">
+                  <Target className="h-4 w-4 text-gray-600" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  - R$ {Number(
+                    expenses
+                      .filter(e => e.status === 'confirmed')
+                      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Total de todas as despesas
+                </p>
+              </CardContent>
+            </Card>
+            
+            {/* Tooltip */}
+            <div className="absolute z-50 invisible group-hover:visible bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px]">
+              <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
+              <div className="space-y-2">
+                {uniqueOwners.map((owner) => {
+                  const ownerTotal = totals[owner] || 0;
+                  const totalDespesas = expenses
                     .filter(e => e.status === 'confirmed')
-                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
-                ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                  const percentage = totalDespesas > 0 ? ((ownerTotal / totalDespesas) * 100).toFixed(1) : 0;
+                  
+                  return (
+                    <div key={owner} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ 
+                            backgroundColor: owner === 'Compartilhado' ? '#8B5CF6' : (buildOwnerColorMap(costCenters)[normalizeKey(owner)] || '#6366F1')
+                          }}
+                        />
+                        <span className="text-gray-700">{owner}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-gray-900 font-semibold">- R$ {Number(ownerTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-500 ml-2">{percentage}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Total de todas as despesas
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Card À Vista - CINZA */}
-          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                À Vista
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-gray-100">
-                <DollarSign className="h-4 w-4 text-gray-600" />
+          <div className="relative group">
+            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  À Vista
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-gray-100">
+                  <DollarSign className="h-4 w-4 text-gray-600" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  - R$ {Number(expenses
+                    .filter(expense => ['cash', 'debit_card', 'pix'].includes(expense.payment_method))
+                    .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
+                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Dinheiro, PIX e débito
+                </p>
+              </CardContent>
+            </Card>
+            
+            {/* Tooltip */}
+            <div className="absolute z-50 invisible group-hover:visible bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px]">
+              <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
+              <div className="space-y-2">
+                {uniqueOwners
+                  .map((owner) => {
+                    const cashExpenses = expenses.filter(e => 
+                      e.status === 'confirmed' && 
+                      ['cash', 'debit_card', 'pix'].includes(e.payment_method)
+                    );
+                    
+                    const ownerTotal = cashExpenses.reduce((sum, e) => {
+                      const isCompartilhado = normalizeName(e.owner) === 'compartilhado';
+                      
+                      if (isCompartilhado && e.split) {
+                        // Despesa compartilhada: buscar o split deste responsável
+                        if (e.expense_splits && e.expense_splits.length > 0) {
+                          const ownerCostCenter = costCenters.find(cc => isSameName(cc.name, owner));
+                          if (ownerCostCenter) {
+                            const split = e.expense_splits.find(s => s.cost_center_id === ownerCostCenter.id);
+                            if (split) return sum + parseFloat(split.amount || 0);
+                          }
+                        } else {
+                          const ownerCostCenter = costCenters.find(cc => isSameName(cc.name, owner));
+                          if (ownerCostCenter) {
+                            const percentage = parseFloat(ownerCostCenter.split_percentage || 0);
+                            return sum + (parseFloat(e.amount || 0) * percentage / 100);
+                          }
+                        }
+                      } else if (isSameName(e.owner, owner)) {
+                        return sum + parseFloat(e.amount || 0);
+                      }
+                      return sum;
+                    }, 0);
+                    
+                    const totalCash = cashExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                    const percentage = totalCash > 0 ? ((ownerTotal / totalCash) * 100).toFixed(1) : 0;
+                    
+                    return { owner, ownerTotal, percentage };
+                  })
+                  .filter(item => item.ownerTotal > 0)
+                  .map(({ owner, ownerTotal, percentage }) => (
+                    <div key={owner} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ 
+                            backgroundColor: owner === 'Compartilhado' ? '#8B5CF6' : (buildOwnerColorMap(costCenters)[normalizeKey(owner)] || '#6366F1')
+                          }}
+                        />
+                        <span className="text-gray-700">{owner}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-gray-900 font-semibold">- R$ {Number(ownerTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-500 ml-2">{percentage}%</span>
+                      </div>
+                    </div>
+                  ))}
               </div>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                - R$ {Number(expenses
-                  .filter(expense => ['cash', 'debit_card', 'pix'].includes(expense.payment_method))
-                  .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
-                ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Dinheiro, PIX e débito
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Card Crédito - CINZA */}
-          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Crédito
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-gray-100">
-                <CreditCard className="h-4 w-4 text-gray-600" />
+          <div className="relative group">
+            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Crédito
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-gray-100">
+                  <CreditCard className="h-4 w-4 text-gray-600" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  - R$ {Number(expenses
+                    .filter(expense => expense.payment_method === 'credit_card')
+                    .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
+                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Gastos em cartão de crédito
+                </p>
+              </CardContent>
+            </Card>
+            
+            {/* Tooltip */}
+            <div className="absolute z-50 invisible group-hover:visible bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px]">
+              <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
+              <div className="space-y-2">
+                {uniqueOwners
+                  .map((owner) => {
+                    const creditExpenses = expenses.filter(e => 
+                      e.status === 'confirmed' && 
+                      e.payment_method === 'credit_card'
+                    );
+                    
+                    const ownerTotal = creditExpenses.reduce((sum, e) => {
+                      const isCompartilhado = normalizeName(e.owner) === 'compartilhado';
+                      
+                      if (isCompartilhado && e.split) {
+                        // Despesa compartilhada: buscar o split deste responsável
+                        if (e.expense_splits && e.expense_splits.length > 0) {
+                          const ownerCostCenter = costCenters.find(cc => isSameName(cc.name, owner));
+                          if (ownerCostCenter) {
+                            const split = e.expense_splits.find(s => s.cost_center_id === ownerCostCenter.id);
+                            if (split) return sum + parseFloat(split.amount || 0);
+                          }
+                        } else {
+                          const ownerCostCenter = costCenters.find(cc => isSameName(cc.name, owner));
+                          if (ownerCostCenter) {
+                            const percentage = parseFloat(ownerCostCenter.split_percentage || 0);
+                            return sum + (parseFloat(e.amount || 0) * percentage / 100);
+                          }
+                        }
+                      } else if (isSameName(e.owner, owner)) {
+                        return sum + parseFloat(e.amount || 0);
+                      }
+                      return sum;
+                    }, 0);
+                    
+                    const totalCredit = creditExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                    const percentage = totalCredit > 0 ? ((ownerTotal / totalCredit) * 100).toFixed(1) : 0;
+                    
+                    return { owner, ownerTotal, percentage };
+                  })
+                  .filter(item => item.ownerTotal > 0)
+                  .map(({ owner, ownerTotal, percentage }) => (
+                    <div key={owner} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ 
+                            backgroundColor: owner === 'Compartilhado' ? '#8B5CF6' : (buildOwnerColorMap(costCenters)[normalizeKey(owner)] || '#6366F1')
+                          }}
+                        />
+                        <span className="text-gray-700">{owner}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-gray-900 font-semibold">- R$ {Number(ownerTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-500 ml-2">{percentage}%</span>
+                      </div>
+                    </div>
+                  ))}
               </div>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                - R$ {Number(expenses
-                  .filter(expense => expense.payment_method === 'credit_card')
-                  .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
-                ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Gastos em cartão de crédito
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Cards dos Responsáveis - CINZA */}
-          {uniqueOwners.map((owner) => {
-            const oc = buildOwnerColorMap(costCenters);
-            const bg = owner && normalizeKey(owner) === normalizeKey('Compartilhado') ? '#8B5CF6' : (oc[normalizeKey(owner)] || '#6366F1');
-            const fg = textColorForBg(bg);
-            const isShared = normalizeKey(owner) === normalizeKey('Compartilhado');
-            
-            return (
-              <Card key={owner} className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    {owner}
-                  </CardTitle>
-                  <div className="p-2 rounded-lg bg-gray-100">
-                    <Users className="h-4 w-4 text-gray-600" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <div className="text-2xl font-bold text-gray-900 mb-1">
-                    - R$ {Number(totals[owner] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {isShared ? 'Despesas compartilhadas' : 'Gastos individuais'}
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {/* Card Total de Entradas - AZUL */}
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-              <CardTitle className="text-sm font-medium text-gray-900">
-                Total de Entradas
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/10">
-                <TrendingUp className="h-4 w-4 text-flight-blue" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {Number(
-                  incomes
-                    .filter(i => i.status === 'confirmed')
-                    .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0)
-                ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Total de todas as entradas
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Cards de Entradas por Cost Center - AZUL */}
-          {costCenters.filter(cc => cc.type === 'individual').map((cc) => {
-            const individualTotal = incomes
-              .filter(i => !i.is_shared && i.cost_center_id === cc.id && i.status === 'confirmed')
-              .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
-            
-            const sharedTotal = incomes
-              .filter(i => i.is_shared && i.status === 'confirmed')
-              .flatMap(i => i.income_splits || [])
-              .filter(s => s.cost_center_id === cc.id)
-              .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-            
-            const total = individualTotal + sharedTotal;
-            
-            if (total === 0) return null;
-            
-            return (
-              <Card key={`income-${cc.id}`} className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-                  <CardTitle className="text-sm font-medium text-gray-900">
-                    Entradas {cc.name}
-                  </CardTitle>
-                  <div className="p-2 rounded-lg bg-flight-blue/10">
-                    <Users className="h-4 w-4 text-flight-blue" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <div className="text-2xl font-bold text-gray-900 mb-1">
-                    R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Individuais e compartilhadas
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {/* Card Entradas Compartilhadas - AZUL */}
-          {(() => {
-            const sharedTotal = incomes
-              .filter(i => i.is_shared && i.status === 'confirmed')
-              .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
-            
-            if (sharedTotal === 0) return null;
-            
-            return (
-              <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-                  <CardTitle className="text-sm font-medium text-gray-900">
-                    Entradas Compartilhadas
-                  </CardTitle>
-                  <div className="p-2 rounded-lg bg-flight-blue/10">
-                    <Users className="h-4 w-4 text-flight-blue" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <div className="text-2xl font-bold text-gray-900 mb-1">
-                    R$ {Number(sharedTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Divididas entre responsáveis
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })()}
+            </div>
+          </div>
         </div>
 
         {/* Filters */}
@@ -1326,7 +1435,7 @@ export default function TransactionsDashboard() {
                     </td>
                     <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
                       {!isIncome && '- '}
-                      R$ {parseFloat(transaction.amount).toFixed(2)}
+                      R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center space-x-2">
