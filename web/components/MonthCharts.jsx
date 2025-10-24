@@ -140,7 +140,9 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
     const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
     const chartData = data.map(d => ({ ...d, total }));
 
-    const hovered = activeIndex != null ? chartData[activeIndex] : null;
+    // Sempre mostrar o maior valor quando não houver hover
+    const defaultDisplay = chartData.length > 0 ? chartData[0] : null; // Maior valor já vem ordenado
+    const hovered = activeIndex != null ? chartData[activeIndex] : defaultDisplay;
 
     const renderActiveShape = (props) => {
       const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, midAngle } = props;
@@ -190,9 +192,9 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
               {chartData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
-                  fill={title === 'Por Responsável'
+                  fill={title === 'Despesas por Responsável'
                     ? resolveColor(entry.name, ownerColorMap)
-                    : title === 'Por Formas de Pagamento'
+                    : title === 'Despesas por Formas de Pagamento'
                       ? paymentMethodColor(entry.key || entry.name)
                       : resolveColor(entry.name, categoryColorMap)
                   }
@@ -208,7 +210,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
             <div className="text-center">
               <p className="text-[11px] font-semibold text-gray-900 max-w-[140px] mx-auto truncate">{hovered.name}</p>
-              <p className="text-sm font-bold text-gray-900">{`R$ ${Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</p>
+              <p className="text-sm font-bold text-gray-900">{`- R$ ${Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</p>
               <p className="text-[10px] text-gray-500 font-medium">{total > 0 ? `${((hovered.value / total) * 100).toFixed(1)}% do total` : ''}</p>
             </div>
           </div>
@@ -226,7 +228,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Análise do Mês</h2>
-              <p className="text-sm text-gray-600 mt-1">Insights e tendências dos seus gastos</p>
+              <p className="text-sm text-gray-600 mt-1">Insights e tendências das suas transações</p>
             </div>
             <div className="flex items-center space-x-3">
               <label className="text-sm font-medium text-gray-700">Mês:</label>
@@ -260,7 +262,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Análise do Mês</h2>
-              <p className="text-sm text-gray-600 mt-1">Insights e tendências dos seus gastos</p>
+              <p className="text-sm text-gray-600 mt-1">Insights e tendências das suas transações</p>
             </div>
             <div className="flex items-center space-x-3">
               <label className="text-sm font-medium text-gray-700">Mês:</label>
@@ -278,13 +280,13 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
           {/* Grid dos 3 gráficos pizza */}
           <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-4">
         {/* Pizza 1: Por Categorias */}
-        <ProfessionalPieChart data={categoryChartData} title="Por Categorias" />
+        <ProfessionalPieChart data={categoryChartData} title="Despesas por Categorias" />
         
         {/* Pizza 2: Por Formas de Pagamento */}
-        <ProfessionalPieChart data={paymentChartData} title="Por Formas de Pagamento" />
+        <ProfessionalPieChart data={paymentChartData} title="Despesas por Formas de Pagamento" />
         
         {/* Pizza 3: Por Responsável */}
-        <ProfessionalPieChart data={ownerData} title="Por Responsável" />
+        <ProfessionalPieChart data={ownerData} title="Despesas por Responsável" />
       </div>
     </div>
   );

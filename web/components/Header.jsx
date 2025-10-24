@@ -95,7 +95,7 @@ export default function Header({
                     setPlanningDropdownOpen(false);
                   }}
                   className={`text-sm font-medium transition-colors flex items-center space-x-1 ${
-                    isDropdownActive(['/dashboard/expenses', '/dashboard/cards', '/dashboard/bills', '/dashboard/incomes', '/dashboard/bank-accounts'])
+                    isDropdownActive(['/dashboard/transactions', '/dashboard/cards', '/dashboard/bills', '/dashboard/bank-accounts'])
                       ? 'text-flight-blue border-b-2 border-flight-blue pb-1'
                       : 'text-gray-700 hover:text-flight-blue'
                   }`}
@@ -107,14 +107,14 @@ export default function Header({
                 {financeDropdownOpen && (
                   <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                     <Link 
-                      href="/dashboard/expenses"
+                      href="/dashboard/transactions"
                       onClick={() => setFinanceDropdownOpen(false)}
                       className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
-                        isActive('/dashboard/expenses') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
+                        isActive('/dashboard/transactions') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
                       }`}
                     >
-                      <Receipt className="h-4 w-4" />
-                      <span>Despesas</span>
+                      <TrendingUp className="h-4 w-4" />
+                      <span>Transações</span>
                     </Link>
                     <Link 
                       href="/dashboard/cards"
@@ -135,16 +135,6 @@ export default function Header({
                     >
                       <FileText className="h-4 w-4" />
                       <span>Contas a Pagar</span>
-                    </Link>
-                    <Link 
-                      href="/dashboard/incomes"
-                      onClick={() => setFinanceDropdownOpen(false)}
-                      className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
-                        isActive('/dashboard/incomes') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
-                      }`}
-                    >
-                      <TrendingUp className="h-4 w-4" />
-                      <span>Entradas</span>
                     </Link>
                     <Link 
                       href="/dashboard/bank-accounts"
@@ -300,14 +290,14 @@ export default function Header({
                   {mobileFinanceOpen && (
                     <div className="bg-gray-50">
                       <Link
-                        href="/dashboard/expenses"
+                        href="/dashboard/transactions"
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
-                          isActive('/dashboard/expenses') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
+                          isActive('/dashboard/transactions') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
-                        <Receipt className="h-4 w-4 flex-shrink-0" />
-                        <span>Despesas</span>
+                        <TrendingUp className="h-4 w-4 flex-shrink-0" />
+                        <span>Transações</span>
                       </Link>
                       <Link
                         href="/dashboard/cards"
@@ -328,16 +318,6 @@ export default function Header({
                       >
                         <FileText className="h-4 w-4 flex-shrink-0" />
                         <span>Contas a Pagar</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/incomes"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
-                          isActive('/dashboard/incomes') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <TrendingUp className="h-4 w-4 flex-shrink-0" />
-                        <span>Entradas</span>
                       </Link>
                       <Link
                         href="/dashboard/bank-accounts"

@@ -136,17 +136,18 @@ BEGIN
     END IF;
 
     -- Recalcular saldo atual baseado em todas as transações
-    SELECT COALESCE(initial_balance, 0) + COALESCE(SUM(
-        CASE 
-            WHEN transaction_type IN ('manual_credit', 'income_deposit', 'transfer_in') THEN amount
-            WHEN transaction_type IN ('manual_debit', 'expense_payment', 'bill_payment', 'transfer_out') THEN -amount
-            ELSE 0
-        END
-    ), 0)
-    INTO v_new_balance
-    FROM bank_accounts ba
-    LEFT JOIN bank_account_transactions bat ON bat.bank_account_id = ba.id
-    WHERE ba.id = v_account_id;
+    SELECT COALESCE(
+        (SELECT initial_balance FROM bank_accounts WHERE id = v_account_id), 0
+    ) + COALESCE(
+        (SELECT SUM(
+            CASE 
+                WHEN transaction_type IN ('manual_credit', 'income_deposit', 'transfer_in') THEN amount
+                WHEN transaction_type IN ('manual_debit', 'expense_payment', 'bill_payment', 'transfer_out') THEN -amount
+                ELSE 0
+            END
+        ) FROM bank_account_transactions WHERE bank_account_id = v_account_id), 0
+    )
+    INTO v_new_balance;
 
     -- Atualizar saldo na conta
     UPDATE bank_accounts
@@ -196,14 +197,7 @@ BEGIN
         RAISE EXCEPTION 'Conta bancária não encontrada';
     END IF;
 
-    -- Validar saldo suficiente para débitos
-    IF p_transaction_type IN ('manual_debit', 'expense_payment', 'bill_payment', 'transfer_out') THEN
-        IF v_current_balance < p_amount THEN
-            RAISE EXCEPTION 'Saldo insuficiente. Saldo atual: %', v_current_balance;
-        END IF;
-    END IF;
-
-    -- Calcular novo saldo
+    -- Calcular novo saldo (permite saldo negativo)
     IF p_transaction_type IN ('manual_credit', 'income_deposit', 'transfer_in') THEN
         v_new_balance := v_current_balance + p_amount;
     ELSE

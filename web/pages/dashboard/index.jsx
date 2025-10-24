@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 import MonthCharts from '../../components/MonthCharts';
+import IncomeCharts from '../../components/IncomeCharts';
 import MonthlyComparison from '../../components/MonthlyComparison';
 import StatsCards from '../../components/dashboard/StatsCards';
 import QuickActions from '../../components/dashboard/QuickActions';
@@ -26,10 +27,11 @@ import Footer from '../../components/Footer';
 
 export default function DashboardHome() {
   const router = useRouter();
-  const { organization, user: orgUser, costCenters, budgetCategories, loading: orgLoading, error: orgError } = useOrganization();
+  const { organization, user: orgUser, costCenters, budgetCategories, incomeCategories, loading: orgLoading, error: orgError } = useOrganization();
   const [selectedMonth, setSelectedMonth] = useState('2025-10');
   // Raw expenses for the selected month (used by MonthCharts)
   const [monthExpenses, setMonthExpenses] = useState([]);
+  const [monthIncomes, setMonthIncomes] = useState([]);
   const [cardExpenses, setCardExpenses] = useState([]);
   const [cashExpenses, setCashExpenses] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
@@ -49,6 +51,7 @@ export default function DashboardHome() {
       console.log('🔍 [Dashboard] Checking onboarding status...');
       checkOnboardingStatus();
       fetchAllExpenses();
+      fetchAllIncomes();
     } else if (!orgLoading && orgError) {
       console.log('❌ [Dashboard] Organization error, redirecting to login');
       router.push('/');
@@ -212,10 +215,54 @@ export default function DashboardHome() {
     }
   };
 
+  const fetchAllIncomes = async () => {
+    if (!organization) return;
+    
+    try {
+      const startOfMonth = `${selectedMonth}-01`;
+      const endExclusive = new Date(selectedMonth + '-01');
+      endExclusive.setMonth(endExclusive.getMonth() + 1);
+
+      let query = supabase
+        .from('incomes')
+        .select(`
+          *,
+          cost_center:cost_centers(name, color),
+          income_splits(
+            id,
+            cost_center_id,
+            cost_center:cost_centers(name, color),
+            percentage,
+            amount
+          )
+        `)
+        .eq('status', 'confirmed')
+        .gte('date', startOfMonth)
+        .lt('date', endExclusive.toISOString().split('T')[0])
+        .order('date', { ascending: false });
+
+      if (organization?.id && organization.id !== 'default-org') {
+        query = query.eq('organization_id', organization.id);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching incomes:', error);
+        throw error;
+      }
+
+      setMonthIncomes(data || []);
+    } catch (error) {
+      console.error('Error fetching incomes:', error);
+    }
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await fetchAllExpenses();
+      await fetchAllIncomes();
       await fetchMonthlyData();
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -238,7 +285,7 @@ export default function DashboardHome() {
         const endExclusive = new Date(date.getFullYear(), date.getMonth() + 1, 1);
         const endExclusiveStr = endExclusive.toISOString().split('T')[0];
 
-        // Buscar dados mensais (compatível V1/V2)
+        // Buscar dados mensais de despesas (compatível V1/V2)
         let monthlyQuery = supabase
           .from('expenses')
           .select('*')
@@ -252,6 +299,20 @@ export default function DashboardHome() {
         }
 
         let { data, error } = await monthlyQuery;
+
+        // Buscar dados mensais de entradas
+        let incomeQuery = supabase
+          .from('incomes')
+          .select('*')
+          .eq('status', 'confirmed')
+          .gte('date', startOfMonth)
+          .lt('date', endExclusiveStr);
+
+        if (organization?.id && organization.id !== 'default-org') {
+          incomeQuery = incomeQuery.eq('organization_id', organization.id);
+        }
+
+        const { data: incomeData, error: incomeError } = await incomeQuery;
 
         // REMOVIDO: Fallbacks perigosos que causavam vazamento de dados entre organizações
         if (error) {
@@ -279,11 +340,15 @@ export default function DashboardHome() {
             )
             .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
 
+          // Calcular total de entradas
+          const confirmedIncomes = (incomeData || []).filter(i => i.status === 'confirmed');
+          const incomeTotal = confirmedIncomes.reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
 
           months.push({
             month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
             cartoes: cardTotal,
-            despesas: cashTotal
+            despesas: cashTotal,
+            entradas: incomeTotal
           });
         }
       }
@@ -456,13 +521,12 @@ export default function DashboardHome() {
 
         {/* Stats Cards */}
         <StatsCards 
-          cardExpenses={cardTotal}
-          cashExpenses={cashTotal}
           totalExpenses={grandTotal}
-          costCenters={costCenters}
-          budgets={[]}
-          monthlyGrowth={12}
-          previousMonthData={previousMonthData}
+          totalIncomes={monthIncomes.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0)}
+          previousMonthData={{
+            totalExpenses: previousMonthData.totalExpenses,
+            totalIncomes: 0 // TODO: calcular entradas do mês anterior
+          }}
         />
 
         {/* Quick Actions */}
@@ -470,8 +534,11 @@ export default function DashboardHome() {
 
         {/* Charts Section */}
         <div className="space-y-12">
-          {/* Month Charts */}
+          {/* Expenses Charts */}
           <MonthCharts expenses={expensesForCharts} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} categories={budgetCategories} />
+
+          {/* Income Charts */}
+          <IncomeCharts incomes={monthIncomes} expenses={expensesForCharts} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} incomeCategories={incomeCategories} />
 
           {/* Monthly Comparison */}
           <MonthlyComparison monthlyData={monthlyData} />

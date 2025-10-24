@@ -3,35 +3,29 @@ import { Button } from '../ui/Button';
 import { 
   Plus, 
   CreditCard, 
-  Users, 
   Target, 
-  Settings, 
-  Share2,
-  BarChart3,
-  Receipt,
-  FolderOpen,
   TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import ExpenseModal from '../ExpenseModal';
+import TransactionModal from '../TransactionModal';
 
 export default function QuickActions() {
-  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
   const actions = [
     {
-      title: "Ver Despesas",
-      description: "Visualizar todas as despesas",
-      icon: TrendingUp,
-      href: "/dashboard/expenses",
+      title: "Adicionar Transação",
+      description: "Despesa ou entrada",
+      icon: Plus,
+      href: null,
       color: "bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue",
       textColor: "text-white"
     },
     {
-      title: "Adicionar Despesa",
-      description: "Registrar nova despesa",
-      icon: Plus,
-      href: null,
+      title: "Ver Transações",
+      description: "Visualizar todas as transações",
+      icon: TrendingUp,
+      href: "/dashboard/transactions",
       color: "bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue",
       textColor: "text-white"
     },
@@ -82,7 +76,7 @@ export default function QuickActions() {
               <Button
                 key={index}
                 variant="outline"
-                onClick={() => setShowExpenseModal(true)}
+                onClick={() => setShowTransactionModal(true)}
                 className={`w-full h-auto p-4 flex flex-col items-center space-y-2 ${action.color} ${action.textColor} hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md`}
               >
                 <action.icon className="h-5 w-5" />
@@ -95,10 +89,10 @@ export default function QuickActions() {
           ))}
         </div>
       </CardContent>
-      <ExpenseModal
-        isOpen={showExpenseModal}
-        onClose={() => setShowExpenseModal(false)}
-        onSuccess={() => setShowExpenseModal(false)}
+      <TransactionModal
+        isOpen={showTransactionModal}
+        onClose={() => setShowTransactionModal(false)}
+        onSuccess={() => setShowTransactionModal(false)}
       />
     </Card>
   );

@@ -1,19 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { TrendingUp, TrendingDown, CreditCard, Wallet, Users, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 
 export default function StatsCards({ 
-  cardExpenses = 0, 
-  cashExpenses = 0, 
-  totalExpenses = 0, 
-  costCenters = [], 
-  budgets = [],
-  monthlyGrowth = 0,
+  totalExpenses = 0,
+  totalIncomes = 0,
   previousMonthData = {
-    cardExpenses: 0,
-    cashExpenses: 0,
-    totalExpenses: 0
+    totalExpenses: 0,
+    totalIncomes: 0
   }
 }) {
   // Calcular percentual de crescimento para cada categoria
@@ -23,43 +18,43 @@ export default function StatsCards({
     return ((current - previous) / previous) * 100;
   };
 
-  const cashGrowth = calculateGrowth(cashExpenses, previousMonthData?.cashExpenses || 0);
-  const cardGrowth = calculateGrowth(cardExpenses, previousMonthData?.cardExpenses || 0);
-  const totalGrowth = calculateGrowth(totalExpenses, previousMonthData?.totalExpenses || 0);
+  const expensesGrowth = calculateGrowth(totalExpenses, previousMonthData?.totalExpenses || 0);
+  const incomesGrowth = calculateGrowth(totalIncomes, previousMonthData?.totalIncomes || 0);
+  const balance = totalIncomes - totalExpenses;
+  const balanceGrowth = previousMonthData?.totalIncomes && previousMonthData?.totalExpenses
+    ? calculateGrowth(balance, (previousMonthData.totalIncomes - previousMonthData.totalExpenses))
+    : 0;
 
   const stats = [
     {
-      title: "Total Geral",
-      value: `R$ ${(totalExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: TrendingUp,
-      trend: totalGrowth > 0 ? "up" : totalGrowth < 0 ? "down" : "neutral",
-      trendValue: `${Math.abs(totalGrowth || 0).toFixed(1)}%`,
+      title: "Total de Entradas",
+      value: `R$ ${(totalIncomes || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: ArrowUpCircle,
+      trend: incomesGrowth > 0 ? "up" : incomesGrowth < 0 ? "down" : "neutral",
+      trendValue: `${Math.abs(incomesGrowth || 0).toFixed(1)}%`,
       color: "text-flight-blue",
       bgColor: "bg-flight-blue/5",
-      borderColor: "border-flight-blue/20",
-      description: "Todas as despesas"
+      borderColor: "border-flight-blue/20"
     },
     {
-      title: "À vista",
-      value: `R$ ${(cashExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: Wallet,
-      trend: cashGrowth > 0 ? "up" : cashGrowth < 0 ? "down" : "neutral",
-      trendValue: `${Math.abs(cashGrowth || 0).toFixed(1)}%`,
-      color: "text-flight-blue",
-      bgColor: "bg-flight-blue/5",
-      borderColor: "border-flight-blue/20",
-      description: "PIX • Débito • Dinheiro"
+      title: "Total de Despesas",
+      value: `- R$ ${(totalExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: ArrowDownCircle,
+      trend: expensesGrowth > 0 ? "up" : expensesGrowth < 0 ? "down" : "neutral",
+      trendValue: `${Math.abs(expensesGrowth || 0).toFixed(1)}%`,
+      color: "text-gray-600",
+      bgColor: "bg-gray-50",
+      borderColor: "border-gray-200"
     },
     {
-      title: "Cartões de Crédito",
-      value: `R$ ${(cardExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: CreditCard,
-      trend: cardGrowth > 0 ? "up" : cardGrowth < 0 ? "down" : "neutral",
-      trendValue: `${Math.abs(cardGrowth || 0).toFixed(1)}%`,
-      color: "text-flight-blue",
-      bgColor: "bg-flight-blue/5",
-      borderColor: "border-flight-blue/20",
-      description: "Faturamento do período"
+      title: "Saldo do Mês",
+      value: `${balance >= 0 ? '' : '-'} R$ ${Math.abs(balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: DollarSign,
+      trend: balanceGrowth > 0 ? "up" : balanceGrowth < 0 ? "down" : "neutral",
+      trendValue: `${Math.abs(balanceGrowth || 0).toFixed(1)}%`,
+      color: balance >= 0 ? "text-green-600" : "text-red-600",
+      bgColor: balance >= 0 ? "bg-green-50" : "bg-red-50",
+      borderColor: balance >= 0 ? "border-green-200" : "border-red-200"
     },
   ];
 

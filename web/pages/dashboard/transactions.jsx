@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 import { useOrganization } from '../../hooks/useOrganization';
 import { Button } from '../../components/ui/Button';
-import ExpenseModal from '../../components/ExpenseModal';
+import TransactionModal from '../../components/TransactionModal';
 import EditExpenseModal from '../../components/EditExpenseModal';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import NotificationModal from '../../components/NotificationModal';
@@ -15,7 +15,7 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 
-export default function FinanceDashboard() {
+export default function TransactionsDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError, user: orgUser } = useOrganization();
@@ -24,13 +24,18 @@ export default function FinanceDashboard() {
   // Fallback para quando V2 não está configurado
   const isV2Ready = organization && organization.id !== 'default-org';
   const [expenses, setExpenses] = useState([]);
+  const [incomes, setIncomes] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({
     month: '2025-10', // Temporariamente fixo para outubro 2025
     owner: 'all',
     payment_method: 'all',
     card_id: null,
-    category_id: null
+    category_id: null,
+    transactionType: 'all',
+    incomeCategory: 'all',
+    incomeType: 'all'
   });
   const [editingId, setEditingId] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -38,9 +43,11 @@ export default function FinanceDashboard() {
   const [pageLoading, setPageLoading] = useState(true);
   const [cards, setCards] = useState([]);
   const [cardsLoading, setCardsLoading] = useState(true);
-  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
   
   // Estado de ordenação
   const [sortConfig, setSortConfig] = useState({
@@ -75,9 +82,22 @@ export default function FinanceDashboard() {
         isV2Ready 
       });
       fetchExpenses();
+      fetchIncomes();
       fetchCategories();
     }
   }, [user, filter, isV2Ready]);
+
+  // Combinar expenses e incomes após ambos estarem carregados
+  useEffect(() => {
+    if (expenses.length >= 0 && incomes.length >= 0) {
+      const combined = [
+        ...expenses.map(e => ({ ...e, type: 'expense' })),
+        ...incomes.map(i => ({ ...i, type: 'income' }))
+      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      setTransactions(combined);
+    }
+  }, [expenses, incomes]);
 
   // Buscar cartões quando a organização estiver disponível
   useEffect(() => {
@@ -206,6 +226,42 @@ export default function FinanceDashboard() {
     }
   };
 
+  const fetchIncomes = async () => {
+    try {
+      const startOfMonth = `${filter.month}-01`;
+      const [year, month] = filter.month.split('-');
+      const lastDay = new Date(year, month, 0).getDate();
+      const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+
+      let query = supabase
+        .from('incomes')
+        .select(`
+          *,
+          cost_center:cost_centers(name, color),
+          income_splits(
+            id,
+            cost_center_id,
+            cost_center:cost_centers(name, color),
+            percentage,
+            amount
+          )
+        `)
+        .eq('organization_id', organization.id)
+        .eq('status', 'confirmed')
+        .gte('date', startOfMonth)
+        .lte('date', endOfMonthStr)
+        .order('date', { ascending: false });
+
+      const { data, error } = await query;
+      
+      if (error) throw error;
+
+      setIncomes(data || []);
+    } catch (error) {
+      console.error('Error fetching incomes:', error);
+    }
+  };
+
   const fetchCards = async () => {
     setCardsLoading(true);
     try {
@@ -258,60 +314,97 @@ export default function FinanceDashboard() {
     }
   };
 
-  const handleEdit = (expense) => {
-    setEditingId(expense.id);
+  const handleEdit = (transaction) => {
+    // Determinar o tipo da transação
+    const transactionType = transaction.type === 'income' ? 'income' : 'expense';
+    
+    // Para despesas, usar o EditExpenseModal existente
+    if (transactionType === 'expense') {
+      setEditingId(transaction.id);
+    } else {
+      // Para entradas, abrir o TransactionModal em modo edição
+      setEditingTransaction({ ...transaction, transactionType: 'income' });
+      setShowTransactionModal(true);
+    }
   };
 
 
-  const handleDelete = async (expenseId) => {
-    // Buscar a despesa para verificar se tem parcelas
-    const expense = expenses.find(e => e.id === expenseId);
-    const hasInstallments = expense?.parent_expense_id || expense?.installment_info;
+  const handleDelete = async (transaction) => {
+    const isIncome = transaction.type === 'income';
     
-    let confirmMessage = 'Tem certeza que deseja excluir esta despesa?';
-    if (hasInstallments) {
-      // Buscar todas as parcelas relacionadas
-      const { data: relatedExpenses } = await supabase
-        .from('expenses')
-        .select('id, installment_info')
-        .or(`id.eq.${expenseId},parent_expense_id.eq.${expenseId}`);
-      
-      const totalInstallments = relatedExpenses?.length || 1;
-      confirmMessage = `Esta despesa possui ${totalInstallments} parcelas. Todas serão excluídas. Tem certeza?`;
-    }
-
-    if (!confirm(confirmMessage)) {
-      return;
-    }
-
-    setDeleting(true);
-    try {
-      if (hasInstallments) {
-        // Excluir todas as parcelas relacionadas
-        const { error } = await supabase
-          .from('expenses')
-          .delete()
-          .or(`id.eq.${expenseId},parent_expense_id.eq.${expenseId}`);
-        
-        if (error) throw error;
-      } else {
-        // Excluir despesa única
-        const { error } = await supabase
-          .from('expenses')
-          .delete()
-          .eq('id', expenseId);
-        
-        if (error) throw error;
+    if (isIncome) {
+      // Exclusão de entrada
+      if (!confirm('Tem certeza que deseja excluir esta entrada?')) {
+        return;
       }
 
-      fetchExpenses();
-      alert(hasInstallments ? 'Todas as parcelas foram excluídas com sucesso!' : 'Despesa excluída com sucesso!');
+      setDeleting(true);
+      try {
+        const { error } = await supabase
+          .from('incomes')
+          .delete()
+          .eq('id', transaction.id);
+        
+        if (error) throw error;
 
-    } catch (error) {
-      console.error('Erro ao excluir:', error);
-      alert('Erro ao excluir despesa');
-    } finally {
-      setDeleting(false);
+        await fetchIncomes();
+        alert('Entrada excluída com sucesso!');
+      } catch (error) {
+        console.error('Erro ao excluir entrada:', error);
+        alert('Erro ao excluir entrada');
+      } finally {
+        setDeleting(false);
+      }
+    } else {
+      // Exclusão de despesa (lógica existente)
+      const expense = expenses.find(e => e.id === transaction.id);
+      const hasInstallments = expense?.parent_expense_id || expense?.installment_info;
+      
+      let confirmMessage = 'Tem certeza que deseja excluir esta despesa?';
+      if (hasInstallments) {
+        // Buscar todas as parcelas relacionadas
+        const { data: relatedExpenses } = await supabase
+          .from('expenses')
+          .select('id, installment_info')
+          .or(`id.eq.${transaction.id},parent_expense_id.eq.${transaction.id}`);
+        
+        const totalInstallments = relatedExpenses?.length || 1;
+        confirmMessage = `Esta despesa possui ${totalInstallments} parcelas. Todas serão excluídas. Tem certeza?`;
+      }
+
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+
+      setDeleting(true);
+      try {
+        if (hasInstallments) {
+          // Excluir todas as parcelas relacionadas
+          const { error } = await supabase
+            .from('expenses')
+            .delete()
+            .or(`id.eq.${transaction.id},parent_expense_id.eq.${transaction.id}`);
+          
+          if (error) throw error;
+        } else {
+          // Excluir despesa única
+          const { error } = await supabase
+            .from('expenses')
+            .delete()
+            .eq('id', transaction.id);
+          
+          if (error) throw error;
+        }
+
+        await fetchExpenses();
+        alert(hasInstallments ? 'Todas as parcelas foram excluídas com sucesso!' : 'Despesa excluída com sucesso!');
+
+      } catch (error) {
+        console.error('Erro ao excluir:', error);
+        alert('Erro ao excluir despesa');
+      } finally {
+        setDeleting(false);
+      }
     }
   };
 
@@ -336,7 +429,115 @@ export default function FinanceDashboard() {
     return sortConfig.direction === 'asc' ? <span className="text-blue-600">↑</span> : <span className="text-blue-600">↓</span>;
   };
 
-  // Função para ordenar array de despesas
+  // Função para filtrar transações
+  const filterTransactions = (transactionsList) => {
+    let filtered = [...transactionsList];
+
+    // Filtro de tipo de transação
+    if (filter.transactionType === 'expense') {
+      filtered = filtered.filter(t => t.type === 'expense');
+    } else if (filter.transactionType === 'income') {
+      filtered = filtered.filter(t => t.type === 'income');
+    }
+
+    // Filtro de mês (já aplicado nos fetches, mas podemos reforçar)
+    if (filter.month) {
+      const startOfMonth = `${filter.month}-01`;
+      const [year, month] = filter.month.split('-');
+      const lastDay = new Date(year, month, 0).getDate();
+      const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+      
+      filtered = filtered.filter(t => 
+        t.date >= startOfMonth && t.date <= endOfMonthStr
+      );
+    }
+
+    // Filtro de responsável
+    if (filter.owner !== 'all') {
+      filtered = filtered.filter(t => {
+        const owner = t.type === 'income' 
+          ? (t.is_shared ? 'Compartilhado' : t.cost_center?.name)
+          : t.owner;
+        return isSameName(owner, filter.owner);
+      });
+    }
+
+    // Filtros específicos de despesa
+    if (filter.payment_method && filter.payment_method !== 'all') {
+      filtered = filtered.filter(t => 
+        t.type === 'income' || t.payment_method === filter.payment_method
+      );
+    }
+
+    if (filter.card_id) {
+      filtered = filtered.filter(t => 
+        t.type === 'income' || t.card_id === filter.card_id
+      );
+    }
+
+    if (filter.category_id) {
+      filtered = filtered.filter(t => 
+        t.type === 'income' || t.category_id === filter.category_id
+      );
+    }
+
+    // Filtros específicos de entrada
+    if (filter.incomeCategory && filter.incomeCategory !== 'all') {
+      filtered = filtered.filter(t =>
+        t.type === 'expense' || t.category === filter.incomeCategory
+      );
+    }
+
+    if (filter.incomeType && filter.incomeType !== 'all') {
+      filtered = filtered.filter(t => {
+        if (t.type === 'expense') return true;
+        if (filter.incomeType === 'individual') return !t.is_shared;
+        if (filter.incomeType === 'shared') return t.is_shared;
+        return true;
+      });
+    }
+
+    return filtered;
+  };
+
+  // Função para ordenar array de transações
+  const sortTransactions = (transactionsList) => {
+    return [...transactionsList].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+      // Tratamento especial para cada tipo de coluna
+      switch (sortConfig.key) {
+        case 'date':
+          aValue = new Date(aValue + 'T00:00:00');
+          bValue = new Date(bValue + 'T00:00:00');
+          break;
+        case 'amount':
+          aValue = parseFloat(aValue || 0);
+          bValue = parseFloat(bValue || 0);
+          break;
+        case 'category':
+        case 'owner':
+        case 'payment_method':
+          aValue = (aValue || '').toString().toLowerCase();
+          bValue = (bValue || '').toString().toLowerCase();
+          break;
+        default:
+          aValue = (aValue || '').toString().toLowerCase();
+          bValue = (bValue || '').toString().toLowerCase();
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  // Função para ordenar array de despesas (mantida para compatibilidade)
   const sortExpenses = (expenses) => {
     return [...expenses].sort((a, b) => {
       let aValue = a[sortConfig.key];
@@ -485,7 +686,7 @@ export default function FinanceDashboard() {
       <Header 
         organization={organization}
         user={orgUser}
-        pageTitle="Despesas"
+        pageTitle="Transações"
         showNotificationModal={showNotificationModal}
         setShowNotificationModal={setShowNotificationModal}
       />
@@ -496,14 +697,14 @@ export default function FinanceDashboard() {
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-              <h2 className="text-lg font-semibold text-gray-900">Gestão de Despesas</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Gestão de Transações</h2>
               <div className="flex items-center space-x-3">
                 <Button 
                   className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
-                  onClick={() => setShowExpenseModal(true)}
+                  onClick={() => setShowTransactionModal(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Nova Despesa
+                  Nova Transação
                 </Button>
               </div>
             </div>
@@ -512,19 +713,19 @@ export default function FinanceDashboard() {
 
         {/* Summary Cards reorganizados */}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
-          {/* Card Total do Mês */}
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+          {/* Card Total de Despesas - CINZA */}
+          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
-                Total do Mês
+                Total de Despesas
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
-                <Target className="h-4 w-4 text-flight-blue" />
+              <div className="p-2 rounded-lg bg-gray-100">
+                <Target className="h-4 w-4 text-gray-600" />
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {Number(
+                - R$ {Number(
                   expenses
                     .filter(e => e.status === 'confirmed')
                     .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
@@ -536,19 +737,19 @@ export default function FinanceDashboard() {
             </CardContent>
           </Card>
 
-          {/* Card À Vista */}
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+          {/* Card À Vista - CINZA */}
+          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 À Vista
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
-                <DollarSign className="h-4 w-4 text-flight-blue" />
+              <div className="p-2 rounded-lg bg-gray-100">
+                <DollarSign className="h-4 w-4 text-gray-600" />
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {Number(expenses
+                - R$ {Number(expenses
                   .filter(expense => ['cash', 'debit_card', 'pix'].includes(expense.payment_method))
                   .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
                 ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -559,19 +760,19 @@ export default function FinanceDashboard() {
             </CardContent>
           </Card>
 
-          {/* Card Crédito */}
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+          {/* Card Crédito - CINZA */}
+          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Crédito
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
-                <CreditCard className="h-4 w-4 text-flight-blue" />
+              <div className="p-2 rounded-lg bg-gray-100">
+                <CreditCard className="h-4 w-4 text-gray-600" />
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {Number(expenses
+                - R$ {Number(expenses
                   .filter(expense => expense.payment_method === 'credit_card')
                   .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
                 ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -582,7 +783,7 @@ export default function FinanceDashboard() {
             </CardContent>
           </Card>
 
-          {/* Cards dos Responsáveis */}
+          {/* Cards dos Responsáveis - CINZA */}
           {uniqueOwners.map((owner) => {
             const oc = buildOwnerColorMap(costCenters);
             const bg = owner && normalizeKey(owner) === normalizeKey('Compartilhado') ? '#8B5CF6' : (oc[normalizeKey(owner)] || '#6366F1');
@@ -590,18 +791,18 @@ export default function FinanceDashboard() {
             const isShared = normalizeKey(owner) === normalizeKey('Compartilhado');
             
             return (
-              <Card key={owner} className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+              <Card key={owner} className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                   <CardTitle className="text-sm font-medium text-gray-600">
                     {owner}
                   </CardTitle>
-                  <div className="p-2 rounded-lg bg-flight-blue/5">
-                    <Users className="h-4 w-4 text-flight-blue" />
+                  <div className="p-2 rounded-lg bg-gray-100">
+                    <Users className="h-4 w-4 text-gray-600" />
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
                   <div className="text-2xl font-bold text-gray-900 mb-1">
-                    R$ {Number(totals[owner] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    - R$ {Number(totals[owner] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {isShared ? 'Despesas compartilhadas' : 'Gastos individuais'}
@@ -610,20 +811,144 @@ export default function FinanceDashboard() {
               </Card>
             );
           })}
+
+          {/* Card Total de Entradas - AZUL */}
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-900">
+                Total de Entradas
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-flight-blue/10">
+                <TrendingUp className="h-4 w-4 text-flight-blue" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {Number(
+                  incomes
+                    .filter(i => i.status === 'confirmed')
+                    .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0)
+                ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Total de todas as entradas
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Cards de Entradas por Cost Center - AZUL */}
+          {costCenters.filter(cc => cc.type === 'individual').map((cc) => {
+            const individualTotal = incomes
+              .filter(i => !i.is_shared && i.cost_center_id === cc.id && i.status === 'confirmed')
+              .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+            
+            const sharedTotal = incomes
+              .filter(i => i.is_shared && i.status === 'confirmed')
+              .flatMap(i => i.income_splits || [])
+              .filter(s => s.cost_center_id === cc.id)
+              .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+            
+            const total = individualTotal + sharedTotal;
+            
+            if (total === 0) return null;
+            
+            return (
+              <Card key={`income-${cc.id}`} className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                  <CardTitle className="text-sm font-medium text-gray-900">
+                    Entradas {cc.name}
+                  </CardTitle>
+                  <div className="p-2 rounded-lg bg-flight-blue/10">
+                    <Users className="h-4 w-4 text-flight-blue" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Individuais e compartilhadas
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {/* Card Entradas Compartilhadas - AZUL */}
+          {(() => {
+            const sharedTotal = incomes
+              .filter(i => i.is_shared && i.status === 'confirmed')
+              .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+            
+            if (sharedTotal === 0) return null;
+            
+            return (
+              <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                  <CardTitle className="text-sm font-medium text-gray-900">
+                    Entradas Compartilhadas
+                  </CardTitle>
+                  <div className="p-2 rounded-lg bg-flight-blue/10">
+                    <Users className="h-4 w-4 text-flight-blue" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    R$ {Number(sharedTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Divididas entre responsáveis
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })()}
         </div>
 
         {/* Filters */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <div className="p-2 bg-flight-blue/5 rounded-lg">
-                <Calendar className="h-4 w-4 text-flight-blue" />
-              </div>
-              <span>Filtros</span>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center space-x-2">
+                <div className="p-2 bg-flight-blue/5 rounded-lg">
+                  <Calendar className="h-4 w-4 text-flight-blue" />
+                </div>
+                <span>Filtros</span>
+              </CardTitle>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <span>{showFilters ? 'Recolher' : 'Expandir'}</span>
+                <svg 
+                  className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
           </CardHeader>
+          {showFilters && (
           <CardContent className="px-6">
             <div className="flex flex-wrap gap-6 w-full">
+            {/* Filtro de Tipo de Transação */}
+            <div className="space-y-3 flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700">Tipo de Transação</label>
+              <select
+                value={filter.transactionType}
+                onChange={(e) => setFilter({ ...filter, transactionType: e.target.value })}
+                className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                style={{ height: '48px', boxSizing: 'border-box' }}
+              >
+                <option value="all">Todas as Transações</option>
+                <option value="expense">Apenas Despesas</option>
+                <option value="income">Apenas Entradas</option>
+              </select>
+            </div>
+
             <div className="space-y-3 flex-1 min-w-[200px]">
               <label className="block text-sm font-medium text-gray-700">Mês</label>
               <input
@@ -665,40 +990,43 @@ export default function FinanceDashboard() {
               </select>
             </div>
 
-            <div className="space-y-3 flex-1 min-w-[200px]">
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-gray-700">
-                  Categoria
-                  {filter.category_id && (
-                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Filtrado
-                    </span>
-                  )}
-                </label>
-                {filter.category_id && (
-                  <button
-                    onClick={() => setFilter({ ...filter, category_id: null })}
-                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+            {/* Filtros condicionais para Despesas */}
+            {(filter.transactionType === 'all' || filter.transactionType === 'expense') && (
+              <>
+                <div className="space-y-3 flex-1 min-w-[200px]">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Categoria de Despesa
+                      {filter.category_id && (
+                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Filtrado
+                        </span>
+                      )}
+                    </label>
+                    {filter.category_id && (
+                      <button
+                        onClick={() => setFilter({ ...filter, category_id: null })}
+                        className="text-xs text-gray-500 hover:text-gray-700 underline"
+                      >
+                        Limpar filtro
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={filter.category_id || 'all'}
+                    onChange={(e) => setFilter({ ...filter, category_id: e.target.value === 'all' ? null : e.target.value })}
+                    className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    style={{ height: '48px', boxSizing: 'border-box' }}
                   >
-                    Limpar filtro
-                  </button>
-                )}
-              </div>
-              <select
-                value={filter.category_id || 'all'}
-                onChange={(e) => setFilter({ ...filter, category_id: e.target.value === 'all' ? null : e.target.value })}
-                className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                style={{ height: '48px', boxSizing: 'border-box' }}
-              >
-                <option value="all">Todas as categorias</option>
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
-                ))}
-              </select>
-            </div>
+                    <option value="all">Todas as categorias</option>
+                    {categories.map(category => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="space-y-3 flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700">Forma de Pagamento</label>
+                <div className="space-y-3 flex-1 min-w-[200px]">
+                  <label className="block text-sm font-medium text-gray-700">Forma de Pagamento</label>
               <select
                 value={filter.payment_method}
                 onChange={(e) => {
@@ -758,8 +1086,51 @@ export default function FinanceDashboard() {
                 ))}
               </select>
             </div>
+              </>
+            )}
+
+            {/* Filtros condicionais para Entradas */}
+            {(filter.transactionType === 'all' || filter.transactionType === 'income') && (
+              <>
+                {/* Categoria de Entrada */}
+                <div className="space-y-3 flex-1 min-w-[200px]">
+                  <label className="block text-sm font-medium text-gray-700">Categoria de Entrada</label>
+                  <select
+                    value={filter.incomeCategory}
+                    onChange={(e) => setFilter({ ...filter, incomeCategory: e.target.value })}
+                    className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    style={{ height: '48px', boxSizing: 'border-box' }}
+                  >
+                    <option value="all">Todas as categorias</option>
+                    <option value="Salário">Salário</option>
+                    <option value="Freelance">Freelance</option>
+                    <option value="Investimentos">Investimentos</option>
+                    <option value="Vendas">Vendas</option>
+                    <option value="Aluguel">Aluguel</option>
+                    <option value="Bonificação">Bonificação</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
+
+                {/* Tipo de Entrada */}
+                <div className="space-y-3 flex-1 min-w-[200px]">
+                  <label className="block text-sm font-medium text-gray-700">Tipo de Entrada</label>
+                  <select
+                    value={filter.incomeType}
+                    onChange={(e) => setFilter({ ...filter, incomeType: e.target.value })}
+                    className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    style={{ height: '48px', boxSizing: 'border-box' }}
+                  >
+                    <option value="all">Todas</option>
+                    <option value="individual">Individual</option>
+                    <option value="shared">Compartilhada</option>
+                  </select>
+                </div>
+              </>
+            )}
             </div>
           </CardContent>
+          )}
         </Card>
 
         {/* Expense Table */}
@@ -769,7 +1140,7 @@ export default function FinanceDashboard() {
               <div className="p-2 bg-flight-blue/5 rounded-lg">
                 <TrendingUp className="h-4 w-4 text-flight-blue" />
               </div>
-              <span>Despesas Gerais</span>
+              <span>Transações Gerais</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-visible">
@@ -828,49 +1199,64 @@ export default function FinanceDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {sortExpenses(expenses).map((expense) => (
-                  <tr key={expense.id} className="hover:bg-gray-50 transition">
+                {sortTransactions(filterTransactions(transactions)).map((transaction) => {
+                  const isIncome = transaction.type === 'income';
+                  return (
+                  <tr key={transaction.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.date ? new Date(expense.date + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                      {transaction.date ? new Date(transaction.date + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <div className="max-w-xs truncate" title={expense.description}>
-                        {expense.description}
-                        {expense.installment_info && (
+                    <td className={`px-6 py-4 text-sm ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
+                      <div className="max-w-xs truncate" title={transaction.description}>
+                        {transaction.description}
+                        {transaction.installment_info && (
                           <span className="text-gray-500 ml-1">
-                            ({expense.installment_info.current_installment}/{expense.installment_info.total_installments})
+                            ({transaction.installment_info.current_installment}/{transaction.installment_info.total_installments})
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {expense.category || '-'}
+                      {isIncome ? transaction.category : transaction.category || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {expense.payment_method === 'cash' && 'Dinheiro'}
-                      {expense.payment_method === 'debit_card' && 'Cartão de Débito'}
-                      {expense.payment_method === 'pix' && 'PIX'}
-                      {expense.payment_method === 'credit_card' && 'Cartão de Crédito'}
-                      {expense.payment_method === 'bank_transfer' && 'Transferência'}
-                      {expense.payment_method === 'boleto' && 'Boleto'}
-                      {expense.payment_method === 'other' && 'Outros'}
+                      {!isIncome && (
+                        <>
+                          {transaction.payment_method === 'cash' && 'Dinheiro'}
+                          {transaction.payment_method === 'debit_card' && 'Cartão de Débito'}
+                          {transaction.payment_method === 'pix' && 'PIX'}
+                          {transaction.payment_method === 'credit_card' && 'Cartão de Crédito'}
+                          {transaction.payment_method === 'bank_transfer' && 'Transferência'}
+                          {transaction.payment_method === 'boleto' && 'Boleto'}
+                          {transaction.payment_method === 'other' && 'Outros'}
+                        </>
+                      )}
+                      {isIncome && '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {expense.card_id ? (() => {
-                        const card = cards.find(c => c.id === expense.card_id);
+                      {!isIncome && transaction.card_id ? (() => {
+                        const card = cards.find(c => c.id === transaction.card_id);
                         return card ? card.name : (cardsLoading ? 'Carregando...' : '-');
                       })() : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {(() => {
-                        const oc = buildOwnerColorMap(costCenters);
-                        const color = expense.owner ? (oc[normalizeKey(expense.owner)] || '#6366F1') : '#6B7280';
-                        const isShared = expense.owner === 'Compartilhado';
+                        const owner = isIncome ? (transaction.is_shared ? 'Compartilhado' : transaction.cost_center?.name) : transaction.owner;
+                        const isShared = owner === 'Compartilhado';
                         
                         // Calcular splits para tooltip
                         let splitInfo = null;
-                        if (isShared && expense.expense_splits && expense.expense_splits.length > 0) {
-                          splitInfo = expense.expense_splits.map(split => {
+                        if (isShared && !isIncome && transaction.expense_splits && transaction.expense_splits.length > 0) {
+                          splitInfo = transaction.expense_splits.map(split => {
+                            const cc = costCenters.find(c => c.id === split.cost_center_id);
+                            return {
+                              name: cc?.name || 'Desconhecido',
+                              percentage: parseFloat(split.percentage).toFixed(0),
+                              color: cc?.color || '#6B7280'
+                            };
+                          });
+                        } else if (isShared && isIncome && transaction.income_splits && transaction.income_splits.length > 0) {
+                          splitInfo = transaction.income_splits.map(split => {
                             const cc = costCenters.find(c => c.id === split.cost_center_id);
                             return {
                               name: cc?.name || 'Desconhecido',
@@ -892,8 +1278,7 @@ export default function FinanceDashboard() {
                         return (
                           <div className="relative inline-block group">
                             <span 
-                              className="text-sm font-medium cursor-help" 
-                              style={{ color: color }}
+                              className="text-sm font-medium cursor-help text-gray-600"
                               onMouseEnter={(e) => {
                                 if (isShared && splitInfo) {
                                   const rect = e.currentTarget.getBoundingClientRect();
@@ -905,7 +1290,7 @@ export default function FinanceDashboard() {
                                 }
                               }}
                             >
-                              {expense.owner || '-'}
+                              {owner || '-'}
                             </span>
                             
                             {/* Tooltip - FIXED para escapar do container */}
@@ -939,50 +1324,53 @@ export default function FinanceDashboard() {
                         );
                       })()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      R$ {parseFloat(expense.amount).toFixed(2)}
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
+                      {!isIncome && '- '}
+                      R$ {parseFloat(transaction.amount).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => handleEdit(expense)}
+                          onClick={() => handleEdit(transaction)}
                           className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors"
-                          title="Editar despesa"
+                          title={`Editar ${isIncome ? 'entrada' : 'despesa'}`}
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(expense.id)}
+                          onClick={() => handleDelete(transaction)}
                           className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
-                          title="Excluir despesa"
+                          title={`Excluir ${isIncome ? 'entrada' : 'despesa'}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          {expenses.length === 0 && (
+          {transactions.length === 0 && (
             <div className="p-8 text-center">
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
-              <p className="text-gray-600">Nenhuma despesa encontrada</p>
+              <p className="text-gray-600">Nenhuma transação encontrada</p>
             </div>
           )}
           </CardContent>
         </Card>
       </main>
 
-      {/* Expense Modal */}
-      <ExpenseModal
-        isOpen={showExpenseModal}
-        onClose={() => setShowExpenseModal(false)}
-        onSuccess={() => { setShowExpenseModal(false); fetchExpenses(); fetchCards(); }}
+      {/* Transaction Modal */}
+      <TransactionModal
+        isOpen={showTransactionModal}
+        onClose={() => { setShowTransactionModal(false); setEditingTransaction(null); }}
+        onSuccess={() => { setShowTransactionModal(false); setEditingTransaction(null); fetchExpenses(); fetchIncomes(); fetchCards(); }}
+        editingTransaction={editingTransaction}
         categories={categories}
       />
 

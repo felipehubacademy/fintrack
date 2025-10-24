@@ -13,7 +13,8 @@ export default function MonthlyComparison({ monthlyData = [] }) {
       ...month,
       cartoes: parseFloat(month.cartoes || 0),
       despesas: parseFloat(month.despesas || 0),
-      total: parseFloat(month.cartoes || 0) + parseFloat(month.despesas || 0)
+      entradas: parseFloat(month.entradas || 0),
+      totalDespesas: parseFloat(month.cartoes || 0) + parseFloat(month.despesas || 0)
     }));
 
   // Tooltip customizado moderno
@@ -22,7 +23,8 @@ export default function MonthlyComparison({ monthlyData = [] }) {
       const data = payload[0].payload;
       const cartoes = data.cartoes || 0;
       const despesas = data.despesas || 0;
-      const total = cartoes + despesas;
+      const entradas = data.entradas || 0;
+      const totalDespesas = cartoes + despesas;
       
       return (
         <div className="bg-white/95 backdrop-blur-sm p-4 border border-gray-200/50 rounded-xl shadow-2xl">
@@ -31,29 +33,30 @@ export default function MonthlyComparison({ monthlyData = [] }) {
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#9CA3AF' }}></div>
                   <span className="text-xs text-gray-600">Crédito</span>
                 </div>
                 <span className="text-sm font-semibold text-gray-900 ml-4">
-                  R$ {cartoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  - R$ {cartoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#6B7280' }}></div>
+                  <span className="text-xs text-gray-600">À Vista</span>
+                </div>
+                <span className="text-sm font-semibold text-gray-900 ml-4">
+                  - R$ {despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 rounded-full bg-flight-blue"></div>
-                  <span className="text-xs text-gray-600">À Vista</span>
+                  <span className="text-xs text-gray-600">Entradas</span>
                 </div>
                 <span className="text-sm font-semibold text-gray-900 ml-4">
-                  R$ {despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {entradas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
-              </div>
-              <div className="border-t border-gray-200 pt-2 mt-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-700">Total</span>
-                  <span className="text-sm font-bold text-gray-900">
-                    R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -91,7 +94,7 @@ export default function MonthlyComparison({ monthlyData = [] }) {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Comparativo Mensal</h2>
-              <p className="text-sm text-gray-600 mt-1">Evolução dos gastos nos últimos {selectedPeriod} meses</p>
+              <p className="text-sm text-gray-600 mt-1">Evolução das transações nos últimos {selectedPeriod} meses</p>
             </div>
             <div className="flex items-center space-x-3">
               <label className="text-sm font-medium text-gray-700">Período:</label>
@@ -137,22 +140,34 @@ export default function MonthlyComparison({ monthlyData = [] }) {
             />
             <Bar 
               dataKey="cartoes" 
-              name="Cartões de Crédito"
+              name="Crédito"
+              stackId="despesas"
               fill="url(#cartoesGradient)"
-              radius={[4, 4, 0, 0]}
+              radius={[0, 0, 0, 0]}
             />
             <Bar 
               dataKey="despesas" 
               name="À Vista"
+              stackId="despesas"
               fill="url(#despesasGradient)"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar 
+              dataKey="entradas" 
+              name="Entradas"
+              fill="url(#entradasGradient)"
               radius={[4, 4, 0, 0]}
             />
             <defs>
               <linearGradient id="cartoesGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#9CA3AF" />
+                <stop offset="100%" stopColor="#9CA3AF" />
+              </linearGradient>
+              <linearGradient id="despesasGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#6B7280" />
                 <stop offset="100%" stopColor="#6B7280" />
               </linearGradient>
-              <linearGradient id="despesasGradient" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="entradasGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#207DFF" />
                 <stop offset="100%" stopColor="#207DFF" />
               </linearGradient>

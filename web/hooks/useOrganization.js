@@ -6,6 +6,7 @@ export function useOrganization() {
   const [user, setUser] = useState(null);
   const [costCenters, setCostCenters] = useState([]);
   const [budgetCategories, setBudgetCategories] = useState([]);
+  const [incomeCategories, setIncomeCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -79,6 +80,15 @@ export function useOrganization() {
       if (categoriesError) throw categoriesError;
       setBudgetCategories(categories || []);
 
+      // Buscar categorias de entrada (globais)
+      const { data: incomeCats, error: incomeCatsError } = await supabase
+        .from('income_categories')
+        .select('*')
+        .order('display_order');
+      
+      if (incomeCatsError) throw incomeCatsError;
+      setIncomeCategories(incomeCats || []);
+
     } catch (error) {
       console.error('Erro ao buscar dados da organização:', error);
       setError(error.message || 'Erro desconhecido');
@@ -96,6 +106,7 @@ export function useOrganization() {
     user,
     costCenters,
     budgetCategories,
+    incomeCategories,
     loading,
     error,
     refreshData

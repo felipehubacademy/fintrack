@@ -44,6 +44,16 @@ export const buildCategoryColorMap = (categories = []) => {
   return map;
 };
 
+export const buildIncomeCategoryColorMap = (incomeCategories = []) => {
+  const map = {};
+  incomeCategories.forEach((c) => {
+    if (!c || !c.name) return;
+    const key = normalizeKey(c.name);
+    map[key] = c.color || colorHash(c.name);
+  });
+  return map;
+};
+
 export const paymentMethodColor = (method) => {
   switch (method) {
     case 'credit_card':

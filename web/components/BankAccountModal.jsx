@@ -188,100 +188,103 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl max-h-[95vh] sm:max-h-[90vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
-        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-lg">
+        <div className="flex flex-row items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg pr-2">
             {account ? 'Editar Conta Bancária' : 'Nova Conta Bancária'}
           </h2>
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onClose}
-            className="text-gray-700 hover:bg-gray-100"
+            className="text-gray-700 hover:bg-gray-100 flex-shrink-0"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Conteúdo com scroll */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 pt-0">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 pt-0">
           <div className="space-y-4 pt-4">
-            {/* Nome da Conta */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome da Conta *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-                placeholder="Ex: Nubank Corrente"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                required
-              />
-            </div>
+            {/* Grid para Desktop */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nome da Conta */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome da Conta *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleChange('name', e.target.value)}
+                  placeholder="Ex: Nubank Corrente"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  required
+                />
+              </div>
 
-            {/* Banco */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Banco *
-              </label>
-              <input
-                type="text"
-                value={formData.bank}
-                onChange={(e) => handleChange('bank', e.target.value)}
-                placeholder="Ex: Nubank, Itaú, Bradesco"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                required
-              />
-            </div>
+              {/* Banco */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Banco *
+                </label>
+                <input
+                  type="text"
+                  value={formData.bank}
+                  onChange={(e) => handleChange('bank', e.target.value)}
+                  placeholder="Ex: Nubank, Itaú, Bradesco"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  required
+                />
+              </div>
 
-            {/* Tipo de Conta */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Conta *
-              </label>
-              <select
-                value={formData.account_type}
-                onChange={(e) => handleChange('account_type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                required
-              >
-                <option value="checking">Conta Corrente</option>
-                <option value="savings">Poupança</option>
-              </select>
-            </div>
+              {/* Tipo de Conta */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de Conta *
+                </label>
+                <select
+                  value={formData.account_type}
+                  onChange={(e) => handleChange('account_type', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  required
+                >
+                  <option value="checking">Conta Corrente</option>
+                  <option value="savings">Poupança</option>
+                </select>
+              </div>
 
-            {/* Número da Conta */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Número da Conta (opcional)
-              </label>
-              <input
-                type="text"
-                value={formData.account_number}
-                onChange={(e) => handleChange('account_number', e.target.value)}
-                placeholder="Últimos dígitos (opcional)"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-              />
-            </div>
+              {/* Número da Conta */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Número da Conta (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.account_number}
+                  onChange={(e) => handleChange('account_number', e.target.value)}
+                  placeholder="Últimos dígitos (opcional)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                />
+              </div>
 
-            {/* Saldo Inicial */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Saldo Inicial (R$) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.initial_balance}
-                onChange={(e) => handleChange('initial_balance', e.target.value)}
-                placeholder="0.00"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                required
-              />
+              {/* Saldo Inicial */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Saldo Inicial (R$) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.initial_balance}
+                  onChange={(e) => handleChange('initial_balance', e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  required
+                />
+              </div>
             </div>
 
             {/* Tipo de Propriedade */}
@@ -358,7 +361,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
         </form>
 
         {/* Footer fixo */}
-        <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+        <div className="flex justify-end space-x-3 p-4 sm:p-6 pt-3 sm:pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
