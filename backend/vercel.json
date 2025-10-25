@@ -28,6 +28,10 @@
     {
       "source": "/organizations/(.*)",
       "destination": "/api/organizations/$1"
+    },
+    {
+      "source": "/api/zul-chat",
+      "destination": "/api/zul-chat"
     }
   ]
 }
