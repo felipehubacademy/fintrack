@@ -12,25 +12,49 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Função para calcular o ciclo de compras (dia 9 do mês anterior até dia 8 do mês atual)
-  const getBillingCycle = (date = new Date()) => {
+  // Função para calcular o ciclo de compras usando o billing_day padrão do sistema
+  // Note: Esta função assume billing_day padrão. Para ciclo específico de um cartão,
+  // use a função RPC get_billing_cycle com o card_id específico
+  const getBillingCycle = async (date = new Date(), cardId = null) => {
     const currentMonth = date.getMonth();
     const currentYear = date.getFullYear();
     const currentDay = date.getDate();
     
-    // Se estamos no dia 9 ou depois, o ciclo atual é do dia 9 do mês passado até dia 8 deste mês
-    if (currentDay >= 9) {
-      const startDate = new Date(currentYear, currentMonth - 1, 9);
-      const endDate = new Date(currentYear, currentMonth, 8);
+    // Se há um cardId específico, buscar o billing_day do cartão
+    let billingDay = 9; // padrão fallback
+    
+    if (cardId) {
+      try {
+        const { data: cycle } = await supabase.rpc('get_billing_cycle', {
+          card_uuid: cardId,
+          reference_date: date.toISOString().split('T')[0]
+        });
+        if (cycle && cycle.length) {
+          return {
+            startDate: cycle[0].start_date,
+            endDate: cycle[0].end_date,
+            month: date.toISOString().split('T')[0].substring(0, 7)
+          };
+        }
+      } catch (error) {
+        console.error('Erro ao buscar ciclo do cartão:', error);
+      }
+    }
+    
+    // Fallback: usar billing_day padrão (dia 9)
+    // Se estamos no dia billing_day ou depois, o ciclo atual é do billing_day do mês passado até dia (billing_day-1) deste mês
+    if (currentDay >= billingDay) {
+      const startDate = new Date(currentYear, currentMonth - 1, billingDay);
+      const endDate = new Date(currentYear, currentMonth, billingDay - 1);
       return {
         startDate: startDate.toISOString().split('T')[0],
         endDate: endDate.toISOString().split('T')[0],
         month: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`
       };
     } else {
-      // Se estamos antes do dia 9, o ciclo atual é do dia 9 de dois meses atrás até dia 8 do mês passado
-      const startDate = new Date(currentYear, currentMonth - 2, 9);
-      const endDate = new Date(currentYear, currentMonth - 1, 8);
+      // Se estamos antes do billing_day, o ciclo atual é do billing_day de dois meses atrás até dia (billing_day-1) do mês passado
+      const startDate = new Date(currentYear, currentMonth - 2, billingDay);
+      const endDate = new Date(currentYear, currentMonth - 1, billingDay - 1);
       return {
         startDate: startDate.toISOString().split('T')[0],
         endDate: endDate.toISOString().split('T')[0],
@@ -39,10 +63,8 @@ export default function Dashboard() {
     }
   };
 
-  const billingCycle = getBillingCycle();
-  
   const [filter, setFilter] = useState({
-    month: billingCycle.month, // Ciclo de compras
+    month: new Date().toISOString().substring(0, 7), // Inicializar com mês atual
     owner: 'all',
     category: 'all'
   });

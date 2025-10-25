@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import CardModal from '../../components/CardModal';
+import CardInvoiceModal from '../../components/CardInvoiceModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 import Header from '../../components/Header';
@@ -42,6 +43,8 @@ export default function CardsDashboard() {
   const [usageByCardId, setUsageByCardId] = useState({});
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [selectedCardForInvoice, setSelectedCardForInvoice] = useState(null);
 
   const computeClosingDay = (bestDay) => {
     if (!bestDay || typeof bestDay !== 'number') return null;
@@ -298,22 +301,6 @@ export default function CardsDashboard() {
           <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
-                Total de Cartões
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
-                <CreditCard className="h-4 w-4 text-flight-blue" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                {cards.length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
                 Limite Total
               </CardTitle>
               <div className="p-2 rounded-lg bg-flight-blue/5">
@@ -323,6 +310,22 @@ export default function CardsDashboard() {
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
                 R$ {cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0).toLocaleString('pt-BR')}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Limite Disponível
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <DollarSign className="h-4 w-4 text-flight-blue" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {(totalCreditLimit - totalCreditUsed).toLocaleString('pt-BR')}
               </div>
             </CardContent>
           </Card>
@@ -448,15 +451,19 @@ export default function CardsDashboard() {
 
                   {/* Actions */}
                   <div className="flex justify-center space-x-2 pt-4 border-t">
-                    <Link href={`/dashboard/expenses?card=${card.id}`}>
+                    {card.type === 'credit' && (
                       <Button 
                         variant="outline" 
                         size="sm"
+                        onClick={() => {
+                          setSelectedCardForInvoice(card);
+                          setShowInvoiceModal(true);
+                        }}
                         className="text-blue-600 border-blue-200 hover:bg-blue-50"
                       >
-                        Ver Despesas
+                        Ver Faturas
                       </Button>
-                    </Link>
+                    )}
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -520,6 +527,16 @@ export default function CardsDashboard() {
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
+      />
+
+      {/* Card Invoice Modal */}
+      <CardInvoiceModal
+        isOpen={showInvoiceModal}
+        onClose={() => {
+          setShowInvoiceModal(false);
+          setSelectedCardForInvoice(null);
+        }}
+        card={selectedCardForInvoice}
       />
     </div>
   );
