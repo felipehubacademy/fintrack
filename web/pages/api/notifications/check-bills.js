@@ -140,7 +140,7 @@ export default async function handler(req, res) {
       });
 
       message += `Acesse o MeuAzulão para registrar o pagamento! ✅\n`;
-      message += `${process.env.NEXT_PUBLIC_APP_URL || 'https://fintrack.app'}/dashboard/bills`;
+      message += `${process.env.NEXT_PUBLIC_APP_URL || 'https://meuazulao.com.br'}/dashboard/bills`;
 
       // Enviar WhatsApp usando a API oficial da Meta
       console.log(`📱 Enviando notificação para ${user.whatsapp_phone}:`);

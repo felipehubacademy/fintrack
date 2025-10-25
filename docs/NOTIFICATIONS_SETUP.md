@@ -17,7 +17,7 @@ No seu repositório GitHub, vá em **Settings > Secrets and variables > Actions*
 
 #### `APP_URL`
 - **Descrição**: URL base da sua aplicação
-- **Exemplo**: `https://fintrack.vercel.app` ou `https://seudominio.com`
+- **Exemplo**: `https://meuazulao.com.br` ou `https://seudominio.com`
 - **Uso**: Para fazer chamadas às APIs de notificação
 
 #### `CRON_SECRET`
