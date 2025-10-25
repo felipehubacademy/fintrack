@@ -20,8 +20,8 @@ async function sendWhatsAppVerificationCode(to, code, userName) {
 
   const normalizedTo = String(to || '').replace(/\D/g, '');
 
-  // Template de Autenticação padrão da Meta (verification_code)
-  // Body tem {{1}} e botão copy_code
+  // Template de Autenticação (verification_code)
+  // APENAS body com {{1}} = código (SEM botão)
   const message = {
     messaging_product: 'whatsapp',
     to: normalizedTo,
@@ -38,17 +38,6 @@ async function sendWhatsAppVerificationCode(to, code, userName) {
             {
               type: 'text',
               text: code // {{1}} no body = código de verificação
-            }
-          ]
-        },
-        {
-          type: 'button',
-          sub_type: 'copy_code',
-          index: 0,
-          parameters: [
-            {
-              type: 'coupon_code',
-              coupon_code: code // Código para o botão copiar
             }
           ]
         }
