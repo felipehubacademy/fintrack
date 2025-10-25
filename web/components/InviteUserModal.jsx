@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { X, Mail, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function InviteUserModal({ isOpen, onClose, organization }) {
+  const { success, showError } = useNotificationContext();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
   const [success, setSuccess] = useState(false);
 
   const validateEmail = (email) => {
@@ -16,13 +17,12 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
     e.preventDefault();
     
     if (!validateEmail(email)) {
-      setMessage('Por favor, insira um email válido');
+      showError('Por favor, insira um email válido');
       return;
     }
 
     try {
       setLoading(true);
-      setMessage('');
 
       const response = await fetch('/api/send-invite', {
         method: 'POST',
@@ -40,18 +40,19 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
 
       if (data.success) {
         setSuccess(true);
+        success('Convite enviado com sucesso!');
         setEmail('');
         setTimeout(() => {
           setSuccess(false);
           onClose();
         }, 2000);
       } else {
-        setMessage(data.error || 'Erro ao enviar convite');
+        showError(data.error || 'Erro ao enviar convite');
       }
 
     } catch (error) {
       console.error('❌ Erro ao enviar convite:', error);
-      setMessage('Erro ao enviar convite. Tente novamente.');
+      showError('Erro ao enviar convite. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -129,17 +130,6 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
                   </div>
                 </div>
 
-                {/* Message */}
-                {message && (
-                  <div className={`flex items-center space-x-2 p-3 rounded-xl ${
-                    message.includes('sucesso') || message.includes('enviado')
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    <AlertCircle className="w-5 h-5" />
-                    <p className="text-sm">{message}</p>
-                  </div>
-                )}
 
                 {/* Buttons */}
                 <div className="flex space-x-3 pt-4">

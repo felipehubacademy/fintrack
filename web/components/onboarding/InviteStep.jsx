@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Mail, Send, CheckCircle, Users, X, UserPlus, AlertCircle } from 'lucide-react';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 
 export default function InviteStep({ organization, user, onComplete, onDataChange }) {
+  const { success, showError } = useNotificationContext();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState('member'); // Padrão: member (pode criar despesas)
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
 
   const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -16,18 +17,16 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
 
   const sendInvite = async () => {
     if (!validateEmail(email)) {
-      setMessage({ type: 'error', text: 'Por favor, insira um email válido' });
+      showError('Por favor, insira um email válido');
       return;
     }
 
     if (!name.trim()) {
-      setMessage({ type: 'error', text: 'Por favor, insira o nome da pessoa' });
+      showError('Por favor, insira o nome da pessoa');
       return;
     }
 
-
     setLoading(true);
-    setMessage({ type: '', text: '' });
 
     try {
       console.log('📤 Enviando convite:', {
@@ -60,6 +59,9 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
           onDataChange({ invites_sent: 1 });
         }
         
+        // Mostrar mensagem de sucesso
+        success('Convite enviado com sucesso!');
+        
         // Avançar automaticamente após enviar
         setTimeout(() => {
           if (onComplete) {
@@ -67,11 +69,11 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
           }
         }, 800); // Pequeno delay para feedback visual
       } else {
-        setMessage({ type: 'error', text: data.error || 'Erro ao enviar convite' });
+        showError(data.error || 'Erro ao enviar convite');
       }
     } catch (error) {
       console.error('❌ Erro ao enviar convite:', error);
-      setMessage({ type: 'error', text: 'Erro ao enviar convite. Tente novamente.' });
+      showError('Erro ao enviar convite. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -182,23 +184,6 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
 
         </div>
 
-        {/* Message */}
-        {message.text && (
-          <div className={`mt-4 p-4 xl:p-5 rounded-xl flex items-center space-x-3 ${
-            message.type === 'success'
-              ? 'bg-green-50 border border-green-200' 
-              : 'bg-red-50 border border-red-200'
-          }`}>
-            {message.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 xl:w-6 xl:h-6 text-green-600 flex-shrink-0" />
-            ) : (
-              <AlertCircle className="w-5 h-5 xl:w-6 xl:h-6 text-red-600 flex-shrink-0" />
-            )}
-            <p className={`text-sm xl:text-base ${message.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
-              {message.text}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Action Buttons */}

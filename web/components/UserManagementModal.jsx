@@ -14,7 +14,6 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviting, setInviting] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [actionToConfirm, setActionToConfirm] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -67,17 +66,16 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
 
   const sendInvite = async () => {
     if (!validateEmail(email)) {
-      setMessage({ type: 'error', text: 'Por favor, insira um email válido' });
+      showError('Por favor, insira um email válido');
       return;
     }
 
     if (!name.trim()) {
-      setMessage({ type: 'error', text: 'Por favor, insira o nome da pessoa' });
+      showError('Por favor, insira o nome da pessoa');
       return;
     }
 
     setInviting(true);
-    setMessage({ type: '', text: '' });
 
     try {
       const response = await fetch('/api/send-invite', {
@@ -97,18 +95,18 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
       const data = await response.json();
 
       if (data.success) {
-        setMessage({ type: 'success', text: 'Convite enviado com sucesso!' });
+        success('Convite enviado com sucesso!');
         setEmail('');
         setName('');
         setRole('member');
         setShowInviteForm(false);
         await fetchMembers(); // Recarregar listas
       } else {
-        setMessage({ type: 'error', text: data.error || 'Erro ao enviar convite' });
+        showError(data.error || 'Erro ao enviar convite');
       }
     } catch (error) {
       console.error('❌ Erro ao enviar convite:', error);
-      setMessage({ type: 'error', text: 'Erro ao enviar convite. Tente novamente.' });
+      showError('Erro ao enviar convite. Tente novamente.');
     } finally {
       setInviting(false);
     }
@@ -223,14 +221,6 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
         
         {/* Conteúdo com scroll */}
         <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-6">
-            {/* Message */}
-            {message.text && (
-              <div className={`p-3 rounded-lg ${
-                message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-              }`}>
-                {message.text}
-              </div>
-            )}
 
             {/* Invite Form */}
             {showInviteForm && (

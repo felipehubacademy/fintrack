@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Smartphone, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function VerificationModal({ user, onVerified }) {
+  const { success, showError } = useNotificationContext();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  const [message, setMessage] = useState('');
-  const [isError, setIsError] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
@@ -19,8 +19,6 @@ export default function VerificationModal({ user, onVerified }) {
   const sendCode = async () => {
     try {
       setSending(true);
-      setMessage('');
-      setIsError(false);
 
       const response = await fetch('/api/send-verification-code', {
         method: 'POST',
@@ -47,8 +45,7 @@ export default function VerificationModal({ user, onVerified }) {
 
     } catch (error) {
       console.error('Erro ao enviar código:', error);
-      setMessage(error.message);
-      setIsError(true);
+      showError(error.message);
     } finally {
       setSending(false);
     }
@@ -93,8 +90,7 @@ export default function VerificationModal({ user, onVerified }) {
 
     } catch (error) {
       console.error('Erro ao verificar código:', error);
-      setMessage(error.message);
-      setIsError(true);
+      showError(error.message);
       setCode(''); // Limpar código inválido
     } finally {
       setLoading(false);
@@ -148,25 +144,6 @@ export default function VerificationModal({ user, onVerified }) {
             </p>
           </div>
 
-          {/* Message */}
-          {message && (
-            <div className={`p-4 rounded-xl ${
-              isError 
-                ? 'bg-red-50 border border-red-200' 
-                : 'bg-green-50 border border-green-200'
-            }`}>
-              <div className="flex items-center space-x-2">
-                {isError ? (
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                ) : (
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                )}
-                <p className={`text-sm ${isError ? 'text-red-800' : 'text-green-800'}`}>
-                  {message}
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Submit Button */}
           <button
