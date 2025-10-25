@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../../../../../lib/supabaseClient';
-import LoadingLogo from '../../../../../components/LoadingLogo';
-import OnboardingStepPage from '../../../onboarding/[step]';
+import { supabase } from '../../../../../../lib/supabaseClient';
+import LoadingLogo from '../../../../../../components/LoadingLogo';
+import OnboardingStepPage from '../../../../../onboarding/[step]';
 
 export default function DynamicOnboardingStepPage() {
   const router = useRouter();
