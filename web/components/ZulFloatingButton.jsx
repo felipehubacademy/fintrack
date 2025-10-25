@@ -15,6 +15,7 @@ export default function ZulFloatingButton() {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [highlightedElement, setHighlightedElement] = useState(null);
+  const [showZul, setShowZul] = useState(false);
   const { organization, user, loading: orgLoading } = useOrganization();
   const { 
     isTourActive, 
@@ -40,6 +41,19 @@ export default function ZulFloatingButton() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Controlar quando mostrar o Zul (após loading da página)
+  useEffect(() => {
+    // Aguardar o loading da organização terminar
+    if (!orgLoading && organization) {
+      // Aguardar mais 500ms para garantir que todos os dados carregaram
+      const timer = setTimeout(() => {
+        setShowZul(true);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [orgLoading, organization]);
 
   // Função para encontrar elemento alvo
   const findTargetElement = (target) => {
@@ -517,7 +531,8 @@ export default function ZulFloatingButton() {
     }
   };
 
-  // if (!isVisible) return null; // Temporariamente comentado para debug
+  // Não mostrar se ainda não carregou ou se não deve mostrar o Zul
+  if (!isVisible || !showZul) return null;
 
   return (
     <>
