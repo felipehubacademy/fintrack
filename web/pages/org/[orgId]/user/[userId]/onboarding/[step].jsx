@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../../../lib/supabaseClient';
 import LoadingLogo from '../../../../../components/LoadingLogo';
+import OnboardingStepPage from '../../../onboarding/[step]';
 
 export default function DynamicOnboardingStepPage() {
   const router = useRouter();
@@ -49,9 +50,8 @@ export default function DynamicOnboardingStepPage() {
         return;
       }
 
-      // Se chegou até aqui, redirecionar para o onboarding normal
-      // O onboarding normal já tem toda a lógica existente
-      router.replace(`/onboarding/${step}`);
+      // Se chegou até aqui, renderizar o onboarding diretamente
+      setLoading(false);
 
     } catch (error) {
       console.error('❌ Erro ao validar acesso:', error);
@@ -82,5 +82,5 @@ export default function DynamicOnboardingStepPage() {
     );
   }
 
-  return <LoadingLogo />;
+  return <OnboardingStepPage />;
 }

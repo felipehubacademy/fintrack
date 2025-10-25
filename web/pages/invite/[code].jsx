@@ -175,10 +175,22 @@ export default function InvitePage() {
 
       setSuccess(true);
       
-      // Redirecionar para dashboard dinâmico após 2 segundos
+      // Verificar se usuário já fez onboarding
+      const { data: userData } = await supabase
+        .from('users')
+        .select('onboarding_completed')
+        .eq('id', user.id)
+        .single();
+      
+      // Redirecionar após 2 segundos
       setTimeout(() => {
-        // Redirecionar para URL dinâmica: /org/{orgId}/user/{userId}/dashboard
-        window.location.href = `/org/${organization.id}/user/${user.id}/dashboard`;
+        if (userData?.onboarding_completed) {
+          // Se já fez onboarding, vai direto para dashboard
+          window.location.href = `/org/${organization.id}/user/${user.id}/dashboard`;
+        } else {
+          // Se não fez, vai para onboarding
+          window.location.href = `/org/${organization.id}/user/${user.id}/onboarding/1`;
+        }
       }, 2000);
 
     } catch (error) {

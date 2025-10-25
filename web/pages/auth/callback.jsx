@@ -11,6 +11,26 @@ export default function AuthCallback() {
   useEffect(() => {
     const run = async () => {
       try {
+        // Verificar se já está autenticado
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Já tem sessão, redirecionar direto
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('id, organization_id')
+              .eq('email', user.email)
+              .single();
+
+            if (userData?.organization_id && userData?.id) {
+              const dynamicUrl = `/org/${userData.organization_id}/user/${userData.id}/dashboard`;
+              router.replace(dynamicUrl);
+              return;
+            }
+          }
+        }
+
         // Prefer hash tokens (magic link) if present
         const hash = typeof window !== 'undefined' ? window.location.hash : '';
         if (hash && hash.includes('access_token')) {
@@ -23,16 +43,65 @@ export default function AuthCallback() {
           const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
           if (setErr) throw setErr;
           setStatus('success');
-          router.replace('/dashboard');
+          
+          // Buscar dados do usuário para construir URL dinâmica
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            // Buscar por EMAIL para pegar o ID correto da tabela users
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('id, organization_id')
+              .eq('email', user.email)
+              .single();
+
+            if (userData?.organization_id && userData?.id) {
+              const dynamicUrl = `/org/${userData.organization_id}/user/${userData.id}/dashboard`;
+              router.replace(dynamicUrl);
+              return;
+            }
+          }
+          
+          // Fallback
+          router.replace('/login');
           return;
         }
 
-        // Otherwise, handle PKCE code flow (code in query string)
-        const { error } = await supabase.auth.exchangeCodeForSession();
-        if (error) throw error;
-        setStatus('success');
-        router.replace('/dashboard');
+        // Check if there's a code in query params for PKCE flow
+        const queryParams = new URLSearchParams(window.location.search);
+        const code = queryParams.get('code');
+        
+        if (code) {
+          // Handle PKCE code flow (code in query string)
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          setStatus('success');
+          
+          // Buscar dados do usuário para construir URL dinâmica
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            // Buscar por EMAIL para pegar o ID correto da tabela users
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('id, organization_id')
+              .eq('email', user.email)
+              .single();
+
+            if (userData?.organization_id && userData?.id) {
+              const dynamicUrl = `/org/${userData.organization_id}/user/${userData.id}/dashboard`;
+              router.replace(dynamicUrl);
+              return;
+            }
+          }
+          
+          router.replace('/login');
+          return;
+        }
+        
+        // Nenhum método de autenticação encontrado
+        throw new Error('Nenhum token ou código de autenticação encontrado');
       } catch (err) {
+        console.error('Erro no callback:', err);
         setStatus('error');
         setMessage(err.message || 'Falha ao processar login');
       }

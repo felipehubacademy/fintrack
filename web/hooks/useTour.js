@@ -80,12 +80,21 @@ export function useTour() {
     }
   };
 
-  // Pular tour (fechar sem marcar como completado)
+  // Pular tour (fechar sem marcar como completado, mas lembrar na sessão)
   const skipTour = () => {
     setIsTourActive(false);
     setCurrentStep(0);
     setTourSteps([]);
     setIsCompleted(false); // Não marca como completado
+    
+    // Salvar no sessionStorage para não reaparecer nesta sessão
+    if (currentTourType) {
+      const skippedTours = JSON.parse(sessionStorage.getItem('skippedTours') || '[]');
+      if (!skippedTours.includes(currentTourType)) {
+        skippedTours.push(currentTourType);
+        sessionStorage.setItem('skippedTours', JSON.stringify(skippedTours));
+      }
+    }
   };
 
   // Completar tour

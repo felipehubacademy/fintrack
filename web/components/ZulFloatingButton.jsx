@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { Card, CardContent } from './ui/Card';
 import { useZulTips } from '../hooks/useZulTips';
 import { useTour } from '../hooks/useTour';
-import { getTourForRoute } from '../data/tourSteps';
+import { getTourForRoute, getTourTypeFromRoute } from '../data/tourSteps';
 import { useOrganization } from '../hooks/useOrganization';
 import Image from 'next/image';
 
@@ -19,6 +19,8 @@ export default function ZulFloatingButton() {
   const [highlightedElement, setHighlightedElement] = useState(null);
   const [showZul, setShowZul] = useState(false);
   const { organization, user, loading: orgLoading } = useOrganization();
+  const previousPathRef = useRef(null);
+  const highlightedElementsRef = useRef([]); // Track all highlighted elements
   const { 
     isTourActive, 
     startTour, 
@@ -35,64 +37,158 @@ export default function ZulFloatingButton() {
   } = useTour();
   const { currentTip, showTip, hasNewTip, dismissTip, setHasNewTip } = useZulTips(isTourActive);
 
-  // Mostrar botão após carregar
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Controlar quando mostrar o Zul (após loading da página)
+  // Controlar quando mostrar o Zul (SOMENTE após loading terminar)
   useEffect(() => {
     // Fechar chat ao mudar de página
     setShowChatModal(false);
     
-    // Para páginas do dashboard: aguardar organização carregar
-    if (orgLoading !== undefined) {
-      if (!orgLoading && organization) {
-        const timer = setTimeout(() => {
-          setShowZul(true);
-        }, 500);
-        return () => clearTimeout(timer);
-      }
-    } else {
-      // Para outras páginas: aguardar apenas um tempo fixo
-      const timer = setTimeout(() => {
-        setShowZul(true);
-      }, 2000);
-      return () => clearTimeout(timer);
+    // Esconder se está na landing page
+    if (router.pathname === '/') {
+      setShowZul(false);
+      setIsVisible(false);
+      return;
     }
-  }, [router.asPath, orgLoading, organization]);
 
-  // Função para encontrar elemento alvo
+    // Aguardar loading da organização terminar
+    if (orgLoading) {
+      setShowZul(false);
+      setIsVisible(false);
+      return;
+    }
+
+    // Verificar se LoadingLogo está visível no DOM
+    const checkLoadingLogo = () => {
+      const loadingLogo = document.querySelector('.logo-base, .logo-fill, [alt="Carregando..."]');
+      return loadingLogo && loadingLogo.offsetParent !== null; // Verifica se está visível
+    };
+
+    // Polling para detectar quando o LoadingLogo desaparece
+    const checkInterval = setInterval(() => {
+      if (!checkLoadingLogo()) {
+        // LoadingLogo não está mais visível - aguardar um pouco e mostrar Zul
+        setTimeout(() => {
+          setShowZul(true);
+          setIsVisible(true);
+        }, 500);
+        clearInterval(checkInterval);
+      }
+    }, 100); // Verificar a cada 100ms
+
+    // Timeout de segurança: mostrar após 5s mesmo se LoadingLogo ainda visível
+    const safetyTimeout = setTimeout(() => {
+      setShowZul(true);
+      setIsVisible(true);
+      clearInterval(checkInterval);
+    }, 5000);
+    
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(safetyTimeout);
+    };
+  }, [router.pathname, router.asPath, orgLoading, organization]);
+
+  // Função para encontrar elemento alvo (suporta múltiplos seletores)
   const findTargetElement = (target) => {
-    if (target === 'body') return null;
+    if (!target || target === 'body') return null;
     
-    // Casos especiais para elementos do dashboard
-    if (target === 'stats-cards') {
-      return 'stats-cards'; // Flag especial para tratar no useEffect
+    // Casos especiais para elementos do dashboard principal
+    if (target === 'stats-cards') return 'stats-cards';
+    if (target === 'quick-actions') return 'quick-actions';
+    if (target === 'monthly-analysis-header') return 'monthly-analysis-header';
+    if (target === 'comparative-analysis-header') return 'comparative-analysis-header';
+    
+    // Tentar seletores múltiplos (separados por vírgula)
+    const selectors = target.split(',').map(s => s.trim());
+    for (const selector of selectors) {
+      try {
+        // Se for seletor genérico (button, table, etc), procurar no main
+        let element;
+        if (selector === 'button') {
+          // Procurar botão de ação principal no main
+          element = document.querySelector('main button[class*="flight-blue"]');
+        } else if (selector === 'table') {
+          // Procurar tabela no main
+          element = document.querySelector('main table');
+        } else {
+          // Tentar seletor direto
+          element = document.querySelector(selector);
+        }
+        
+        // Verificar se elemento é visível
+        if (element && element.offsetParent !== null) {
+          return element;
+        }
+      } catch (e) {
+        continue; // Seletor inválido, tentar próximo
+      }
     }
     
-    if (target === 'quick-actions') {
-      return 'quick-actions'; // Flag especial para tratar no useEffect
-    }
+    return null;
+  };
+
+  // Função UNIVERSAL para limpar TODOS os highlights
+  const clearAllHighlights = () => {
+    // Limpar elementos rastreados
+    highlightedElementsRef.current.forEach(el => {
+      if (el && el.style) {
+        el.style.backgroundColor = '';
+        el.style.border = '';
+        el.style.borderRadius = '';
+        el.style.transform = '';
+        el.style.zIndex = '';
+        el.style.transition = '';
+        el.style.boxShadow = '';
+        el.style.padding = '';
+        el.style.position = '';
+      }
+    });
+    highlightedElementsRef.current = [];
     
-    if (target === 'monthly-analysis-header') {
-      return 'monthly-analysis-header'; // Flag especial para tratar no useEffect
-    }
+    // Limpar também por seletores genéricos (fallback)
+    const genericSelectors = [
+      'main .grid.gap-3.grid-cols-1.md\\:grid-cols-3 > div',
+      'main .space-y-8 > div',
+      'main > div',
+      '.card',
+      '[class*="Card"]'
+    ];
     
-    if (target === 'comparative-analysis-header') {
-      return 'comparative-analysis-header'; // Flag especial para tratar no useEffect
-    }
-    
-    return document.querySelector(target);
+    genericSelectors.forEach(selector => {
+      try {
+        document.querySelectorAll(selector).forEach(el => {
+          if (el.style.border && el.style.border.includes('59, 130, 246')) {
+            el.style.backgroundColor = '';
+            el.style.border = '';
+            el.style.borderRadius = '';
+            el.style.transform = '';
+            el.style.zIndex = '';
+            el.style.transition = '';
+            el.style.boxShadow = '';
+            el.style.padding = '';
+            el.style.position = '';
+          }
+        });
+      } catch (e) {
+        // Seletor inválido, ignorar
+      }
+    });
   };
 
   // Adicionar highlight ao elemento alvo durante o tour
   useEffect(() => {
+    // APENAS DASHBOARD PRINCIPAL TEM HIGHLIGHT!
+    const currentPath = router.asPath;
+    const isDashboard = currentPath.includes('/dashboard') && 
+                       !currentPath.includes('/dashboard/');
+    
+    if (!isDashboard) {
+      // Não aplica highlight em outras páginas (apenas dashboard principal)
+      return;
+    }
+    
     // SEMPRE limpar highlights anteriores primeiro
+    clearAllHighlights();
+    
     const statsCards = document.querySelectorAll('main .grid.gap-3.grid-cols-1.md\\:grid-cols-3 > div');
     statsCards.forEach(card => {
       card.style.backgroundColor = '';
@@ -212,6 +308,7 @@ export default function ZulFloatingButton() {
             card.style.transition = 'all 0.3s ease';
             card.style.transform = 'scale(1.02)';
             card.style.boxShadow = 'none';
+            highlightedElementsRef.current.push(card); // Rastrear
           });
         } else if (targetElement === 'quick-actions') {
           // Destacar o card de ações rápidas - múltiplas tentativas
@@ -249,8 +346,6 @@ export default function ZulFloatingButton() {
             }
           }
           
-          console.log('Quick actions card found:', quickActionsCard); // Debug
-          
           if (quickActionsCard) {
             quickActionsCard.style.position = 'relative';
             quickActionsCard.style.zIndex = '10';
@@ -260,6 +355,7 @@ export default function ZulFloatingButton() {
             quickActionsCard.style.transition = 'all 0.3s ease';
             quickActionsCard.style.transform = 'scale(1.02)';
             quickActionsCard.style.boxShadow = 'none';
+            highlightedElementsRef.current.push(quickActionsCard); // Rastrear
             
             // Rolar a tela para mostrar melhor as ações rápidas
             setTimeout(() => {
@@ -268,8 +364,6 @@ export default function ZulFloatingButton() {
                 block: 'center' 
               });
             }, 100);
-          } else {
-            console.log('Quick actions card not found!'); // Debug
           }
         } else if (targetElement === 'monthly-analysis-header') {
           // Destacar o container completo da análise mensal (incluindo seletor de mês)
@@ -305,6 +399,7 @@ export default function ZulFloatingButton() {
               monthlyHeader.style.transition = 'all 0.3s ease';
               monthlyHeader.style.transform = 'scale(1.02)';
               monthlyHeader.style.boxShadow = 'none';
+              highlightedElementsRef.current.push(monthlyHeader); // Rastrear
               
               // Rolar a tela para mostrar o container
               setTimeout(() => {
@@ -349,6 +444,7 @@ export default function ZulFloatingButton() {
               comparativeHeader.style.transition = 'all 0.3s ease';
               comparativeHeader.style.transform = 'scale(1.02)';
               comparativeHeader.style.boxShadow = 'none';
+              highlightedElementsRef.current.push(comparativeHeader); // Rastrear
               
               // Rolar a tela para mostrar o container
               setTimeout(() => {
@@ -359,39 +455,83 @@ export default function ZulFloatingButton() {
               }, 100);
             }
           }
+        } else if (targetElement && typeof targetElement === 'object') {
+          // LÓGICA GENÉRICA - MESMO PADRÃO DO DASHBOARD
+          // Determinar o elemento correto a destacar
+          let elementToHighlight = targetElement;
+          
+          // Se for botão, pegar o card pai
+          if (targetElement.tagName === 'BUTTON') {
+            const parent = targetElement.closest('[class*="Card"], .card, main > div');
+            if (parent && parent !== document.querySelector('main')) {
+              elementToHighlight = parent;
+            }
+          }
+          
+          // Se for grid, pegar os filhos diretos (cards)
+          if (targetElement.classList && targetElement.classList.contains('grid')) {
+            const cards = targetElement.querySelectorAll(':scope > div, :scope > [class*="Card"]');
+            if (cards.length > 0) {
+              // Destacar todos os cards do grid
+              cards.forEach(card => {
+                card.style.position = 'relative';
+                card.style.zIndex = '10';
+                card.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                card.style.border = '2px solid rgba(59, 130, 246, 0.3)';
+                card.style.borderRadius = '12px';
+                card.style.transition = 'all 0.3s ease';
+                card.style.transform = 'scale(1.02)';
+                card.style.boxShadow = 'none';
+                highlightedElementsRef.current.push(card);
+              });
+              
+              // Rolar para o primeiro card
+              setTimeout(() => {
+                cards[0].scrollIntoView({ 
+                  behavior: 'smooth', 
+                  block: 'center' 
+                });
+              }, 100);
+              return;
+            }
+          }
+          
+          // Aplicar highlight IGUAL ao dashboard
+          elementToHighlight.style.position = 'relative';
+          elementToHighlight.style.zIndex = '10';
+          elementToHighlight.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+          elementToHighlight.style.border = '2px solid rgba(59, 130, 246, 0.3)';
+          elementToHighlight.style.borderRadius = '12px';
+          elementToHighlight.style.transition = 'all 0.3s ease';
+          elementToHighlight.style.transform = 'scale(1.02)';
+          elementToHighlight.style.boxShadow = 'none';
+          highlightedElementsRef.current.push(elementToHighlight);
+          
+          // Rolar para o elemento destacado
+          setTimeout(() => {
+            elementToHighlight.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+          }, 100);
         }
       }
     }
-  }, [isTourActive, currentStep]);
+  }, [isTourActive, currentStep, router.asPath]);
 
   // Limpar highlight quando componente desmontar
   useEffect(() => {
     return () => {
-      if (highlightedElement) {
-        // Limpar todos os cards de estatísticas
-        if (highlightedElement === 'stats-cards' || highlightedElement?.length > 0) {
-          const statsCards = document.querySelectorAll('main .grid.gap-3.grid-cols-1.md\\:grid-cols-3 > div');
-          statsCards.forEach(card => {
-            card.style.backgroundColor = '';
-            card.style.border = '';
-            card.style.borderRadius = '';
-            card.style.transform = '';
-            card.style.zIndex = '';
-            card.style.transition = '';
-            card.style.boxShadow = ''; // Restaurar sombra original
-          });
-        } else if (highlightedElement) {
-          highlightedElement.style.backgroundColor = '';
-          highlightedElement.style.border = '';
-          highlightedElement.style.borderRadius = '';
-          highlightedElement.style.transform = '';
-          highlightedElement.style.boxShadow = '';
-          highlightedElement.style.zIndex = '';
-          highlightedElement.style.transition = '';
-        }
-      }
+      clearAllHighlights();
     };
-  }, [highlightedElement]);
+  }, []);
+  
+  // Limpar highlight quando tour terminar
+  useEffect(() => {
+    if (!isTourActive) {
+      clearAllHighlights();
+    }
+  }, [isTourActive]);
 
 
   const handleClick = () => {
@@ -408,7 +548,7 @@ export default function ZulFloatingButton() {
     if (currentTip?.tourAction) {
       // Verificar se o tour já foi completado
       const path = window.location.pathname;
-      const tourType = path.replace('/dashboard', '') || 'dashboard';
+      const tourType = getTourTypeFromRoute(path);
       
       if (isTourCompleted(tourType)) {
         // Tour já completado, abrir chat
@@ -431,24 +571,69 @@ export default function ZulFloatingButton() {
     }
   };
 
-  // Iniciar tour automaticamente no dashboard
+  // Iniciar tour automaticamente em qualquer página que tenha tour disponível
   useEffect(() => {
-    const path = window.location.pathname;
-    if (path === '/dashboard' && !isTourActive && !isTourCompleted('dashboard')) {
-      console.log('Iniciando tour do dashboard automaticamente');
-      const tourSteps = getTourForRoute(path);
-      if (tourSteps.length > 0) {
-        console.log('Tour steps encontrados:', tourSteps.length);
-        // Pequeno delay para garantir que a página carregou
-        const timer = setTimeout(() => {
-          console.log('Iniciando tour após delay...');
-          startTour(tourSteps, 'dashboard');
-        }, 1000);
+    const path = router.asPath;
+    
+    // Se mudou de rota E há um tour ativo, cancelar
+    if (previousPathRef.current && previousPathRef.current !== path && isTourActive) {
+      skipTour();
+    }
+    
+    // Atualizar ref do path anterior
+    previousPathRef.current = path;
+    
+    // NÃO iniciar tour se ainda está loading
+    if (orgLoading) {
+      return;
+    }
+    
+    // Verificar se há tour disponível para esta página
+    const tourSteps = getTourForRoute(path);
+    
+    if (tourSteps.length > 0 && !isTourActive) {
+      // Extrair tipo do tour da rota
+      const tourType = getTourTypeFromRoute(path);
+      
+      // Verificar se foi pulado nesta sessão
+      const skippedTours = JSON.parse(sessionStorage.getItem('skippedTours') || '[]');
+      const wasSkippedThisSession = skippedTours.includes(tourType);
+      
+      if (!isTourCompleted(tourType) && !wasSkippedThisSession) {
+        // Verificar se LoadingLogo está visível
+        const checkLoadingLogo = () => {
+          const loadingLogo = document.querySelector('.logo-base, .logo-fill, [alt="Carregando..."]');
+          return loadingLogo && loadingLogo.offsetParent !== null;
+        };
+
+        // Polling para iniciar tour quando LoadingLogo desaparecer
+        const checkInterval = setInterval(() => {
+          if (!checkLoadingLogo()) {
+            // LoadingLogo não está mais visível
+            setTimeout(() => {
+              if (router.asPath === path && !isTourActive && !orgLoading) {
+                startTour(tourSteps, tourType);
+              }
+            }, 1000); // 1s após loading desaparecer
+            clearInterval(checkInterval);
+          }
+        }, 100);
+
+        // Timeout de segurança
+        const safetyTimeout = setTimeout(() => {
+          if (router.asPath === path && !isTourActive && !orgLoading) {
+            startTour(tourSteps, tourType);
+          }
+          clearInterval(checkInterval);
+        }, 5000);
         
-        return () => clearTimeout(timer);
+        return () => {
+          clearInterval(checkInterval);
+          clearTimeout(safetyTimeout);
+        };
       }
     }
-  }, [isTourActive, isTourCompleted, startTour, getTourForRoute]);
+  }, [router.asPath, orgLoading, isTourCompleted, startTour, skipTour]);
 
   // Inicializar chat com mensagem de boas-vindas personalizada
   useEffect(() => {
@@ -609,9 +794,8 @@ export default function ZulFloatingButton() {
                       {!isFirstStep() && (
                         <Button
                           size="sm"
-                          variant="outline"
                           onClick={prevStep}
-                          className="text-xs px-3 py-1 h-7"
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-xs px-3 py-1 h-7"
                         >
                           <ChevronLeft className="h-3 w-3 mr-1" />
                           Anterior

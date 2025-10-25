@@ -87,9 +87,9 @@ export default function OnboardingModal({
     console.log('🎯 handleComplete chamado');
     await completeOnboarding();
     
-    // Redirecionar para o dashboard após 500ms
+    // Redirecionar para o dashboard dinâmico após 500ms
     setTimeout(() => {
-      window.location.href = '/dashboard';
+      window.location.href = `/org/${organization.id}/user/${user.id}/dashboard`;
     }, 500);
   };
 

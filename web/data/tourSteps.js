@@ -47,74 +47,268 @@ export const transactionsTourSteps = [
   {
     stepNumber: 1,
     totalSteps: 4,
-    target: '[data-testid="add-transaction-btn"], button[class*="add"]',
-    title: 'Adicionar Transação ➕',
-    description: 'Clique aqui para registrar uma nova despesa ou receita. O processo é rápido e intuitivo!',
-    tip: 'Você pode categorizar automaticamente suas transações!'
+    target: 'body',
+    title: 'Transações 💰',
+    description: 'Aqui você registra TODAS as suas despesas e receitas: dinheiro, PIX, débito, crédito à vista ou parcelado.',
+    tip: 'Registre tudo para ter controle total do seu dinheiro!'
   },
   {
     stepNumber: 2,
     totalSteps: 4,
-    target: '[data-testid="filters"], .filter, input[type="search"], input[placeholder*="buscar"]',
-    title: 'Filtros e Busca 🔍',
-    description: 'Use os filtros para encontrar transações específicas por data, categoria, valor ou descrição.',
-    tip: 'Combine múltiplos filtros para buscas mais precisas!'
+    target: 'body',
+    title: 'Nova Transação ➕',
+    description: 'Clique em "Nova Transação" no canto superior direito. Escolha tipo (despesa/receita), valor, categoria, forma de pagamento e responsável.',
+    tip: 'Transações no crédito podem ser parceladas automaticamente!'
   },
   {
     stepNumber: 3,
     totalSteps: 4,
-    target: '[data-testid="transactions-list"], table, .transaction-list, .list',
-    title: 'Lista de Transações 📋',
-    description: 'Todas as suas transações aparecem aqui. Clique em qualquer uma para editá-la ou ver detalhes.',
-    tip: 'Use o WhatsApp para adicionar transações rapidamente via mensagem!'
+    target: 'body',
+    title: 'Resumo em Cards 📊',
+    description: 'Os cards no topo mostram: Total de Entradas, Total de Despesas, Gastos em Crédito e Comparativo com mês anterior.',
+    tip: 'Clique nos cards para ver detalhes por responsável (mãe, pai, etc)!'
   },
   {
     stepNumber: 4,
     totalSteps: 4,
-    target: '[data-testid="bulk-actions"], .bulk-actions, button[class*="bulk"]',
-    title: 'Ações em Lote ⚙️',
-    description: 'Selecione múltiplas transações para realizar ações em lote, como categorizar ou exportar.',
-    tip: 'Economize tempo gerenciando várias transações de uma vez!'
+    target: 'body',
+    title: 'Tabela Completa 📋',
+    description: 'A tabela mostra TODAS as transações: data, descrição, categoria, valor, forma de pagamento e responsável. Clique em qualquer linha para editar ou excluir!',
+    tip: 'Use os filtros acima da tabela para buscar transações específicas!'
   }
 ];
 
 export const cardsTourSteps = [
   {
     stepNumber: 1,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Cartões 💳',
+    description: 'Gerencie seus cartões de crédito e débito: acompanhe gastos, limites, datas de fechamento e vencimento de faturas.',
+    tip: 'Cadastre TODOS os seus cartões para ter controle total!'
+  },
+  {
+    stepNumber: 2,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Novo Cartão ➕',
+    description: 'Clique em "Novo Cartão" para adicionar. Informe: nome do cartão, bandeira (Visa, Master, etc), limite, dia de fechamento e dia de vencimento.',
+    tip: 'O sistema usa as datas para calcular qual fatura a compra vai cair!'
+  },
+  {
+    stepNumber: 3,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Resumo Geral 📊',
+    description: 'Os cards no topo mostram: Total Gasto no mês, Limite Total Disponível, Próximas Faturas e Comparativo com mês anterior.',
+    tip: 'Monitore o limite disponível para não estourar!'
+  },
+  {
+    stepNumber: 4,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Lista de Cartões 💰',
+    description: 'Todos os seus cartões aparecem em cards individuais mostrando: nome, bandeira, limite usado, limite total e ações rápidas (editar, ver fatura).',
+    tip: 'Clique em "Ver Fatura" para detalhar as compras de cada cartão!'
+  }
+];
+
+export const bankAccountsTourSteps = [
+  {
+    stepNumber: 1,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Contas Bancárias 🏦',
+    description: 'Cadastre e acompanhe TODAS as suas contas bancárias: corrente, poupança, investimentos. Veja saldo atual e histórico de movimentações.',
+    tip: 'Mantenha saldos atualizados para ter controle real do seu dinheiro!'
+  },
+  {
+    stepNumber: 2,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Nova Conta ➕',
+    description: 'Clique em "Nova Conta" para adicionar. Informe: banco, tipo de conta (corrente, poupança, etc), número da conta e saldo inicial.',
+    tip: 'O saldo inicial é importante para calcular corretamente as movimentações!'
+  },
+  {
+    stepNumber: 3,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Resumo Financeiro 💰',
+    description: 'Os cards mostram: Saldo Total de todas as contas, Total Positivo (contas com dinheiro) e Total Negativo (contas no cheque especial).',
+    tip: 'Monitore o saldo total para saber quanto realmente tem disponível!'
+  },
+  {
+    stepNumber: 4,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Lista de Contas 📋',
+    description: 'Cada conta aparece em um card mostrando: banco, tipo, número, saldo atual e botões para adicionar movimentação (depósito/saque) ou editar.',
+    tip: 'Registre depósitos, saques e transferências para manter tudo sincronizado!'
+  }
+];
+
+export const billsTourSteps = [
+  {
+    stepNumber: 1,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Contas a Pagar 📝',
+    description: 'Cadastre e acompanhe contas fixas: água, luz, internet, aluguel, escola, plano de saúde. Nunca mais esqueça uma conta!',
+    tip: 'Marque contas como recorrentes para gerar automaticamente todo mês!'
+  },
+  {
+    stepNumber: 2,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Nova Conta ➕',
+    description: 'Clique em "Nova Conta" para cadastrar. Informe: descrição, valor, vencimento, categoria e se é recorrente (mensal).',
+    tip: 'Contas recorrentes são criadas automaticamente todo mês!'
+  },
+  {
+    stepNumber: 3,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Status das Contas ⏰',
+    description: 'Os cards mostram: Total de Contas Pendentes, Contas Vencidas (urgente!), Valor Total a Pagar e Próximos Vencimentos.',
+    tip: 'Priorize sempre as contas vencidas para evitar juros!'
+  },
+  {
+    stepNumber: 4,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Lista de Contas 📅',
+    description: 'Todas as contas aparecem organizadas por status: Pendentes (não vencidas), Vencidas (atrasadas) e Pagas. Clique em qualquer uma para editar, pagar ou excluir.',
+    tip: 'Ao marcar como paga, a transação é registrada automaticamente!'
+  }
+];
+
+export const budgetsTourSteps = [
+  {
+    stepNumber: 1,
     totalSteps: 3,
-    target: '[data-testid="add-card-btn"], button[class*="add"]',
-    title: 'Gerenciar Cartões 💳',
-    description: 'Adicione seus cartões de crédito e débito para ter controle total sobre seus gastos e limites.',
-    tip: 'Configure alertas para não passar do limite!'
+    target: 'body',
+    title: 'Orçamentos 🎯',
+    description: 'Defina metas de gastos por categoria e acompanhe em tempo real quanto já gastou vs. quanto planejou. Evite estourar o orçamento!',
+    tip: 'Orçamentos te ajudam a ter disciplina financeira!'
   },
   {
     stepNumber: 2,
     totalSteps: 3,
-    target: '[data-testid="card-limits"], .card-limits, .limits, .usage',
-    title: 'Controle de Limites 📊',
-    description: 'Acompanhe o uso dos seus cartões em tempo real e receba alertas quando se aproximar do limite.',
-    tip: 'Os alertas te ajudam a manter o controle financeiro!'
+    target: 'body',
+    title: 'Criar Orçamento ➕',
+    description: 'Clique em "Criar Orçamento" para definir. Escolha a categoria (alimentação, transporte, lazer, etc) e o valor máximo mensal.',
+    tip: 'Analise seus gastos dos últimos meses para definir valores realistas!'
   },
   {
     stepNumber: 3,
     totalSteps: 3,
-    target: '[data-testid="card-analytics"], .analytics, .charts, .reports',
-    title: 'Análises Detalhadas 📈',
-    description: 'Veja gráficos e relatórios sobre seus gastos por cartão, categoria e período.',
-    tip: 'Use os dados para tomar decisões financeiras mais inteligentes!'
+    target: 'body',
+    title: 'Acompanhamento Visual 📊',
+    description: 'Cada orçamento aparece em um card com barra de progresso: verde (dentro do limite), amarelo (próximo do limite), vermelho (estourou!).',
+    tip: 'O sistema alerta automaticamente quando você se aproxima do limite!'
+  }
+];
+
+export const investmentsTourSteps = [
+  {
+    stepNumber: 1,
+    totalSteps: 3,
+    target: 'body',
+    title: 'Investimentos 📈',
+    description: 'Registre e acompanhe TODOS os seus investimentos: ações, fundos, tesouro direto, renda fixa, CDBs, criptomoedas. Veja valor investido, valor atual e rentabilidade!',
+    tip: 'Centralizar tudo aqui te dá visão completa do seu patrimônio!'
+  },
+  {
+    stepNumber: 2,
+    totalSteps: 3,
+    target: 'body',
+    title: 'Novo Investimento ➕',
+    description: 'Clique em "Novo Investimento" para adicionar. Informe: tipo (ações, tesouro, etc), nome/código, valor investido, data e corretora/banco.',
+    tip: 'Registre CADA aporte separadamente para calcular rentabilidade correta!'
+  },
+  {
+    stepNumber: 3,
+    totalSteps: 3,
+    target: 'body',
+    title: 'Resumo e Evolução 💎',
+    description: 'Veja cards com: Total Investido, Valor Atual (se atualizado), Rentabilidade Total e Evolução Mensal. A lista mostra cada investimento com detalhes.',
+    tip: 'Atualize valores periodicamente para acompanhar a rentabilidade real!'
+  }
+];
+
+export const closingTourSteps = [
+  {
+    stepNumber: 1,
+    totalSteps: 3,
+    target: 'body',
+    title: 'Fechamento do Mês 📊',
+    description: 'Análise COMPLETA do mês: veja quanto entrou, quanto saiu, onde gastou mais e compare com meses anteriores. Entenda para onde seu dinheiro está indo!',
+    tip: 'Revise todo mês para ajustar seus hábitos financeiros!'
+  },
+  {
+    stepNumber: 2,
+    totalSteps: 3,
+    target: 'body',
+    title: 'Resumo Geral 💰',
+    description: 'Cards mostram: Total de Receitas, Total de Despesas, Saldo Final (sobrou ou faltou?) e Taxa de Economia. Veja se seu mês foi positivo ou negativo!',
+    tip: 'Meta ideal: economizar pelo menos 10-20% das receitas!'
+  },
+  {
+    stepNumber: 3,
+    totalSteps: 3,
+    target: 'body',
+    title: 'Gráficos e Análises 📈',
+    description: 'Gráficos mostram: Gastos por Categoria (onde gastou mais?), Evolução Mensal (últimos 6 meses), Despesas por Responsável e Top 5 Maiores Gastos.',
+    tip: 'Use os insights para cortar gastos desnecessários no próximo mês!'
   }
 ];
 
 // Função para obter tour baseado na rota
 export function getTourForRoute(route) {
-  switch (route) {
+  // Normalizar a rota - remover parâmetros dinâmicos se houver
+  let normalizedRoute = route;
+  
+  // Se for uma URL dinâmica (/org/{id}/user/{id}/dashboard), extrair apenas a parte relevante
+  const dynamicRouteMatch = route.match(/\/org\/[^/]+\/user\/[^/]+\/(.+)/);
+  if (dynamicRouteMatch) {
+    normalizedRoute = '/' + dynamicRouteMatch[1];
+  }
+  
+  switch (normalizedRoute) {
     case '/dashboard':
       return dashboardTourSteps;
     case '/dashboard/transactions':
       return transactionsTourSteps;
     case '/dashboard/cards':
       return cardsTourSteps;
+    case '/dashboard/bank-accounts':
+      return bankAccountsTourSteps;
+    case '/dashboard/bills':
+      return billsTourSteps;
+    case '/dashboard/budgets':
+      return budgetsTourSteps;
+    case '/dashboard/investments':
+      return investmentsTourSteps;
+    case '/dashboard/closing':
+      return closingTourSteps;
     default:
       return [];
   }
+}
+
+// Função helper para extrair o tipo de tour da rota (usado no useTour)
+export function getTourTypeFromRoute(route) {
+  let normalizedRoute = route;
+  
+  const dynamicRouteMatch = route.match(/\/org\/[^/]+\/user\/[^/]+\/(.+)/);
+  if (dynamicRouteMatch) {
+    normalizedRoute = '/' + dynamicRouteMatch[1];
+  }
+  
+  // Extrair apenas a última parte para o tipo do tour
+  // /dashboard -> 'dashboard'
+  // /dashboard/transactions -> 'transactions'
+  const parts = normalizedRoute.split('/').filter(Boolean);
+  return parts[parts.length - 1] || 'dashboard';
 }

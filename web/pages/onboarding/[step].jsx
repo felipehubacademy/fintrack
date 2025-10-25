@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
+import { useDynamicUrls } from '../../hooks/useDynamicUrls';
 import OnboardingModal from '../../components/onboarding/OnboardingModal';
 import LoadingLogo from '../../components/LoadingLogo';
 
@@ -9,6 +10,7 @@ export default function OnboardingStepPage() {
   const router = useRouter();
   const { step } = router.query;
   const { organization, user, loading: orgLoading, error: orgError } = useOrganization();
+  const { getDynamicUrl } = useDynamicUrls();
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,13 +34,13 @@ export default function OnboardingStepPage() {
 
       if (error && error.code !== 'PGRST116') {
         console.error('❌ Erro ao verificar onboarding:', error);
-        router.push('/dashboard');
+        router.push(getDynamicUrl('/dashboard'));
         return;
       }
 
       // If onboarding is completed, redirect to dashboard
       if (data && data.is_completed) {
-        router.push('/dashboard');
+        router.push(getDynamicUrl('/dashboard'));
         return;
       }
 
@@ -46,7 +48,7 @@ export default function OnboardingStepPage() {
       setShowModal(true);
     } catch (error) {
       console.error('❌ Erro ao verificar status do onboarding:', error);
-      router.push('/dashboard');
+      router.push(getDynamicUrl('/dashboard'));
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +56,7 @@ export default function OnboardingStepPage() {
 
   const handleClose = () => {
     setShowModal(false);
-    router.push('/dashboard');
+    router.push(getDynamicUrl('/dashboard'));
   };
 
   if (isLoading || orgLoading) {

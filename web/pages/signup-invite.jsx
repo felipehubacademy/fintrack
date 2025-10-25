@@ -190,8 +190,8 @@ export default function SignupInvite() {
         if (inviteError) throw inviteError;
       }
 
-      // Redirecionar para dashboard
-      router.push('/dashboard');
+      // Redirecionar para dashboard DINÂMICO
+      window.location.href = `/org/${organization.id}/user/${authData.user.id}/onboarding/1`;
 
     } catch (err) {
       console.error('❌ Erro no cadastro:', err);

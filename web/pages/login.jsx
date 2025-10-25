@@ -49,8 +49,8 @@ export default function Login() {
         const urlParams = new URLSearchParams(window.location.search);
         const redirect = urlParams.get('redirect');
         
-        console.log('🚀 Redirecionando para:', redirect || '/dashboard');
-        window.location.href = redirect || '/dashboard';
+        console.log('🚀 Redirecionando para callback');
+        window.location.href = redirect || '/auth/callback';
       } else {
         console.log('⚠️ Login sem erro mas sem sessão');
         setMessage('Login realizado mas sem sessão. Tente novamente.');

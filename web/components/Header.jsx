@@ -6,6 +6,7 @@ import { Settings, LogOut, ChevronDown, Menu, X, FileText, Receipt, CreditCard, 
 import Logo from './Logo';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
+import { useDynamicUrls } from '../hooks/useDynamicUrls';
 
 export default function Header({ 
   organization, 
@@ -13,6 +14,7 @@ export default function Header({
   pageTitle = null
 }) {
   const router = useRouter();
+  const { getDynamicUrl } = useDynamicUrls();
   const [financeDropdownOpen, setFinanceDropdownOpen] = useState(false);
   const [planningDropdownOpen, setPlanningDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -43,8 +45,22 @@ export default function Header({
     router.push('/');
   };
 
-  // Determinar página ativa
+  // Determinar página ativa (suporta URLs legadas e dinâmicas)
   const isActive = (path) => {
+    // Para URLs dinâmicas, verificar se o pathname contém o path
+    if (router.pathname.includes('[orgId]') && router.pathname.includes('[userId]')) {
+      // Extrair a parte após /user/[userId]/
+      const pathAfterUser = router.pathname.split('/user/[userId]/')[1] || '';
+      const targetPath = path.replace(/^\//, ''); // Remove / inicial
+      
+      // Se for dashboard root
+      if (path === '/dashboard') {
+        return pathAfterUser === 'dashboard';
+      }
+      
+      // Para outras páginas, verificar se corresponde
+      return pathAfterUser === targetPath;
+    }
     return router.pathname === path;
   };
 
@@ -77,7 +93,7 @@ export default function Header({
             <nav className="hidden md:flex items-center space-x-6">
               {/* Painel Principal */}
               <Link 
-                href="/dashboard" 
+                href={getDynamicUrl('/dashboard')}
                 className={`text-sm font-medium transition-colors ${
                   isActive('/dashboard') 
                     ? 'text-flight-blue border-b-2 border-flight-blue pb-1' 
@@ -107,7 +123,7 @@ export default function Header({
                 {financeDropdownOpen && (
                   <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                     <Link 
-                      href="/dashboard/transactions"
+                      href={getDynamicUrl('/dashboard/transactions')}
                       onClick={() => setFinanceDropdownOpen(false)}
                       className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
                         isActive('/dashboard/transactions') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
@@ -117,7 +133,7 @@ export default function Header({
                       <span>Transações</span>
                     </Link>
                     <Link 
-                      href="/dashboard/bank-accounts"
+                      href={getDynamicUrl('/dashboard/bank-accounts')}
                       onClick={() => setFinanceDropdownOpen(false)}
                       className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
                         isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
@@ -127,7 +143,7 @@ export default function Header({
                       <span>Contas Bancárias</span>
                     </Link>
                     <Link 
-                      href="/dashboard/cards"
+                      href={getDynamicUrl('/dashboard/cards')}
                       onClick={() => setFinanceDropdownOpen(false)}
                       className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
                         isActive('/dashboard/cards') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
@@ -137,7 +153,7 @@ export default function Header({
                       <span>Cartões</span>
                     </Link>
                     <Link 
-                      href="/dashboard/bills"
+                      href={getDynamicUrl('/dashboard/bills')}
                       onClick={() => setFinanceDropdownOpen(false)}
                       className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
                         isActive('/dashboard/bills') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
@@ -170,7 +186,7 @@ export default function Header({
                 {planningDropdownOpen && (
                   <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                     <Link 
-                      href="/dashboard/budgets"
+                      href={getDynamicUrl('/dashboard/budgets')}
                       onClick={() => setPlanningDropdownOpen(false)}
                       className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
                         isActive('/dashboard/budgets') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
@@ -180,7 +196,7 @@ export default function Header({
                       <span>Orçamentos</span>
                     </Link>
                     <Link 
-                      href="/dashboard/investments"
+                      href={getDynamicUrl('/dashboard/investments')}
                       onClick={() => setPlanningDropdownOpen(false)}
                       className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
                         isActive('/dashboard/investments') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
@@ -190,7 +206,7 @@ export default function Header({
                       <span>Investimentos</span>
                     </Link>
                     <Link 
-                      href="/dashboard/closing"
+                      href={getDynamicUrl('/dashboard/closing')}
                       onClick={() => setPlanningDropdownOpen(false)}
                       className={`flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors ${
                         isActive('/dashboard/closing') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-700'
@@ -213,7 +229,7 @@ export default function Header({
                 organizationId={organization.id} 
               />
             )}
-            <Link href="/dashboard/config" className="hidden md:block">
+            <Link href={getDynamicUrl('/dashboard/config')} className="hidden md:block">
               <Button variant="ghost" size="icon">
                 <Settings className="h-4 w-4" />
               </Button>
@@ -268,7 +284,7 @@ export default function Header({
               <div className="flex-1 overflow-y-auto py-4">
                 {/* Painel Principal */}
                 <Link
-                  href="/dashboard"
+                  href={getDynamicUrl('/dashboard')}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block px-4 py-3 transition-colors whitespace-nowrap ${
                     isActive('/dashboard') ? 'bg-flight-blue/5 text-flight-blue border-r-2 border-flight-blue' : 'text-gray-700 hover:bg-gray-50'
@@ -290,7 +306,7 @@ export default function Header({
                   {mobileFinanceOpen && (
                     <div className="bg-gray-50">
                       <Link
-                        href="/dashboard/transactions"
+                        href={getDynamicUrl('/dashboard/transactions')}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/transactions') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
@@ -300,7 +316,7 @@ export default function Header({
                         <span>Transações</span>
                       </Link>
                       <Link
-                        href="/dashboard/bank-accounts"
+                        href={getDynamicUrl('/dashboard/bank-accounts')}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/bank-accounts') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
@@ -310,7 +326,7 @@ export default function Header({
                         <span>Contas Bancárias</span>
                       </Link>
                       <Link
-                        href="/dashboard/cards"
+                        href={getDynamicUrl('/dashboard/cards')}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/cards') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
@@ -320,7 +336,7 @@ export default function Header({
                         <span>Cartões</span>
                       </Link>
                       <Link
-                        href="/dashboard/bills"
+                        href={getDynamicUrl('/dashboard/bills')}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/bills') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
@@ -346,7 +362,7 @@ export default function Header({
                   {mobilePlanningOpen && (
                     <div className="bg-gray-50">
                       <Link
-                        href="/dashboard/budgets"
+                        href={getDynamicUrl('/dashboard/budgets')}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/budgets') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
@@ -356,7 +372,7 @@ export default function Header({
                         <span>Orçamentos</span>
                       </Link>
                       <Link
-                        href="/dashboard/investments"
+                        href={getDynamicUrl('/dashboard/investments')}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/investments') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
@@ -366,7 +382,7 @@ export default function Header({
                         <span>Investimentos</span>
                       </Link>
                       <Link
-                        href="/dashboard/closing"
+                        href={getDynamicUrl('/dashboard/closing')}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center space-x-2 px-4 py-2.5 pl-8 transition-colors whitespace-nowrap ${
                           isActive('/dashboard/closing') ? 'bg-flight-blue/5 text-flight-blue' : 'text-gray-600 hover:bg-gray-100'
@@ -383,7 +399,7 @@ export default function Header({
               {/* Footer Actions */}
               <div className="border-t border-gray-200 p-4 space-y-2">
                 <Link
-                  href="/dashboard/config"
+                  href={getDynamicUrl('/dashboard/config')}
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors whitespace-nowrap"
                 >

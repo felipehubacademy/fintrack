@@ -29,7 +29,7 @@ export function useOrganization() {
         return;
       }
 
-      // Buscar o usuário da nossa tabela por e-mail (mapeamento V2)
+      // Buscar o usuário da nossa tabela por e-mail (mais confiável)
       const { data: userRow, error: userErr } = await supabase
         .from('users')
         .select('*')
@@ -39,10 +39,22 @@ export function useOrganization() {
       console.log('🔍 [useOrganization] userRow:', userRow ? 'Encontrado' : 'Não encontrado');
       if (userRow) {
         console.log('🔍 [useOrganization] organization_id:', userRow.organization_id);
+        console.log('🔍 [useOrganization] user id (db):', userRow.id);
+        console.log('🔍 [useOrganization] user id (auth):', currentUser.id);
       }
 
-      if (userErr) throw userErr;
-      if (!userRow?.organization_id) {
+      if (userErr) {
+        console.error('❌ [useOrganization] Erro ao buscar usuário:', userErr);
+        throw userErr;
+      }
+      
+      if (!userRow) {
+        console.log('❌ [useOrganization] Usuário não encontrado');
+        setError('Usuário não encontrado. Por favor, faça login novamente.');
+        return;
+      }
+      
+      if (!userRow.organization_id) {
         console.log('❌ [useOrganization] Usuário sem organização');
         setError('Organização não encontrada. Você precisa ser convidado para uma organização.');
         return;
