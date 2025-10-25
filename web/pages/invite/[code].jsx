@@ -176,7 +176,8 @@ export default function InvitePage() {
       
       // Redirecionar para dashboard após 2 segundos
       setTimeout(() => {
-        router.push('/dashboard');
+        // Forçar refresh da sessão e redirecionar
+        window.location.href = '/dashboard';
       }, 2000);
 
     } catch (error) {
@@ -405,14 +406,9 @@ export default function InvitePage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Convite para {organization?.name}
               </h1>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 mb-6">
                 Você foi convidado por <strong>{invite?.inviter?.name}</strong>
               </p>
-              
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-6">
-                <p className="text-sm text-gray-600 mb-1">Convidado por:</p>
-                <p className="font-medium text-gray-900">{invite?.inviter?.name}</p>
-              </div>
             </div>
 
             {/* Content */}
