@@ -46,6 +46,9 @@ export default function ZulFloatingButton() {
 
   // Controlar quando mostrar o Zul (após loading da página)
   useEffect(() => {
+    // Fechar chat ao mudar de página
+    setShowChatModal(false);
+    
     // Para páginas do dashboard: aguardar organização carregar
     if (orgLoading !== undefined) {
       if (!orgLoading && organization) {
@@ -61,12 +64,7 @@ export default function ZulFloatingButton() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [orgLoading, organization]);
-
-  // Resetar showZul ao mudar de página (evitar herança de estado)
-  useEffect(() => {
-    setShowZul(false);
-  }, [router.asPath]);
+  }, [router.asPath, orgLoading, organization]);
 
   // Função para encontrar elemento alvo
   const findTargetElement = (target) => {
