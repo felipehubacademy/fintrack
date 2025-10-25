@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     }
 
     // Fazer requisição para o backend
-    const backendUrl = process.env.BACKEND_URL || 'https://backend-8iwjm0m8j-felipexavier1987-gmailcoms-projects.vercel.app';
+    const backendUrl = process.env.BACKEND_URL || 'https://fintrack-backend-theta.vercel.app';
     const response = await fetch(`${backendUrl}/api/zul-chat`, {
       method: 'POST',
       headers: {
