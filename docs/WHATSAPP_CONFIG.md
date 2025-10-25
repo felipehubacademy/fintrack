@@ -39,10 +39,10 @@ WHATSAPP_VERIFY_TOKEN=fintrack_verify_token
 
 ```bash
 # Testar webhook
-curl -X GET "https://fintrack-backend.vercel.app/webhook?hub.mode=subscribe&hub.challenge=test&hub.verify_token=fintrack_verify_token"
+curl -X GET "https://fintrack-backend-theta.vercel.app/webhook?hub.mode=subscribe&hub.challenge=test&hub.verify_token=fintrack_verify_token"
 
 # Testar envio de mensagem
-curl -X POST "https://fintrack-backend.vercel.app/webhook" \
+curl -X POST "https://fintrack-backend-theta.vercel.app/webhook" \
   -H "Content-Type: application/json" \
   -d '{
     "object": "whatsapp_business_account",
