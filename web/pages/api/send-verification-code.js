@@ -20,6 +20,8 @@ async function sendWhatsAppVerificationCode(to, code, userName) {
 
   const normalizedTo = String(to || '').replace(/\D/g, '');
 
+  // Template de Autenticação padrão da Meta (verification_code)
+  // A Meta gera automaticamente o texto e o link de segurança
   const message = {
     messaging_product: 'whatsapp',
     to: normalizedTo,
@@ -31,28 +33,22 @@ async function sendWhatsAppVerificationCode(to, code, userName) {
       },
       components: [
         {
-          type: 'body',
-          parameters: [
-            {
-              type: 'text',
-              text: code // {{1}} = código de verificação
-            }
-          ]
-        },
-        {
           type: 'button',
           sub_type: 'copy_code',
-          index: '0',
+          index: 0, // Índice como número, não string
           parameters: [
             {
               type: 'coupon_code',
-              coupon_code: code // Código para o botão "Copiar código"
+              coupon_code: code
             }
           ]
         }
       ]
     }
   };
+  
+  console.log('📤 Enviando código via WhatsApp:', code);
+  console.log('📋 Template payload:', JSON.stringify(message, null, 2));
 
   try {
     const response = await axios.post(

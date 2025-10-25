@@ -3,9 +3,11 @@ import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { Lock, Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { useDynamicUrls } from '../hooks/useDynamicUrls';
 
 export default function UpdatePassword() {
   const router = useRouter();
+  const { getDynamicUrl } = useDynamicUrls();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -55,7 +57,7 @@ export default function UpdatePassword() {
       setIsError(false);
       
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push(getDynamicUrl('/dashboard'));
       }, 2000);
     } catch (error) {
       setMessage(error.message || 'Erro ao atualizar senha');
