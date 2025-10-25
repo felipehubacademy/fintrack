@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import StatsCard from '../../components/ui/StatsCard';
 import BillModal from '../../components/BillModal';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
@@ -26,6 +28,7 @@ import {
 export default function BillsDashboard() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
+  const { success, showError, warning } = useNotificationContext();
   
   const [bills, setBills] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -36,6 +39,9 @@ export default function BillsDashboard() {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [filter, setFilter] = useState('all'); // all, pending, paid, overdue
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [billToDelete, setBillToDelete] = useState(null);
+  const [billToMarkAsPaid, setBillToMarkAsPaid] = useState(null);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -132,8 +138,10 @@ export default function BillsDashboard() {
 
       await fetchBills();
       setShowModal(false);
+      success('Conta criada com sucesso!');
     } catch (error) {
       console.error('Erro ao criar conta:', error);
+      showError('Erro ao criar conta: ' + (error.message || 'Erro desconhecido'));
       throw error;
     }
   };
@@ -150,21 +158,26 @@ export default function BillsDashboard() {
       await fetchBills();
       setShowModal(false);
       setEditingBill(null);
+      success('Conta atualizada com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar conta:', error);
+      showError('Erro ao atualizar conta: ' + (error.message || 'Erro desconhecido'));
       throw error;
     }
   };
 
-  const handleMarkAsPaid = async (bill) => {
+  const handleMarkAsPaid = (bill) => {
     if (!bill.payment_method) {
-      alert('Por favor, edite a conta e defina um método de pagamento antes de marcar como paga.');
+      warning('Por favor, edite a conta e defina um método de pagamento antes de marcar como paga.');
       return;
     }
 
-    if (!confirm('Marcar esta conta como paga? Isso criará uma despesa automaticamente.')) {
-      return;
-    }
+    setBillToMarkAsPaid(bill);
+    setShowConfirmModal(true);
+  };
+
+  const confirmMarkAsPaid = async () => {
+    if (!billToMarkAsPaid) return;
 
     try {
       // 1. Criar expense correspondente
@@ -206,9 +219,13 @@ export default function BillsDashboard() {
       }
 
       await fetchBills();
+      success('Conta marcada como paga com sucesso!');
     } catch (error) {
       console.error('Erro ao marcar conta como paga:', error);
-      alert('Erro ao processar pagamento: ' + error.message);
+      showError('Erro ao processar pagamento: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setBillToMarkAsPaid(null);
     }
   };
 
@@ -251,20 +268,30 @@ export default function BillsDashboard() {
     }
   };
 
-  const handleDeleteBill = async (billId) => {
-    if (!confirm('Tem certeza que deseja excluir esta conta?')) return;
+  const handleDeleteBill = (billId) => {
+    setBillToDelete(billId);
+    setShowConfirmModal(true);
+  };
+
+  const confirmDeleteBill = async () => {
+    if (!billToDelete) return;
 
     try {
       const { error } = await supabase
         .from('bills')
         .update({ status: 'cancelled' })
-        .eq('id', billId);
+        .eq('id', billToDelete);
 
       if (error) throw error;
 
       await fetchBills();
+      success('Conta excluída com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir conta:', error);
+      showError('Erro ao excluir conta: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setBillToDelete(null);
     }
   };
 
@@ -569,6 +596,26 @@ export default function BillsDashboard() {
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setBillToDelete(null);
+          setBillToMarkAsPaid(null);
+        }}
+        onConfirm={billToDelete ? confirmDeleteBill : confirmMarkAsPaid}
+        title={billToDelete ? "Confirmar exclusão" : "Confirmar pagamento"}
+        message={
+          billToDelete 
+            ? "Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita."
+            : "Marcar esta conta como paga? Isso criará uma despesa automaticamente."
+        }
+        confirmText={billToDelete ? "Excluir" : "Marcar como Paga"}
+        cancelText="Cancelar"
+        type={billToDelete ? "danger" : "warning"}
       />
     </div>
   );

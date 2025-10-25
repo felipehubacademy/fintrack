@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import BankAccountModal from '../../components/BankAccountModal';
@@ -15,6 +16,7 @@ import StatsCard from '../../components/ui/StatsCard';
 export default function BankAccounts() {
   const router = useRouter();
   const { organization, user, costCenters, loading: orgLoading } = useOrganization();
+  const { showError } = useNotificationContext();
   const [accounts, setAccounts] = useState([]);
   const [stats, setStats] = useState({
     totalBalance: 0,
@@ -98,7 +100,7 @@ export default function BankAccounts() {
       await fetchAccounts();
     } catch (error) {
       console.error('Erro ao atualizar status da conta:', error);
-      alert('Erro ao atualizar status da conta');
+      showError('Erro ao atualizar status da conta: ' + (error.message || 'Erro desconhecido'));
     }
   };
 

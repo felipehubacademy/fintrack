@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -24,6 +25,7 @@ import {
 export default function MonthlyClosing() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
+  const { warning } = useNotificationContext();
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [loading, setLoading] = useState(true);
@@ -212,7 +214,7 @@ export default function MonthlyClosing() {
   };
 
   const exportToPDF = () => {
-    alert('Funcionalidade de exportação PDF será implementada em breve!');
+    warning('Funcionalidade de exportação PDF será implementada em breve!');
   };
 
   if (orgLoading || loading) {

@@ -217,26 +217,65 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
         const costCenter = selectedOption.isShared ? null : selectedOption;
 
-        const { data: income, error } = await supabase
-          .from('incomes')
-          .insert({
-            description: form.description,
-            amount: parseFloat(form.amount),
-            date: form.date,
-            category: form.category || null,
-            payment_method: form.payment_method,
-            cost_center_id: form.is_shared ? null : costCenter?.id,
-            is_shared: form.is_shared,
-            organization_id: organization.id,
-            user_id: orgUser.id,
-            status: 'confirmed'
-          })
-          .select()
-          .single();
+        let income;
+        let error;
+
+        if (editingTransaction) {
+          // Editar entrada existente
+          const { data, error: updateError } = await supabase
+            .from('incomes')
+            .update({
+              description: form.description,
+              amount: parseFloat(form.amount),
+              date: form.date,
+              category: form.category || null,
+              payment_method: form.payment_method,
+              cost_center_id: form.is_shared ? null : costCenter?.id,
+              is_shared: form.is_shared,
+              status: 'confirmed'
+            })
+            .eq('id', editingTransaction.id)
+            .select()
+            .single();
+          
+          income = data;
+          error = updateError;
+        } else {
+          // Criar nova entrada
+          const { data, error: insertError } = await supabase
+            .from('incomes')
+            .insert({
+              description: form.description,
+              amount: parseFloat(form.amount),
+              date: form.date,
+              category: form.category || null,
+              payment_method: form.payment_method,
+              cost_center_id: form.is_shared ? null : costCenter?.id,
+              is_shared: form.is_shared,
+              organization_id: organization.id,
+              user_id: orgUser.id,
+              status: 'confirmed'
+            })
+            .select()
+            .single();
+          
+          income = data;
+          error = insertError;
+        }
 
         if (error) throw error;
 
         if (isShared && splitDetails.length > 0) {
+          // Se está editando, deletar splits antigos primeiro
+          if (editingTransaction) {
+            const { error: deleteError } = await supabase
+              .from('income_splits')
+              .delete()
+              .eq('income_id', editingTransaction.id);
+            
+            if (deleteError) throw deleteError;
+          }
+
           const splitsToInsert = splitDetails.map(split => ({
             income_id: income.id,
             cost_center_id: split.cost_center_id,
@@ -294,9 +333,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             if (splitError) throw splitError;
           }
         } else {
-          const insertData = {
-            organization_id: organization.id,
-            user_id: orgUser.id,
+          const dataToSave = {
             cost_center_id: costCenter?.id || null,
             owner: form.owner_name,
             split: isShared,
@@ -311,16 +348,52 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             confirmed_by: orgUser.id,
             source: 'manual'
           };
-          
-          const { data: expense, error } = await supabase
-            .from('expenses')
-            .insert(insertData)
-            .select()
-            .single();
+
+          let expense;
+          let error;
+
+          if (editingTransaction) {
+            // Editar despesa existente
+            const { data, error: updateError } = await supabase
+              .from('expenses')
+              .update(dataToSave)
+              .eq('id', editingTransaction.id)
+              .select()
+              .single();
+            
+            expense = data;
+            error = updateError;
+          } else {
+            // Criar nova despesa
+            const insertData = {
+              ...dataToSave,
+              organization_id: organization.id,
+              user_id: orgUser.id,
+            };
+            
+            const { data, error: insertError } = await supabase
+              .from('expenses')
+              .insert(insertData)
+              .select()
+              .single();
+            
+            expense = data;
+            error = insertError;
+          }
           
           if (error) throw error;
 
           if (isShared && splitDetails.length > 0) {
+            // Se está editando, deletar splits antigos primeiro
+            if (editingTransaction) {
+              const { error: deleteError } = await supabase
+                .from('expense_splits')
+                .delete()
+                .eq('expense_id', editingTransaction.id);
+              
+              if (deleteError) throw deleteError;
+            }
+
             const splitsToInsert = splitDetails.map(split => ({
               expense_id: expense.id,
               cost_center_id: split.cost_center_id,
@@ -338,7 +411,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       }
       
       onClose?.();
-      success(transactionType === 'income' ? 'Entrada salva com sucesso!' : 'Despesa salva com sucesso!');
+      const action = editingTransaction ? 'atualizada' : 'salva';
+      success(transactionType === 'income' ? `Entrada ${action} com sucesso!` : `Despesa ${action} com sucesso!`);
       onSuccess?.();
     } catch (e) {
       showError('Erro ao salvar: ' + (e.message || 'Erro desconhecido'));

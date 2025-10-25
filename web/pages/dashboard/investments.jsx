@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import StatsCard from '../../components/ui/StatsCard';
 import InvestmentGoalModal from '../../components/InvestmentGoalModal';
 import InvestmentProgressCard from '../../components/InvestmentProgressCard';
 import LoadingLogo from '../../components/LoadingLogo';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import NotificationModal from '../../components/NotificationModal';
@@ -21,6 +23,7 @@ import {
 export default function InvestmentsDashboard() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
+  const { success, showError, warning } = useNotificationContext();
   
   const [goals, setGoals] = useState([]);
   const [contributions, setContributions] = useState({});
@@ -33,6 +36,8 @@ export default function InvestmentsDashboard() {
   const [contributionDate, setContributionDate] = useState(new Date().toISOString().split('T')[0]);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [goalToDelete, setGoalToDelete] = useState(null);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -124,10 +129,13 @@ export default function InvestmentsDashboard() {
     }
   };
 
-  const handleDeleteGoal = async (goalId) => {
-    if (!confirm('Tem certeza que deseja excluir esta meta? Todos os aportes registrados também serão excluídos.')) {
-      return;
-    }
+  const handleDeleteGoal = (goalId) => {
+    setGoalToDelete(goalId);
+    setShowConfirmModal(true);
+  };
+
+  const confirmDeleteGoal = async () => {
+    if (!goalToDelete) return;
 
     try {
       const { error } = await supabase
@@ -138,8 +146,13 @@ export default function InvestmentsDashboard() {
       if (error) throw error;
 
       await fetchGoals();
+      success('Meta excluída com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir meta:', error);
+      showError('Erro ao excluir meta: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setGoalToDelete(null);
     }
   };
 
@@ -162,7 +175,7 @@ export default function InvestmentsDashboard() {
 
   const handleAddContribution = async () => {
     if (!selectedGoal || !contributionAmount || parseFloat(contributionAmount) <= 0) {
-      alert('Valor inválido');
+      warning('Valor inválido');
       return;
     }
 
@@ -181,9 +194,10 @@ export default function InvestmentsDashboard() {
       await fetchGoals();
       setShowContributionModal(false);
       setSelectedGoal(null);
+      success('Aporte registrado com sucesso!');
     } catch (error) {
       console.error('Erro ao adicionar aporte:', error);
-      alert('Erro ao registrar aporte: ' + error.message);
+      showError('Erro ao registrar aporte: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
@@ -429,6 +443,21 @@ export default function InvestmentsDashboard() {
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setGoalToDelete(null);
+        }}
+        onConfirm={confirmDeleteGoal}
+        title="Confirmar exclusão"
+        message="Tem certeza que deseja excluir esta meta? Todos os aportes registrados também serão excluídos. Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
       />
     </div>
   );

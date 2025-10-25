@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useEffect } from 'react';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import { APP_CONFIG, redirectToCorrectDomain, getCanonicalUrl } from '../lib/constants';
+import ZulFloatingButton from '../components/ZulFloatingButton';
 
 function MyApp({ Component, pageProps }) {
   // Redirecionar para domínio correto no cliente
@@ -69,6 +70,7 @@ function MyApp({ Component, pageProps }) {
       </Head>
       <NotificationProvider>
         <Component {...pageProps} />
+        <ZulFloatingButton />
       </NotificationProvider>
     </>
   );

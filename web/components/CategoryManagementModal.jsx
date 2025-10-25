@@ -5,6 +5,7 @@ import { Badge } from './ui/Badge';
 import { Tag, Plus, Edit, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import ConfirmationModal from './ConfirmationModal';
 
 export default function CategoryManagementModal({ isOpen, onClose, organization }) {
   const { success, error: showError, warning } = useNotificationContext();
@@ -17,6 +18,8 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     description: '',
     color: '#6366F1'
   });
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
 
   const colors = [
     '#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B',
@@ -111,16 +114,19 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     setShowForm(true);
   };
 
-  const handleDelete = async (categoryId, isDefault, organizationId) => {
+  const handleDelete = (categoryId, isDefault, organizationId) => {
     // Bloquear deleção de categorias padrão (tanto globais quanto da organização)
     if (isDefault) {
       warning('Categorias padrão não podem ser excluídas');
       return;
     }
 
-    if (!confirm('Tem certeza que deseja excluir esta categoria?')) {
-      return;
-    }
+    setCategoryToDelete(categoryId);
+    setShowConfirmModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!categoryToDelete) return;
 
     try {
       const { error } = await supabase
@@ -134,7 +140,10 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
       success('Categoria excluída com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir categoria:', error);
-      showError('Erro ao excluir categoria');
+      showError('Erro ao excluir categoria: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setCategoryToDelete(null);
     }
   };
 
@@ -331,6 +340,21 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
           </Button>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setCategoryToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Confirmar exclusão"
+        message="Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Badge } from './ui/Badge';
 import { Users, Plus, Edit, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import ConfirmationModal from './ConfirmationModal';
 
 export default function CostCenterManagementModal({ isOpen, onClose, organization }) {
   const { success, error: showError, warning } = useNotificationContext();
@@ -19,6 +20,8 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
     linked_email: ''
   });
   const [percentageError, setPercentageError] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [costCenterToDelete, setCostCenterToDelete] = useState(null);
 
   const colors = [
     '#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B',
@@ -138,16 +141,19 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
     setShowForm(true);
   };
 
-  const handleDelete = async (costCenterId) => {
-    if (!confirm('Tem certeza que deseja excluir este responsável?')) {
-      return;
-    }
+  const handleDelete = (costCenterId) => {
+    setCostCenterToDelete(costCenterId);
+    setShowConfirmModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!costCenterToDelete) return;
 
     try {
       const { error } = await supabase
         .from('cost_centers')
         .delete()
-        .eq('id', costCenterId);
+        .eq('id', costCenterToDelete);
 
       if (error) throw error;
 
@@ -155,7 +161,10 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
       success('Responsável excluído com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir responsável:', error);
-      showError('Erro ao excluir responsável');
+      showError('Erro ao excluir responsável: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setCostCenterToDelete(null);
     }
   };
 
@@ -476,6 +485,21 @@ export default function CostCenterManagementModal({ isOpen, onClose, organizatio
           </Button>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setCostCenterToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Confirmar exclusão"
+        message="Tem certeza que deseja excluir este responsável? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   );
 }

@@ -4,9 +4,11 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 import { useOrganization } from '../../hooks/useOrganization';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Button } from '../../components/ui/Button';
 import TransactionModal from '../../components/TransactionModal';
 import EditExpenseModal from '../../components/EditExpenseModal';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import NotificationModal from '../../components/NotificationModal';
 import LoadingLogo from '../../components/LoadingLogo';
@@ -19,6 +21,7 @@ export default function TransactionsDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError, user: orgUser } = useOrganization();
+  const { success, showError } = useNotificationContext();
   const [openTooltip, setOpenTooltip] = useState(null);
   
   
@@ -49,6 +52,8 @@ export default function TransactionsDashboard() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [categories, setCategories] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState(null);
 
   // Fechar tooltip ao clicar fora em mobile
   useEffect(() => {
@@ -344,61 +349,41 @@ export default function TransactionsDashboard() {
   };
 
 
-  const handleDelete = async (transaction) => {
-    const isIncome = transaction.type === 'income';
-    
-    if (isIncome) {
-      // Exclusão de entrada
-      if (!confirm('Tem certeza que deseja excluir esta entrada?')) {
-        return;
-      }
+  const handleDelete = (transaction) => {
+    setTransactionToDelete(transaction);
+    setShowConfirmModal(true);
+  };
 
-      setDeleting(true);
-      try {
+  const confirmDelete = async () => {
+    if (!transactionToDelete) return;
+
+    const isIncome = transactionToDelete.type === 'income';
+    setDeleting(true);
+    setShowConfirmModal(false);
+
+    try {
+      if (isIncome) {
+        // Exclusão de entrada
         const { error } = await supabase
           .from('incomes')
           .delete()
-          .eq('id', transaction.id);
+          .eq('id', transactionToDelete.id);
         
         if (error) throw error;
 
         await fetchIncomes();
-        alert('Entrada excluída com sucesso!');
-      } catch (error) {
-        console.error('Erro ao excluir entrada:', error);
-        alert('Erro ao excluir entrada');
-      } finally {
-        setDeleting(false);
-      }
-    } else {
-      // Exclusão de despesa (lógica existente)
-      const expense = expenses.find(e => e.id === transaction.id);
-      const hasInstallments = expense?.parent_expense_id || expense?.installment_info;
-      
-      let confirmMessage = 'Tem certeza que deseja excluir esta despesa?';
-      if (hasInstallments) {
-        // Buscar todas as parcelas relacionadas
-        const { data: relatedExpenses } = await supabase
-          .from('expenses')
-          .select('id, installment_info')
-          .or(`id.eq.${transaction.id},parent_expense_id.eq.${transaction.id}`);
+        success('Entrada excluída com sucesso!');
+      } else {
+        // Exclusão de despesa
+        const expense = expenses.find(e => e.id === transactionToDelete.id);
+        const hasInstallments = expense?.parent_expense_id || expense?.installment_info;
         
-        const totalInstallments = relatedExpenses?.length || 1;
-        confirmMessage = `Esta despesa possui ${totalInstallments} parcelas. Todas serão excluídas. Tem certeza?`;
-      }
-
-      if (!confirm(confirmMessage)) {
-        return;
-      }
-
-      setDeleting(true);
-      try {
         if (hasInstallments) {
           // Excluir todas as parcelas relacionadas
           const { error } = await supabase
             .from('expenses')
             .delete()
-            .or(`id.eq.${transaction.id},parent_expense_id.eq.${transaction.id}`);
+            .or(`id.eq.${transactionToDelete.id},parent_expense_id.eq.${transactionToDelete.id}`);
           
           if (error) throw error;
         } else {
@@ -406,20 +391,20 @@ export default function TransactionsDashboard() {
           const { error } = await supabase
             .from('expenses')
             .delete()
-            .eq('id', transaction.id);
+            .eq('id', transactionToDelete.id);
           
           if (error) throw error;
         }
 
         await fetchExpenses();
-        alert(hasInstallments ? 'Todas as parcelas foram excluídas com sucesso!' : 'Despesa excluída com sucesso!');
-
-      } catch (error) {
-        console.error('Erro ao excluir:', error);
-        alert('Erro ao excluir despesa');
-      } finally {
-        setDeleting(false);
+        success(hasInstallments ? 'Todas as parcelas foram excluídas com sucesso!' : 'Despesa excluída com sucesso!');
       }
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      showError('Erro ao excluir transação: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setDeleting(false);
+      setTransactionToDelete(null);
     }
   };
 
@@ -1544,6 +1529,25 @@ export default function TransactionsDashboard() {
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setTransactionToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Confirmar exclusão"
+        message={
+          transactionToDelete?.type === 'income' 
+            ? "Tem certeza que deseja excluir esta entrada? Esta ação não pode ser desfeita."
+            : "Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita."
+        }
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
       />
     </div>
   );

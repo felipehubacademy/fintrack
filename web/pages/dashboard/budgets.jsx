@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import LoadingLogo from '../../components/LoadingLogo';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import { 
   Target, 
   Plus, 
@@ -31,6 +33,7 @@ import Footer from '../../components/Footer';
 export default function BudgetsDashboard() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, budgetCategories, loading: orgLoading, error: orgError } = useOrganization();
+  const { success, showError, warning } = useNotificationContext();
   const [budgets, setBudgets] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +42,9 @@ export default function BudgetsDashboard() {
   const [editingBudget, setEditingBudget] = useState(null);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [budgetToDelete, setBudgetToDelete] = useState(null);
+  const [actionToConfirm, setActionToConfirm] = useState(null);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -163,17 +169,17 @@ export default function BudgetsDashboard() {
         // Verificar se é erro de duplicação
         if (error.code === '23505' && error.message.includes('budgets_unique_category_month')) {
           const categoryName = budgetData.category_name || 'esta categoria';
-          alert(`❌ Já existe um orçamento para ${categoryName} em ${selectedMonth}.\n\n💡 Dica: Crie uma nova categoria se precisar de um orçamento diferente para o mesmo tipo de gasto.`);
+          warning(`Já existe um orçamento para ${categoryName} em ${selectedMonth}. Crie uma nova categoria se precisar de um orçamento diferente para o mesmo tipo de gasto.`);
           return;
         }
         throw error;
       }
 
       await fetchBudgets();
-      alert('✅ Orçamento criado com sucesso!');
+      success('Orçamento criado com sucesso!');
     } catch (error) {
       console.error('Erro ao criar orçamento:', error);
-      alert('❌ Erro ao criar orçamento: ' + (error.message || 'Erro desconhecido'));
+      showError('Erro ao criar orçamento: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
@@ -191,36 +197,46 @@ export default function BudgetsDashboard() {
         // Verificar se é erro de duplicação (se mudou a categoria)
         if (error.code === '23505' && error.message.includes('budgets_unique_category_month')) {
           const categoryName = budgetData.category_name || 'esta categoria';
-          alert(`❌ Já existe um orçamento para ${categoryName} em ${selectedMonth}.\n\n💡 Dica: Crie uma nova categoria se precisar de um orçamento diferente para o mesmo tipo de gasto.`);
+          warning(`Já existe um orçamento para ${categoryName} em ${selectedMonth}. Crie uma nova categoria se precisar de um orçamento diferente para o mesmo tipo de gasto.`);
           return;
         }
         throw error;
       }
 
       await fetchBudgets();
-      alert('✅ Orçamento atualizado com sucesso!');
+      success('Orçamento atualizado com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar orçamento:', error);
-      alert('❌ Erro ao atualizar orçamento: ' + (error.message || 'Erro desconhecido'));
+      showError('Erro ao atualizar orçamento: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
-  const handleDeleteBudget = async (budgetId) => {
-    if (confirm('Tem certeza que deseja excluir este orçamento?')) {
-      try {
-        const { error } = await supabase
-          .from('budgets')
-          .delete()
-          .eq('id', budgetId);
+  const handleDeleteBudget = (budgetId) => {
+    setBudgetToDelete(budgetId);
+    setActionToConfirm('delete');
+    setShowConfirmModal(true);
+  };
 
-        if (error) throw error;
+  const confirmDeleteBudget = async () => {
+    if (!budgetToDelete) return;
 
-        await fetchBudgets();
-        alert('Orçamento excluído com sucesso!');
-      } catch (error) {
-        console.error('Erro ao excluir orçamento:', error);
-        alert('Erro ao excluir orçamento');
-      }
+    try {
+      const { error } = await supabase
+        .from('budgets')
+        .delete()
+        .eq('id', budgetToDelete);
+
+      if (error) throw error;
+
+      await fetchBudgets();
+      success('Orçamento excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir orçamento:', error);
+      showError('Erro ao excluir orçamento: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setBudgetToDelete(null);
+      setActionToConfirm(null);
     }
   };
 
@@ -250,7 +266,7 @@ export default function BudgetsDashboard() {
       if (fetchError) throw fetchError;
 
       if (!previousBudgets || previousBudgets.length === 0) {
-        alert(`Não há orçamentos no mês anterior (${previousMonth.toString().padStart(2, '0')}/${previousYear}) para copiar.`);
+        warning(`Não há orçamentos no mês anterior (${previousMonth.toString().padStart(2, '0')}/${previousYear}) para copiar.`);
         return;
       }
 
@@ -264,42 +280,83 @@ export default function BudgetsDashboard() {
       if (currentError) throw currentError;
 
       if (currentBudgets && currentBudgets.length > 0) {
-        if (!confirm(`Já existem orçamentos para ${selectedMonth}. Deseja substituí-los pelos orçamentos de ${previousMonth.toString().padStart(2, '0')}/${previousYear}?`)) {
-          return;
-        }
-
-        // Excluir orçamentos atuais
-        const { error: deleteError } = await supabase
-          .from('budgets')
-          .delete()
-          .eq('organization_id', organization.id)
-          .eq('month_year', currentMonthYear);
-
-        if (deleteError) throw deleteError;
+        setActionToConfirm('copy');
+        setShowConfirmModal(true);
+        return;
       }
 
-      // Copiar orçamentos do mês anterior para o mês atual
-      const budgetsToInsert = previousBudgets.map(budget => ({
-        organization_id: organization.id,
-        category_id: budget.category_id,
-        cost_center_id: budget.cost_center_id,
-        limit_amount: budget.limit_amount, // Usar limit_amount ao invés de amount
-        month_year: currentMonthYear,
-        created_at: new Date().toISOString()
-      }));
-
-      const { error: insertError } = await supabase
-        .from('budgets')
-        .insert(budgetsToInsert);
-
-      if (insertError) throw insertError;
-
-      // Atualizar a lista de orçamentos
-      await fetchBudgets();
-      alert(`Orçamentos de ${previousMonth.toString().padStart(2, '0')}/${previousYear} copiados com sucesso para ${selectedMonth}!`);
+      // Se não há orçamentos atuais, copiar diretamente
+      await copyBudgetsToCurrentMonth(previousBudgets, currentMonthYear, previousMonth, previousYear);
     } catch (error) {
       console.error('Erro ao copiar orçamentos:', error);
-      alert('Erro ao copiar orçamentos do mês anterior');
+      showError('Erro ao copiar orçamentos do mês anterior: ' + (error.message || 'Erro desconhecido'));
+    }
+  };
+
+  const copyBudgetsToCurrentMonth = async (previousBudgets, currentMonthYear, previousMonth, previousYear) => {
+    // Copiar orçamentos do mês anterior para o mês atual
+    const budgetsToInsert = previousBudgets.map(budget => ({
+      organization_id: organization.id,
+      category_id: budget.category_id,
+      cost_center_id: budget.cost_center_id,
+      limit_amount: budget.limit_amount,
+      month_year: currentMonthYear,
+      created_at: new Date().toISOString()
+    }));
+
+    const { error: insertError } = await supabase
+      .from('budgets')
+      .insert(budgetsToInsert);
+
+    if (insertError) throw insertError;
+
+    // Atualizar a lista de orçamentos
+    await fetchBudgets();
+    success(`Orçamentos de ${previousMonth.toString().padStart(2, '0')}/${previousYear} copiados com sucesso para ${selectedMonth}!`);
+  };
+
+  const confirmCopyBudgets = async () => {
+    try {
+      // Calcular o mês anterior
+      const [currentYear, currentMonth] = selectedMonth.split('-').map(Number);
+      let previousYear = currentYear;
+      let previousMonth = currentMonth - 1;
+      
+      if (previousMonth === 0) {
+        previousMonth = 12;
+        previousYear = currentYear - 1;
+      }
+
+      // Formatar datas para month_year (YYYY-MM-DD)
+      const currentMonthYear = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`;
+      const previousMonthYear = `${previousYear}-${previousMonth.toString().padStart(2, '0')}-01`;
+
+      // Buscar orçamentos do mês anterior
+      const { data: previousBudgets, error: fetchError } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .eq('month_year', previousMonthYear);
+
+      if (fetchError) throw fetchError;
+
+      // Excluir orçamentos atuais
+      const { error: deleteError } = await supabase
+        .from('budgets')
+        .delete()
+        .eq('organization_id', organization.id)
+        .eq('month_year', currentMonthYear);
+
+      if (deleteError) throw deleteError;
+
+      // Copiar orçamentos do mês anterior para o mês atual
+      await copyBudgetsToCurrentMonth(previousBudgets, currentMonthYear, previousMonth, previousYear);
+    } catch (error) {
+      console.error('Erro ao copiar orçamentos:', error);
+      showError('Erro ao copiar orçamentos do mês anterior: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setActionToConfirm(null);
     }
   };
 
@@ -588,6 +645,26 @@ export default function BudgetsDashboard() {
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setBudgetToDelete(null);
+          setActionToConfirm(null);
+        }}
+        onConfirm={actionToConfirm === 'delete' ? confirmDeleteBudget : confirmCopyBudgets}
+        title={actionToConfirm === 'delete' ? "Confirmar exclusão" : "Confirmar cópia de orçamentos"}
+        message={
+          actionToConfirm === 'delete' 
+            ? "Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita."
+            : `Já existem orçamentos para ${selectedMonth}. Deseja substituí-los pelos orçamentos do mês anterior?`
+        }
+        confirmText={actionToConfirm === 'delete' ? "Excluir" : "Substituir"}
+        cancelText="Cancelar"
+        type={actionToConfirm === 'delete' ? "danger" : "warning"}
       />
     </div>
   );

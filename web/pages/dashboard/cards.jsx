@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import CardModal from '../../components/CardModal';
 import CardInvoiceModal from '../../components/CardInvoiceModal';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 import Header from '../../components/Header';
@@ -35,6 +37,7 @@ import Link from 'next/link';
 export default function CardsDashboard() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
+  const { success, showError } = useNotificationContext();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -45,6 +48,8 @@ export default function CardsDashboard() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedCardForInvoice, setSelectedCardForInvoice] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState(null);
 
   const computeClosingDay = (bestDay) => {
     if (!bestDay || typeof bestDay !== 'number') return null;
@@ -176,14 +181,16 @@ export default function CardsDashboard() {
           type: 'credit'
         }]);
       
-      if (!error) {
-        await fetchCards();
-        setShowModal(false);
-      } else {
-        console.error('Error adding card:', error);
+      if (error) {
+        throw error;
       }
+
+      await fetchCards();
+      setShowModal(false);
+      success('Cartão criado com sucesso!');
     } catch (error) {
       console.error('Error adding card:', error);
+      showError('Erro ao criar cartão: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
@@ -198,34 +205,46 @@ export default function CardsDashboard() {
         })
         .eq('id', editingCard.id);
       
-      if (!error) {
-        await fetchCards();
-        setShowModal(false);
-        setEditingCard(null);
-      } else {
-        console.error('Error editing card:', error);
+      if (error) {
+        throw error;
       }
+
+      await fetchCards();
+      setShowModal(false);
+      setEditingCard(null);
+      success('Cartão atualizado com sucesso!');
     } catch (error) {
       console.error('Error editing card:', error);
+      showError('Erro ao atualizar cartão: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
-  const handleDeleteCard = async (cardId) => {
-    if (!confirm('Tem certeza que deseja excluir este cartão?')) return;
-    
+  const handleDeleteCard = (cardId) => {
+    setCardToDelete(cardId);
+    setShowConfirmModal(true);
+  };
+
+  const confirmDeleteCard = async () => {
+    if (!cardToDelete) return;
+
     try {
       const { error } = await supabase
         .from('cards')
         .update({ is_active: false })
-        .eq('id', cardId);
+        .eq('id', cardToDelete);
       
-      if (!error) {
-        await fetchCards();
-      } else {
-        console.error('Error deleting card:', error);
+      if (error) {
+        throw error;
       }
+
+      await fetchCards();
+      success('Cartão excluído com sucesso!');
     } catch (error) {
       console.error('Error deleting card:', error);
+      showError('Erro ao excluir cartão: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setCardToDelete(null);
     }
   };
 
@@ -537,6 +556,21 @@ export default function CardsDashboard() {
           setSelectedCardForInvoice(null);
         }}
         card={selectedCardForInvoice}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setCardToDelete(null);
+        }}
+        onConfirm={confirmDeleteCard}
+        title="Confirmar exclusão"
+        message="Tem certeza que deseja excluir este cartão? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
       />
     </div>
   );

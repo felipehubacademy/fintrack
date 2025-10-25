@@ -4,14 +4,20 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Users, Mail, Calendar, Trash2, X, Plus, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useNotificationContext } from '../contexts/NotificationContext';
+import ConfirmationModal from './ConfirmationModal';
 
 export default function UserManagementModal({ isOpen, onClose, organization }) {
+  const { success, showError } = useNotificationContext();
   const [members, setMembers] = useState([]);
   const [pendingInvites, setPendingInvites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [actionToConfirm, setActionToConfirm] = useState(null);
+  const [itemToDelete, setItemToDelete] = useState(null);
   
   // Form state
   const [email, setEmail] = useState('');
@@ -108,46 +114,62 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
     }
   };
 
-  const removeUser = async (userId) => {
-    if (!confirm('Tem certeza que deseja remover este usuário da organização?')) {
-      return;
-    }
+  const removeUser = (userId) => {
+    setActionToConfirm('removeUser');
+    setItemToDelete(userId);
+    setShowConfirmModal(true);
+  };
+
+  const confirmRemoveUser = async () => {
+    if (!itemToDelete) return;
 
     try {
       // Remover organization_id do usuário (desvincula da org)
       const { error } = await supabase
         .from('users')
         .update({ organization_id: null })
-        .eq('id', userId);
+        .eq('id', itemToDelete);
 
       if (error) throw error;
 
       await fetchMembers();
-      setMessage({ type: 'success', text: 'Usuário removido com sucesso' });
+      success('Usuário removido com sucesso!');
     } catch (error) {
       console.error('Erro ao remover usuário:', error);
-      setMessage({ type: 'error', text: 'Erro ao remover usuário' });
+      showError('Erro ao remover usuário: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setActionToConfirm(null);
+      setItemToDelete(null);
     }
   };
 
-  const deletePendingInvite = async (inviteId) => {
-    if (!confirm('Tem certeza que deseja cancelar este convite?')) {
-      return;
-    }
+  const deletePendingInvite = (inviteId) => {
+    setActionToConfirm('deleteInvite');
+    setItemToDelete(inviteId);
+    setShowConfirmModal(true);
+  };
+
+  const confirmDeleteInvite = async () => {
+    if (!itemToDelete) return;
 
     try {
       const { error } = await supabase
         .from('pending_invites')
         .delete()
-        .eq('id', inviteId);
+        .eq('id', itemToDelete);
 
       if (error) throw error;
 
       await fetchMembers();
-      setMessage({ type: 'success', text: 'Convite cancelado' });
+      success('Convite cancelado com sucesso!');
     } catch (error) {
       console.error('Erro ao cancelar convite:', error);
-      setMessage({ type: 'error', text: 'Erro ao cancelar convite' });
+      showError('Erro ao cancelar convite: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setShowConfirmModal(false);
+      setActionToConfirm(null);
+      setItemToDelete(null);
     }
   };
 
@@ -450,6 +472,26 @@ export default function UserManagementModal({ isOpen, onClose, organization }) {
           </Button>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setActionToConfirm(null);
+          setItemToDelete(null);
+        }}
+        onConfirm={actionToConfirm === 'removeUser' ? confirmRemoveUser : confirmDeleteInvite}
+        title={actionToConfirm === 'removeUser' ? "Confirmar remoção" : "Confirmar cancelamento"}
+        message={
+          actionToConfirm === 'removeUser' 
+            ? "Tem certeza que deseja remover este usuário da organização? Esta ação não pode ser desfeita."
+            : "Tem certeza que deseja cancelar este convite? Esta ação não pode ser desfeita."
+        }
+        confirmText={actionToConfirm === 'removeUser' ? "Remover" : "Cancelar"}
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   );
 }
