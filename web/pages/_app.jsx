@@ -1,11 +1,13 @@
 import '../styles/globals.css';
 import Head from 'next/head';
 import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import { APP_CONFIG, redirectToCorrectDomain, getCanonicalUrl } from '../lib/constants';
 import ZulFloatingButton from '../components/ZulFloatingButton';
 
 function MyApp({ Component, pageProps }) {
+  const router = useRouter();
   // Redirecionar para domínio correto no cliente
   useEffect(() => {
     redirectToCorrectDomain();
@@ -70,7 +72,12 @@ function MyApp({ Component, pageProps }) {
       </Head>
       <NotificationProvider>
         <Component {...pageProps} />
-        <ZulFloatingButton />
+        {/* Renderizar Zul apenas nas páginas do dashboard */}
+        {(router.pathname.startsWith('/dashboard') || 
+          router.pathname.startsWith('/org/') || 
+          router.pathname.startsWith('/onboarding')) && 
+          <ZulFloatingButton />
+        }
       </NotificationProvider>
     </>
   );

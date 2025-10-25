@@ -150,17 +150,18 @@ export default function InvitePage() {
       // Normalizar telefone antes de salvar (apenas números)
       const normalizedPhone = formData.phone.replace(/\D/g, '');
       
-      // Atualizar dados do usuário
+      // Inserir ou atualizar dados do usuário
       const { error: userError } = await supabase
         .from('users')
-        .update({
+        .upsert({
+          id: user.id,
+          email: user.email,
           name: formData.name,
           phone: normalizedPhone, // Salvar apenas números: 5511999999999
           organization_id: organization.id,
           role: 'member',
           is_active: true
-        })
-        .eq('id', user.id);
+        });
 
       if (userError) throw userError;
 
@@ -174,10 +175,10 @@ export default function InvitePage() {
 
       setSuccess(true);
       
-      // Redirecionar para dashboard após 2 segundos
+      // Redirecionar para dashboard dinâmico após 2 segundos
       setTimeout(() => {
-        // Forçar refresh da sessão e redirecionar
-        window.location.href = '/dashboard';
+        // Redirecionar para URL dinâmica: /org/{orgId}/user/{userId}/dashboard
+        window.location.href = `/org/${organization.id}/user/${user.id}/dashboard`;
       }, 2000);
 
     } catch (error) {
