@@ -165,7 +165,7 @@ O sistema **já está integrado** com a **Meta WhatsApp Business API oficial**!
 
 O projeto utiliza a API oficial da Meta WhatsApp Business:
 - **Phone Number ID**: `801805679687987`
-- **Número**: `+55 11 5192-8551`
+- **Número**: `551151928551`
 - **API URL**: `https://graph.facebook.com/v18.0`
 
 ### Variáveis de Ambiente Necessárias
@@ -215,7 +215,7 @@ curl -X POST https://sua-url.vercel.app/api/notifications/check-bills \
 **Mensagem não chega:**
 - Verifique se `WHATSAPP_TOKEN` está correto
 - Confirme que o usuário tem `whatsapp_phone` cadastrado
-- Veja se o número está no formato E.164 (com +55)
+- Veja se o número está no formato correto (sem +)
 - Consulte os logs para ver erros da API
 
 **Erro 401 Unauthorized:**

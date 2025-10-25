@@ -237,12 +237,12 @@ Retorne APENAS JSON:`;
    */
   async getUserByPhone(phone) {
     try {
-      const normalized = String(phone || '').replace(/^\+/, '');
+      const normalized = String(phone || '').replace(/\D/g, '');
       // Buscar usuário primeiro
       const { data: user, error: userError } = await supabase
         .from('users')
         .select('*')
-        .in('phone', [normalized, `+${normalized}`])
+        .in('phone', [normalized])
         .eq('is_active', true)
         .single();
 
@@ -324,8 +324,8 @@ Retorne APENAS JSON:`;
       return;
     }
 
-    // Normalize phone format to E.164 with leading +
-    const normalizedTo = String(to || '').startsWith('+') ? String(to) : `+${String(to)}`;
+    // Normalize phone format (WhatsApp não usa +)
+    const normalizedTo = String(to || '').replace(/\D/g, '');
 
     const message = {
       messaging_product: 'whatsapp',
@@ -542,7 +542,7 @@ Retorne APENAS JSON:`;
       return;
     }
 
-    const normalizedTo = String(to || '').startsWith('+') ? String(to) : `+${String(to)}`;
+    const normalizedTo = String(to || '').replace(/\D/g, '');
 
     const message = {
       messaging_product: 'whatsapp',

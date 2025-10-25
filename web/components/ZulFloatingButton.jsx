@@ -662,9 +662,14 @@ export default function ZulFloatingButton() {
                         ? 'bg-blue-600 text-white rounded-tr-sm' 
                         : 'bg-white border border-gray-200 rounded-tl-sm'
                     }`}>
-                      <p className="text-sm whitespace-pre-wrap">
-                        {msg.message}
-                      </p>
+                      <p 
+                        className="text-sm whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{ 
+                          __html: msg.message
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        }}
+                      />
                     </div>
                   </div>
                 ))}

@@ -130,7 +130,7 @@ export default function InvitePage() {
         return;
       }
       if (!validation.phone) {
-        setError('Telefone inválido. Use formato: +55 (11) 99999-9999');
+        setError('Telefone inválido. Use formato: (11) 99999-9999');
         return;
       }
 
@@ -470,7 +470,7 @@ export default function InvitePage() {
                       <input
                         id="phone"
                         type="tel"
-                        placeholder="+55 (11) 99999-9999"
+                        placeholder="(11) 99999-9999"
                         required
                         value={formData.phone}
                         onChange={(e) => handleChange('phone', e.target.value)}

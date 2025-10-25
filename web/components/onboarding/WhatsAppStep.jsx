@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function WhatsAppStep({ user, onComplete, onDataChange }) {
-  // Remove o +55 do telefone do usuário para exibição
+  // Remove formatação do telefone do usuário para exibição
   const normalizePhone = (phone) => {
     if (!phone) return '';
     const numbers = phone.replace(/\D/g, '');
@@ -134,7 +134,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
       // Garantir que comece com 55 (código do Brasil)
       const phoneWithCountryCode = normalizedPhone.startsWith('55') 
         ? normalizedPhone 
-        : '55' + normalizedPhone;
+        : normalizedPhone;
       
       console.log('📱 Enviando código para:', phoneWithCountryCode);
       console.log('👤 User ID:', user?.id);

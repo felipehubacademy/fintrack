@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import ZulWebChat from './zulWebChat.js';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ const THREAD_CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutos (apenas para limpar ca
 class ZulAssistant {
   constructor() {
     this.assistantId = null;
+    this.webChat = new ZulWebChat();
   }
 
   /**
@@ -344,12 +346,12 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
   }
 
   /**
-   * Normalizar telefone (sempre com +)
+   * Normalizar telefone (sempre sem +)
    */
   normalizePhone(phone) {
     if (!phone) return null;
     const cleanPhone = String(phone).replace(/\D/g, ''); // Remove não-dígitos
-    return cleanPhone.startsWith('+') ? cleanPhone : `+${cleanPhone}`;
+    return cleanPhone; // Sempre sem + (WhatsApp não usa)
   }
 
   /**
@@ -413,98 +415,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
   }
 
   /**
-   * Enviar mensagem para chat web (assistente financeiro geral)
-   */
-  async sendWebChatMessage(userId, userMessage, context = {}) {
-    try {
-      console.log('💬 [WEB CHAT] Iniciando conversa...');
-      
-      // Instruções específicas para chat web
-      const systemMessage = this.getWebChatInstructions(context);
-      
-      // Preparar mensagens para GPT-4
-      const messages = [
-        {
-          role: 'system',
-          content: systemMessage
-        },
-        {
-          role: 'user',
-          content: userMessage
-        }
-      ];
-      
-      // Chamar GPT-4
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: messages,
-        temperature: 0.7,
-        top_p: 1.0,
-        frequency_penalty: 0.1,
-        presence_penalty: 0.1,
-        max_tokens: 500
-      });
-      
-      const response = completion.choices[0].message.content;
-      console.log('💬 [WEB CHAT] Resposta gerada');
-      
-      return response;
-      
-    } catch (error) {
-      console.error('❌ [WEB CHAT] Erro:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Instruções para chat web (assistente financeiro geral)
-   */
-  getWebChatInstructions(context) {
-    const { userName } = context;
-    const firstName = userName ? userName.split(' ')[0] : 'você';
-    
-    return `Você é Zul, assistente financeiro do MeuAzulão.
-
-PERSONALIDADE:
-- Sábio, sereno e genuinamente prestativo
-- Fale como um amigo inteligente ajudando com finanças
-- Tom brasileiro, natural e respeitoso
-- Seja conciso mas completo
-
-SUA FUNÇÃO:
-Você é um assistente financeiro geral que ajuda com:
-- Dicas de controle financeiro
-- Explicações sobre investimentos
-- Orientações sobre orçamento
-- Conceitos financeiros
-- Estratégias de economia
-- Planejamento financeiro
-
-REGRAS:
-- Responda perguntas financeiras de forma clara e didática
-- Use exemplos práticos quando possível
-- Seja encorajador e positivo
-- Evite dar conselhos de investimento específicos (apenas educativos)
-- Se não souber algo, seja honesto
-- Use emojis ocasionalmente para tornar mais amigável
-
-EXEMPLOS DE RESPOSTAS:
-- "Para começar a investir, recomendo primeiro ter uma reserva de emergência de 3-6 meses dos seus gastos..."
-- "O orçamento 50/30/20 é uma regra simples: 50% para necessidades, 30% para desejos, 20% para poupança..."
-- "Para controlar gastos, anote tudo que gasta por 30 dias. Você vai se surpreender com os pequenos gastos!"
-
-IMPORTANTE:
-- NÃO registre despesas (isso é função do WhatsApp)
-- Foque em educação e orientação financeira
-- Seja útil e prático
-- Mantenha o tom amigável e profissional
-
-${firstName ? `\nUsuário atual: ${firstName}` : ''}`;
-  }
-
-  /**
    * Enviar mensagem conversacional usando GPT-4 Chat Completion (NÃO Assistant API)
-   * ZONA PROIBIDA - NÃO MEXER - FUNCIONALIDADE WHATSAPP
    */
   async sendConversationalMessage(userId, userMessage, context = {}, userPhone) {
     try {
@@ -1089,6 +1000,13 @@ ${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de for
       console.error('❌ [ZUL] Erro ao processar mensagem:', error);
       throw error;
     }
+  }
+
+  /**
+   * Enviar mensagem para chat web (assistente financeiro geral)
+   */
+  async sendWebChatMessage(userId, userMessage, context = {}) {
+    return await this.webChat.sendWebChatMessage(userId, userMessage, context);
   }
 }
 

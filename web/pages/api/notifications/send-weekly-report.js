@@ -24,7 +24,7 @@ async function sendWhatsAppMessage(phone, message) {
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to: phone.startsWith('+') ? phone : `+55${phone}`,
+        to: phone,
         type: 'text',
         text: { body: message }
       })

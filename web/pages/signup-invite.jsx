@@ -320,7 +320,7 @@ export default function SignupInvite() {
                   <input
                     id="phone"
                     type="tel"
-                    placeholder="+55 (11) 99999-9999"
+                    placeholder="(11) 99999-9999"
                     required
                     value={formData.phone}
                     onChange={(e) => handleChange('phone', e.target.value)}

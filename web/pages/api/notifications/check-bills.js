@@ -15,8 +15,8 @@ async function sendWhatsAppMessage(to, text) {
     return false;
   }
 
-  // Normalize phone format to E.164 with leading +
-  const normalizedTo = String(to || '').startsWith('+') ? String(to) : `+${String(to)}`;
+  // Normalize phone format (WhatsApp não usa +)
+  const normalizedTo = String(to || '').replace(/\D/g, '');
 
   const message = {
     messaging_product: 'whatsapp',

@@ -363,7 +363,7 @@ export default function CreateOrganization() {
                   <input
                     id="adminPhone"
                     type="tel"
-                    placeholder="+55 (11) 99999-9999"
+                    placeholder="(11) 99999-9999"
                     required
                     value={formData.adminPhone}
                     onChange={(e) => handleChange('adminPhone', e.target.value)}

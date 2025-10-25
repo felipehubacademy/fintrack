@@ -18,7 +18,7 @@ async function sendWhatsAppVerificationCode(to, code, userName) {
     return false;
   }
 
-  const normalizedTo = String(to || '').startsWith('+') ? String(to) : `+${String(to)}`;
+  const normalizedTo = String(to || '').replace(/\D/g, '');
 
   const message = {
     messaging_product: 'whatsapp',

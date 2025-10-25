@@ -42,8 +42,7 @@ export default async function handler(req, res) {
       // Normalizar telefone (remover formatação)
       const normalizedPhone = phone.replace(/\D/g, '');
       const formattedPhone = normalizedPhone.startsWith('55') 
-        ? `+${normalizedPhone}` 
-        : `+55${normalizedPhone}`;
+        normalizedPhone;
 
       const { data: phoneUser, error: phoneError } = await supabase
         .from('users')

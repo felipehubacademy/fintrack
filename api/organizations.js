@@ -99,7 +99,7 @@ async function handlePost(req, res) {
         role: 'admin',
         name: 'Admin', // TODO: Buscar nome do usuário
         email: 'admin@example.com', // TODO: Buscar email do usuário
-        phone: '+5511999999999' // TODO: Buscar telefone do usuário
+        phone: '5511999999999' // TODO: Buscar telefone do usuário
       });
 
     if (userError) throw userError;

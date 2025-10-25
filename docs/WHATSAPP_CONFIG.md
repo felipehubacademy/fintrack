@@ -4,7 +4,7 @@
 
 **WhatsApp Business Account ID:** `1305894714600979`  
 **Phone Number ID:** `801805679687987` ✅  
-**Número:** `+55 11 5192-8551`
+**Número:** `551151928551`
 
 ## 🔧 CONFIGURAÇÃO NECESSÁRIA
 
@@ -14,7 +14,7 @@
 # WhatsApp Business API
 WHATSAPP_TOKEN=EAAafO1sejkwBPlb4sr9MzpmIioVDxZA1GdizLTeb1cK6oIYucblY0BzCIs9ZAMinB6G5Gw8UWRyCfuwWtkind9dV2R8EZAX2EYvZBrGkp5s2ESjWHPLNnk0aoJTQP8ReUT7JDb2tvINvasc4YuctwYStJhanKKt52PBg8YieZC74U9kRBYeoIXCoixk2AVQZDZD
 PHONE_ID=801805679687987
-USER_PHONE=+551151928551
+USER_PHONE=551151928551
 WHATSAPP_VERIFY_TOKEN=fintrack_verify_token
 ```
 
@@ -89,6 +89,6 @@ curl -X POST "https://fintrack-backend-theta.vercel.app/webhook" \
 
 ---
 
-**📞 Número do WhatsApp:** `801805679687987` (+55 11 5192-8551)  
+**📞 Número do WhatsApp:** `801805679687987` (55 11 5192-8551)  
 **🔗 Webhook:** `https://fintrack-backend-theta.vercel.app/api/webhook`  
 **🔑 Token:** `fintrack_verify_token`
