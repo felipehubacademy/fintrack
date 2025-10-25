@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
 import { MessageCircle, X, Lightbulb, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card, CardContent } from './ui/Card';
@@ -9,6 +10,7 @@ import { useOrganization } from '../hooks/useOrganization';
 import Image from 'next/image';
 
 export default function ZulFloatingButton() {
+  const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -60,6 +62,11 @@ export default function ZulFloatingButton() {
       return () => clearTimeout(timer);
     }
   }, [orgLoading, organization]);
+
+  // Resetar showZul ao mudar de página (evitar herança de estado)
+  useEffect(() => {
+    setShowZul(false);
+  }, [router.asPath]);
 
   // Função para encontrar elemento alvo
   const findTargetElement = (target) => {
