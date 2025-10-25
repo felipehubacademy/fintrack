@@ -185,17 +185,37 @@ export default function WhatsAppVerificationModal({
         })
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Erro ${response.status}: ${text}`);
+        // Tratamento especial para rate limit (429)
+        if (response.status === 429) {
+          const retryAfter = data.retryAfter || 60;
+          const minutes = Math.ceil(retryAfter / 60);
+          
+          if (minutes >= 60) {
+            const hours = Math.ceil(minutes / 60);
+            setError(`⏰ Muitas tentativas. Aguarde ${hours} hora${hours > 1 ? 's' : ''} para tentar novamente.`);
+          } else if (minutes > 1) {
+            setError(`⏰ Muitas tentativas. Aguarde ${minutes} minutos para tentar novamente.`);
+          } else {
+            setError(`⏰ Aguarde ${retryAfter} segundos para tentar novamente.`);
+          }
+          
+          // Setar countdown automático baseado no retryAfter
+          setCountdown(retryAfter);
+        } else {
+          setError(data.error || `Erro ao enviar código (${response.status})`);
+        }
+        return;
       }
 
-      const data = await response.json();
       setCodeSent(true);
       setStep(2);
       setCountdown(60); // 60 segundos para reenviar
     } catch (err) {
-      setError(err.message);
+      console.error('❌ Erro na requisição:', err);
+      setError(err.message || 'Erro ao enviar código. Verifique sua conexão.');
     } finally {
       setLoading(false);
     }

@@ -134,23 +134,29 @@ export default async function handler(req, res) {
       const diffMinutes = (now - lastAttempt) / 1000 / 60;
 
       if (diffMinutes < 1) {
+        const secondsLeft = Math.ceil(60 - (diffMinutes * 60));
         return res.status(429).json({ 
-          error: 'Aguarde 1 minuto antes de solicitar novo código',
-          retryAfter: Math.ceil(60 - (diffMinutes * 60))
+          error: `Por favor, aguarde ${secondsLeft} segundos antes de solicitar um novo código.`,
+          retryAfter: secondsLeft
         });
       }
     }
 
-    // Rate limiting: verificar tentativas por hora
-    if (user.verification_attempts >= 3) {
+    // Rate limiting: verificar tentativas por hora (10 tentativas)
+    if (user.verification_attempts >= 10) {
       const lastAttempt = new Date(user.last_verification_attempt);
       const now = new Date();
       const diffHours = (now - lastAttempt) / 1000 / 60 / 60;
 
       if (diffHours < 1) {
+        const secondsLeft = Math.ceil(3600 - (diffHours * 3600));
+        const minutesLeft = Math.ceil(secondsLeft / 60);
+        
         return res.status(429).json({ 
-          error: 'Limite de tentativas excedido. Tente novamente em 1 hora.',
-          retryAfter: Math.ceil(3600 - (diffHours * 3600))
+          error: minutesLeft > 60 
+            ? 'Você atingiu o limite de tentativas. Tente novamente em 1 hora.' 
+            : `Você atingiu o limite de tentativas. Tente novamente em ${minutesLeft} minutos.`,
+          retryAfter: secondsLeft
         });
       } else {
         // Resetar contador após 1 hora
