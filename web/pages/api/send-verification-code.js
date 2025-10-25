@@ -38,6 +38,17 @@ async function sendWhatsAppVerificationCode(to, code, userName) {
               text: code // {{1}} = código de verificação
             }
           ]
+        },
+        {
+          type: 'button',
+          sub_type: 'copy_code',
+          index: '0',
+          parameters: [
+            {
+              type: 'coupon_code',
+              coupon_code: code // Código para o botão "Copiar código"
+            }
+          ]
         }
       ]
     }
