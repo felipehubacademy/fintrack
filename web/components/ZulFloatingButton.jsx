@@ -44,13 +44,19 @@ export default function ZulFloatingButton() {
 
   // Controlar quando mostrar o Zul (após loading da página)
   useEffect(() => {
-    // Aguardar o loading da organização terminar
-    if (!orgLoading && organization) {
-      // Aguardar mais 500ms para garantir que todos os dados carregaram
+    // Para páginas do dashboard: aguardar organização carregar
+    if (orgLoading !== undefined) {
+      if (!orgLoading && organization) {
+        const timer = setTimeout(() => {
+          setShowZul(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      // Para outras páginas: aguardar apenas um tempo fixo
       const timer = setTimeout(() => {
         setShowZul(true);
-      }, 500);
-
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [orgLoading, organization]);
