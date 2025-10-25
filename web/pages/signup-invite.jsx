@@ -67,19 +67,19 @@ export default function SignupInvite() {
     }
   };
 
-  // Formatar telefone automaticamente
+  // Formatar telefone automaticamente (apenas Brasil)
   const formatPhone = (value) => {
     const numbers = value.replace(/\D/g, '');
-    const limited = numbers.slice(0, 13);
+    const limited = numbers.slice(0, 11); // DDD (2) + Número (9)
     
-    if (limited.length <= 2) {
-      return `+${limited}`;
-    } else if (limited.length <= 4) {
-      return `+${limited.slice(0, 2)} (${limited.slice(2)}`;
-    } else if (limited.length <= 9) {
-      return `+${limited.slice(0, 2)} (${limited.slice(2, 4)}) ${limited.slice(4)}`;
+    if (limited.length === 0) {
+      return '';
+    } else if (limited.length <= 2) {
+      return `(${limited}`;
+    } else if (limited.length <= 6) {
+      return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
     } else {
-      return `+${limited.slice(0, 2)} (${limited.slice(2, 4)}) ${limited.slice(4, 9)}-${limited.slice(9)}`;
+      return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
     }
   };
 
@@ -88,10 +88,10 @@ export default function SignupInvite() {
     return name.trim().length >= 2;
   };
 
-  // Validar telefone
+  // Validar telefone (11 dígitos: DDD + número)
   const validatePhone = (phone) => {
     const numbers = phone.replace(/\D/g, '');
-    return numbers.length === 13;
+    return numbers.length === 11;
   };
 
   // Validar senha
@@ -144,8 +144,9 @@ export default function SignupInvite() {
         return;
       }
 
-      // Normalizar telefone antes de criar conta (apenas números)
-      const normalizedPhone = formData.phone.replace(/\D/g, '');
+      // Normalizar telefone: extrair apenas números e adicionar código do Brasil (55)
+      const phoneNumbers = formData.phone.replace(/\D/g, ''); // Remove tudo que não é número
+      const phoneWithCountryCode = `55${phoneNumbers}`; // Adiciona 55 no início
       
       // Criar conta do usuário
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -154,7 +155,7 @@ export default function SignupInvite() {
         options: {
           data: {
             name: formData.name,
-            phone: normalizedPhone // Salvar apenas números
+            phone: phoneWithCountryCode
           }
         }
       });
@@ -172,7 +173,7 @@ export default function SignupInvite() {
           id: authData.user.id,
           email: email,
           name: formData.name,
-          phone: normalizedPhone, // Salvar apenas números: 5511999999999
+          phone: phoneWithCountryCode, // Salvar como: 5511999999999 (55 + DDD + número)
           organization_id: organization.id,
           role: invite?.role || 'member',
           is_active: true
@@ -190,7 +191,10 @@ export default function SignupInvite() {
         if (inviteError) throw inviteError;
       }
 
-      // Redirecionar para dashboard DINÂMICO
+      // Aguardar um pouco para garantir que a sessão foi criada
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Redirecionar para onboarding DINÂMICO
       window.location.href = `/org/${organization.id}/user/${authData.user.id}/onboarding/1`;
 
     } catch (err) {
@@ -263,14 +267,9 @@ export default function SignupInvite() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Cadastro - {organization?.name}
               </h1>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 mb-6">
                 Você foi convidado por <strong>{invite?.inviter?.name}</strong>
               </p>
-              
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-6">
-                <p className="text-sm text-gray-600 mb-1">Convidado por:</p>
-                <p className="font-medium text-gray-900">{invite?.inviter?.name}</p>
-              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -341,7 +340,7 @@ export default function SignupInvite() {
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Digite apenas números, formataremos automaticamente
+                  Formato: DDD + 9 dígitos (ex: 11 99999-9999)
                 </p>
               </div>
 
