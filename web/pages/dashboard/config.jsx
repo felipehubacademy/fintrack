@@ -28,7 +28,7 @@ import WhatsAppVerificationModal from '../../components/WhatsAppVerificationModa
 
 export default function ConfigPage() {
   const router = useRouter();
-  const { organization, user: orgUser, loading: orgLoading, error: orgError } = useOrganization();
+  const { organization, user: orgUser, isSoloUser, loading: orgLoading, error: orgError } = useOrganization();
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCostCenterModal, setShowCostCenterModal] = useState(false);
