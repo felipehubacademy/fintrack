@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
+import { usePrivacyFilter } from '../../hooks/usePrivacyFilter';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -25,6 +26,7 @@ import {
 export default function MonthlyClosing() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
+  const { filterByPrivacy } = usePrivacyFilter(organization, orgUser, costCenters);
   const { warning } = useNotificationContext();
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -98,7 +100,35 @@ export default function MonthlyClosing() {
 
       if (expensesError) throw expensesError;
 
-      // Calcular totais
+      // Aplicar filtro de privacidade
+      const filteredIncomes = filterByPrivacy(incomesData || []);
+      const filteredExpenses = filterByPrivacy(expensesData || []);
+
+      // Calcular totais individuais vs organização
+      const userCostCenter = costCenters.find(cc => cc.user_id === orgUser?.id);
+      
+      // Totais Individual
+      const myIncomes = filteredIncomes
+        .filter(i => !i.is_shared && i.cost_center_id === userCostCenter?.id)
+        .reduce((sum, i) => sum + Number(i.amount), 0);
+      
+      const myExpenses = filteredExpenses
+        .filter(e => !(e.split || e.is_shared) && e.cost_center_id === userCostCenter?.id)
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+      
+      // Totais Organização (apenas parte do usuário nos splits)
+      const orgIncomes = filteredIncomes
+        .filter(i => i.is_shared && i.income_splits)
+        .flatMap(i => i.income_splits || [])
+        .filter(s => s.cost_center_id === userCostCenter?.id)
+        .reduce((sum, s) => sum + Number(s.amount), 0);
+      
+      const orgExpenses = filteredExpenses
+        .filter(e => e.split || e.is_shared)
+        .flatMap(e => e.expense_splits || [])
+        .filter(s => s.cost_center_id === userCostCenter?.id)
+        .reduce((sum, s) => sum + Number(s.amount), 0);
+      
       const totalIncome = (incomesData || []).reduce((sum, inc) => sum + Number(inc.amount), 0);
       const totalExpense = (expensesData || []).reduce((sum, exp) => sum + Number(exp.amount), 0);
       const balance = totalIncome - totalExpense;
@@ -183,7 +213,11 @@ export default function MonthlyClosing() {
         totalIncome,
         totalExpense,
         balance,
-        byCostCenter
+        byCostCenter,
+        myIncomes,
+        myExpenses,
+        orgIncomes,
+        orgExpenses
       });
 
     } catch (error) {
@@ -303,37 +337,65 @@ export default function MonthlyClosing() {
           </CardHeader>
         </Card>
 
-        {/* Summary Cards */}
-        <div className="grid gap-3 grid-cols-1 md:grid-cols-3 w-full">
-          <StatsCard
-            title="Total de Entradas"
-            value={`R$ ${data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            icon={TrendingUp}
-            color="text-green-600"
-            bgColor="bg-green-50"
-            borderColor="border-green-200"
-            description={`${data.incomes.length} entrada(s)`}
-          />
+        {/* Fechamento: Organização vs Individual */}
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 w-full">
+          {/* Card Fechamento Organização */}
+          <Card className="border-2 border-purple-200 bg-white">
+            <CardHeader>
+              <CardTitle className="flex items-center text-lg font-bold text-gray-900">
+                💰 Fechamento {organization?.name || 'Organização'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-600">Entradas:</span>
+                <span className="text-green-600 font-bold text-lg">
+                  R$ {data.orgIncomes?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-600">Saídas:</span>
+                <span className="text-red-600 font-bold text-lg">
+                  R$ {data.orgExpenses?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-t pt-4">
+                <span className="font-bold text-gray-900">Saldo:</span>
+                <span className="font-bold text-xl">
+                  R$ {((data.orgIncomes || 0) - (data.orgExpenses || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
 
-          <StatsCard
-            title="Total de Saídas"
-            value={`R$ ${data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            icon={TrendingDown}
-            color="text-red-600"
-            bgColor="bg-red-50"
-            borderColor="border-red-200"
-            description={`${data.expenses.length} despesa(s)`}
-          />
-
-          <StatsCard
-            title="Saldo do Mês"
-            value={`R$ ${Math.abs(data.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            icon={DollarSign}
-            color={data.balance >= 0 ? "text-blue-600" : "text-orange-600"}
-            bgColor={data.balance >= 0 ? "bg-blue-50" : "bg-orange-50"}
-            borderColor={data.balance >= 0 ? "border-blue-200" : "border-orange-200"}
-            description={data.balance >= 0 ? 'Superávit' : 'Déficit'}
-          />
+          {/* Card Fechamento Individual */}
+          <Card className="border-2 border-blue-200 bg-white">
+            <CardHeader>
+              <CardTitle className="flex items-center text-lg font-bold text-gray-900">
+                👤 Meu Fechamento Individual
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-600">Entradas:</span>
+                <span className="text-green-600 font-bold text-lg">
+                  R$ {data.myIncomes?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-600">Saídas:</span>
+                <span className="text-red-600 font-bold text-lg">
+                  R$ {data.myExpenses?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-t pt-4">
+                <span className="font-bold text-gray-900">Saldo:</span>
+                <span className="font-bold text-xl">
+                  R$ {((data.myIncomes || 0) - (data.myExpenses || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Breakdown por Centro de Custo */}

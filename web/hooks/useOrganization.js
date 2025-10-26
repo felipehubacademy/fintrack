@@ -7,6 +7,7 @@ export function useOrganization() {
   const [costCenters, setCostCenters] = useState([]);
   const [budgetCategories, setBudgetCategories] = useState([]);
   const [incomeCategories, setIncomeCategories] = useState([]);
+  const [isSoloUser, setIsSoloUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -81,6 +82,21 @@ export function useOrganization() {
       
       if (centersError) throw centersError;
       setCostCenters(centers || []);
+      
+      // Verificar se é conta solo pela coluna type OU pela contagem de cost centers
+      // Prioridade: coluna type > contagem de cost centers
+      let solo = false;
+      if (orgRow?.type === 'solo') {
+        solo = true;
+      } else if (orgRow?.type === 'family') {
+        solo = false;
+      } else {
+        // Fallback: contar cost centers vinculados a usuários
+        const userCostCenters = (centers || []).filter(cc => cc.user_id);
+        solo = userCostCenters.length === 1;
+      }
+      
+      setIsSoloUser(solo);
 
       // Buscar categorias
       const { data: categories, error: categoriesError } = await supabase
@@ -119,6 +135,7 @@ export function useOrganization() {
     costCenters,
     budgetCategories,
     incomeCategories,
+    isSoloUser,
     loading,
     error,
     refreshData

@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 import { useOrganization } from '../../hooks/useOrganization';
+import { usePrivacyFilter } from '../../hooks/usePrivacyFilter';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Button } from '../../components/ui/Button';
 import TransactionModal from '../../components/TransactionModal';
@@ -21,6 +22,7 @@ export default function TransactionsDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError, user: orgUser } = useOrganization();
+  const { filterByPrivacy } = usePrivacyFilter(organization, orgUser, costCenters);
   const { success, showError } = useNotificationContext();
   const [openTooltip, setOpenTooltip] = useState(null);
   
@@ -235,7 +237,9 @@ export default function TransactionsDashboard() {
         queryString: query.toString()
       });
 
-      setExpenses(data || []);
+      // Aplicar filtro de privacidade
+      const filteredExpenses = filterByPrivacy(data || []);
+      setExpenses(filteredExpenses);
       setIsDataLoaded(true);
     } catch (error) {
       console.error('Error fetching expenses:', error);
@@ -276,7 +280,9 @@ export default function TransactionsDashboard() {
       
       if (error) throw error;
 
-      setIncomes(data || []);
+      // Aplicar filtro de privacidade
+      const filteredIncomes = filterByPrivacy(data || []);
+      setIncomes(filteredIncomes);
     } catch (error) {
       console.error('Error fetching incomes:', error);
     }
@@ -1514,6 +1520,7 @@ export default function TransactionsDashboard() {
         expenseId={editingId}
         costCenters={costCenters}
         categories={categories}
+        organization={organization}
         onClose={() => setEditingId(null)}
         onSuccess={() => {
           setEditingId(null);

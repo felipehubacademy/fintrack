@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
@@ -50,77 +50,93 @@ export default function ConfigPage() {
     router.push('/');
   };
 
-  const configSections = [
-    {
-      title: "Usuários e Convites",
-      description: "Gerenciar membros da organização",
-      icon: Users,
-      color: "bg-green-50",
-      iconColor: "text-green-600",
-      actions: [
-        {
-          title: "Gerenciar Usuários",
-          description: "Gerenciar membros e convites",
-          action: "users",
-          icon: UserCheck
-        }
-      ]
-    },
-    {
-      title: "WhatsApp",
-      description: "Verificar número para conversar com o Zul",
-      icon: MessageCircle,
-      color: "bg-green-50",
-      iconColor: "text-green-600",
-      actions: [
-        {
-          title: orgUser?.phone_verified ? "WhatsApp Verificado" : "Verificar WhatsApp",
-          description: orgUser?.phone_verified 
-            ? `Número verificado: ${orgUser?.phone?.replace('55', '') || 'N/A'}` 
-            : "Configure seu número para usar o Zul",
-          action: "whatsapp",
-          icon: MessageCircle,
-          status: orgUser?.phone_verified ? "verified" : "pending"
-        }
-      ]
-    },
-    {
-      title: "Categorias e Responsáveis",
-      description: "Gerenciar categorias e responsáveis",
-      icon: Settings,
-      color: "bg-blue-50",
-      iconColor: "text-blue-600",
-      actions: [
-        {
-          title: "Responsáveis",
-          description: "Gerenciar responsáveis financeiros",
-          action: "cost-centers",
-          icon: UserCheck
-        },
-        {
-          title: "Categorias",
-          description: "Personalizar categorias",
-          action: "categories",
-          icon: Tag
-        }
-      ]
-    },
-    {
-      title: "Notificações",
-      description: "Configurar alertas e notificações",
-      icon: Bell,
-      color: "bg-orange-50",
-      iconColor: "text-orange-600",
-      actions: [
-        {
-          title: "Configurar Notificações",
-          description: "Alertas e lembretes",
-          action: "notifications",
-          icon: Bell
-        }
-      ]
+  // Preparar seções de configuração
+  const configSections = useMemo(() => {
+    const sections = [
+      // Seção: Usuários e Convites (apenas para contas familiares)
+      {
+        title: "Usuários e Convites",
+        description: "Gerenciar membros da organização",
+        icon: Users,
+        color: "bg-green-50",
+        iconColor: "text-green-600",
+        actions: [
+          {
+            title: "Gerenciar Usuários",
+            description: "Gerenciar membros e convites",
+            action: "users",
+            icon: UserCheck
+          }
+        ]
+      },
+      // Seção: WhatsApp (sempre visível)
+      {
+        title: "WhatsApp",
+        description: "Verificar número para conversar com o Zul",
+        icon: MessageCircle,
+        color: "bg-green-50",
+        iconColor: "text-green-600",
+        actions: [
+          {
+            title: orgUser?.phone_verified ? "WhatsApp Verificado" : "Verificar WhatsApp",
+            description: orgUser?.phone_verified 
+              ? `Número verificado: ${orgUser?.phone?.replace('55', '') || 'N/A'}` 
+              : "Configure seu número para usar o Zul",
+            action: "whatsapp",
+            icon: MessageCircle,
+            status: orgUser?.phone_verified ? "verified" : "pending"
+          }
+        ]
+      },
+      // Seção: Categorias e Responsáveis (ocultar "Responsáveis" para contas solo)
+      {
+        title: "Categorias e Responsáveis",
+        description: "Gerenciar categorias e responsáveis",
+        icon: Settings,
+        color: "bg-blue-50",
+        iconColor: "text-blue-600",
+        actions: [
+          // Mostrar "Responsáveis" apenas para contas familiares
+          ...(!isSoloUser ? [{
+            title: "Responsáveis",
+            description: "Gerenciar responsáveis financeiros",
+            action: "cost-centers",
+            icon: UserCheck
+          }] : []),
+          // Categorias sempre disponível
+          {
+            title: "Categorias",
+            description: "Personalizar categorias",
+            action: "categories",
+            icon: Tag
+          }
+        ]
+      },
+      // Seção: Notificações (sempre visível)
+      {
+        title: "Notificações",
+        description: "Configurar alertas e notificações",
+        icon: Bell,
+        color: "bg-orange-50",
+        iconColor: "text-orange-600",
+        actions: [
+          {
+            title: "Configurar Notificações",
+            description: "Alertas e lembretes",
+            action: "notifications",
+            icon: Bell
+          }
+        ]
+      }
+    ];
+
+    // Se for conta solo e não tem ações em "Usuários e Convites", remover essa seção
+    if (isSoloUser) {
+      return sections.filter(section => section.title !== "Usuários e Convites");
     }
-  ];
+
+    return sections;
+  }, [isSoloUser, orgUser]);
 
   if (orgLoading || !isDataLoaded) {
     return (

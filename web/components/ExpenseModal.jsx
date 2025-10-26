@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import HelpTooltip from './ui/HelpTooltip';
 
 export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = [] }) {
   
-  const { organization, user: orgUser, costCenters, loading: orgLoading } = useOrganization();
+  const { organization, user: orgUser, costCenters, isSoloUser, loading: orgLoading } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
   
   const [cards, setCards] = useState([]);
@@ -29,7 +30,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
   const isCredit = form.payment_method === 'credit_card';
-  const isShared = form.owner_name === 'Compartilhado';
+  const isShared = form.owner_name === (organization?.name || 'Organização');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -48,7 +49,15 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
       }
     };
     load();
-  }, [isOpen, organization]);
+    
+    // Se for usuário solo, auto-selecionar o próprio cost center
+    if (isSoloUser && orgUser && !form.owner_name) {
+      const userCostCenter = costCenters.find(cc => cc.user_id === orgUser.id);
+      if (userCostCenter) {
+        setForm(prev => ({ ...prev, owner_name: userCostCenter.name }));
+      }
+    }
+  }, [isOpen, organization, isSoloUser, orgUser, costCenters]);
 
   const ownerOptions = useMemo(() => {
     // Todos os cost centers (não há mais distinção de "type")
@@ -63,23 +72,26 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         linked_email: cc.linked_email
       }));
     
-    // Adicionar "Compartilhado" como opção especial (sem cost_center_id)
-    allCenters.push({
-      id: null,
-      name: 'Compartilhado',
-      default_split_percentage: 0,
-      color: '#8B5CF6',
-      isShared: true
-    });
+    // Adicionar nome da organização como opção especial APENAS para contas familiares
+    if (!isSoloUser) {
+      allCenters.push({
+        id: null,
+        name: organization?.name || 'Organização',
+        default_split_percentage: 0,
+        color: '#8B5CF6',
+        isShared: true
+      });
+    }
     
     return allCenters;
-  }, [costCenters]);
+  }, [costCenters, organization, isSoloUser]);
 
   // Inicializar divisão quando "Compartilhado" for selecionado
   useEffect(() => {
     if (isShared && splitDetails.length === 0) {
-      // Buscar todos os cost_centers ativos e criar divisão padrão
-      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      // Buscar apenas cost_centers individuais (que têm user_id)
+      // Ignorar cost centers "compartilhados" fictícios
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
       console.log('🔍 [EXPENSE MODAL] Active centers:', activeCenters);
       console.log('🔍 [EXPENSE MODAL] Default split percentages:', activeCenters.map(cc => ({ name: cc.name, percentage: cc.default_split_percentage })));
       
@@ -121,7 +133,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   useEffect(() => {
     if (isShared && showSplitConfig && splitDetails.length === 0) {
       const totalAmount = parseFloat(form.amount) || 0;
-      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
       const defaultSplits = activeCenters.map(cc => ({
         cost_center_id: cc.id,
         name: cc.name,
@@ -154,7 +166,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
 
   const resetToDefaultSplit = () => {
     const totalAmount = parseFloat(form.amount) || 0;
-    const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+    const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
     const defaultSplits = activeCenters.map(cc => ({
       cost_center_id: cc.id,
       name: cc.name,
@@ -245,7 +257,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           user_id: orgUser.id,
           cost_center_id: costCenter?.id || null, // NULL para compartilhado
           owner: form.owner_name,
-          split: isShared,
+          is_shared: isShared,
           category_id: category?.id || null,
           category: category?.name || null,
           amount: Number(form.amount),
@@ -364,19 +376,27 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
-                <select
-                  value={form.owner_name}
-                  onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                >
-                  <option value="">Selecione...</option>
-                  {ownerOptions.map(o => (
-                    <option key={o.id} value={o.name}>{o.name}</option>
-                  ))}
-                </select>
-              </div>
+              {!isSoloUser && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Responsável *</label>
+                    <HelpTooltip 
+                      content={`Individual: só você vê. ${organization?.name || 'Organização'}: todos da família veem`}
+                      autoOpen={true}
+                    />
+                  </div>
+                  <select
+                    value={form.owner_name}
+                    onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  >
+                    <option value="">Selecione...</option>
+                    {ownerOptions.map(o => (
+                      <option key={o.id} value={o.name}>{o.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>

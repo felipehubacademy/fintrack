@@ -7,7 +7,7 @@ import { X, Users, User } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction = null, categories = [] }) {
-  const { organization, user: orgUser, costCenters, incomeCategories, loading: orgLoading } = useOrganization();
+  const { organization, user: orgUser, costCenters, incomeCategories, isSoloUser, loading: orgLoading } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
   
   const [cards, setCards] = useState([]);
@@ -103,20 +103,23 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         linked_email: cc.linked_email
       }));
     
-    allCenters.push({
-      id: null,
-      name: 'Compartilhado',
-      default_split_percentage: 0,
-      color: '#8B5CF6',
-      isShared: true
-    });
+    // Adicionar nome da organização como opção especial APENAS para contas familiares
+    if (!isSoloUser) {
+      allCenters.push({
+        id: null,
+        name: organization?.name || 'Organização',
+        default_split_percentage: 0,
+        color: '#8B5CF6',
+        isShared: true
+      });
+    }
     
     return allCenters;
-  }, [costCenters]);
+  }, [costCenters, organization, isSoloUser]);
 
   useEffect(() => {
     if (isShared && splitDetails.length === 0) {
-      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
       const defaultSplits = activeCenters.map(cc => ({
         cost_center_id: cc.id,
         name: cc.name,
@@ -161,7 +164,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
   const resetToDefaultSplit = () => {
     const totalAmount = parseFloat(form.amount) || 0;
-    const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+    const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
     const defaultSplits = activeCenters.map(cc => ({
       cost_center_id: cc.id,
       name: cc.name,
@@ -336,7 +339,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           const dataToSave = {
             cost_center_id: costCenter?.id || null,
             owner: form.owner_name,
-            split: isShared,
+            is_shared: isShared,
             category_id: category?.id || null,
             category: category?.name || null,
             amount: Number(form.amount),

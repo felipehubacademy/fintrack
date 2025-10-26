@@ -40,14 +40,18 @@ export default async function handler(req, res) {
     // Verificar duplicata de telefone
     if (phone) {
       // Normalizar telefone (remover formatação)
-      const normalizedPhone = phone.replace(/\D/g, '');
-      const formattedPhone = normalizedPhone.startsWith('55') 
-        normalizedPhone;
-
+      let normalizedPhone = phone.replace(/\D/g, '');
+      
+      // Se não começar com 55, adicionar
+      if (!normalizedPhone.startsWith('55')) {
+        normalizedPhone = '55' + normalizedPhone;
+      }
+      
+      // Verificar com o número completo
       const { data: phoneUser, error: phoneError } = await supabase
         .from('users')
         .select('id, email, name, phone, organization_id, role')
-        .eq('phone', formattedPhone)
+        .eq('phone', normalizedPhone)
         .maybeSingle();
 
       if (phoneError) throw phoneError;

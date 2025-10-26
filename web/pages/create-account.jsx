@@ -3,15 +3,16 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
-import { ArrowLeft, Building2, User, Mail, Phone, Loader2, CheckCircle, Copy, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Loader2, CheckCircle, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
 import { useRealtimeDuplicateCheck } from '../hooks/useRealtimeDuplicateCheck';
 import DuplicateUserModal from '../components/DuplicateUserModal';
+import HelpTooltip from '../components/ui/HelpTooltip';
 
-export default function CreateOrganization() {
+export default function CreateAccount() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: '',
+    dashboardName: '',
     adminName: '',
     adminEmail: '',
     adminPhone: '',
@@ -28,8 +29,6 @@ export default function CreateOrganization() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [inviteCode, setInviteCode] = useState(null);
   const [duplicateData, setDuplicateData] = useState(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   
@@ -107,27 +106,17 @@ export default function CreateOrganization() {
     }
   };
 
-  const generateInviteCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      if (!validation.email || !validation.phone || !validation.password || !validation.confirmPassword) {
+      if (!validation.email || !validation.phone || !validation.password || !validation.confirmPassword || !formData.dashboardName) {
         throw new Error('Por favor, preencha todos os campos corretamente');
       }
 
-      // Verificar duplicatas antes de criar a conta
-      // O email da organização será o mesmo do admin
+      // Verificar duplicatas
       const duplicateCheck = await checkDuplicates(formData.adminEmail, formData.adminPhone);
       
       if (duplicateCheck.hasDuplicates) {
@@ -147,26 +136,36 @@ export default function CreateOrganization() {
         options: {
           data: {
             name: formData.adminName,
-            phone: normalizedPhone // Salvar apenas números
+            phone: normalizedPhone
           }
         }
       });
 
       if (authError) throw authError;
 
-      // Criar organização
+      // Criar organização (individual)
       const orgId = crypto.randomUUID();
       const userId = crypto.randomUUID();
-      const inviteCodeGen = generateInviteCode();
+      
+      // Gerar código de convite aleatório (6 caracteres)
+      const generateInviteCode = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+      };
+      const inviteCode = generateInviteCode();
 
       const { error: orgError } = await supabase
         .from('organizations')
         .insert({
           id: orgId,
-          name: formData.name,
-          email: formData.adminEmail, // Email da organização = email do admin
+          name: formData.dashboardName, // Nome do dashboard escolhido
+          email: formData.adminEmail,
           admin_id: userId,
-          invite_code: inviteCodeGen
+          invite_code: inviteCode
         });
 
       if (orgError) throw orgError;
@@ -179,28 +178,15 @@ export default function CreateOrganization() {
           organization_id: orgId,
           name: formData.adminName,
           email: formData.adminEmail,
-          phone: normalizedPhone, // Salvar apenas números: 5511999999999
+          phone: normalizedPhone,
           role: 'admin'
         });
 
       if (userError) throw userError;
 
-      // Criar apenas o cost center do admin com 100%
-      // Será rebalanceado para 50/50 quando o segundo membro for adicionado
-      const { error: costCenterError } = await supabase.from('cost_centers').insert({
-        organization_id: orgId,
-        name: formData.adminName,
-        type: 'individual',
-        color: '#3B82F6',
-        default_split_percentage: 100.00, // Começa com 100%, será rebalanceado ao adicionar membros
-        user_id: userId,
-        is_active: true
-      });
-
-      if (costCenterError) {
-        console.error('Erro ao criar cost center:', costCenterError);
-        throw costCenterError;
-      }
+      // Cost center será criado automaticamente pelo trigger do banco
+      // O trigger cria com default_split_percentage = 50%, mas como é conta solo,
+      // não há problema pois será o único membro da org
 
       // Criar categorias padrão
       const categories = [
@@ -216,16 +202,19 @@ export default function CreateOrganization() {
       ];
 
       for (const category of categories) {
-        await supabase.from('budget_categories').insert({
+        const { error: categoryError } = await supabase.from('budget_categories').insert({
           organization_id: orgId,
           name: category.name,
           color: category.color,
           is_default: true
         });
+        
+        if (categoryError) {
+          console.error('Erro ao criar categoria:', categoryError);
+          throw categoryError;
+        }
       }
 
-      setInviteCode(inviteCodeGen);
-      
       // Redirecionar para o dashboard com URL dinâmica
       const dynamicUrl = getDynamicUrl('dashboard', orgId, userId);
       router.push(dynamicUrl);
@@ -239,33 +228,27 @@ export default function CreateOrganization() {
 
   const handleLoginExisting = (user) => {
     setShowDuplicateModal(false);
-    // Redirecionar para login com email pré-preenchido
     router.push(`/login?email=${encodeURIComponent(user.email)}`);
   };
 
   const handleCreateNew = () => {
     setShowDuplicateModal(false);
-    // Continuar com o cadastro mesmo com duplicatas
     handleSubmit(new Event('submit'));
   };
 
-  // Form State
   return (
     <>
       <Head>
-        <title>Criar Organização - MeuAzulão</title>
-        <meta name="description" content="Crie sua organização no MeuAzulão" />
+        <title>Criar Conta - MeuAzulão</title>
+        <meta name="description" content="Crie sua conta no MeuAzulão" />
       </Head>
 
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Animated Background Grid */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_110%)] opacity-30" />
         
-        {/* Gradient Orbs */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
 
-        {/* Back to Home */}
         <Link 
           href="/account-type"
           className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
@@ -274,10 +257,8 @@ export default function CreateOrganization() {
           <span className="font-medium">Voltar</span>
         </Link>
 
-        {/* Form Card */}
         <div className="relative z-10 w-full max-w-lg">
           <div className="bg-white rounded-3xl p-10 shadow-2xl border border-gray-200">
-            {/* Header */}
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center mb-6">
                 <img 
@@ -287,31 +268,36 @@ export default function CreateOrganization() {
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Criar Organização
+                Criar Conta Individual
               </h1>
               <p className="text-gray-600">
-                Configure sua Família ou Organização
+                Configure seu controle financeiro pessoal
               </p>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Organization Name */}
+              {/* Dashboard Name */}
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome da Organização
-                </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label htmlFor="dashboardName" className="block text-sm font-medium text-gray-700">
+                    Nome do Dashboard
+                  </label>
+                  <HelpTooltip 
+                    content="Este será o nome da sua área de controle financeiro"
+                    autoOpen={true}
+                  />
+                </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Building2 className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    id="name"
+                    id="dashboardName"
                     type="text"
-                    placeholder="Ex: Família Silva"
+                    placeholder="Ex: Vida no Azul, Meu Controle, Minhas Finanças"
                     required
-                    value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
+                    value={formData.dashboardName}
+                    onChange={(e) => handleChange('dashboardName', e.target.value)}
                     className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
@@ -382,9 +368,15 @@ export default function CreateOrganization() {
 
               {/* Phone */}
               <div>
-                <label htmlFor="adminPhone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Seu WhatsApp
-                </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label htmlFor="adminPhone" className="block text-sm font-medium text-gray-700">
+                    Seu WhatsApp
+                  </label>
+                  <HelpTooltip 
+                    content="Este será o número permitido a usar com o Zul no WhatsApp. Seu assistente de IA para controle financeiro."
+                    autoOpen={true}
+                  />
+                </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Phone className="h-5 w-5 text-gray-400" />
@@ -423,10 +415,6 @@ export default function CreateOrganization() {
                     <span>Telefone já está em uso</span>
                   </div>
                 )}
-                
-                <p className="text-xs text-gray-500 mt-1">
-                  Digite apenas números, formataremos automaticamente
-                </p>
               </div>
 
               {/* Password */}
@@ -463,9 +451,6 @@ export default function CreateOrganization() {
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Mínimo 8 caracteres
-                </p>
               </div>
 
               {/* Confirm Password */}
@@ -502,21 +487,29 @@ export default function CreateOrganization() {
                     )}
                   </button>
                 </div>
-                {validation.confirmPassword === false && (
-                  <p className="text-xs text-red-600 mt-1">
-                    As senhas não coincidem
-                  </p>
-                )}
               </div>
 
-              {/* Error Message */}
               {error && (
                 <div className="p-4 rounded-xl bg-red-50 border border-red-200">
                   <p className="text-sm text-red-800">{error}</p>
                 </div>
               )}
 
-              {/* Submit Button */}
+              {/* Security Notice */}
+              <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="flex items-start space-x-3">
+                  <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-blue-900 font-medium mb-1">
+                      Acesso seguro
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      Sua senha será criptografada e protegida
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={loading || !validation.email || !validation.phone || !validation.password || !validation.confirmPassword || hasEmailDuplicate || hasPhoneDuplicate}
@@ -525,30 +518,14 @@ export default function CreateOrganization() {
                 {loading ? (
                   <span className="flex items-center justify-center">
                     <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                    Criando organização...
+                    Criando conta...
                   </span>
                 ) : (
-                  'Criar Organização'
+                  'Criar Conta'
                 )}
               </button>
             </form>
 
-            {/* Footer Info */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <div className="flex items-start space-x-3">
-                <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-blue-900 font-medium mb-1">
-                    Acesso seguro
-                  </p>
-                  <p className="text-xs text-blue-700">
-                    Sua senha será criptografada e protegida
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Login Link */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Já tem uma conta?{' '}
@@ -575,7 +552,6 @@ export default function CreateOrganization() {
         </div>
       </div>
 
-      {/* Duplicate User Modal */}
       <DuplicateUserModal
         isOpen={showDuplicateModal}
         onClose={() => setShowDuplicateModal(false)}
@@ -586,3 +562,4 @@ export default function CreateOrganization() {
     </>
   );
 }
+

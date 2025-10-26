@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOnboarding } from '../../hooks/useOnboarding';
+import { useOrganization } from '../../hooks/useOrganization';
 import { X, ChevronRight, ChevronLeft, SkipForward } from 'lucide-react';
 import Image from 'next/image';
 import WelcomeStep from './WelcomeStep';
@@ -9,21 +10,33 @@ import WhatsAppStep from './WhatsAppStep';
 import InviteStep from './InviteStep';
 import CompletionStep from './CompletionStep';
 
-const steps = [
-  { component: WelcomeStep, title: 'Boas-vindas', skippable: false },
-  { component: WhatsAppStep, title: 'WhatsApp', skippable: false },
-  { component: CategoriesStep, title: 'Categorias', skippable: true },
-  { component: FirstCardStep, title: 'Cartão', skippable: true },
-  { component: InviteStep, title: 'Convites', skippable: true },
-  { component: CompletionStep, title: 'Conclusão', skippable: false }
-];
-
 export default function OnboardingModal({ 
   isOpen, 
   onClose, 
   user, 
   organization 
 }) {
+  const { isSoloUser } = useOrganization();
+  
+  // Definir steps dinamicamente baseado se é usuário solo
+  const steps = useMemo(() => {
+    const baseSteps = [
+      { component: WelcomeStep, title: 'Boas-vindas', skippable: false },
+      { component: WhatsAppStep, title: 'WhatsApp', skippable: false },
+      { component: CategoriesStep, title: 'Categorias', skippable: true },
+      { component: FirstCardStep, title: 'Cartão', skippable: true }
+    ];
+    
+    // Se NÃO for usuário solo, adicionar etapa de convites
+    if (!isSoloUser) {
+      baseSteps.push({ component: InviteStep, title: 'Convites', skippable: true });
+    }
+    
+    // Sempre adicionar conclusão no final
+    baseSteps.push({ component: CompletionStep, title: 'Conclusão', skippable: false });
+    
+    return baseSteps;
+  }, [isSoloUser]);
   const {
     progress,
     currentStep,

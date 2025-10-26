@@ -217,27 +217,13 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Create Organization Link */}
+            {/* Create Account Link */}
             <Link
-              href="/create-organization"
+              href="/account-type"
               className="w-full inline-flex items-center justify-center px-6 py-3.5 bg-gray-50 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all font-semibold transform hover:scale-[1.02]"
             >
-              Criar Nova Organização
+              Criar Nova Conta
             </Link>
-          </div>
-
-          {/* Additional Info */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
-              Ao continuar, você concorda com nossos{' '}
-              <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
-                Termos de Serviço
-              </a>
-              {' '}e{' '}
-              <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
-                Política de Privacidade
-              </a>
-            </p>
           </div>
         </div>
       </div>

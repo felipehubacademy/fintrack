@@ -86,7 +86,7 @@ export default function LandingPage() {
                 Entrar
               </Link>
               <Link 
-                href="/create-organization"
+                href="/account-type"
                 className="relative inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105"
               >
                 Começar Agora
@@ -96,7 +96,7 @@ export default function LandingPage() {
             {/* Mobile Menu */}
             <div className="md:hidden flex items-center space-x-3">
               <Link 
-                href="/login"
+                href="/account-type"
                 className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
               >
                 Entrar
@@ -136,7 +136,7 @@ export default function LandingPage() {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link 
-                href="/create-organization"
+                href="/account-type"
                 className="group relative inline-flex items-center px-8 py-4 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-2xl text-lg font-semibold shadow-2xl shadow-blue-500/50 hover:shadow-blue-500/60 transition-all duration-300 hover:scale-105"
               >
                 <span>Começar Agora</span>
@@ -572,7 +572,7 @@ export default function LandingPage() {
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
-            href="/create-organization"
+            href="/account-type"
               className="group inline-flex items-center px-8 py-4 bg-white text-[#0D2C66] rounded-2xl text-lg font-semibold shadow-2xl hover:shadow-white/20 transition-all duration-300 hover:scale-105"
           >
               <span>Começar Agora</span>

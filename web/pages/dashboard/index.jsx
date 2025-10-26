@@ -10,6 +10,7 @@ import QuickActions from '../../components/dashboard/QuickActions';
 import NotificationModal from '../../components/NotificationModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import { useOrganization } from '../../hooks/useOrganization';
+import { usePrivacyFilter } from '../../hooks/usePrivacyFilter';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { 
@@ -28,6 +29,7 @@ import Footer from '../../components/Footer';
 export default function DashboardHome() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, budgetCategories, incomeCategories, loading: orgLoading, error: orgError } = useOrganization();
+  const { filterByPrivacy } = usePrivacyFilter(organization, orgUser, costCenters);
   const [selectedMonth, setSelectedMonth] = useState('2025-10');
   // Raw expenses for the selected month (used by MonthCharts)
   const [monthExpenses, setMonthExpenses] = useState([]);
@@ -188,11 +190,14 @@ export default function DashboardHome() {
         console.log('✅ [DASHBOARD] No expenses found for this organization in the selected month.');
       }
 
-      setMonthExpenses(expensesData);
+      // Aplicar filtro de privacidade
+      const filteredExpenses = filterByPrivacy(expensesData);
+      
+      setMonthExpenses(filteredExpenses);
 
       // Separar cartão e a vista
-      const card = (expensesData || []).filter(e => e.payment_method === 'credit_card');
-      const cash = (expensesData || []).filter(e => 
+      const card = (filteredExpenses || []).filter(e => e.payment_method === 'credit_card');
+      const cash = (filteredExpenses || []).filter(e => 
         e.payment_method === 'cash' || 
         e.payment_method === 'debit_card' || 
         e.payment_method === 'pix' || 
@@ -252,7 +257,9 @@ export default function DashboardHome() {
         throw error;
       }
 
-      setMonthIncomes(data || []);
+      // Aplicar filtro de privacidade
+      const filteredIncomes = filterByPrivacy(data || []);
+      setMonthIncomes(filteredIncomes);
     } catch (error) {
       console.error('Error fetching incomes:', error);
     }
@@ -535,7 +542,15 @@ export default function DashboardHome() {
         {/* Charts Section */}
         <div className="space-y-12">
           {/* Expenses Charts */}
-          <MonthCharts expenses={expensesForCharts} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} categories={budgetCategories} />
+          <MonthCharts 
+            expenses={expensesForCharts} 
+            selectedMonth={selectedMonth} 
+            onMonthChange={setSelectedMonth} 
+            costCenters={costCenters} 
+            categories={budgetCategories}
+            organization={organization}
+            user={orgUser}
+          />
 
           {/* Income Charts */}
           <IncomeCharts incomes={monthIncomes} expenses={expensesForCharts} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} incomeCategories={incomeCategories} />

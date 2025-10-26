@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { useOrganization } from '../hooks/useOrganization';
 
 export default function EditExpenseModal({ 
   isOpen, 
@@ -11,9 +12,14 @@ export default function EditExpenseModal({
   onClose, 
   onSuccess,
   costCenters = [],
-  categories = [] // Adicionar categorias via props
+  categories = [], // Adicionar categorias via props
+  organization = null
 }) {
   const { success, error: showError, warning } = useNotificationContext();
+  const { organization: orgFromHook, isSoloUser, user: orgUser } = useOrganization();
+  
+  // Usar organization do hook se não passado por prop
+  const finalOrganization = organization || orgFromHook;
   
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +35,7 @@ export default function EditExpenseModal({
   const [splitDetails, setSplitDetails] = useState([]);
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
-  const isShared = editData.owner === 'Compartilhado';
+  const isShared = editData.owner === (finalOrganization?.name || 'Organização');
 
   // Preparar opções de responsável (todos os cost centers ativos + Compartilhado)
   const ownerOptions = useMemo(() => {
@@ -43,17 +49,20 @@ export default function EditExpenseModal({
         color: cc.color 
       }));
     
-    individuals.push({
-      id: null,
-      name: 'Compartilhado',
-      type: 'shared',
-      split_percentage: 0,
-      color: '#8B5CF6',
-      isShared: true
-    });
+    // Adicionar nome da organização como opção especial APENAS para contas familiares
+    if (!isSoloUser) {
+      individuals.push({
+        id: null,
+        name: finalOrganization?.name || 'Organização',
+        type: 'shared',
+        split_percentage: 0,
+        color: '#8B5CF6',
+        isShared: true
+      });
+    }
     
     return individuals;
-  }, [costCenters]);
+  }, [costCenters, finalOrganization, isSoloUser]);
 
   // Buscar despesa e splits
   useEffect(() => {
@@ -107,7 +116,7 @@ export default function EditExpenseModal({
         });
         setSplitDetails(splits);
         setShowSplitConfig(true);
-      } else if (data.split && data.owner === 'Compartilhado') {
+      } else if (data.split && data.owner === (finalOrganization?.name || 'Organização')) {
         // Despesa compartilhada SEM splits (usar fallback)
         const individualCenters = costCenters.filter(cc => cc.type === 'individual');
         const defaultSplits = individualCenters.map(cc => ({
@@ -128,10 +137,10 @@ export default function EditExpenseModal({
     }
   };
 
-  // Inicializar divisão quando "Compartilhado" for selecionado
+  // Inicializar divisão quando "Organização" for selecionado
   useEffect(() => {
     if (isShared && splitDetails.length === 0) {
-      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
       console.log('🔍 [EDIT EXPENSE MODAL] Active centers:', activeCenters);
       console.log('🔍 [EDIT EXPENSE MODAL] Default split percentages:', activeCenters.map(cc => ({ name: cc.name, percentage: cc.default_split_percentage })));
       
@@ -173,7 +182,7 @@ export default function EditExpenseModal({
   useEffect(() => {
     if (isShared && showSplitConfig && splitDetails.length === 0) {
       const totalAmount = parseFloat(editData.amount) || 0;
-      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
       const defaultSplits = activeCenters.map(cc => ({
         cost_center_id: cc.id,
         name: cc.name,
@@ -204,7 +213,7 @@ export default function EditExpenseModal({
 
   const resetToDefaultSplit = () => {
     const totalAmount = parseFloat(editData.amount) || 0;
-    const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false);
+    const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
     const defaultSplits = activeCenters.map(cc => ({
       cost_center_id: cc.id,
       name: cc.name,
@@ -240,7 +249,7 @@ export default function EditExpenseModal({
         .update({
           owner: editData.owner,
           cost_center_id: costCenterId,
-          split: isShared,
+          is_shared: isShared,
           description: editData.description,
           category_id: editData.category_id || null, // Salvar category_id
           category: category?.name || null, // Salvar também o nome (legado)
@@ -376,19 +385,21 @@ export default function EditExpenseModal({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
-                <select
-                  value={editData.owner}
-                  onChange={(e) => setEditData({ ...editData, owner: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                >
-                  <option value="">Selecione...</option>
-                  {ownerOptions.map(o => (
-                    <option key={o.name} value={o.name}>{o.name}</option>
-                  ))}
-                </select>
-              </div>
+              {!isSoloUser && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
+                  <select
+                    value={editData.owner}
+                    onChange={(e) => setEditData({ ...editData, owner: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  >
+                    <option value="">Selecione...</option>
+                    {ownerOptions.map(o => (
+                      <option key={o.name} value={o.name}>{o.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>

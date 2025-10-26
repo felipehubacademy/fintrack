@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildCategoryColorMap, paymentMethodColor, normalizeKey, resolveColor } from '../lib/colors';
+import PrivacyToggle from './PrivacyToggle';
 
-export default function MonthCharts({ expenses, selectedMonth, onMonthChange, costCenters = [], categories = [] }) {
+export default function MonthCharts({ expenses, selectedMonth, onMonthChange, costCenters = [], categories = [], organization = null, user = null }) {
   const [hoverCategory, setHoverCategory] = useState(null);
+  const [viewMode, setViewMode] = useState('all'); // 'all', 'individual', 'org'
   
   const parseAmount = (raw) => {
     if (raw == null) return 0;
@@ -22,20 +24,50 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
   };
 
   const canon = normalizeKey;
+  
+  // Encontrar cost center do usuário
+  const userCostCenter = costCenters.find(cc => cc.user_id === user?.id);
 
-  // Pizza 1: Divisão por Categorias
+  // Pizza 1: Divisão por Categorias (com breakdown Individual vs Org)
   const categoryData = (expenses || []).reduce((acc, expense) => {
     if (!expense) return acc;
     const category = expense.category || 'Outros';
+    
     if (!acc[category]) {
-      acc[category] = 0;
+      acc[category] = { individual: 0, org: 0, total: 0 };
     }
-    acc[category] += parseAmount(expense.amount);
+    
+    const amount = parseAmount(expense.amount);
+    
+    // Verificar se é compartilhado/org
+    if (expense.split || expense.is_shared) {
+      // Para compartilhado, pegar apenas parte do usuário nos splits
+      const userSplit = expense.expense_splits?.find(s => s.cost_center_id === userCostCenter?.id);
+      if (userSplit) {
+        acc[category].org += parseAmount(userSplit.amount);
+      }
+    } else {
+      // Individual
+      acc[category].individual += amount;
+    }
+    
+    acc[category].total = acc[category].individual + acc[category].org;
     return acc;
   }, {});
 
+  // Filtrar por viewMode
   const categoryChartData = Object.entries(categoryData)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, data]) => {
+      let value;
+      if (viewMode === 'individual') {
+        value = data.individual;
+      } else if (viewMode === 'org') {
+        value = data.org;
+      } else {
+        value = data.total;
+      }
+      return { name, value, individual: data.individual, org: data.org };
+    })
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 
@@ -273,6 +305,15 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white/50"
               />
             </div>
+          </div>
+          
+          {/* Privacy Toggle */}
+          <div className="mt-4 flex justify-end">
+            <PrivacyToggle 
+              value={viewMode} 
+              onChange={setViewMode}
+              orgName={organization?.name || 'Organização'}
+            />
           </div>
         </div>
       </div>

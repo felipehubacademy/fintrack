@@ -180,17 +180,25 @@ export default function BillsDashboard() {
     if (!billToMarkAsPaid) return;
 
     try {
+      // TODO: Perguntar se é individual ou compartilhado aqui
+      // Por enquanto, usamos o cost_center_id da bill como individual
+      // Se cost_center_id for NULL, considera-se compartilhado
+      
+      const isShared = !billToMarkAsPaid.cost_center_id;
+      
       // 1. Criar expense correspondente
       const { data: expense, error: expenseError } = await supabase
         .from('expenses')
         .insert({
-          description: bill.description,
-          amount: bill.amount,
+          description: billToMarkAsPaid.description,
+          amount: billToMarkAsPaid.amount,
           date: new Date().toISOString().split('T')[0],
-          category_id: bill.category_id,
-          cost_center_id: bill.cost_center_id,
-          payment_method: bill.payment_method,
-          card_id: bill.card_id,
+          category_id: billToMarkAsPaid.category_id,
+          cost_center_id: billToMarkAsPaid.cost_center_id, // NULL se compartilhado
+          owner: billToMarkAsPaid.cost_center_id ? undefined : (organization?.name || 'Organização'),
+          is_shared: isShared,
+          payment_method: billToMarkAsPaid.payment_method,
+          card_id: billToMarkAsPaid.card_id,
           status: 'confirmed',
           organization_id: organization.id,
           user_id: orgUser.id,
@@ -201,7 +209,27 @@ export default function BillsDashboard() {
 
       if (expenseError) throw expenseError;
 
-      // 2. Atualizar bill
+      // 2. Se for compartilhado, criar splits
+      if (isShared) {
+        // Criar splits para todos os cost centers ativos
+        const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
+        const splitsToInsert = activeCenters.map(cc => ({
+          expense_id: expense.id,
+          cost_center_id: cc.id,
+          percentage: parseFloat(cc.default_split_percentage || 50),
+          amount: (billToMarkAsPaid.amount * parseFloat(cc.default_split_percentage || 50)) / 100
+        }));
+
+        if (splitsToInsert.length > 0) {
+          const { error: splitError } = await supabase
+            .from('expense_splits')
+            .insert(splitsToInsert);
+
+          if (splitError) throw splitError;
+        }
+      }
+
+      // 3. Atualizar bill
       const { error: billError } = await supabase
         .from('bills')
         .update({
@@ -209,13 +237,13 @@ export default function BillsDashboard() {
           paid_at: new Date().toISOString(),
           expense_id: expense.id
         })
-        .eq('id', bill.id);
+        .eq('id', billToMarkAsPaid.id);
 
       if (billError) throw billError;
 
-      // 3. Se for recorrente, criar próxima conta
-      if (bill.is_recurring) {
-        await createRecurringBill(bill);
+      // 4. Se for recorrente, criar próxima conta
+      if (billToMarkAsPaid.is_recurring) {
+        await createRecurringBill(billToMarkAsPaid);
       }
 
       await fetchBills();
