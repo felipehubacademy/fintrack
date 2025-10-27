@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Mail, Send, CheckCircle, Users, X, UserPlus, AlertCircle, Lightbulb } from 'lucide-react';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 import ZulFloatingButton from '../ZulFloatingButton';
-import { Button } from '../ui/button';
-import { Card, CardContent } from '../ui/card';
+import { Button } from '../ui/Button';
+import { Card, CardContent } from '../ui/Card';
 
 export default function InviteStep({ organization, user, onComplete, onDataChange }) {
   const { success, showError } = useNotificationContext();
