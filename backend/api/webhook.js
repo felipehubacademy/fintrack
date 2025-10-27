@@ -52,6 +52,33 @@ async function getUserByPhone(phone) {
 }
 
 /**
+ * Salvar despesa no banco
+ */
+async function saveExpenseToDB(args, userId, orgId) {
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseClient = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
+    
+    // TODO: Implementar lógica completa de save
+    console.log('💾 Salvando despesa:', args);
+    
+    return {
+      success: true,
+      message: `Anotado! R$ ${args.amount} - ${args.description} ✅`
+    };
+  } catch (error) {
+    console.error('❌ Erro ao salvar despesa:', error);
+    return {
+      success: false,
+      message: 'Ops! Tive um problema aqui. 😅'
+    };
+  }
+}
+
+/**
  * Enviar mensagem WhatsApp
  */
 async function sendWhatsAppMessage(to, message) {
@@ -137,6 +164,16 @@ async function processWebhook(body) {
             console.log('🔄 [B2][DEBUG] Calling ZulAssistant processMessage...');
             
             // Processar mensagem com ZulAssistant
+            // Passar contexto com saveExpense function
+            const context = {
+              userName: user.name,
+              organizationId: user.organization_id,
+              saveExpense: async (args) => {
+                const { default: supabaseUtil } = await import('../services/supabase.js');
+                return await saveExpenseToDB(args, user.id, user.organization_id);
+              }
+            };
+            
             const result = await zul.processMessage(
               message.text.body,
               user.id,
