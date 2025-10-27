@@ -192,14 +192,14 @@ export function useOnboarding(user, organization) {
     await saveProgress(updates);
   }, [progress, currentStep, saveProgress]);
 
-  // Skip onboarding
+  // Skip onboarding (não marca como completo, apenas pula)
   const skipOnboarding = useCallback(async () => {
     if (!progress) return;
 
     await saveProgress({
       skipped: true,
-      is_completed: true,
-      completed_at: new Date().toISOString()
+      // NÃO marcar como is_completed = true
+      // O usuário ainda precisará configurar depois
     });
   }, [progress, saveProgress]);
 

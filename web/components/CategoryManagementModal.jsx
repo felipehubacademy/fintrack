@@ -11,6 +11,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   const { success, error: showError, warning } = useNotificationContext();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('expense'); // 'expense' ou 'income'
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({
@@ -31,21 +32,31 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     if (isOpen && organization) {
       fetchCategories();
     }
-  }, [isOpen, organization]);
+  }, [isOpen, organization, activeTab]); // Adicionar activeTab como dependência
 
   const fetchCategories = async () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // Buscar categorias globais (organization_id IS NULL) + da organização
+      const { data: globalsData, error: globalsError } = await supabase
         .from('budget_categories')
         .select('*')
+        .or(`type.eq.${activeTab},type.eq.both`)
+        .is('organization_id', null)
+        .order('name');
+
+      const { data: orgData, error: orgError } = await supabase
+        .from('budget_categories')
+        .select('*')
+        .or(`type.eq.${activeTab},type.eq.both`)
         .eq('organization_id', organization.id)
         .order('name');
 
-      if (error) throw error;
+      if (globalsError || orgError) throw globalsError || orgError;
 
-      setCategories(data || []);
+      // Combinar categorias globais com da organização
+      setCategories([...(globalsData || []), ...(orgData || [])]);
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
     } finally {
@@ -83,6 +94,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
             name: formData.name.trim(),
             description: formData.description.trim() || null,
             color: formData.color,
+            type: activeTab, // Definir tipo: expense ou income
             is_default: false
           });
 
@@ -131,8 +143,8 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     try {
       const { error } = await supabase
         .from('budget_categories')
-        .delete()
-        .eq('id', categoryId);
+          .delete()
+        .eq('id', categoryToDelete);
 
       if (error) throw error;
 
@@ -175,6 +187,30 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
           </Button>
         </div>
         
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 px-6 pt-4">
+          <button
+            onClick={() => setActiveTab('expense')}
+            className={`px-4 py-2 font-medium text-sm transition-colors ${
+              activeTab === 'expense'
+                ? 'border-b-2 border-flight-blue text-flight-blue'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Despesas
+          </button>
+          <button
+            onClick={() => setActiveTab('income')}
+            className={`px-4 py-2 font-medium text-sm transition-colors ${
+              activeTab === 'income'
+                ? 'border-b-2 border-flight-blue text-flight-blue'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Entradas
+          </button>
+        </div>
+
         {/* Conteúdo com scroll */}
         <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-6">
             {/* Add/Edit Form */}

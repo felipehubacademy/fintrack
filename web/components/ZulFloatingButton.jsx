@@ -556,7 +556,8 @@ export default function ZulFloatingButton() {
         setHasNewTip(false);
       } else {
         // Iniciar tour se disponível
-        const tourSteps = getTourForRoute(path);
+        const userName = user?.name || null;
+        const tourSteps = getTourForRoute(path, userName);
         if (tourSteps.length > 0) {
           startTour(tourSteps, tourType);
           setHasNewTip(false);
@@ -589,7 +590,8 @@ export default function ZulFloatingButton() {
     }
     
     // Verificar se há tour disponível para esta página
-    const tourSteps = getTourForRoute(path);
+    const userName = user?.name || null;
+    const tourSteps = getTourForRoute(path, userName);
     
     if (tourSteps.length > 0 && !isTourActive) {
       // Extrair tipo do tour da rota

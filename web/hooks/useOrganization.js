@@ -98,21 +98,24 @@ export function useOrganization() {
       
       setIsSoloUser(solo);
 
-      // Buscar categorias
+      // Buscar categorias GLOBAIS (expense)
       const { data: categories, error: categoriesError } = await supabase
         .from('budget_categories')
         .select('*')
-        .eq('organization_id', userRow.organization_id)
+        .is('organization_id', null)
+        .or('type.eq.expense,type.eq.both')
         .order('name');
       
       if (categoriesError) throw categoriesError;
       setBudgetCategories(categories || []);
 
-      // Buscar categorias de entrada (globais)
+      // Buscar categorias de entrada GLOBAIS (income)
       const { data: incomeCats, error: incomeCatsError } = await supabase
-        .from('income_categories')
+        .from('budget_categories')
         .select('*')
-        .order('display_order');
+        .is('organization_id', null)
+        .or('type.eq.income,type.eq.both')
+        .order('name');
       
       if (incomeCatsError) throw incomeCatsError;
       setIncomeCategories(incomeCats || []);

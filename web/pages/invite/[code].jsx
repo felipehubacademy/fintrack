@@ -34,7 +34,8 @@ export default function InvitePage() {
   }, [code]);
 
   const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    console.log('🔍 Verificando usuário:', { user: user?.id, error });
     setUser(user);
   };
 
@@ -180,6 +181,8 @@ export default function InvitePage() {
           organization_id: organization.id,
           role: invite?.role || 'member',
           is_active: true
+        }, {
+          onConflict: 'id'
         });
 
       if (userError) {
@@ -206,19 +209,25 @@ export default function InvitePage() {
       setSuccess(true);
       
       // Verificar se usuário já fez onboarding
-      const { data: userData } = await supabase
-        .from('users')
-        .select('onboarding_completed')
-        .eq('id', user.id)
+      console.log('🎓 Verificando status de onboarding...');
+      const { data: onboardingData } = await supabase
+        .from('onboarding_progress')
+        .select('is_completed')
+        .eq('user_id', user.id)
+        .eq('organization_id', organization.id)
         .single();
+      
+      console.log('📊 Status de onboarding:', onboardingData);
       
       // Redirecionar após 2 segundos
       setTimeout(() => {
-        if (userData?.onboarding_completed) {
+        if (onboardingData?.is_completed) {
           // Se já fez onboarding, vai direto para dashboard
+          console.log('✅ Usuário já fez onboarding, redirecionando para dashboard...');
           window.location.href = `/org/${organization.id}/user/${user.id}/dashboard`;
         } else {
           // Se não fez, vai para onboarding
+          console.log('🎓 Usuário não fez onboarding, redirecionando para onboarding...');
           window.location.href = `/org/${organization.id}/user/${user.id}/onboarding/1`;
         }
       }, 2000);
@@ -467,6 +476,7 @@ export default function InvitePage() {
             </div>
 
             {/* Content */}
+            {console.log('🎯 Renderizando com user:', user?.id, 'loading:', loading)}
 
             {user ? (
               <div>
