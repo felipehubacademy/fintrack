@@ -45,3 +45,8 @@ coverage/
 .vercel
 .railway
 
+# Docs with sensitive info
+SETUP_NEW_SUPABASE.md
+MIGRATION_COMPLETE.md
+SUPABASE_SETUP.md
+
