@@ -198,7 +198,19 @@ export default function InvitePage() {
 
     } catch (error) {
       console.error('❌ Erro ao entrar na organização:', error);
-      setError('Erro ao entrar na organização');
+      
+      // Mensagens amigáveis para o usuário
+      let errorMessage = 'Erro ao entrar na organização. Por favor, tente novamente.';
+      
+      if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
+        errorMessage = 'Você já é membro desta organização ou houve um conflito. Por favor, recarregue a página.';
+      } else if (error.message?.includes('organization_id')) {
+        errorMessage = 'Erro ao vincular à organização. Por favor, tente novamente.';
+      } else if (error.message?.includes('invite')) {
+        errorMessage = 'Este convite já foi usado ou é inválido. Solicite um novo convite.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setJoining(false);
     }

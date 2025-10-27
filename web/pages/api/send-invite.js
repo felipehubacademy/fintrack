@@ -252,7 +252,10 @@ export default async function handler(req, res) {
             to: [{ email: email }],
             subject: `Você foi convidado para ${organization.name} no MeuAzulão`
           }],
-          from: { email: 'noreply@meuazulao.com.br' },
+          from: { 
+            email: 'noreply@meuazulao.com.br',
+            name: 'MeuAzulão'
+          },
           content: [{
             type: 'text/html',
             value: emailHtml
