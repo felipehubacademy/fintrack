@@ -74,10 +74,6 @@ export default function CompletionStep({ organization, onComplete }) {
 
   return (
     <div className="max-w-3xl xl:max-w-4xl mx-auto text-center space-y-12 py-12">
-      {/* Success Emoji */}
-      <div className="text-8xl">
-        🎉
-      </div>
 
       {/* Title */}
       <div className="space-y-8">

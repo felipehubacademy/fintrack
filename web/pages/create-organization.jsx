@@ -192,7 +192,6 @@ export default function CreateOrganization() {
       const { error: costCenterError } = await supabase.from('cost_centers').insert({
         organization_id: orgId,
         name: formData.adminName,
-        type: 'individual',
         color: '#3B82F6',
         default_split_percentage: 100.00, // Começa com 100%, será rebalanceado ao adicionar membros
         user_id: authUserId, // Usar authUserId aqui

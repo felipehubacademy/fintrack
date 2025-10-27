@@ -35,11 +35,44 @@ export function useOnboarding(user, organization) {
       // Se encontrou registros, usar o primeiro (mais recente)
       if (data && data.length > 0) {
         const latestProgress = data[0];
+        
+        // Se não tem onboarding_type, detectar e atualizar
+        if (!latestProgress.onboarding_type) {
+          let type = 'admin'; // default
+          
+          if (organization?.type === 'solo') {
+            type = 'solo';
+          } else if (organization?.admin_id === user.id) {
+            type = 'admin';
+          } else {
+            type = 'invited';
+          }
+          
+          // Atualizar com o tipo correto
+          await supabase
+            .from('onboarding_progress')
+            .update({ onboarding_type: type })
+            .eq('id', latestProgress.id);
+          
+          latestProgress.onboarding_type = type;
+        }
+        
         setProgress(latestProgress);
         setCurrentStep(latestProgress.current_step || 0);
       } else {
         // Criar registro inicial se não existir
-        await createInitialProgress();
+        // Detectar tipo de onboarding pela organização
+        let type = 'admin'; // default
+        
+        if (organization?.type === 'solo') {
+          type = 'solo';
+        } else if (organization?.admin_id === user.id) {
+          type = 'admin';
+        } else {
+          type = 'invited';
+        }
+        
+        await createInitialProgress(type);
       }
     } catch (error) {
       console.error('❌ Erro ao buscar progresso:', error);
@@ -50,7 +83,7 @@ export function useOnboarding(user, organization) {
   }, [user, organization]);
 
   // Create initial progress record (upsert para evitar duplicatas)
-  const createInitialProgress = async () => {
+  const createInitialProgress = async (type = 'admin') => {
     if (!user || !organization) return;
 
     try {
@@ -59,6 +92,7 @@ export function useOnboarding(user, organization) {
         .upsert({
           user_id: user.id,
           organization_id: organization.id,
+          onboarding_type: type, // solo, admin, invited
           current_step: 0,
           completed_steps: [],
           is_completed: false,

@@ -30,15 +30,17 @@ const availableColors = [
   '#8B5A2B', '#6366F1', '#14B8A6', '#F43F5E', '#A855F7'
 ];
 
-export default function CategoriesStep({ organization, onComplete, onDataChange }) {
+export default function CategoriesStep({ organization, onComplete, onDataChange, onboardingType }) {
   const [categories, setCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState(new Set());
+  const [orgCategoryNames, setOrgCategoryNames] = useState(new Set()); // Para bloquear categorias da org
   const [customCategory, setCustomCategory] = useState('');
   const [customDescription, setCustomDescription] = useState('');
   const [selectedColor, setSelectedColor] = useState('#6B7280'); // Cor padrão
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showZulCard, setShowZulCard] = useState(false);
+  const isInvited = onboardingType === 'invited';
   
   // Mostrar card com delay para sincronizar com ZulFloatingButton
   useEffect(() => {
@@ -57,17 +59,67 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
     if (!organization) return;
 
     try {
-      // Buscar categorias GLOBAIS
-      const { data, error } = await supabase
-        .from('budget_categories')
-        .select('*')
-        .is('organization_id', null)
-        .or('type.eq.expense,type.eq.both')
-        .order('name');
+      let existingCategories = [];
+      
+      if (isInvited) {
+        // Para convidados: carregar categorias da organização + globais
+        const [orgCategories, globalCategories] = await Promise.all([
+          supabase
+            .from('budget_categories')
+            .select('*')
+            .eq('organization_id', organization.id)
+            .or('type.eq.expense,type.eq.both')
+            .order('name'),
+          supabase
+            .from('budget_categories')
+            .select('*')
+            .is('organization_id', null)
+            .or('type.eq.expense,type.eq.both')
+            .order('name')
+        ]);
+        
+        if (orgCategories.error) throw orgCategories.error;
+        if (globalCategories.error) throw globalCategories.error;
+        
+        console.log('🔍 [CATEGORIES] Org categories:', orgCategories.data);
+        console.log('🔍 [CATEGORIES] Global categories:', globalCategories.data);
+        
+        // Combinar categorias da org + globais (sem duplicatas)
+        // PRIORIZAR categorias da organização sobre as globais
+        const orgCategoriesList = orgCategories.data || [];
+        const globalCategoriesList = globalCategories.data || [];
+        
+        // Criar map de nomes de categorias da org
+        const orgCategoryNames = new Set(orgCategoriesList.map(c => c.name));
+        
+        // Adicionar categorias da org primeiro
+        existingCategories = [...orgCategoriesList];
+        
+        // Adicionar apenas globais que NÃO existem na org
+        const uniqueGlobals = globalCategoriesList.filter(globalCat => 
+          !orgCategoryNames.has(globalCat.name)
+        );
+        
+        existingCategories = [...existingCategories, ...uniqueGlobals];
+        
+        // Para convidados, selecionar todas as categorias da org
+        const orgCategoryIdSet = new Set(orgCategoriesList.map(cat => cat.id || cat.name));
+        setSelectedCategories(orgCategoryIdSet);
+        
+        // Guardar nomes das categorias da org para bloquear edição
+        setOrgCategoryNames(new Set(orgCategoriesList.map(cat => cat.name)));
+      } else {
+        // Para admin/solo: buscar categorias GLOBAIS
+        const { data, error } = await supabase
+          .from('budget_categories')
+          .select('*')
+          .is('organization_id', null)
+          .or('type.eq.expense,type.eq.both')
+          .order('name');
 
-      if (error) throw error;
-
-      const existingCategories = data || [];
+        if (error) throw error;
+        existingCategories = data || [];
+      }
       
       // Separar categorias customizadas (que não são padrão nem sugeridas)
       const customCategories = existingCategories.filter(cat => 
@@ -94,6 +146,11 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
   };
 
   const toggleCategory = (categoryName, isEssential = false) => {
+    // Para convidados: não permitir desmarcar categorias da organização
+    if (isInvited && orgCategoryNames.has(categoryName)) {
+      return; // Bloqueia toggle de categorias da org
+    }
+    
     // Não permitir desmarcar categorias essenciais
     if (isEssential) return;
     
@@ -258,11 +315,18 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
           {/* Selected Suggested Categories (removable) */}
           {suggestedCategories
             .filter(c => selectedCategories.has(c.name))
-            .map((category) => (
+            .map((category) => {
+              const isLocked = isInvited && orgCategoryNames.has(category.name);
+              return (
               <button
                 key={category.name}
                 onClick={() => toggleCategory(category.name, false)}
-                className="p-3 rounded-xl border-2 border-green-500 bg-green-50 shadow-md flex items-center space-x-2 hover:bg-green-100 transition-all relative"
+                className={`p-3 rounded-xl border-2 flex items-center space-x-2 transition-all relative ${
+                  isLocked 
+                    ? 'border-green-600 bg-green-100 cursor-not-allowed opacity-75' 
+                    : 'border-green-500 bg-green-50 hover:bg-green-100'
+                }`}
+                disabled={isLocked}
               >
                 <div 
                   className="w-6 h-6 rounded-full flex-shrink-0"
@@ -275,7 +339,8 @@ export default function CategoriesStep({ organization, onComplete, onDataChange 
                   <Check className="w-2.5 h-2.5 text-white" />
                 </div>
               </button>
-            ))}
+            );
+            })}
           
           {/* Selected Custom Categories (removable) */}
           {categories

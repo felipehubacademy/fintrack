@@ -1,17 +1,28 @@
 import { ArrowRight } from 'lucide-react';
 
-export default function WelcomeStep({ user, organization, onNext }) {
+export default function WelcomeStep({ user, organization, onNext, onboardingType }) {
+  // Textos dinâmicos baseados no tipo de onboarding
+  const getWelcomeText = () => {
+    switch(onboardingType) {
+      case 'invited':
+        return `Vamos dar o seu toque pessoal a ${organization?.name} em apenas alguns passos`;
+      case 'solo':
+        return `Vamos configurar a ${organization?.name} em apenas alguns passos`;
+      case 'admin':
+      default:
+        return `Vamos configurar a ${organization?.name} em alguns passos`;
+    }
+  };
+
   return (
     <div className="max-w-3xl xl:max-w-4xl mx-auto text-center space-y-12 py-20">
       {/* Welcome Message */}
       <div className="space-y-8">
         <h2 className="text-5xl md:text-6xl xl:text-7xl font-bold text-gray-900">
-          Olá, {user?.name?.split(' ')[0]}! 👋
+          Olá, {user?.name?.split(' ')[0]}!
         </h2>
         <p className="text-2xl xl:text-3xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-          Vamos configurar a{' '}
-          <span className="font-bold text-[#207DFF]">{organization?.name}</span>{' '}
-          em apenas 5 passos
+          {getWelcomeText()}
         </p>
       </div>
 

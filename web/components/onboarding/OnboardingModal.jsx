@@ -16,25 +16,6 @@ export default function OnboardingModal({
   organization 
 }) {
   const { isSoloUser } = useOrganization();
-  
-  // Definir steps dinamicamente baseado se é usuário solo
-  const steps = useMemo(() => {
-    const baseSteps = [
-      { component: WelcomeStep, title: 'Boas-vindas', skippable: false },
-      { component: WhatsAppStep, title: 'WhatsApp', skippable: false },
-      { component: CategoriesStep, title: 'Categorias', skippable: true }
-    ];
-    
-    // Se NÃO for usuário solo, adicionar etapa de convites
-    if (!isSoloUser) {
-      baseSteps.push({ component: InviteStep, title: 'Convites', skippable: true });
-    }
-    
-    // Sempre adicionar conclusão no final
-    baseSteps.push({ component: CompletionStep, title: 'Conclusão', skippable: false });
-    
-    return baseSteps;
-  }, [isSoloUser]);
   const {
     progress,
     currentStep,
@@ -50,6 +31,32 @@ export default function OnboardingModal({
     skipOnboarding,
     completeOnboarding
   } = useOnboarding(user, organization);
+  
+  // Definir steps dinamicamente baseado no tipo de onboarding
+  const steps = useMemo(() => {
+    const onboardingType = progress?.onboarding_type || 'admin';
+    
+    const allSteps = [];
+    
+    // Welcome sempre
+    allSteps.push({ component: WelcomeStep, title: 'Boas-vindas', skippable: false });
+    
+    // WhatsApp para todos
+    allSteps.push({ component: WhatsAppStep, title: 'WhatsApp', skippable: false });
+    
+    // Categorias sempre
+    allSteps.push({ component: CategoriesStep, title: 'Categorias', skippable: true });
+    
+    // Convidar familiar apenas para admin
+    if (onboardingType === 'admin') {
+      allSteps.push({ component: InviteStep, title: 'Convites', skippable: true });
+    }
+    
+    // Sempre adicionar conclusão no final
+    allSteps.push({ component: CompletionStep, title: 'Conclusão', skippable: false });
+    
+    return allSteps;
+  }, [isSoloUser, progress?.onboarding_type]);
 
   const [stepData, setStepData] = useState({});
   const [isClosing, setIsClosing] = useState(false);
@@ -168,6 +175,7 @@ export default function OnboardingModal({
               <CurrentStepComponent
                 user={user}
                 organization={organization}
+                onboardingType={progress?.onboarding_type || 'admin'}
                 onNext={handleNext}
                 onPrevious={handlePrevious}
                 onComplete={currentStep === steps.length - 1 ? handleComplete : handleStepComplete}
