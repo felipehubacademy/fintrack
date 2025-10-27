@@ -10,34 +10,49 @@ class TourService {
   /**
    * Marcar tour como completado
    */
-  async markTourCompleted(tourType, userId) {
+  async markTourCompleted(tourType, userId, organizationId) {
     try {
-      // Primeiro, verificar se já existe um registro para o usuário
+      // Buscar organização do usuário se não fornecida
+      if (!organizationId) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', userId)
+          .single();
+        
+        organizationId = userData?.organization_id;
+      }
+
+      if (!organizationId) {
+        console.error('❌ Organization ID não encontrado');
+        return false;
+      }
+
+      // Verificar se já existe um registro para este tour
       const { data: existingRecord, error: fetchError } = await supabase
         .from('user_tours')
-        .select('id, completed_tours')
+        .select('id')
         .eq('user_id', userId)
-        .maybeSingle(); // Usar maybeSingle em vez de single
+        .eq('organization_id', organizationId)
+        .eq('tour_name', tourType)
+        .maybeSingle();
 
-      if (fetchError) {
+      if (fetchError && fetchError.code !== 'PGRST116') {
         console.error('Erro ao buscar registro existente:', fetchError);
         return false;
       }
 
-      const completedTours = existingRecord?.completed_tours || {};
-      completedTours[tourType] = true;
+      const updateData = {
+        is_completed: true,
+        updated_at: new Date().toISOString()
+      };
 
       if (existingRecord) {
         // Atualizar registro existente
         const { error } = await supabase
           .from('user_tours')
-          .update({
-            completed_tours: completedTours,
-            last_tour_viewed: tourType,
-            last_tour_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
+          .update(updateData)
+          .eq('id', existingRecord.id);
 
         if (error) {
           console.error('Erro ao atualizar tour completado:', error);
@@ -49,9 +64,9 @@ class TourService {
           .from('user_tours')
           .insert({
             user_id: userId,
-            completed_tours: completedTours,
-            last_tour_viewed: tourType,
-            last_tour_at: new Date().toISOString()
+            organization_id: organizationId,
+            tour_name: tourType,
+            is_completed: true
           });
 
         if (error) {
@@ -70,20 +85,42 @@ class TourService {
   /**
    * Obter todos os tours completados pelo usuário
    */
-  async getCompletedTours(userId) {
+  async getCompletedTours(userId, organizationId) {
     try {
+      // Buscar organização do usuário se não fornecida
+      if (!organizationId) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', userId)
+          .single();
+        
+        organizationId = userData?.organization_id;
+      }
+
+      if (!organizationId) {
+        console.log('⚠️ Organization ID não encontrado');
+        return {};
+      }
+
       const { data, error } = await supabase
         .from('user_tours')
-        .select('completed_tours')
+        .select('tour_name, is_completed')
         .eq('user_id', userId)
-        .maybeSingle(); // Usar maybeSingle em vez de single
+        .eq('organization_id', organizationId);
 
       if (error) {
         console.error('Erro ao obter tours completados:', error);
         return {};
       }
 
-      return data?.completed_tours || {};
+      // Converter array em objeto { tour_name: is_completed }
+      const completedTours = {};
+      data?.forEach(tour => {
+        completedTours[tour.tour_name] = tour.is_completed;
+      });
+
+      return completedTours;
     } catch (error) {
       console.error('Erro no serviço de tour:', error);
       return {};

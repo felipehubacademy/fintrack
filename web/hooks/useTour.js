@@ -12,6 +12,7 @@ export function useTour() {
   const [completedTours, setCompletedTours] = useState(new Set());
   const [currentTourType, setCurrentTourType] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [organizationId, setOrganizationId] = useState(null);
 
   // Obter userId do Supabase
   useEffect(() => {
@@ -20,8 +21,19 @@ export function useTour() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setUserId(user.id);
-          console.log('useEffect checkCompletedTours - userId:', user.id);
-          checkCompletedTours(user.id);
+          
+          // Buscar organization_id do usuário
+          const { data: userData } = await supabase
+            .from('users')
+            .select('organization_id')
+            .eq('id', user.id)
+            .single();
+          
+          if (userData?.organization_id) {
+            setOrganizationId(userData.organization_id);
+            console.log('useEffect checkCompletedTours - userId:', user.id, 'organizationId:', userData.organization_id);
+            checkCompletedTours(user.id, userData.organization_id);
+          }
         } else {
           console.log('Usuário não autenticado');
         }
@@ -32,10 +44,10 @@ export function useTour() {
     getUser();
   }, []);
 
-  const checkCompletedTours = async (userId) => {
+  const checkCompletedTours = async (userId, orgId) => {
     try {
-      console.log('🔍 Verificando tours completados para usuário:', userId);
-      const tours = await tourService.getCompletedTours(userId);
+      console.log('🔍 Verificando tours completados para usuário:', userId, 'org:', orgId);
+      const tours = await tourService.getCompletedTours(userId, orgId);
       console.log('📊 Tours retornados do banco:', tours);
       console.log('📊 Tipo do objeto tours:', typeof tours);
       console.log('📊 Chaves do objeto tours:', Object.keys(tours));
@@ -113,8 +125,8 @@ export function useTour() {
     const saveToDatabase = async () => {
       if (currentTourType && userId) {
         try {
-          console.log('💾 Salvando tour no banco:', currentTourType, 'para usuário:', userId);
-          const success = await tourService.markTourCompleted(currentTourType, userId);
+          console.log('💾 Salvando tour no banco:', currentTourType, 'para usuário:', userId, 'org:', organizationId);
+          const success = await tourService.markTourCompleted(currentTourType, userId, organizationId);
           console.log('✅ Tour marcado como completado no banco:', success);
           if (success) {
             console.log('🎉 Tour salvo com sucesso no banco de dados!');

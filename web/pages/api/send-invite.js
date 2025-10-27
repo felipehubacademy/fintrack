@@ -84,7 +84,7 @@ export default async function handler(req, res) {
     };
 
     const inviteCode = generateInviteCode();
-    const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/invite/${inviteCode}`;
+    const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/signup-invite?email=${email}&invite_code=${inviteCode}`;
 
     // Deletar convites antigos/expirados deste email nesta organização
     console.log('🗑️ Removendo convites antigos para:', email);

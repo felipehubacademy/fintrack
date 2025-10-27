@@ -29,15 +29,21 @@ export default function SignupInvite() {
   const [error, setError] = useState(null);
   const [invite, setInvite] = useState(null);
   const [organization, setOrganization] = useState(null);
+  const [phoneDuplicate, setPhoneDuplicate] = useState(false);
 
   // Verificar convite ao carregar
   useEffect(() => {
+    console.log('🔍 Query params:', { email, invite_code });
     if (invite_code) {
+      console.log('📥 Buscando convite:', invite_code);
       fetchInvite(invite_code);
+    } else {
+      console.log('❌ invite_code não encontrado na URL');
     }
-  }, [invite_code]);
+  }, [invite_code, email]);
 
   const fetchInvite = async (inviteToken) => {
+    console.log('🔍 fetchInvite chamado com token:', inviteToken);
     try {
       const { data: inviteData, error: inviteError } = await supabase
         .from('pending_invites')
@@ -49,6 +55,8 @@ export default function SignupInvite() {
         .eq('invite_code', inviteToken)
         .gt('expires_at', new Date().toISOString())
         .single();
+      
+      console.log('📊 Resultado do convite:', { inviteData, inviteError });
 
       if (inviteError) {
         setError('Convite inválido, expirado ou já foi usado');
@@ -110,12 +118,51 @@ export default function SignupInvite() {
     return password === confirmPassword && password.length >= 8;
   };
 
+  // Verificar telefone duplicado
+  const checkPhoneDuplicate = async (phone) => {
+    if (!phone || phone.replace(/\D/g, '').length !== 11) {
+      return { exists: false };
+    }
+    
+    try {
+      const phoneNumbers = phone.replace(/\D/g, '');
+      const phoneWithCountryCode = `55${phoneNumbers}`;
+      
+      const response = await fetch('/api/auth/check-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneWithCountryCode })
+      });
+      
+      const data = await response.json();
+      return data.checks?.phone || { exists: false };
+    } catch (error) {
+      console.error('Erro ao verificar telefone:', error);
+      return { exists: false };
+    }
+  };
+
   // Handler para mudanças no formulário
-  const handleChange = (field, value) => {
+  const handleChange = async (field, value) => {
     if (field === 'phone') {
       const formatted = formatPhone(value);
       setFormData(prev => ({ ...prev, phone: formatted }));
-      setValidation(prev => ({ ...prev, phone: validatePhone(formatted) }));
+      
+      const isValid = validatePhone(formatted);
+      setValidation(prev => ({ ...prev, phone: isValid }));
+      
+      // Verificar duplicata em tempo real
+      if (isValid) {
+        const duplicate = await checkPhoneDuplicate(formatted);
+        if (duplicate.exists) {
+          setPhoneDuplicate(true);
+          setValidation(prev => ({ ...prev, phone: false }));
+        } else {
+          setPhoneDuplicate(false);
+        }
+      } else {
+        setPhoneDuplicate(false);
+      }
     } else if (field === 'password') {
       setFormData(prev => ({ ...prev, password: value }));
       setValidation(prev => ({ 
@@ -151,6 +198,31 @@ export default function SignupInvite() {
       // Normalizar telefone: extrair apenas números e adicionar código do Brasil (55)
       const phoneNumbers = formData.phone.replace(/\D/g, ''); // Remove tudo que não é número
       const phoneWithCountryCode = `55${phoneNumbers}`; // Adiciona 55 no início
+      
+      // Verificar duplicatas
+      const duplicateCheck = await fetch('/api/auth/check-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: email.toLowerCase().trim(), 
+          phone: phoneWithCountryCode 
+        })
+      });
+      
+      const duplicateData = await duplicateCheck.json();
+      
+      if (duplicateData.hasDuplicates) {
+        if (duplicateData.checks.phone?.exists) {
+          setError('Este telefone já está cadastrado. Use outro número ou faça login.');
+          setLoading(false);
+          return;
+        }
+        if (duplicateData.checks.email?.exists) {
+          setError('Este email já está cadastrado. Faça login para continuar.');
+          setLoading(false);
+          return;
+        }
+      }
       
       // Criar conta do usuário
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -237,7 +309,7 @@ export default function SignupInvite() {
   return (
     <>
       <Head>
-        <title>Cadastro - {organization?.name} - MeuAzulão</title>
+        <title>Convite para {organization?.name} - MeuAzulão</title>
       </Head>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
         {/* Animated Background Grid */}
@@ -269,12 +341,16 @@ export default function SignupInvite() {
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Cadastro - {organization?.name}
+                Convite para {organization?.name}
               </h1>
               <p className="text-gray-600 mb-6">
                 Você foi convidado por <strong>{invite?.inviter?.name}</strong>
               </p>
             </div>
+
+            <p className="text-sm text-gray-600 mb-6 text-center">
+              Olá, <strong>{invite?.name?.split(' ')[0]}</strong>! Complete seus dados para entrar na organização.
+            </p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Nome */}
@@ -342,9 +418,16 @@ export default function SignupInvite() {
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Formato: DDD + 9 dígitos (ex: 11 99999-9999)
-                </p>
+                {phoneDuplicate && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Este telefone já está cadastrado. Use outro número ou faça login.
+                  </p>
+                )}
+                {!phoneDuplicate && validation.phone === null && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Formato: DDD + 9 dígitos (ex: 11 99999-9999)
+                  </p>
+                )}
               </div>
 
               {/* Senha */}
@@ -390,6 +473,11 @@ export default function SignupInvite() {
                     </div>
                   )}
                 </div>
+                {validation.password === false && (
+                  <p className="text-xs text-red-600 mt-1">
+                    A senha deve ter no mínimo 8 caracteres
+                  </p>
+                )}
               </div>
 
               {/* Confirmar Senha */}
@@ -435,6 +523,14 @@ export default function SignupInvite() {
                     </div>
                   )}
                 </div>
+                {validation.confirmPassword === false && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {formData.password && formData.confirmPassword ? 
+                      'As senhas não coincidem' : 
+                      'A senha deve ter no mínimo 8 caracteres'
+                    }
+                  </p>
+                )}
               </div>
 
               {/* Erro */}
@@ -447,7 +543,7 @@ export default function SignupInvite() {
               {/* Botão */}
               <button
                 type="submit"
-                disabled={loading || !validation.name || !validation.phone || !validation.password || !validation.confirmPassword}
+                disabled={loading || !validation.name || !validation.phone || phoneDuplicate || !validation.password || !validation.confirmPassword}
                 className="w-full bg-gradient-to-r from-flight-blue to-feather-blue text-white font-semibold py-3 px-4 rounded-xl hover:from-deep-sky hover:to-flight-blue focus:outline-none focus:ring-2 focus:ring-flight-blue focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
               >
                 {loading ? 'Criando conta...' : 'Criar Conta e Entrar'}
