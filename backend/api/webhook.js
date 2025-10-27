@@ -58,7 +58,7 @@ async function sendWhatsAppMessage(to, message) {
   try {
     const axios = (await import('axios')).default;
     const phoneNumberId = process.env.PHONE_ID;
-    const token = process.env.WHATSAPP_ACCESS_TOKEN;
+    const token = process.env.WHATSAPP_TOKEN;
     
     await axios.post(
       `${WHATSAPP_API_URL}/${phoneNumberId}/messages`,
