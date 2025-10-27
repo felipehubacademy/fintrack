@@ -129,23 +129,38 @@ export default function InvitePage() {
 
     try {
       setJoining(true);
+      setError(null); // Limpar erros anteriores
 
       // Validação final
       if (!validation.phone) {
         setError('Telefone inválido. Use formato: (11) 99999-9999');
+        setJoining(false);
         return;
       }
 
+      console.log('📝 Dados a serem salvos:', {
+        userId: user.id,
+        email: user.email,
+        name: formData.name,
+        phone: formData.phone,
+        organizationId: organization.id
+      });
+
       // Verificar se usuário já está na organização
-      const { data: existingUser } = await supabase
+      const { data: existingUser, error: checkError } = await supabase
         .from('users')
         .select('id')
         .eq('id', user.id)
         .eq('organization_id', organization.id)
         .single();
 
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Erro ao verificar usuário:', checkError);
+      }
+
       if (existingUser) {
         setError('Você já é membro desta organização');
+        setJoining(false);
         return;
       }
 
@@ -154,6 +169,7 @@ export default function InvitePage() {
       const phoneWithCountryCode = `55${phoneNumbers}`; // Adiciona 55 no início
       
       // Inserir ou atualizar dados do usuário
+      console.log('💾 Tentando inserir/atualizar usuário...');
       const { error: userError } = await supabase
         .from('users')
         .upsert({
@@ -162,19 +178,30 @@ export default function InvitePage() {
           name: formData.name,
           phone: phoneWithCountryCode, // Salvar como: 5511999999999 (55 + DDD + número)
           organization_id: organization.id,
-          role: 'member',
+          role: invite?.role || 'member',
           is_active: true
         });
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('❌ Erro ao inserir usuário:', userError);
+        throw userError;
+      }
+      
+      console.log('✅ Usuário inserido com sucesso!');
 
       // Remover convite da tabela pending_invites (já foi aceito)
+      console.log('🗑️ Tentando deletar convite...');
       const { error: inviteError } = await supabase
         .from('pending_invites')
         .delete()
         .eq('invite_code', code);
 
-      if (inviteError) throw inviteError;
+      if (inviteError) {
+        console.error('❌ Erro ao deletar convite:', inviteError);
+        throw inviteError;
+      }
+      
+      console.log('✅ Convite deletado com sucesso!');
 
       setSuccess(true);
       
