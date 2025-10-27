@@ -19,9 +19,8 @@ import {
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import Link from 'next/link';
-import UserManagementModal from '../../components/UserManagementModal';
+import MemberManagementModal from '../../components/MemberManagementModal';
 import CategoryManagementModal from '../../components/CategoryManagementModal';
-import CostCenterManagementModal from '../../components/CostCenterManagementModal';
 import NotificationSettingsModal from '../../components/NotificationSettingsModal';
 import NotificationModal from '../../components/NotificationModal';
 import WhatsAppVerificationModal from '../../components/WhatsAppVerificationModal';
@@ -29,9 +28,8 @@ import WhatsAppVerificationModal from '../../components/WhatsAppVerificationModa
 export default function ConfigPage() {
   const router = useRouter();
   const { organization, user: orgUser, isSoloUser, loading: orgLoading, error: orgError } = useOrganization();
-  const [showUserModal, setShowUserModal] = useState(false);
+  const [showMemberModal, setShowMemberModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showCostCenterModal, setShowCostCenterModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
@@ -88,21 +86,14 @@ export default function ConfigPage() {
           }
         ]
       },
-      // Seção: Categorias e Responsáveis (ocultar "Responsáveis" para contas solo)
+      // Seção: Categorias
       {
-        title: "Categorias e Responsáveis",
-        description: "Gerenciar categorias e responsáveis",
+        title: "Categorias",
+        description: "Gerenciar categorias",
         icon: Settings,
         color: "bg-blue-50",
         iconColor: "text-blue-600",
         actions: [
-          // Mostrar "Responsáveis" apenas para contas familiares
-          ...(!isSoloUser ? [{
-            title: "Responsáveis",
-            description: "Gerenciar responsáveis financeiros",
-            action: "cost-centers",
-            icon: UserCheck
-          }] : []),
           // Categorias sempre disponível
           {
             title: "Categorias",
@@ -232,11 +223,9 @@ export default function ConfigPage() {
                         if (action.action === 'notifications') {
                           setShowNotificationSettingsModal(true);
                         } else if (action.action === 'users') {
-                          setShowUserModal(true);
+                          setShowMemberModal(true);
                         } else if (action.action === 'categories') {
                           setShowCategoryModal(true);
-                        } else if (action.action === 'cost-centers') {
-                          setShowCostCenterModal(true);
                         } else if (action.action === 'whatsapp') {
                           setShowWhatsAppModal(true);
                         } else if (action.action === 'export') {
@@ -271,24 +260,16 @@ export default function ConfigPage() {
 
 
         {/* Modals */}
-        <UserManagementModal
-          isOpen={showUserModal}
-          onClose={() => setShowUserModal(false)}
-          organization={{
-            ...organization,
-            currentUser: orgUser
-          }}
+        <MemberManagementModal
+          isOpen={showMemberModal}
+          onClose={() => setShowMemberModal(false)}
+          organization={organization}
+          orgUser={orgUser}
         />
 
         <CategoryManagementModal
           isOpen={showCategoryModal}
           onClose={() => setShowCategoryModal(false)}
-          organization={organization}
-        />
-
-        <CostCenterManagementModal
-          isOpen={showCostCenterModal}
-          onClose={() => setShowCostCenterModal(false)}
           organization={organization}
         />
 

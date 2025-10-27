@@ -258,6 +258,26 @@ export default function SignupInvite() {
 
       if (userError) throw userError;
 
+      // Criar cost center com os valores do convite
+      const { error: costCenterError } = await supabase
+        .from('cost_centers')
+        .insert({
+          organization_id: organization.id,
+          name: formData.name,
+          user_id: authData.user.id,
+          default_split_percentage: invite?.default_split_percentage || 50.00,
+          color: invite?.color || '#6366F1',
+          is_active: true
+        });
+
+      if (costCenterError) {
+        console.error('❌ Erro ao criar cost center:', costCenterError);
+        // Não falhar se já existir cost center (trigger pode ter criado)
+        if (costCenterError.code !== '23505') {
+          console.error('⚠️ Continuando mesmo com erro no cost center...');
+        }
+      }
+
       // Remover convite da tabela pending_invites
       if (invite_code) {
         const { error: inviteError } = await supabase

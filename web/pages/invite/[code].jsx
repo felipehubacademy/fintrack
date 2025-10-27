@@ -192,6 +192,29 @@ export default function InvitePage() {
       
       console.log('✅ Usuário inserido com sucesso!');
 
+      // Criar cost center com os valores do convite
+      console.log('💾 Criando cost center com valores do convite...');
+      const { error: costCenterError } = await supabase
+        .from('cost_centers')
+        .insert({
+          organization_id: organization.id,
+          name: formData.name,
+          user_id: user.id,
+          default_split_percentage: invite?.default_split_percentage || 50.00,
+          color: invite?.color || '#6366F1',
+          is_active: true
+        });
+
+      if (costCenterError) {
+        console.error('❌ Erro ao criar cost center:', costCenterError);
+        // Não falhar se já existir cost center (trigger pode ter criado)
+        if (costCenterError.code !== '23505') {
+          console.error('⚠️ Continuando mesmo com erro no cost center...');
+        }
+      } else {
+        console.log('✅ Cost center criado com sucesso!');
+      }
+
       // Remover convite da tabela pending_invites (já foi aceito)
       console.log('🗑️ Tentando deletar convite...');
       const { error: inviteError } = await supabase

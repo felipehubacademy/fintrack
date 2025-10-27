@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, name, organizationId, invitedBy, role = 'member' } = req.body;
+    const { email, name, organizationId, invitedBy, role = 'member', splitPercentage = 50, color = '#6366F1' } = req.body;
 
     if (!email || !name || !organizationId || !invitedBy) {
       return res.status(400).json({ 
@@ -113,6 +113,8 @@ export default async function handler(req, res) {
         invited_by: invitedBy,
         role: role, // Salvar role do convite
         invite_code: inviteCode,
+        default_split_percentage: splitPercentage,
+        color: color,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 dias
       });
 
