@@ -5,7 +5,6 @@ import { X, ChevronRight, ChevronLeft, SkipForward } from 'lucide-react';
 import Image from 'next/image';
 import WelcomeStep from './WelcomeStep';
 import CategoriesStep from './CategoriesStep';
-import FirstCardStep from './FirstCardStep';
 import WhatsAppStep from './WhatsAppStep';
 import InviteStep from './InviteStep';
 import CompletionStep from './CompletionStep';
@@ -23,8 +22,7 @@ export default function OnboardingModal({
     const baseSteps = [
       { component: WelcomeStep, title: 'Boas-vindas', skippable: false },
       { component: WhatsAppStep, title: 'WhatsApp', skippable: false },
-      { component: CategoriesStep, title: 'Categorias', skippable: true },
-      { component: FirstCardStep, title: 'Cartão', skippable: true }
+      { component: CategoriesStep, title: 'Categorias', skippable: true }
     ];
     
     // Se NÃO for usuário solo, adicionar etapa de convites

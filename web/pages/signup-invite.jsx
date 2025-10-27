@@ -56,6 +56,12 @@ export default function SignupInvite() {
         setInvite(inviteData);
         setOrganization(inviteData.organizations);
         
+        // Preencher nome e email automaticamente
+        if (inviteData.name) {
+          setFormData(prev => ({ ...prev, name: inviteData.name }));
+          setValidation(prev => ({ ...prev, name: validateName(inviteData.name) }));
+        }
+        
         // Preencher email se disponível
         if (inviteData.email && !email) {
           router.replace(`/signup-invite?email=${inviteData.email}&invite_code=${inviteToken}`);
@@ -110,9 +116,6 @@ export default function SignupInvite() {
       const formatted = formatPhone(value);
       setFormData(prev => ({ ...prev, phone: formatted }));
       setValidation(prev => ({ ...prev, phone: validatePhone(formatted) }));
-    } else if (field === 'name') {
-      setFormData(prev => ({ ...prev, name: value }));
-      setValidation(prev => ({ ...prev, name: validateName(value) }));
     } else if (field === 'password') {
       setFormData(prev => ({ ...prev, password: value }));
       setValidation(prev => ({ 
@@ -124,6 +127,7 @@ export default function SignupInvite() {
       setFormData(prev => ({ ...prev, confirmPassword: value }));
       setValidation(prev => ({ ...prev, confirmPassword: validateConfirmPassword(formData.password, value) }));
     }
+    // Nome não precisa de handler pois é readOnly
   };
 
   const handleSubmit = async (e) => {
@@ -287,13 +291,9 @@ export default function SignupInvite() {
                     type="text"
                     placeholder="Ex: João Silva"
                     required
+                    readOnly
                     value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-flight-blue focus:border-transparent transition-all ${
-                      validation.name === false ? 'border-red-500' : 
-                      validation.name === true ? 'border-green-500' : 
-                      'border-gray-300'
-                    }`}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 cursor-not-allowed"
                   />
                   {validation.name !== null && (
                     <div className="absolute right-3 top-3">
@@ -305,6 +305,9 @@ export default function SignupInvite() {
                     </div>
                   )}
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Nome preenchido a partir do convite
+                </p>
               </div>
 
               {/* WhatsApp */}

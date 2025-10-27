@@ -1,9 +1,23 @@
 import { useState, useEffect } from 'react';
-import { MessageCircle, Smartphone, CheckCircle, AlertCircle, Send, Shield, Sparkles } from 'lucide-react';
+import { MessageCircle, Smartphone, CheckCircle, AlertCircle, Send, Shield, Sparkles, Lightbulb, X } from 'lucide-react';
 import Image from 'next/image';
 import { supabase } from '../../lib/supabaseClient';
+import ZulFloatingButton from '../ZulFloatingButton';
+import { Button } from '../ui/Button';
+import { Card, CardContent } from '../ui/Card';
 
 export default function WhatsAppStep({ user, onComplete, onDataChange }) {
+  const [showZulCard, setShowZulCard] = useState(false);
+  
+  // Mostrar card com delay para sincronizar com ZulFloatingButton
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowZulCard(true);
+    }, 1500); // Delay para sincronizar com o Zul
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
   // Remove formatação do telefone do usuário para exibição
   const normalizePhone = (phone) => {
     if (!phone) return '';
@@ -200,6 +214,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
 
       setCodeSent(true);
       setCountdown(60);
+      setVerificationCode(''); // Limpar código anterior ao reenviar
     } catch (err) {
       console.error('❌ Erro na requisição:', err);
       setError(err.message || 'Erro ao enviar código. Verifique sua conexão.');
@@ -209,16 +224,79 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="text-center">
-        <h2 className="text-3xl md:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
-          Conheça o Zul
-        </h2>
-        <p className="text-gray-600 text-lg xl:text-xl">
-          Seu assistente financeiro pessoal via WhatsApp
-        </p>
-      </div>
+    <>
+      {/* Floating Zul Button - Same as in the main app */}
+      <ZulFloatingButton />
+      
+      {/* Zul Info Card */}
+      {showZulCard && (
+        <div className="fixed bottom-28 right-28 w-80 z-50 pointer-events-auto animate-in slide-in-from-bottom-2 duration-300">
+          <Card className="shadow-lg border border-gray-200 bg-white relative">
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowZulCard(false)}
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-gray-100 hover:bg-gray-200 z-10"
+            >
+              <X className="h-3 w-3 text-gray-500" />
+            </Button>
+            
+            <CardContent className="p-4">
+              <div className="flex items-start space-x-3 mb-4">
+                <div className="w-12 h-12 bg-[#207DFF] rounded-xl flex items-center justify-center flex-shrink-0">
+                  <MessageCircle className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-900 text-base">Sou o Zul! 👋</h4>
+                  <p className="text-xs text-gray-600">Seu assistente financeiro</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                  <div className="flex items-start space-x-2">
+                    <Lightbulb className="h-4 w-4 text-[#207DFF] mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                      Envie suas despesas por WhatsApp! Eu registro tudo automaticamente.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 text-xs text-gray-600">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-3 w-3 text-[#207DFF] flex-shrink-0" />
+                    <span>Registro automático de transações</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-3 w-3 text-[#207DFF] flex-shrink-0" />
+                    <span>Gráficos e análises inteligentes</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-3 w-3 text-[#207DFF] flex-shrink-0" />
+                    <span>Lembretes de vencimentos</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-3 w-3 text-[#207DFF] flex-shrink-0" />
+                    <span>E muito mais...</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
+      <div className="space-y-8 max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="text-center">
+          <h2 className="text-3xl md:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+            Conheça o Zul
+          </h2>
+          <p className="text-gray-600 text-lg xl:text-xl">
+            Seu assistente financeiro pessoal via WhatsApp
+          </p>
+        </div>
 
       {/* Main Content - WhatsApp Demo + Verification Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8 items-stretch">
@@ -226,13 +304,13 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 flex flex-col">
           {/* WhatsApp Header */}
           <div className="bg-gradient-to-r from-[#25D366] to-[#128C7E] px-4 py-3 flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg p-0.5">
+            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg">
               <Image 
                 src="/images/logo_flat.svg" 
                 alt="Zul" 
-                width={36}
-                height={36}
-                className="w-9 h-9"
+                width={48}
+                height={48}
+                className="w-12 h-12"
               />
             </div>
             <div>
@@ -386,6 +464,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

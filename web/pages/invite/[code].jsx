@@ -63,6 +63,12 @@ export default function InvitePage() {
       } else {
         setInvite(inviteData);
         setOrganization(inviteData.organizations);
+        
+        // Preencher nome automaticamente
+        if (inviteData.name) {
+          setFormData(prev => ({ ...prev, name: inviteData.name }));
+          setValidation(prev => ({ ...prev, name: validateName(inviteData.name) }));
+        }
       }
 
     } catch (error) {
@@ -124,11 +130,7 @@ export default function InvitePage() {
     try {
       setJoining(true);
 
-      // Validações finais
-      if (!validation.name) {
-        setError('Nome deve ter pelo menos 2 caracteres');
-        return;
-      }
+      // Validação final
       if (!validation.phone) {
         setError('Telefone inválido. Use formato: (11) 99999-9999');
         return;
@@ -430,7 +432,7 @@ export default function InvitePage() {
             {user ? (
               <div>
                 <p className="text-sm text-gray-600 mb-6 text-center">
-                  Olá, <strong>{user.email}</strong>! Complete seus dados para entrar na organização.
+                  Olá, <strong>{invite?.name?.split(' ')[0]}</strong>! Complete seus dados para entrar na organização.
                 </p>
                 
                 <form onSubmit={handleJoinOrganization} className="space-y-6">
@@ -448,24 +450,14 @@ export default function InvitePage() {
                         type="text"
                         placeholder="Ex: João Silva"
                         required
+                        readOnly
                         value={formData.name}
-                        onChange={(e) => handleChange('name', e.target.value)}
-                        className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-flight-blue focus:border-transparent transition-all ${
-                          validation.name === false ? 'border-red-500' : 
-                          validation.name === true ? 'border-green-500' : 
-                          'border-gray-300'
-                        }`}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 cursor-not-allowed"
                       />
-                      {validation.name !== null && (
-                        <div className="absolute right-3 top-3">
-                          {validation.name ? (
-                            <CheckCircle className="w-5 h-5 text-green-500" />
-                          ) : (
-                            <AlertCircle className="w-5 h-5 text-red-500" />
-                          )}
-                        </div>
-                      )}
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Nome preenchido a partir do convite
+                    </p>
                   </div>
 
                   {/* WhatsApp */}
@@ -515,7 +507,7 @@ export default function InvitePage() {
                   {/* Botão */}
                   <button
                     type="submit"
-                    disabled={joining || !validation.name || !validation.phone}
+                    disabled={joining || !validation.phone}
                     className="w-full bg-gradient-to-r from-flight-blue to-feather-blue text-white font-semibold py-3 px-4 rounded-xl hover:from-deep-sky hover:to-flight-blue focus:outline-none focus:ring-2 focus:ring-flight-blue focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
                   >
                     {joining ? 'Entrando...' : 'Entrar na Organização'}

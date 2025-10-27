@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { Mail, Send, CheckCircle, Users, X, UserPlus, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Mail, Send, CheckCircle, Users, X, UserPlus, AlertCircle, Lightbulb } from 'lucide-react';
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import ZulFloatingButton from '../ZulFloatingButton';
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
 
 export default function InviteStep({ organization, user, onComplete, onDataChange }) {
   const { success, showError } = useNotificationContext();
@@ -9,6 +12,16 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
   const [role, setRole] = useState('member'); // Padrão: member (pode criar despesas)
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showZulCard, setShowZulCard] = useState(false);
+
+  // Mostrar card do Zul após 1.5s
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowZulCard(true);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -91,16 +104,67 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
   };
 
   return (
-    <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="text-center">
-        <h2 className="text-3xl md:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
-          Convide um Familiar
-        </h2>
-        <p className="text-gray-600 text-lg xl:text-xl">
-          Adicione alguém para compartilhar o controle financeiro
-        </p>
-      </div>
+    <>
+      {/* Floating Zul Button */}
+      <ZulFloatingButton />
+      
+      {/* Zul Info Card */}
+      {showZulCard && (
+        <div className="fixed bottom-28 right-28 w-96 z-50 pointer-events-auto animate-in slide-in-from-bottom-2 duration-300">
+          <Card className="shadow-lg border border-gray-200 bg-white relative">
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowZulCard(false)}
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-gray-100 hover:bg-gray-200 z-10"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            
+            <CardContent className="p-4">
+              <div className="flex items-start space-x-3 mb-4">
+                <div className="w-12 h-12 bg-[#207DFF] rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Lightbulb className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-900 text-base">Dica Importante</h4>
+                  <p className="text-xs text-gray-600">Entenda os tipos de acesso</p>
+                </div>
+              </div>
+
+              {/* Roles */}
+              <div className="space-y-3">
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="font-semibold text-blue-900 text-sm mb-1">Visualizador</div>
+                  <p className="text-xs text-blue-700">Apenas visualiza despesas e relatórios. Sem permissão para criar.</p>
+                </div>
+                
+                <div className="p-3 bg-blue-50 border border-blue-300 rounded-lg">
+                  <div className="font-semibold text-blue-900 text-sm mb-1">Membro</div>
+                  <p className="text-xs text-blue-700">Pode criar despesas e gerenciar seu próprio centro de custo.</p>
+                </div>
+                
+                <div className="p-3 bg-blue-100 border border-blue-400 rounded-lg">
+                  <div className="font-semibold text-blue-950 text-sm mb-1">Admin</div>
+                  <p className="text-xs text-blue-800">Acesso total: gerenciar usuários, configurações e tudo na organização.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <div className="max-w-4xl xl:max-w-5xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <h2 className="text-3xl md:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
+            Convide um Familiar
+          </h2>
+          <p className="text-gray-600 text-lg xl:text-xl">
+            Adicione alguém para compartilhar o controle financeiro
+          </p>
+        </div>
 
       {/* Invite Form */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 xl:p-10 shadow-lg">
@@ -217,6 +281,7 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
       <p className="text-center text-gray-500 text-sm xl:text-base">
         Você poderá convidar mais pessoas depois em <span className="font-medium">Configurações → Membros</span>
       </p>
-    </div>
+      </div>
+    </>
   );
 }

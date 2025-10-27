@@ -31,10 +31,12 @@ export default function FirstExpenseStep({ organization, user, onComplete, onDat
     if (!organization) return;
 
     try {
+      // Buscar categorias GLOBAIS
       const { data: categoriesData } = await supabase
         .from('budget_categories')
         .select('*')
-        .eq('organization_id', organization.id);
+        .is('organization_id', null)
+        .or('type.eq.expense,type.eq.both');
 
       const { data: responsiblesData } = await supabase
         .from('cost_centers')

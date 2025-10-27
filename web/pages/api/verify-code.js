@@ -83,13 +83,16 @@ export default async function handler(req, res) {
       .select('*')
       .eq('user_id', userId)
       .eq('code', code)
-      .is('used_at', null)
-      .gt('expires_at', new Date().toISOString())
+      .is('used_at', null) // Não usado ainda
+      .gt('expires_at', new Date().toISOString()) // Não expirado
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
 
     if (codeError || !verificationCode) {
+      console.error('❌ Erro ao buscar código:', codeError);
+      console.log('📝 Código digitado:', code);
+      console.log('👤 User ID:', userId);
       return res.status(400).json({ 
         error: 'Código inválido ou expirado',
         details: 'Verifique se digitou corretamente ou solicite um novo código'
@@ -125,7 +128,7 @@ export default async function handler(req, res) {
       .update({
         phone_verified: true,
         phone_verified_at: new Date().toISOString(),
-        verification_attempts: 0 // Resetar contador
+        verification_attempts: 0
       })
       .eq('id', userId);
 

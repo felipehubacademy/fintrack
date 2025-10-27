@@ -62,9 +62,13 @@ export default function Login() {
           error.message?.includes('Email not confirmed')) {
         setMessage(
           <>
-            Email ou senha incorretos. Primeira vez fazendo login? {' '}
+            Email ou senha incorretos. Esqueceu sua senha? {' '}
             <Link href="/reset-password" className="font-semibold text-blue-700 hover:underline">
-              Crie sua senha aqui
+              Redefina aqui
+            </Link>
+            {' '}ou{' '}
+            <Link href="/account-type" className="font-semibold text-blue-700 hover:underline">
+              crie sua conta
             </Link>
           </>
         );

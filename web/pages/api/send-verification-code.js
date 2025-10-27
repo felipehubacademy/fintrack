@@ -167,6 +167,21 @@ export default async function handler(req, res) {
       }
     }
 
+    // Invalidar códigos anteriores não usados
+    const { error: invalidateError } = await supabase
+      .from('verification_codes')
+      .update({ 
+        used_at: new Date().toISOString() // Marcar como usado para invalidar
+      })
+      .eq('user_id', userId)
+      .is('used_at', null); // Apenas códigos não usados
+
+    if (invalidateError) {
+      console.warn('⚠️ Não foi possível invalidar códigos anteriores:', invalidateError);
+    } else {
+      console.log('✅ Códigos anteriores invalidados');
+    }
+
     // Gerar código de 6 dígitos
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -176,16 +191,24 @@ export default async function handler(req, res) {
     // Salvar código no banco
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos
 
+    // Capturar IP e User Agent para segurança
+    const ipAddress = req.headers['x-forwarded-for'] || 
+                      req.headers['x-real-ip'] || 
+                      req.socket.remoteAddress || 
+                      'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+
     const { error: codeError } = await supabase
       .from('verification_codes')
       .insert({
         user_id: userId,
+        phone: userPhone,
         code: code,
         type: 'whatsapp_code',
         token: token,
         expires_at: expiresAt.toISOString(),
-        ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
-        user_agent: req.headers['user-agent']
+        ip_address: ipAddress,
+        user_agent: userAgent
       });
 
     if (codeError) {
@@ -207,6 +230,8 @@ export default async function handler(req, res) {
     console.log('🔗 Token:', token);
     console.log('📞 Telefone:', userPhone);
     console.log('👤 Usuário:', user.name);
+    console.log('🔒 IP:', ipAddress);
+    console.log('🌐 User Agent:', userAgent);
 
     // Enviar via WhatsApp Business API usando template
     const sent = await sendWhatsAppVerificationCode(userPhone, code, user.name);
