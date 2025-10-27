@@ -129,31 +129,6 @@ export default function CreateAccount() {
       // Normalizar telefone: adicionar código do Brasil (55) e remover formatação
       const normalizedPhone = '55' + formData.adminPhone.replace(/\D/g, '');
       
-      // Verificar duplicatas
-      const duplicateCheck = await fetch('/api/auth/check-duplicates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: formData.adminEmail.toLowerCase().trim(), 
-          phone: normalizedPhone 
-        })
-      });
-      
-      const duplicateData = await duplicateCheck.json();
-      
-      if (duplicateData.hasDuplicates) {
-        if (duplicateData.checks.phone?.exists) {
-          setError('Este telefone já está cadastrado. Use outro número ou faça login.');
-          setLoading(false);
-          return;
-        }
-        if (duplicateData.checks.email?.exists) {
-          setError('Este email já está cadastrado. Faça login para continuar.');
-          setLoading(false);
-          return;
-        }
-      }
-      
       // Criar conta do usuário
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.adminEmail,
