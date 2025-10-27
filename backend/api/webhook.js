@@ -1,7 +1,86 @@
 /**
- * Webhook FinTrack V2 (backend/api) - VERSION B1 (SYNC MINIMAL)
- * Este arquivo é implantado quando o projeto Vercel está com Root Directory = backend
+ * Webhook FinTrack V2 (backend/api) - VERSION B2 (CONSOLIDATED)
+ * Consolidado para usar apenas ZulAssistant
  */
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
+
+/**
+ * Buscar usuário por telefone
+ */
+async function getUserByPhone(phone) {
+  try {
+    const normalized = String(phone || '').replace(/\D/g, '');
+    
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .ilike('phone', `%${normalized}%`)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error || !user) return null;
+    
+    const { data: organization } = await supabase
+      .from('organizations')
+      .select('*')
+      .eq('id', user.organization_id)
+      .single();
+
+    const { data: costCenters } = await supabase
+      .from('cost_centers')
+      .select('*')
+      .eq('organization_id', user.organization_id)
+      .eq('is_active', true);
+
+    return {
+      ...user,
+      organization,
+      cost_centers: costCenters || []
+    };
+  } catch (error) {
+    console.error('❌ Erro ao buscar usuário:', error);
+    return null;
+  }
+}
+
+/**
+ * Enviar mensagem WhatsApp
+ */
+async function sendWhatsAppMessage(to, message) {
+  try {
+    const axios = (await import('axios')).default;
+    const phoneNumberId = process.env.PHONE_ID;
+    const token = process.env.WHATSAPP_ACCESS_TOKEN;
+    
+    await axios.post(
+      `${WHATSAPP_API_URL}/${phoneNumberId}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'text',
+        text: { body: message }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    console.log('✅ Mensagem WhatsApp enviada para', to);
+  } catch (error) {
+    console.error('❌ Erro ao enviar WhatsApp:', error);
+  }
+}
 
 // Process webhook synchronously com logs detalhados
 async function processWebhook(body) {
@@ -27,30 +106,64 @@ async function processWebhook(body) {
           try {
             // Fast path para testes: evitar processamento pesado em payloads de teste
             if (message.id?.includes('test_') || process.env.WEBHOOK_DRY_RUN === '1') {
-              console.log('🧪 [B1][DEBUG] Dry-run/test payload detected. Skipping SmartConversation.');
+              console.log('🧪 [B2][DEBUG] Dry-run/test payload detected. Skipping ZulAssistant.');
               continue;
             }
 
-            console.log('🔄 [B1][DEBUG] Importing SmartConversation...');
-            // Import dinâmico a partir de backend/services (um nível acima)
-            const { default: SmartConversation } = await import('../services/smartConversation.js');
-            console.log('🔄 [B1][DEBUG] SmartConversation imported successfully');
+            console.log('🔄 [B2][DEBUG] Importing ZulAssistant...');
+            // Import dinâmico do ZulAssistant (consolidado)
+            const { default: ZulAssistant } = await import('../services/zulAssistant.js');
+            console.log('🔄 [B2][DEBUG] ZulAssistant imported successfully');
 
-            console.log('🔄 [B1][DEBUG] Creating SmartConversation instance...');
-            const smartConversation = new SmartConversation();
-            console.log('🔄 [B1][DEBUG] SmartConversation instance created');
+            console.log('🔄 [B2][DEBUG] Creating ZulAssistant instance...');
+            const zul = new ZulAssistant();
+            console.log('🔄 [B2][DEBUG] ZulAssistant instance created');
 
-            console.log('🔄 [B1][DEBUG] Calling handleMessage...');
-            console.log(`🔍 [B1][DEBUG] useAssistant flag: ${smartConversation.useAssistant}`);
-            console.log(`🔍 [B1][DEBUG] USE_ZUL_ASSISTANT env: ${process.env.USE_ZUL_ASSISTANT}`);
+            // Buscar usuário por telefone
+            console.log('🔄 [B2][DEBUG] Looking up user by phone...');
+            const user = await getUserByPhone(message.from);
             
-            await smartConversation.handleMessage(message.text.body, message.from);
-            console.log('🔄 [B1][DEBUG] handleMessage completed');
+            if (!user) {
+              console.log('❌ [B2][DEBUG] User not found for phone:', message.from);
+              // Enviar mensagem de erro via WhatsApp
+              await sendWhatsAppMessage(message.from, 
+                'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
+              );
+              continue;
+            }
+            
+            console.log('✅ [B2][DEBUG] User found:', user.name);
+
+            console.log('🔄 [B2][DEBUG] Calling ZulAssistant processMessage...');
+            
+            // Processar mensagem com ZulAssistant
+            const result = await zul.processMessage(
+              message.text.body,
+              user.id,
+              user.name,
+              message.from
+            );
+            
+            // Enviar resposta via WhatsApp
+            if (result && result.message) {
+              await sendWhatsAppMessage(message.from, result.message);
+            }
+            
+            console.log('🔄 [B2][DEBUG] ProcessMessage completed');
 
             console.log('💬 [B1] Message processed successfully');
-          } catch (smartError) {
-            console.error('❌ [B1][DEBUG] Error in SmartConversation:', smartError);
-            console.error('❌ [B1][DEBUG] Error stack:', smartError?.stack);
+          } catch (zulError) {
+            console.error('❌ [B2][DEBUG] Error in ZulAssistant:', zulError);
+            console.error('❌ [B2][DEBUG] Error stack:', zulError?.stack);
+            
+            // Enviar mensagem de erro ao usuário
+            try {
+              await sendWhatsAppMessage(message.from, 
+                'Ops! Tive um problema aqui. 😅\n\nTenta de novo? Se continuar, melhor falar com o suporte!'
+              );
+            } catch (sendError) {
+              console.error('❌ Erro ao enviar mensagem de erro:', sendError);
+            }
           }
         }
       }
@@ -92,12 +205,11 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    console.log('🚀 [B1][WEBHOOK] POST received - VERSION B1 (SYNC MINIMAL)');
+    console.log('🚀 [B2][WEBHOOK] POST received - VERSION B2 (CONSOLIDATED ZulAssistant)');
     try {
-      console.log('📩 [B1] Received webhook:', JSON.stringify(req.body, null, 2));
-      console.log('🔄 [B1][WEBHOOK] Calling processWebhook (minimal)...');
+      console.log('📩 [B2] Received webhook');
       await processWebhook(req.body);
-      console.log('✅ [B1] Minimal processing completed');
+      console.log('✅ [B2] Processing completed');
       return res.status(200).send('OK');
     } catch (error) {
       console.error('❌ [B1] Webhook error:', error);

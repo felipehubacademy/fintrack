@@ -260,53 +260,64 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
 
   /**
    * Obter ou criar thread para um usuário
+   * MELHORADO: Sempre busca do banco primeiro, cache apenas para performance
    */
   async getOrCreateThread(userId, userPhone) {
-    // Limpar threads antigas do cache (otimização de memória)
     const now = Date.now();
-    for (const [key, value] of threadCache.entries()) {
-      if (now - value.lastUsed > THREAD_CACHE_EXPIRY) {
-        console.log(`🗑️ Thread antiga removida do cache: ${key}`);
-        threadCache.delete(key);
+    
+    // 1. SEMPRE buscar do banco primeiro (robustez em cold starts)
+    console.log(`🔍 Buscando thread no banco para ${userId}...`);
+    const savedThread = await this.loadThreadFromDB(userPhone);
+    
+    if (savedThread && savedThread.threadId) {
+      // Validar que thread ainda existe no OpenAI
+      const isValid = await this.validateThread(savedThread.threadId);
+      
+      if (isValid) {
+        console.log(`✅ Thread válida recuperada do banco: ${savedThread.threadId}`);
+        // Preencher cache para performance
+        threadCache.set(userId, {
+          threadId: savedThread.threadId,
+          lastUsed: now,
+          userName: savedThread.userName,
+          userPhone: userPhone
+        });
+        return savedThread.threadId;
+      } else {
+        console.log(`⚠️ Thread inválida encontrada, criando nova...`);
       }
     }
 
-    // 1. Verificar cache em memória primeiro (mais rápido)
-    if (threadCache.has(userId)) {
-      const cached = threadCache.get(userId);
-      console.log(`♻️ Thread do cache: ${userId} -> ${cached.threadId}`);
-      cached.lastUsed = now;
-      return cached.threadId;
-    }
-
-    // 2. Tentar recuperar do banco (se cache foi perdido mas conversa ainda ativa)
-    console.log(`🔍 Buscando thread no banco para ${userId}...`);
-    const savedThread = await this.loadThreadFromDB(userPhone);
-    if (savedThread) {
-      console.log(`💾 Thread recuperada do banco: ${savedThread.threadId}`);
-      // Restaurar no cache
-      threadCache.set(userId, {
-        threadId: savedThread.threadId,
-        lastUsed: now,
-        userName: savedThread.userName,
-        userPhone: userPhone
-      });
-      return savedThread.threadId;
-    }
-
-    // 3. Criar nova thread
+    // 2. Criar nova thread
     try {
+      console.log(`🆕 Criando nova thread para ${userId}...`);
       const thread = await openai.beta.threads.create();
+      
+      // Salvar no cache
       threadCache.set(userId, {
         threadId: thread.id,
         lastUsed: now,
         userPhone: userPhone
       });
-      console.log(`🆕 Nova thread criada: ${userId} -> ${thread.id}`);
+      
+      console.log(`✅ Nova thread criada: ${userId} -> ${thread.id}`);
       return thread.id;
     } catch (error) {
       console.error('❌ Erro ao criar thread:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Validar se thread ainda existe no OpenAI
+   */
+  async validateThread(threadId) {
+    try {
+      const thread = await openai.beta.threads.retrieve(threadId);
+      return !!thread;
+    } catch (error) {
+      console.error('❌ Thread inválida:', error.message);
+      return false;
     }
   }
 
