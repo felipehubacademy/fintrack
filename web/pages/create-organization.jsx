@@ -145,6 +145,7 @@ export default function CreateOrganization() {
         email: formData.adminEmail,
         password: formData.password,
         options: {
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/email-confirmed`,
           data: {
             name: formData.adminName,
             phone: normalizedPhone // Salvar apenas números

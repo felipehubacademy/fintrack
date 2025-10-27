@@ -134,6 +134,7 @@ export default function CreateAccount() {
         email: formData.adminEmail,
         password: formData.password,
         options: {
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/email-confirmed`,
           data: {
             name: formData.adminName,
             phone: normalizedPhone

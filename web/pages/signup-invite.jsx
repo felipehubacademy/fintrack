@@ -229,6 +229,7 @@ export default function SignupInvite() {
         email: email,
         password: formData.password,
         options: {
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/email-confirmed`,
           data: {
             name: formData.name,
             phone: phoneWithCountryCode
