@@ -84,9 +84,16 @@ export default function DashboardHome() {
       }
 
       // If no onboarding record exists or it's not completed, redirect to onboarding
-      if (!data || !data.is_completed) {
+      // MAS não redirecionar se foi pulado (skipped)
+      if ((!data || !data.is_completed) && !data?.skipped) {
         console.log('🔍 [Dashboard] Onboarding not completed, redirecting to onboarding');
         router.push('/onboarding/welcome');
+        return;
+      }
+      
+      // Se foi pulado, deixar usar o dashboard normalmente
+      if (data?.skipped) {
+        console.log('✅ [Dashboard] Onboarding skipped, allowing access to dashboard');
         return;
       }
 

@@ -143,9 +143,9 @@ export default function CreateAccount() {
 
       if (authError) throw authError;
 
-      // Criar organização (individual)
+      // Usar o ID do usuário autenticado do Supabase
+      const authUserId = authData.user.id;
       const orgId = crypto.randomUUID();
-      const userId = crypto.randomUUID();
       
       // Gerar código de convite aleatório (6 caracteres)
       const generateInviteCode = () => {
@@ -158,23 +158,25 @@ export default function CreateAccount() {
       };
       const inviteCode = generateInviteCode();
 
+      // Criar organização (individual) - usar authUserId como admin_id
       const { error: orgError } = await supabase
         .from('organizations')
         .insert({
           id: orgId,
           name: formData.dashboardName, // Nome do dashboard escolhido
           email: formData.adminEmail,
-          admin_id: userId,
-          invite_code: inviteCode
+          admin_id: authUserId, // ID do usuário do Supabase Auth
+          invite_code: inviteCode,
+          type: 'solo'
         });
 
       if (orgError) throw orgError;
 
-      // Criar usuário
+      // Criar usuário na tabela users
       const { error: userError } = await supabase
         .from('users')
         .insert({
-          id: userId,
+          id: authUserId, // Mesmo ID do Supabase Auth
           organization_id: orgId,
           name: formData.adminName,
           email: formData.adminEmail,
@@ -185,38 +187,13 @@ export default function CreateAccount() {
       if (userError) throw userError;
 
       // Cost center será criado automaticamente pelo trigger do banco
-      // O trigger cria com default_split_percentage = 50%, mas como é conta solo,
-      // não há problema pois será o único membro da org
-
-      // Criar categorias padrão
-      const categories = [
-        { name: 'Alimentação', color: '#EF4444' },
-        { name: 'Transporte', color: '#F59E0B' },
-        { name: 'Saúde', color: '#10B981' },
-        { name: 'Lazer', color: '#8B5CF6' },
-        { name: 'Contas', color: '#06B6D4' },
-        { name: 'Casa', color: '#8B5A2B' },
-        { name: 'Educação', color: '#EC4899' },
-        { name: 'Investimentos', color: '#10B981' },
-        { name: 'Outros', color: '#6B7280' }
-      ];
-
-      for (const category of categories) {
-        const { error: categoryError } = await supabase.from('budget_categories').insert({
-          organization_id: orgId,
-          name: category.name,
-          color: category.color,
-          is_default: true
-        });
-        
-        if (categoryError) {
-          console.error('Erro ao criar categoria:', categoryError);
-          throw categoryError;
-        }
-      }
+      // O trigger cria com default_split_percentage = 100% para contas solo
+      
+      // Categorias globais já estão no banco (criadas no FRESH_DATABASE_SETUP.sql)
+      // Não precisamos criar categorias por organização
 
       // Redirecionar para o dashboard com URL dinâmica
-      const dynamicUrl = getDynamicUrl('dashboard', orgId, userId);
+      const dynamicUrl = getDynamicUrl('dashboard', orgId, authUserId);
       router.push(dynamicUrl);
 
     } catch (err) {

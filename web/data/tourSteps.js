@@ -1,14 +1,21 @@
 // Definições dos tours da aplicação
 
-export const dashboardTourSteps = [
-  {
-    stepNumber: 1,
-    totalSteps: 5,
-    target: 'body', // Primeiro passo sem highlight específico
-    title: 'Bem-vindo ao MeuAzulão! 👋',
-    description: 'Prazer, eu sou o Zul e vou te guiar pelos principais recursos da aplicação.\n\nEste é o seu painel principal onde você tem uma visão completa das suas finanças.',
-    tip: 'Dica: Você pode sempre clicar no meu ícone (canto inferior direito) para obter ajuda personalizada!'
-  },
+// Esta função retorna os steps do dashboard tour com personalização
+export function getDashboardTourSteps(userName) {
+  const firstName = userName?.split(' ')[0] || '';
+  const greeting = firstName ? `Olá, ${firstName}! 👋` : 'Bem-vindo ao MeuAzulão! 👋';
+  
+  return [
+    {
+      stepNumber: 1,
+      totalSteps: 5,
+      target: 'body', // Primeiro passo sem highlight específico
+      title: greeting,
+      description: firstName 
+        ? `Vou te guiar pelos principais recursos da aplicação.\n\nEste é o seu painel principal onde você tem uma visão completa das suas finanças.`
+        : `Prazer, eu sou o Zul e vou te guiar pelos principais recursos da aplicação.\n\nEste é o seu painel principal onde você tem uma visão completa das suas finanças.`,
+      tip: 'Dica: Você pode sempre clicar no meu ícone (canto inferior direito) para obter ajuda personalizada!'
+    },
   {
     stepNumber: 2,
     totalSteps: 5,
@@ -33,15 +40,16 @@ export const dashboardTourSteps = [
     description: 'Aqui você vê gráficos detalhados das suas finanças do mês atual. Eu te ajudo a entender seus padrões de gastos e identificar oportunidades de economia.',
     tip: 'Use os gráficos para identificar padrões e oportunidades de economia!'
   },
-  {
-    stepNumber: 5,
-    totalSteps: 5,
-    target: 'comparative-analysis-header', // Header do comparativo mensal
-    title: 'Comparativo Mensal 📊',
-    description: 'Aqui você compara seus gastos entre diferentes meses para ver sua evolução financeira ao longo do tempo.',
-    tip: 'Compare meses para identificar tendências e melhorias!'
-  }
-];
+    {
+      stepNumber: 5,
+      totalSteps: 5,
+      target: 'comparative-analysis-header', // Header do comparativo mensal
+      title: 'Comparativo Mensal 📊',
+      description: 'Aqui você compara seus gastos entre diferentes meses para ver sua evolução financeira ao longo do tempo.',
+      tip: 'Compare meses para identificar tendências e melhorias!'
+    }
+  ];
+}
 
 export const transactionsTourSteps = [
   {
@@ -265,7 +273,7 @@ export const closingTourSteps = [
 ];
 
 // Função para obter tour baseado na rota
-export function getTourForRoute(route) {
+export function getTourForRoute(route, userName = null) {
   // Normalizar a rota - remover parâmetros dinâmicos se houver
   let normalizedRoute = route;
   
@@ -277,7 +285,7 @@ export function getTourForRoute(route) {
   
   switch (normalizedRoute) {
     case '/dashboard':
-      return dashboardTourSteps;
+      return getDashboardTourSteps(userName);
     case '/dashboard/transactions':
       return transactionsTourSteps;
     case '/dashboard/cards':

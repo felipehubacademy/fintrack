@@ -154,9 +154,9 @@ export default function CreateOrganization() {
 
       if (authError) throw authError;
 
-      // Criar organização
+      // Usar o ID do usuário autenticado do Supabase
+      const authUserId = authData.user.id;
       const orgId = crypto.randomUUID();
-      const userId = crypto.randomUUID();
       const inviteCodeGen = generateInviteCode();
 
       const { error: orgError } = await supabase
@@ -165,17 +165,18 @@ export default function CreateOrganization() {
           id: orgId,
           name: formData.name,
           email: formData.adminEmail, // Email da organização = email do admin
-          admin_id: userId,
-          invite_code: inviteCodeGen
+          admin_id: authUserId, // ID do usuário do Supabase Auth
+          invite_code: inviteCodeGen,
+          type: 'family'
         });
 
       if (orgError) throw orgError;
 
-      // Criar usuário
+      // Criar usuário na tabela users
       const { error: userError } = await supabase
         .from('users')
         .insert({
-          id: userId,
+          id: authUserId, // Mesmo ID do Supabase Auth
           organization_id: orgId,
           name: formData.adminName,
           email: formData.adminEmail,
@@ -193,7 +194,7 @@ export default function CreateOrganization() {
         type: 'individual',
         color: '#3B82F6',
         default_split_percentage: 100.00, // Começa com 100%, será rebalanceado ao adicionar membros
-        user_id: userId,
+        user_id: authUserId, // Usar authUserId aqui
         is_active: true
       });
 
@@ -202,32 +203,13 @@ export default function CreateOrganization() {
         throw costCenterError;
       }
 
-      // Criar categorias padrão
-      const categories = [
-        { name: 'Alimentação', color: '#EF4444' },
-        { name: 'Transporte', color: '#F59E0B' },
-        { name: 'Saúde', color: '#10B981' },
-        { name: 'Lazer', color: '#8B5CF6' },
-        { name: 'Contas', color: '#06B6D4' },
-        { name: 'Casa', color: '#8B5A2B' },
-        { name: 'Educação', color: '#EC4899' },
-        { name: 'Investimentos', color: '#10B981' },
-        { name: 'Outros', color: '#6B7280' }
-      ];
-
-      for (const category of categories) {
-        await supabase.from('budget_categories').insert({
-          organization_id: orgId,
-          name: category.name,
-          color: category.color,
-          is_default: true
-        });
-      }
+      // Categorias globais já estão no banco (criadas no FRESH_DATABASE_SETUP.sql)
+      // Não precisamos criar categorias por organização
 
       setInviteCode(inviteCodeGen);
       
       // Redirecionar para o dashboard com URL dinâmica
-      const dynamicUrl = getDynamicUrl('dashboard', orgId, userId);
+      const dynamicUrl = getDynamicUrl('dashboard', orgId, authUserId); // Usar authUserId aqui
       router.push(dynamicUrl);
 
     } catch (err) {
