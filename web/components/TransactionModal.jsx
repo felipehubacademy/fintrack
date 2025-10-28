@@ -418,7 +418,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       success(transactionType === 'income' ? `Entrada ${action} com sucesso!` : `Despesa ${action} com sucesso!`);
       onSuccess?.();
     } catch (e) {
-      showError('Erro ao salvar: ' + (e.message || 'Erro desconhecido'));
+      showError('Ops! Não consegui salvar. Tenta de novo?');
     } finally {
       setSaving(false);
     }
