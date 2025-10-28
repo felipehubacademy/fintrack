@@ -73,17 +73,28 @@ export default async function handler(req, res) {
       });
     }
 
-    // Gerar código de convite único (8 caracteres)
+    // Gerar código de convite único (10 caracteres para garantir compatibilidade)
     const generateInviteCode = () => {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let result = '';
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 10; i++) {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
       }
       return result;
     };
 
     const inviteCode = generateInviteCode();
+    
+    console.log('📝 Dados do convite a serem inseridos:', {
+      organization_id: organizationId,
+      email: email,
+      name: name,
+      invited_by: invitedBy,
+      role: role,
+      invite_code: inviteCode,
+      default_split_percentage: splitPercentage,
+      color: color
+    });
     const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/signup-invite?email=${email}&invite_code=${inviteCode}`;
 
     // Deletar convites antigos/expirados deste email nesta organização
@@ -104,26 +115,34 @@ export default async function handler(req, res) {
       invite_code: inviteCode
     });
 
+    // Preparar dados para inserção
+    const inviteData = {
+      organization_id: organizationId,
+      email: email,
+      name: name, // Salvar nome do convidado
+      invited_by: invitedBy,
+      role: role, // Salvar role do convite
+      invite_code: inviteCode,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 dias - converter para ISO string
+      default_split_percentage: parseFloat(splitPercentage) || 50.00, // Percentual de split
+      color: color || '#6366F1' // Cor do perfil
+    };
+
+    console.log('💾 Tentando inserir convite com dados:', inviteData);
+
     const { error: inviteError } = await supabase
       .from('pending_invites')
-      .insert({
-        organization_id: organizationId,
-        email: email,
-        name: name, // Salvar nome do convidado
-        invited_by: invitedBy,
-        role: role, // Salvar role do convite
-        invite_code: inviteCode,
-        default_split_percentage: splitPercentage,
-        color: color,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 dias
-      });
+      .insert(inviteData);
 
     if (inviteError) {
       console.error('❌ Erro ao salvar convite:', inviteError);
+      console.error('❌ Detalhes completos do erro:', JSON.stringify(inviteError, null, 2));
       return res.status(500).json({ 
         error: 'Erro ao criar convite',
         details: inviteError.message,
-        code: inviteError.code
+        hint: inviteError.hint,
+        code: inviteError.code,
+        fullError: process.env.NODE_ENV === 'development' ? inviteError : undefined
       });
     }
 

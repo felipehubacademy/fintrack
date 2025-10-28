@@ -212,6 +212,12 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
       return;
     }
 
+    // Validar se temos orgUser.id
+    if (!orgUser?.id) {
+      showError('Erro: usuário não identificado. Por favor, recarregue a página.');
+      return;
+    }
+
     // Validar se o total é exatamente 100% (exceto viewer que não precisa)
     if (formData.role !== 'viewer' && Math.abs(calculatedTotal - 100) > 0.01) {
       if (calculatedTotal > 100) {
@@ -225,6 +231,16 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
     try {
       setInviting(true);
       
+      console.log('📤 Enviando convite com dados:', {
+        organizationId: organization?.id,
+        email: formData.email.trim(),
+        name: formData.name.trim(),
+        invitedBy: orgUser?.id,
+        role: formData.role,
+        splitPercentage: formData.splitPercentage,
+        color: formData.color
+      });
+      
       // Enviar convite via API
       const response = await fetch('/api/send-invite', {
         method: 'POST',
@@ -233,7 +249,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
           organizationId: organization.id,
           email: formData.email.trim(),
           name: formData.name.trim(),
-          invitedBy: orgUser?.id,
+          invitedBy: orgUser.id,
           role: formData.role,
           splitPercentage: formData.splitPercentage,
           color: formData.color
@@ -243,7 +259,11 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao enviar convite');
+        // Mostrar erro mais detalhado se disponível
+        const errorMessage = data.details 
+          ? `${data.error}: ${data.details}${data.hint ? ` (${data.hint})` : ''}`
+          : data.error || 'Erro ao enviar convite';
+        throw new Error(errorMessage);
       }
 
       // Atualizar cost centers existentes se o usuário editou os percentuais
@@ -758,7 +778,11 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                 </Button>
                 <Button
                   onClick={sendInvite}
-                  disabled={inviting || !!emailError}
+                  disabled={
+                    inviting || 
+                    !!emailError || 
+                    (formData.role !== 'viewer' && Math.abs(calculatedTotal - 100) > 0.01)
+                  }
                   className="bg-[#207DFF] hover:bg-[#207DFF]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {inviting ? 'Enviando...' : 'Enviar Convite'}

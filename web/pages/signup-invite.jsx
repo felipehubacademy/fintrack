@@ -258,24 +258,32 @@ export default function SignupInvite() {
 
       if (userError) throw userError;
 
-      // Criar cost center com os valores do convite
+      // O trigger cria o cost_center automaticamente quando inserimos o usuário
+      // Aguardar um pouco para garantir que o trigger executou
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Atualizar cost center com os valores do convite (split e cor escolhidos)
+      const inviteSplit = invite?.default_split_percentage || 50.00;
+      const inviteColor = invite?.color || '#6366F1';
+      
       const { error: costCenterError } = await supabase
         .from('cost_centers')
-        .insert({
-          organization_id: organization.id,
-          name: formData.name,
-          user_id: authData.user.id,
-          default_split_percentage: invite?.default_split_percentage || 50.00,
-          color: invite?.color || '#6366F1',
-          is_active: true
-        });
+        .update({
+          default_split_percentage: inviteSplit,
+          color: inviteColor,
+          name: formData.name // Garantir que o nome está correto
+        })
+        .eq('user_id', authData.user.id)
+        .eq('organization_id', organization.id);
 
       if (costCenterError) {
-        console.error('❌ Erro ao criar cost center:', costCenterError);
-        // Não falhar se já existir cost center (trigger pode ter criado)
-        if (costCenterError.code !== '23505') {
-          console.error('⚠️ Continuando mesmo com erro no cost center...');
-        }
+        console.error('⚠️ Erro ao atualizar cost center com valores do convite:', costCenterError);
+        // Não falhar - o cost center já foi criado pelo trigger, só não terá os valores personalizados
+      } else {
+        console.log('✅ Cost center atualizado com valores do convite:', {
+          split: inviteSplit,
+          color: inviteColor
+        });
       }
 
       // Remover convite da tabela pending_invites
