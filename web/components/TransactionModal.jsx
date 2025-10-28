@@ -455,6 +455,36 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
           console.log('✅ [TRANSACTION MODAL] Expense saved:', expense);
 
+          // Atualizar available_limit do cartão se for crédito
+          if (form.payment_method === 'credit_card' && expense.card_id) {
+            try {
+              const { data: card } = await supabase
+                .from('cards')
+                .select('available_limit, credit_limit')
+                .eq('id', expense.card_id)
+                .single();
+              
+              if (card) {
+                const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
+                const amountChange = editingTransaction 
+                  ? (Number(form.amount) - Number(editingTransaction.amount || 0)) // Diferença se editando
+                  : Number(form.amount); // Valor total se criando
+                
+                const newAvailable = Math.max(0, currentAvailable - amountChange);
+                
+                await supabase
+                  .from('cards')
+                  .update({ available_limit: newAvailable })
+                  .eq('id', expense.card_id);
+                
+                console.log('✅ [TRANSACTION MODAL] Updated card available_limit:', newAvailable);
+              }
+            } catch (cardUpdateError) {
+              console.error('⚠️ Erro ao atualizar limite disponível do cartão:', cardUpdateError);
+              // Não falhar por causa disso
+            }
+          }
+
           if (willBeShared && splitDetails.length > 0) {
             // Se está editando, deletar splits antigos primeiro
             if (editingTransaction) {

@@ -133,20 +133,47 @@ export default function CardsDashboard() {
           endDate = end.toISOString().split('T')[0];
         }
 
-        // somar TODAS as despesas confirmadas desse cartão (incluindo parcelas futuras)
-        // pois o crédito é consumido imediatamente na compra parcelada
-        const { data: expenses } = await supabase
-          .from('expenses')
-          .select('amount')
-          .eq('payment_method', 'credit_card')
-          .eq('card_id', card.id)
-          .eq('status', 'confirmed');
-
-        const used = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
         const limit = Number(card.credit_limit || 0);
-        const percentage = limit > 0 ? (used / limit) * 100 : 0;
+        
+        // Prioridade: usar available_limit do banco (fonte da verdade)
+        // Se available_limit não estiver definido ou for igual ao credit_limit, calcular das despesas
+        let availableLimit = card.available_limit !== null && card.available_limit !== undefined 
+          ? Number(card.available_limit) 
+          : null;
+        
+        let finalUsed = 0;
+        
+        if (availableLimit !== null && availableLimit !== limit) {
+          // available_limit foi definido manualmente (diferente do limite total)
+          // Uso = Limite Total - Limite Disponível
+          finalUsed = Math.max(0, limit - availableLimit);
+        } else {
+          // Calcular uso baseado nas despesas confirmadas
+          const { data: expenses } = await supabase
+            .from('expenses')
+            .select('amount')
+            .eq('payment_method', 'credit_card')
+            .eq('card_id', card.id)
+            .eq('status', 'confirmed');
+          
+          finalUsed = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+          
+          // Se tiver despesas, atualizar available_limit no banco para manter consistência
+          if (finalUsed > 0 && (availableLimit === null || availableLimit === limit)) {
+            const newAvailable = Math.max(0, limit - finalUsed);
+            // Atualizar silenciosamente (não aguardar para não bloquear a UI)
+            supabase
+              .from('cards')
+              .update({ available_limit: newAvailable })
+              .eq('id', card.id)
+              .then(() => console.log('✅ Updated available_limit for card:', card.id, 'to', newAvailable))
+              .catch(err => console.warn('⚠️ Failed to update available_limit:', err));
+          }
+        }
+        
+        const percentage = limit > 0 ? (finalUsed / limit) * 100 : 0;
         const status = percentage >= 90 ? 'danger' : percentage >= 70 ? 'warning' : 'ok';
-        return [card.id, { used, percentage, status }];
+        return [card.id, { used: finalUsed, percentage, status }];
       })
     );
 
@@ -296,7 +323,9 @@ export default function CardsDashboard() {
 
       console.log('✅ Cartão atualizado:', data);
 
+      // Forçar recálculo do uso após atualização
       await fetchCards();
+      
       setShowModal(false);
       setEditingCard(null);
       success('Cartão atualizado com sucesso!');

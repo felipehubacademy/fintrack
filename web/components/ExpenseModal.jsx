@@ -302,6 +302,32 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
 
         console.log('✅ [EXPENSE MODAL] Installments created, parent_expense_id:', parentExpenseId);
 
+        // Atualizar available_limit do cartão (decrementar o valor total da compra)
+        if (form.card_id) {
+          try {
+            const { data: card } = await supabase
+              .from('cards')
+              .select('available_limit, credit_limit')
+              .eq('id', form.card_id)
+              .single();
+            
+            if (card) {
+              const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
+              const newAvailable = Math.max(0, currentAvailable - Number(form.amount));
+              
+              await supabase
+                .from('cards')
+                .update({ available_limit: newAvailable })
+                .eq('id', form.card_id);
+              
+              console.log('✅ [EXPENSE MODAL] Updated card available_limit:', newAvailable);
+            }
+          } catch (cardUpdateError) {
+            console.error('⚠️ Erro ao atualizar limite disponível do cartão:', cardUpdateError);
+            // Não falhar por causa disso
+          }
+        }
+
         // Se for compartilhado, salvar splits para a despesa principal
         if (willBeShared && splitDetails.length > 0) {
           console.log('🔍 [EXPENSE MODAL] Saving splits for credit card expense:', splitDetails);
@@ -354,6 +380,32 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         if (error) throw error;
 
         console.log('✅ [EXPENSE MODAL] Expense saved:', expense);
+
+        // Atualizar available_limit do cartão se for crédito
+        if (form.payment_method === 'credit_card' && expense.card_id) {
+          try {
+            const { data: card } = await supabase
+              .from('cards')
+              .select('available_limit, credit_limit')
+              .eq('id', expense.card_id)
+              .single();
+            
+            if (card) {
+              const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
+              const newAvailable = Math.max(0, currentAvailable - Number(form.amount));
+              
+              await supabase
+                .from('cards')
+                .update({ available_limit: newAvailable })
+                .eq('id', expense.card_id);
+              
+              console.log('✅ [EXPENSE MODAL] Updated card available_limit:', newAvailable);
+            }
+          } catch (cardUpdateError) {
+            console.error('⚠️ Erro ao atualizar limite disponível do cartão:', cardUpdateError);
+            // Não falhar por causa disso
+          }
+        }
 
         // Se for compartilhado, sempre salvar splits (padrão ou personalizado)
         if (willBeShared && splitDetails.length > 0) {

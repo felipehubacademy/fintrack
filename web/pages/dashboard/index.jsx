@@ -358,16 +358,31 @@ export default function DashboardHome() {
           endDate = end.toISOString().split('T')[0];
         }
 
-        // Somar todas as despesas confirmadas desse cartão
-        const { data: expenses } = await supabase
-          .from('expenses')
-          .select('amount')
-          .eq('payment_method', 'credit_card')
-          .eq('card_id', card.id)
-          .eq('status', 'confirmed');
-
-        const used = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
-        return [card.id, { used, limit: Number(card.credit_limit || 0) }];
+        const limit = Number(card.credit_limit || 0);
+        
+        // Prioridade: usar available_limit do banco (fonte da verdade)
+        let availableLimit = card.available_limit !== null && card.available_limit !== undefined 
+          ? Number(card.available_limit) 
+          : null;
+        
+        let used = 0;
+        
+        if (availableLimit !== null && availableLimit !== limit) {
+          // available_limit foi definido manualmente
+          used = Math.max(0, limit - availableLimit);
+        } else {
+          // Calcular das despesas
+          const { data: expenses } = await supabase
+            .from('expenses')
+            .select('amount')
+            .eq('payment_method', 'credit_card')
+            .eq('card_id', card.id)
+            .eq('status', 'confirmed');
+          
+          used = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+        }
+        
+        return [card.id, { used, limit }];
       })
     );
 
