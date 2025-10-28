@@ -323,18 +323,41 @@ export default function TransactionsDashboard() {
     }
     
     try {
-      const { data, error } = await supabase
-        .from('budget_categories')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('name', { ascending: true });
+      // Buscar categorias da organização + globais
+      const [orgResult, globalResult] = await Promise.all([
+        supabase
+          .from('budget_categories')
+          .select('*')
+          .eq('organization_id', organization.id)
+          .order('name', { ascending: true }),
+        supabase
+          .from('budget_categories')
+          .select('*')
+          .is('organization_id', null)
+          .order('name', { ascending: true })
+      ]);
 
-      if (error) {
-        console.error('❌ [FINANCE] Erro ao buscar categorias:', error);
+      if (orgResult.error) {
+        console.error('❌ [FINANCE] Erro ao buscar categorias da org:', orgResult.error);
         return;
       }
 
-      setCategories(data || []);
+      if (globalResult.error) {
+        console.error('❌ [FINANCE] Erro ao buscar categorias globais:', globalResult.error);
+        return;
+      }
+
+      // Combinar categorias da org + globais
+      const orgCategories = orgResult.data || [];
+      const globalCategories = globalResult.data || [];
+      
+      // Criar Set com nomes da org para evitar duplicatas
+      const orgCategoryNames = new Set(orgCategories.map(c => c.name));
+      
+      // Adicionar apenas globais que NÃO existem na org
+      const uniqueGlobals = globalCategories.filter(cat => !orgCategoryNames.has(cat.name));
+      
+      setCategories([...orgCategories, ...uniqueGlobals]);
     } catch (error) {
       console.error('❌ [FINANCE] Erro ao buscar categorias:', error);
     }
@@ -1511,7 +1534,7 @@ export default function TransactionsDashboard() {
         onClose={() => { setShowTransactionModal(false); setEditingTransaction(null); }}
         onSuccess={() => { setShowTransactionModal(false); setEditingTransaction(null); fetchExpenses(); fetchIncomes(); fetchCards(); }}
         editingTransaction={editingTransaction}
-        categories={categories}
+        categories={categories.filter(cat => cat.type === 'expense' || cat.type === 'both')}
       />
 
       {/* Modal de edição */}
@@ -1519,7 +1542,7 @@ export default function TransactionsDashboard() {
         isOpen={!!editingId}
         expenseId={editingId}
         costCenters={costCenters}
-        categories={categories}
+        categories={categories.filter(cat => cat.type === 'expense' || cat.type === 'both')}
         organization={organization}
         onClose={() => setEditingId(null)}
         onSuccess={() => {

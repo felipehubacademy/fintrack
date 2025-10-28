@@ -9,8 +9,19 @@ import HelpTooltip from './ui/HelpTooltip';
 
 export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = [] }) {
   
-  const { organization, user: orgUser, costCenters, isSoloUser, loading: orgLoading } = useOrganization();
+  const { organization, user: orgUser, costCenters, isSoloUser, loading: orgLoading, budgetCategories } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
+  
+  // Filtrar apenas categorias do tipo expense (ou both)
+  const expenseCategories = useMemo(() => {
+    const filtered = budgetCategories?.filter(cat => 
+      cat.type === 'expense' || cat.type === 'both'
+    ) || [];
+    
+    // Se recebeu categories via prop, usar elas
+    if (categories.length > 0) return categories;
+    return filtered;
+  }, [budgetCategories, categories]);
   
   const [cards, setCards] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -370,7 +381,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
                   <option value="">Selecione...</option>
-                  {categories.map(cat => (
+                  {expenseCategories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>

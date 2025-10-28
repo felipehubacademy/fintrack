@@ -98,27 +98,57 @@ export function useOrganization() {
       
       setIsSoloUser(solo);
 
-      // Buscar categorias GLOBAIS (expense)
-      const { data: categories, error: categoriesError } = await supabase
-        .from('budget_categories')
-        .select('*')
-        .is('organization_id', null)
-        .or('type.eq.expense,type.eq.both')
-        .order('name');
+      // Buscar categorias da ORG + GLOBAIS (expense)
+      const [orgExpenses, globalExpenses] = await Promise.all([
+        supabase
+          .from('budget_categories')
+          .select('*')
+          .eq('organization_id', userRow.organization_id)
+          .or('type.eq.expense,type.eq.both')
+          .order('name'),
+        supabase
+          .from('budget_categories')
+          .select('*')
+          .is('organization_id', null)
+          .or('type.eq.expense,type.eq.both')
+          .order('name')
+      ]);
       
-      if (categoriesError) throw categoriesError;
-      setBudgetCategories(categories || []);
+      if (orgExpenses.error) throw orgExpenses.error;
+      if (globalExpenses.error) throw globalExpenses.error;
+      
+      // Combinar categorias da org + globais (sem duplicatas)
+      const orgExpensesList = orgExpenses.data || [];
+      const globalExpensesList = globalExpenses.data || [];
+      const orgExpensesNames = new Set(orgExpensesList.map(c => c.name));
+      const uniqueGlobalExpenses = globalExpensesList.filter(cat => !orgExpensesNames.has(cat.name));
+      setBudgetCategories([...orgExpensesList, ...uniqueGlobalExpenses]);
 
-      // Buscar categorias de entrada GLOBAIS (income)
-      const { data: incomeCats, error: incomeCatsError } = await supabase
-        .from('budget_categories')
-        .select('*')
-        .is('organization_id', null)
-        .or('type.eq.income,type.eq.both')
-        .order('name');
+      // Buscar categorias da ORG + GLOBAIS (income)
+      const [orgIncomes, globalIncomes] = await Promise.all([
+        supabase
+          .from('budget_categories')
+          .select('*')
+          .eq('organization_id', userRow.organization_id)
+          .or('type.eq.income,type.eq.both')
+          .order('name'),
+        supabase
+          .from('budget_categories')
+          .select('*')
+          .is('organization_id', null)
+          .or('type.eq.income,type.eq.both')
+          .order('name')
+      ]);
       
-      if (incomeCatsError) throw incomeCatsError;
-      setIncomeCategories(incomeCats || []);
+      if (orgIncomes.error) throw orgIncomes.error;
+      if (globalIncomes.error) throw globalIncomes.error;
+      
+      // Combinar categorias da org + globais (sem duplicatas)
+      const orgIncomesList = orgIncomes.data || [];
+      const globalIncomesList = globalIncomes.data || [];
+      const orgIncomesNames = new Set(orgIncomesList.map(c => c.name));
+      const uniqueGlobalIncomes = globalIncomesList.filter(cat => !orgIncomesNames.has(cat.name));
+      setIncomeCategories([...orgIncomesList, ...uniqueGlobalIncomes]);
 
     } catch (error) {
       console.error('Erro ao buscar dados da organização:', error);
