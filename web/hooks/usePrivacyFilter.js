@@ -10,7 +10,8 @@ export function usePrivacyFilter(organization, user, costCenters) {
       
       // Se for individual: só o dono vê
       const userCostCenter = costCenters.find(cc => cc.user_id === user.id);
-      return item.cost_center_id === userCostCenter?.id;
+      // Aceitar se cost_center_id igual ou se for NULL (sem cost center = da org)
+      return item.cost_center_id === userCostCenter?.id || !item.cost_center_id;
     });
   };
   
