@@ -7,7 +7,7 @@ import { X, Upload, Camera, User } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import Avatar from './Avatar';
 
-const AVATAR_BUCKET = 'avatars';
+const AVATAR_BUCKET = 'avatar';
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
@@ -68,20 +68,30 @@ export default function ProfileModal({ isOpen, onClose }) {
       // Verificar/criar bucket
       await ensureBucketExists();
 
-      // Gerar nome único
+      // Gerar nome único - usar nome simples na raiz do bucket
       const fileExt = file.name.split('.').pop();
       const fileName = `${orgUser.id}_${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const filePath = fileName;
 
       // Upload para Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(AVATAR_BUCKET)
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: true, // Permitir sobrescrever se já existir
+          contentType: file.type
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('❌ Erro detalhado do upload:', {
+          error: uploadError,
+          message: uploadError.message,
+          statusCode: uploadError.statusCode,
+          filePath,
+          bucket: AVATAR_BUCKET
+        });
+        throw uploadError;
+      }
 
       // Obter URL pública
       const { data: urlData } = supabase.storage
@@ -103,11 +113,22 @@ export default function ProfileModal({ isOpen, onClose }) {
 
       // Deletar avatar antigo se existir
       if (orgUser.avatar_url) {
-        const oldPath = orgUser.avatar_url.split('/').pop();
-        if (oldPath && oldPath !== filePath) {
-          await supabase.storage
-            .from(AVATAR_BUCKET)
-            .remove([oldPath]);
+        try {
+          // Extrair path do URL - pode ser na raiz ou em pasta
+          const urlParts = orgUser.avatar_url.split('/');
+          const bucketIndex = urlParts.findIndex(part => part === AVATAR_BUCKET);
+          if (bucketIndex >= 0 && bucketIndex < urlParts.length - 1) {
+            const oldPath = urlParts.slice(bucketIndex + 1).join('/');
+            if (oldPath && oldPath !== filePath) {
+              // Tentar remover - não falhar se já não existir
+              await supabase.storage
+                .from(AVATAR_BUCKET)
+                .remove([oldPath]);
+            }
+          }
+        } catch (removeError) {
+          // Não falhar se não conseguir remover o avatar antigo
+          console.warn('⚠️ Não foi possível remover avatar antigo:', removeError);
         }
       }
 
@@ -117,7 +138,16 @@ export default function ProfileModal({ isOpen, onClose }) {
       if (refreshData) refreshData();
     } catch (error) {
       console.error('❌ Erro ao fazer upload:', error);
-      showError('Erro ao fazer upload. Tente novamente.');
+      const errorMessage = error?.message || 'Erro desconhecido';
+      
+      // Mensagens mais específicas baseadas no erro
+      if (errorMessage.includes('permission') || errorMessage.includes('policy')) {
+        showError('Erro de permissão. Verifique se as políticas RLS do bucket estão configuradas.');
+      } else if (errorMessage.includes('bucket')) {
+        showError('Bucket não encontrado. Verifique se o bucket "avatar" foi criado.');
+      } else {
+        showError(`Erro ao fazer upload: ${errorMessage}`);
+      }
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -153,14 +183,18 @@ export default function ProfileModal({ isOpen, onClose }) {
     setUploading(true);
 
     try {
-      // Extrair path do avatar antigo
+      // Extrair path do avatar antigo do URL
       const urlParts = orgUser.avatar_url.split('/');
-      const fileName = urlParts[urlParts.length - 1];
-
-      // Remover do storage
-      await supabase.storage
-        .from(AVATAR_BUCKET)
-        .remove([fileName]);
+      const bucketIndex = urlParts.findIndex(part => part === AVATAR_BUCKET);
+      
+      if (bucketIndex >= 0 && bucketIndex < urlParts.length - 1) {
+        const filePath = urlParts.slice(bucketIndex + 1).join('/');
+        
+        // Remover do storage
+        await supabase.storage
+          .from(AVATAR_BUCKET)
+          .remove([filePath]);
+      }
 
       // Atualizar no banco
       const { error: updateError } = await supabase

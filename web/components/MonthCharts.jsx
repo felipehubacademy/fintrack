@@ -71,12 +71,27 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Pizza 2: Divisão por Formas de Pagamento
+  // Pizza 2: Divisão por Formas de Pagamento (com breakdown Individual vs Org)
   const paymentMethodData = (expenses || []).reduce((acc, expense) => {
     if (!expense) return acc;
     const method = expense.payment_method || 'other';
-    if (!acc[method]) acc[method] = 0;
-    acc[method] += parseAmount(expense.amount);
+    if (!acc[method]) acc[method] = { individual: 0, org: 0, total: 0 };
+    
+    const amount = parseAmount(expense.amount);
+    
+    // Verificar se é compartilhado/org
+    if (expense.split || expense.is_shared) {
+      // Para compartilhado, pegar apenas parte do usuário nos splits
+      const userSplit = expense.expense_splits?.find(s => s.cost_center_id === userCostCenter?.id);
+      if (userSplit) {
+        acc[method].org += parseAmount(userSplit.amount);
+      }
+    } else {
+      // Individual
+      acc[method].individual += amount;
+    }
+    
+    acc[method].total = acc[method].individual + acc[method].org;
     return acc;
   }, {});
 
@@ -92,46 +107,69 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
     }
   };
 
+  // Filtrar por viewMode
   const paymentChartData = Object.entries(paymentMethodData)
-    .map(([code, value]) => ({ key: code, name: methodLabel(code), value }))
+    .map(([code, data]) => {
+      let value;
+      if (viewMode === 'individual') {
+        value = data.individual;
+      } else if (viewMode === 'org') {
+        value = data.org;
+      } else {
+        value = data.total;
+      }
+      return { key: code, name: methodLabel(code), value, individual: data.individual, org: data.org };
+    })
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Pizza 3: Divisão por Responsável (com expense_splits)
+  // Pizza 3: Divisão por Responsável (com breakdown Individual vs Org)
   // Nova Estratégia:
   // 1) Despesas individuais: somar direto por owner
   // 2) Despesas compartilhadas COM splits: usar os splits personalizados
   // 3) Despesas compartilhadas SEM splits: usar fallback (cost_centers.split_percentage)
   
-  const ownerTotals = {};
-  const displayNameByCanon = {};
+  const ownerDataByMode = {
+    individual: {},
+    org: {},
+    all: {}
+  };
 
   // Determinar owners individuais conhecidos (ativos e não compartilhados)
   const individualCenters = (costCenters || []).filter(c => c && c.is_active !== false && !c.is_shared);
   
   // Criar mapa de cost_center_id -> name para lookup rápido
   const costCenterMap = {};
+  const displayNameByCanon = {};
   individualCenters.forEach(cc => {
     costCenterMap[cc.id] = cc.name;
     displayNameByCanon[canon(cc.name)] = cc.name;
   });
-  
 
-  // Processar cada despesa
+  // Processar cada despesa separando por modo
   (expenses || []).forEach(expense => {
     if (!expense) return;
     const amount = parseAmount(expense.amount);
     
-    if (expense.split && expense.owner === 'Compartilhado') {
-      // Despesa compartilhada
+    const isCompartilhado = expense.split || expense.is_shared;
+    
+    if (isCompartilhado && expense.owner === 'Compartilhado') {
+      // Despesa compartilhada - processar splits
       if (expense.expense_splits && expense.expense_splits.length > 0) {
         // Usar splits personalizados
         expense.expense_splits.forEach(split => {
           const ccName = costCenterMap[split.cost_center_id] || split.cost_center?.name || 'Outros';
           const ccKey = canon(ccName);
+          const splitAmount = parseAmount(split.amount);
           
-          if (!ownerTotals[ccKey]) ownerTotals[ccKey] = 0;
-          ownerTotals[ccKey] += parseAmount(split.amount);
+          // Adicionar à parte org (compartilhada)
+          if (!ownerDataByMode.org[ccKey]) ownerDataByMode.org[ccKey] = 0;
+          ownerDataByMode.org[ccKey] += splitAmount;
+          
+          // Adicionar ao total também
+          if (!ownerDataByMode.all[ccKey]) ownerDataByMode.all[ccKey] = 0;
+          ownerDataByMode.all[ccKey] += splitAmount;
+          
           if (!displayNameByCanon[ccKey]) displayNameByCanon[ccKey] = ccName;
         });
       } else {
@@ -141,21 +179,37 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
           const share = (amount * percentage) / 100;
           const ccKey = canon(cc.name);
           
-          if (!ownerTotals[ccKey]) ownerTotals[ccKey] = 0;
-          ownerTotals[ccKey] += share;
+          // Adicionar à parte org
+          if (!ownerDataByMode.org[ccKey]) ownerDataByMode.org[ccKey] = 0;
+          ownerDataByMode.org[ccKey] += share;
+          
+          // Adicionar ao total
+          if (!ownerDataByMode.all[ccKey]) ownerDataByMode.all[ccKey] = 0;
+          ownerDataByMode.all[ccKey] += share;
+          
+          if (!displayNameByCanon[ccKey]) displayNameByCanon[ccKey] = cc.name;
         });
       }
     } else {
       // Despesa individual
       const ownerRaw = expense.owner || 'Outros';
       const ownerKey = canon(ownerRaw);
-      if (!ownerTotals[ownerKey]) ownerTotals[ownerKey] = 0;
-      ownerTotals[ownerKey] += amount;
+      
+      // Adicionar à parte individual
+      if (!ownerDataByMode.individual[ownerKey]) ownerDataByMode.individual[ownerKey] = 0;
+      ownerDataByMode.individual[ownerKey] += amount;
+      
+      // Adicionar ao total também
+      if (!ownerDataByMode.all[ownerKey]) ownerDataByMode.all[ownerKey] = 0;
+      ownerDataByMode.all[ownerKey] += amount;
+      
       if (!displayNameByCanon[ownerKey]) displayNameByCanon[ownerKey] = ownerRaw;
     }
   });
 
-  const ownerData = Object.entries(ownerTotals)
+  // Selecionar dados baseado no viewMode
+  const selectedOwnerData = ownerDataByMode[viewMode] || ownerDataByMode.all;
+  const ownerData = Object.entries(selectedOwnerData)
     .map(([nameKey, value]) => ({ name: displayNameByCanon[nameKey] || nameKey, value }))
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);

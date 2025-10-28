@@ -2,7 +2,7 @@
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 -- Comentário para documentação
-COMMENT ON COLUMN users.avatar_url IS 'URL do avatar do usuário armazenado no Supabase Storage bucket avatars';
+COMMENT ON COLUMN users.avatar_url IS 'URL do avatar do usuário armazenado no Supabase Storage bucket avatar';
 
 -- Verificar se a coluna foi adicionada
 SELECT column_name, data_type, is_nullable, column_default

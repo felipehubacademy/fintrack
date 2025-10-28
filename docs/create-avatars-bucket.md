@@ -11,7 +11,7 @@ O código tenta criar o bucket automaticamente, mas pode falhar por falta de per
 3. Vá em: **Storage** → **Buckets**
 4. Clique em **"New bucket"**
 5. Configure:
-   - **Name**: `avatars`
+   - **Name**: `avatar`
    - **Public bucket**: ✅ Sim (para permitir acesso público às imagens)
    - **File size limit**: `2097152` (2MB)
    - **Allowed MIME types**: `image/jpeg,image/jpg,image/png,image/webp`
@@ -23,48 +23,59 @@ O código tenta criar o bucket automaticamente, mas pode falhar por falta de per
 -- Criar bucket de avatares
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
-  'avatars',
-  'avatars',
+  'avatar',
+  'avatar',
   true,
   2097152, -- 2MB
   ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 );
 ```
 
-### Opção 3: Políticas de Acesso RLS (Row Level Security)
+### Opção 3: Configurar Políticas RLS (OBRIGATÓRIO)
 
-Após criar o bucket, configure as políticas de acesso:
+Após criar o bucket, **você DEVE configurar as políticas de acesso**. 
+
+Execute o SQL do arquivo `docs/setup-avatar-storage-policies-simple.sql` (versão simplificada - recomendada) ou `docs/setup-avatars-storage-policies.sql`:
 
 ```sql
--- Política para permitir upload de avatares (apenas o próprio usuário)
+-- 1. Permitir upload de avatares (arquivos em pasta com user_id)
 CREATE POLICY "Users can upload their own avatar"
 ON storage.objects FOR INSERT
+TO authenticated
 WITH CHECK (
-  bucket_id = 'avatars' AND
-  auth.uid()::text = (storage.foldername(name))[1]
+  bucket_id = 'avatar' AND
+  (storage.foldername(name))[1] = auth.uid()::text
 );
 
--- Política para permitir leitura pública de avatares
+-- 2. Leitura pública (todos podem ver avatares)
 CREATE POLICY "Avatars are publicly readable"
 ON storage.objects FOR SELECT
-USING (bucket_id = 'avatars');
+USING (bucket_id = 'avatar');
 
--- Política para permitir atualização (apenas o próprio usuário)
+-- 3. Atualizar próprio avatar
 CREATE POLICY "Users can update their own avatar"
 ON storage.objects FOR UPDATE
+TO authenticated
 USING (
-  bucket_id = 'avatars' AND
-  auth.uid()::text = (storage.foldername(name))[1]
+  bucket_id = 'avatar' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+)
+WITH CHECK (
+  bucket_id = 'avatar' AND
+  (storage.foldername(name))[1] = auth.uid()::text
 );
 
--- Política para permitir deleção (apenas o próprio usuário)
+-- 4. Deletar próprio avatar
 CREATE POLICY "Users can delete their own avatar"
 ON storage.objects FOR DELETE
+TO authenticated
 USING (
-  bucket_id = 'avatars' AND
-  auth.uid()::text = (storage.foldername(name))[1]
+  bucket_id = 'avatar' AND
+  (storage.foldername(name))[1] = auth.uid()::text
 );
 ```
+
+**⚠️ IMPORTANTE:** Se as políticas acima não funcionarem (por problemas de estrutura de pastas), use as políticas simplificadas do arquivo `setup-avatars-storage-policies.sql`.
 
 ## ✅ Verificação
 
@@ -84,5 +95,7 @@ Se encontrar erros de permissão, verifique:
 
 - O código em `ProfileModal.jsx` tenta criar o bucket automaticamente se não existir
 - Se não tiver permissões, o bucket precisa ser criado manualmente via dashboard
-- Os avatares são armazenados como: `{user_id}_{timestamp}.{ext}`
+- **As políticas RLS são OBRIGATÓRIAS** - sem elas o upload vai falhar com erro de permissão
+- Os avatares são armazenados em pastas: `{user_id}/{timestamp}.{ext}` para facilitar RLS
+- Se ainda assim der erro, veja o console do navegador para detalhes específicos do erro
 
