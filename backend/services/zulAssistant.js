@@ -491,12 +491,28 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           if (paymentMethod === 'credit_card' && args.card_name) {
             const { data: card } = await supabase
               .from('cards')
-              .select('id')
+              .select('id, name')
               .ilike('name', `%${args.card_name}%`)
               .eq('organization_id', context.organizationId)
               .maybeSingle();
             
-            if (card) cardId = card.id;
+            if (card) {
+              cardId = card.id;
+            } else {
+              // Cartão não encontrado - retornar lista de cartões disponíveis
+              const { data: allCards } = await supabase
+                .from('cards')
+                .select('name')
+                .eq('organization_id', context.organizationId)
+                .eq('is_active', true);
+              
+              const cardsList = allCards?.map(c => c.name).join(', ') || 'nenhum cartão cadastrado';
+              
+              return {
+                success: false,
+                message: `Cartão "${args.card_name}" não encontrado. Cartões disponíveis: ${cardsList}. Qual foi?`
+              };
+            }
           }
           
           const expenseData = {
@@ -796,8 +812,9 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
    * Instruções conversacionais (system message)
    */
   getConversationalInstructions(context) {
-    const { userName, organizationId } = context;
+    const { userName, organizationId, availableCards } = context;
     const firstName = userName ? userName.split(' ')[0] : 'você';
+    const cardsList = availableCards?.join(', ') || 'Nubank, C6';
     
     return `Você é Zul, assistente financeiro do MeuAzulão.
 Fale em português natural, com tom leve, claro e brasileiro.
@@ -821,7 +838,7 @@ Slots necessários para save_expense:
 - descrição (texto)
 - pagamento (pix | dinheiro | débito | crédito)
 - pagador (eu | nome)
-- se pagamento = crédito → cartão e parcelas
+- se pagamento = crédito → OBRIGATÓRIO perguntar nome do cartão e parcelas ANTES de chamar save_expense
 
 Regras de fluxo:
 - Se faltar 1 slot → pergunte apenas ele.
@@ -840,7 +857,13 @@ User: Gastei 150 no mercado
 You: Boa, ${firstName}! 150 no mercado. Pagou como: pix, débito ou crédito?
 
 User: 120 cinema no crédito
-You: Fechou. Qual cartão e em quantas parcelas?
+You: Fechou! Qual cartão foi?
+
+User: Nubank roxinho
+You: E em quantas parcelas?
+
+User: 1x
+You: [Apenas chame save_expense - não escreva NADA]
 
 User: 80 farmácia, pix, eu
 You: [Neste caso, você NÃO DEVE escrever NADA. Apenas chame save_expense e deixe que a função retorne a mensagem. Não apareça "[CHAMANDO...]" ou qualquer texto na conversa.]
@@ -1085,10 +1108,11 @@ ${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de for
   /**
    * Processar mensagem do usuário (método principal)
    */
-  async processMessage(message, userId, userName, userPhone) {
+  async processMessage(message, userId, userName, userPhone, context = {}) {
     try {
       console.log(`📨 [ZUL] Processando mensagem de ${userName} (${userId})`);
       console.log(`📨 [ZUL] Mensagem: "${message}"`);
+      console.log(`📨 [ZUL] Context recebido:`, JSON.stringify(context, null, 2));
       
       // Se for do chat web (sem userPhone), usar versão web
       if (!userPhone) {
@@ -1096,7 +1120,7 @@ ${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de for
         const response = await this.sendWebChatMessage(
           userId, 
           message, 
-          { userName }
+          { userName, ...context }
         );
         
         return {
@@ -1110,7 +1134,7 @@ ${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de for
       const response = await this.sendConversationalMessage(
         userId, 
         message, 
-        { userName, organizationId: null }, 
+        { userName, organizationId: context.organizationId, ...context }, 
         userPhone
       );
       
