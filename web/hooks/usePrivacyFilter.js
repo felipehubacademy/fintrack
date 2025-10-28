@@ -10,17 +10,7 @@ export function usePrivacyFilter(organization, user, costCenters) {
       
       // Se for individual: só o dono vê
       const userCostCenter = costCenters.find(cc => cc.user_id === user.id);
-      const shouldShow = item.cost_center_id === userCostCenter?.id || !item.cost_center_id;
-      
-      console.log('🔍 [PRIVACY] Filtering expense:', {
-        expenseId: item.id,
-        expenseOwner: item.owner,
-        expenseCostCenterId: item.cost_center_id,
-        userCostCenterId: userCostCenter?.id,
-        shouldShow
-      });
-      
-      return shouldShow;
+      return item.cost_center_id === userCostCenter?.id || !item.cost_center_id;
     });
   };
   
