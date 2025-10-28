@@ -458,9 +458,9 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             owner = context.userName || context.firstName || owner;
           }
           
-          // Buscar cost_center_id se owner não for "Compartilhado"
+          // Buscar cost_center_id se owner não for "Compartilhado"  
           let costCenterId = null;
-          const isShared = owner?.toLowerCase()?.includes('compartilhado') || owner?.toLowerCase() === 'compartilhado';
+          const isShared = owner?.toLowerCase()?.includes('compartilhado');
           
           if (!isShared && owner) {
             const { data: costCenter } = await supabase
@@ -470,23 +470,35 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
               .eq('organization_id', context.organizationId)
               .maybeSingle();
             
-            if (costCenter) {
-              costCenterId = costCenter.id;
-            }
+            if (costCenter) costCenterId = costCenter.id;
+          }
+          
+          // Buscar category_id se tiver categoria
+          let categoryId = null;
+          if (args.category) {
+            const { data: cat } = await supabase
+              .from('budget_categories')
+              .select('id')
+              .eq('name', args.category)
+              .eq('organization_id', context.organizationId)
+              .maybeSingle();
+            
+            if (cat) categoryId = cat.id;
           }
           
           const expenseData = {
-            amount,
+            amount: amount,
             description: args.description,
-            payment_method: paymentMethod,
-            owner: owner || context.userName,
             date: new Date().toISOString().split('T')[0],
             category: args.category || null,
+            category_id: categoryId,
+            owner: owner || context.userName,
             cost_center_id: costCenterId,
-            is_shared: isShared,
+            payment_method: paymentMethod,
             organization_id: context.organizationId,
             user_id: context.userId || userId,
             status: 'confirmed',
+            is_shared: isShared || false,
             confirmed_at: new Date().toISOString(),
             confirmed_by: context.userId || userId,
             source: 'whatsapp',
