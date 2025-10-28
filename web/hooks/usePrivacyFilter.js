@@ -8,9 +8,12 @@ export function usePrivacyFilter(organization, user, costCenters) {
       // Se for compartilhado/da org: todos veem
       if (item.split || item.is_shared) return true;
       
+      // Se NÃO tiver cost_center_id, é da organização (todos veem)
+      if (!item.cost_center_id) return true;
+      
       // Se for individual: só o dono vê
       const userCostCenter = costCenters.find(cc => cc.user_id === user.id);
-      return item.cost_center_id === userCostCenter?.id || !item.cost_center_id;
+      return item.cost_center_id === userCostCenter?.id;
     });
   };
   
