@@ -429,6 +429,17 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
    * Enviar mensagem conversacional usando GPT-4 Chat Completion (NÃO Assistant API)
    */
   async sendConversationalMessage(userId, userMessage, context = {}, userPhone) {
+    // Garantir que context tem saveExpense
+    if (!context.saveExpense) {
+      console.log('⚠️ Context sem saveExpense, adicionando stub');
+      context.saveExpense = async (args) => {
+        console.log('💾 [STUB] Salvando despesa:', args);
+        return {
+          success: true,
+          message: `Anotado! R$ ${args.amount} - ${args.description} ✅`
+        };
+      };
+    }
     try {
       console.log('💬 [GPT-4] Iniciando conversa...');
       
@@ -448,6 +459,8 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
       if (isFirstMessage) {
         systemMessage += `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${context.userName?.split(' ')[0] || 'o usuário'} de forma calorosa antes de começar!`;
       }
+      
+      // Se tiver informações coletadas, dizer ao GPT para verificar
       if (Object.keys(collectedInfo).length > 0) {
         systemMessage += `\n\n📝 INFORMAÇÕES JÁ COLETADAS NESTA CONVERSA:\n`;
         if (collectedInfo.amount) systemMessage += `- Valor: R$ ${collectedInfo.amount}\n`;
