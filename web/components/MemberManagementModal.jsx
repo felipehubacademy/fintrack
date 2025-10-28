@@ -72,7 +72,8 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
     const newTotal = currentTotal + parseFloat(formData.splitPercentage || 0);
     
     setCalculatedTotal(newTotal);
-    setStillShowsError(newTotal > 100);
+    // Mostrar modal de rebalanceamento se o total não for exatamente 100% (exceto viewer)
+    setStillShowsError(Math.abs(newTotal - 100) > 0.01 && formData.role !== 'viewer');
   }, [editablePercentages, formData.splitPercentage, showInviteForm, costCenters]);
   
   // Estados de confirmação
@@ -211,9 +212,13 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
       return;
     }
 
-    // Se ainda há erro de split, avisar
-    if (calculatedTotal > 100) {
-      warning(`A soma dos percentuais ainda não totaliza 100% (${calculatedTotal.toFixed(1)}%). Ajuste os valores para prosseguir.`);
+    // Validar se o total é exatamente 100% (exceto viewer que não precisa)
+    if (formData.role !== 'viewer' && Math.abs(calculatedTotal - 100) > 0.01) {
+      if (calculatedTotal > 100) {
+        warning(`A soma dos percentuais ultrapassa 100% (${calculatedTotal.toFixed(1)}%). Ajuste os valores para totalizar exatamente 100%.`);
+      } else {
+        warning(`A soma dos percentuais está abaixo de 100% (${calculatedTotal.toFixed(1)}%). Ajuste os valores para totalizar exatamente 100%.`);
+      }
       return;
     }
 
@@ -228,6 +233,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
           organizationId: organization.id,
           email: formData.email.trim(),
           name: formData.name.trim(),
+          invitedBy: orgUser?.id,
           role: formData.role,
           splitPercentage: formData.splitPercentage,
           color: formData.color
@@ -637,10 +643,13 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                         <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-red-800 mb-2">
-                            A soma dos percentuais ultrapassa 100% ({calculatedTotal.toFixed(1)}%).
+                            {calculatedTotal > 100 
+                              ? `A soma dos percentuais ultrapassa 100% (${calculatedTotal.toFixed(1)}%).`
+                              : `A soma dos percentuais está abaixo de 100% (${calculatedTotal.toFixed(1)}%).`
+                            }
                           </p>
                           <p className="text-sm text-red-700">
-                            Ajuste os percentuais abaixo para totalizar 100%:
+                            Ajuste os percentuais abaixo para totalizar exatamente 100%:
                           </p>
                         </div>
                       </div>
@@ -683,7 +692,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                             Total (incluindo novo membro)
                           </span>
                           <span className={`text-sm font-semibold ${
-                            calculatedTotal === 100
+                            Math.abs(calculatedTotal - 100) <= 0.01
                               ? 'text-green-600'
                               : 'text-red-600'
                           }`}>

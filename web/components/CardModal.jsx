@@ -66,8 +66,8 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim() || formData.name.trim().length < 3) {
-      newErrors.name = 'Nome deve ter pelo menos 3 caracteres';
+    if (!formData.name.trim() || formData.name.trim().length < 2) {
+      newErrors.name = 'Nome deve ter pelo menos 2 caracteres';
     }
 
     if (!formData.bank.trim()) {
