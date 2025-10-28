@@ -5,7 +5,6 @@ import Link from 'next/link';
 import MonthCharts from '../../components/MonthCharts';
 import IncomeCharts from '../../components/IncomeCharts';
 import MonthlyComparison from '../../components/MonthlyComparison';
-import StatsCards from '../../components/dashboard/StatsCards';
 import QuickActions from '../../components/dashboard/QuickActions';
 import NotificationModal from '../../components/NotificationModal';
 import LoadingLogo from '../../components/LoadingLogo';
@@ -20,8 +19,15 @@ import {
   Search,
   Calendar,
   TrendingUp,
+  TrendingDown,
   Users,
-  RefreshCw
+  RefreshCw,
+  CreditCard,
+  Wallet,
+  HelpCircle,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  DollarSign
 } from 'lucide-react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
@@ -46,6 +52,10 @@ export default function DashboardHome() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [cards, setCards] = useState([]);
+  const [cardsUsage, setCardsUsage] = useState({});
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [openTooltip, setOpenTooltip] = useState(null);
 
   useEffect(() => {
     console.log('🔍 [Dashboard] useEffect triggered:', { orgLoading, orgError, organization: !!organization });
@@ -54,6 +64,8 @@ export default function DashboardHome() {
       checkOnboardingStatus();
       fetchAllExpenses();
       fetchAllIncomes();
+      fetchCards();
+      fetchBankAccounts();
     } else if (!orgLoading && orgError) {
       console.log('❌ [Dashboard] Organization error, redirecting to login');
       router.push('/');
@@ -278,10 +290,105 @@ export default function DashboardHome() {
       await fetchAllExpenses();
       await fetchAllIncomes();
       await fetchMonthlyData();
+      await fetchCards();
+      await fetchBankAccounts();
     } catch (error) {
       console.error('Error refreshing data:', error);
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const fetchCards = async () => {
+    if (!organization) return;
+    
+    try {
+      let query = supabase
+        .from('cards')
+        .select('*')
+        .eq('is_active', true)
+        .eq('type', 'credit')
+        .order('created_at', { ascending: false });
+
+      if (organization?.id && organization.id !== 'default-org') {
+        query = query.eq('organization_id', organization.id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      setCards(data || []);
+      
+      // Calcular uso de cada cartão
+      if (data && data.length) {
+        await calculateCardsUsage(data);
+      } else {
+        setCardsUsage({});
+      }
+    } catch (error) {
+      console.error('Error fetching cards:', error);
+    }
+  };
+
+  const calculateCardsUsage = async (cardsList) => {
+    const today = new Date();
+    const refDate = today.toISOString().split('T')[0];
+
+    const entries = await Promise.all(
+      cardsList.map(async (card) => {
+        // Obter ciclo de faturamento
+        let startDate, endDate;
+        try {
+          const { data: cycle } = await supabase.rpc('get_billing_cycle', {
+            card_uuid: card.id,
+            reference_date: refDate
+          });
+          if (cycle && cycle.length) {
+            startDate = cycle[0].start_date;
+            endDate = cycle[0].end_date;
+          }
+        } catch {}
+        
+        if (!startDate || !endDate) {
+          const y = today.getFullYear();
+          const m = today.getMonth();
+          const start = new Date(y, m, 1);
+          const end = new Date(y, m + 1, 0);
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
+        }
+
+        // Somar todas as despesas confirmadas desse cartão
+        const { data: expenses } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('payment_method', 'credit_card')
+          .eq('card_id', card.id)
+          .eq('status', 'confirmed');
+
+        const used = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+        return [card.id, { used, limit: Number(card.credit_limit || 0) }];
+      })
+    );
+
+    setCardsUsage(Object.fromEntries(entries));
+  };
+
+  const fetchBankAccounts = async () => {
+    if (!organization) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('bank_accounts')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setBankAccounts(data || []);
+    } catch (error) {
+      console.error('Error fetching bank accounts:', error);
     }
   };
 
@@ -475,6 +582,40 @@ export default function DashboardHome() {
   // Usar despesas brutas do mês diretamente nos gráficos
   const expensesForCharts = monthExpenses || [];
 
+  // Calcular totais de cartões
+  const creditCards = cards.filter(c => c.type === 'credit');
+  const totalCreditUsed = creditCards.reduce((sum, card) => {
+    const usage = cardsUsage[card.id]?.used || 0;
+    return sum + usage;
+  }, 0);
+  
+  const totalCreditAvailable = creditCards.reduce((sum, card) => {
+    const limit = cardsUsage[card.id]?.limit || card.credit_limit || 0;
+    const used = cardsUsage[card.id]?.used || 0;
+    return sum + Math.max(0, limit - used);
+  }, 0);
+
+  // Calcular total consolidado das contas bancárias
+  const totalBankBalance = bankAccounts.reduce((sum, account) => {
+    return sum + parseFloat(account.current_balance || 0);
+  }, 0);
+
+  // Calcular dados para os cards existentes
+  const totalIncomes = monthIncomes.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+  const balance = totalIncomes - grandTotal;
+  
+  const calculateGrowth = (current, previous) => {
+    if (!current || current === 0) return 0;
+    if (!previous || previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const expensesGrowth = calculateGrowth(grandTotal, previousMonthData?.totalExpenses || 0);
+  const incomesGrowth = calculateGrowth(totalIncomes, 0);
+  const balanceGrowth = previousMonthData?.totalExpenses
+    ? calculateGrowth(balance, (0 - previousMonthData.totalExpenses))
+    : 0;
+
 
   if (orgLoading || !isDataLoaded) {
     return (
@@ -533,15 +674,302 @@ export default function DashboardHome() {
           </CardHeader>
         </Card>
 
-        {/* Stats Cards */}
-        <StatsCards 
-          totalExpenses={grandTotal}
-          totalIncomes={monthIncomes.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0)}
-          previousMonthData={{
-            totalExpenses: previousMonthData.totalExpenses,
-            totalIncomes: 0 // TODO: calcular entradas do mês anterior
-          }}
-        />
+        {/* Stats Cards - Grid 2x3 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* Card 1: Total de Entradas */}
+          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total de Entradas
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-flight-blue/5">
+                <ArrowDownCircle className="h-4 w-4 text-flight-blue" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                R$ {Number(totalIncomes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <div className="flex items-center space-x-2 text-xs">
+                {incomesGrowth > 0 && (
+                  <>
+                    <TrendingUp className="h-3 w-3 text-green-600" />
+                    <span className="text-green-600">+{Math.abs(incomesGrowth || 0).toFixed(1)}%</span>
+                  </>
+                )}
+                {incomesGrowth < 0 && (
+                  <>
+                    <TrendingDown className="h-3 w-3 text-red-600" />
+                    <span className="text-red-600">-{Math.abs(incomesGrowth || 0).toFixed(1)}%</span>
+                  </>
+                )}
+                {incomesGrowth === 0 && (
+                  <>
+                    <span className="text-gray-500">0%</span>
+                  </>
+                )}
+                <span className="text-gray-500">vs mês anterior</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 2: Total de Despesas */}
+          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total de Despesas
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-gray-50">
+                <ArrowUpCircle className="h-4 w-4 text-gray-600" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                - R$ {Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <div className="flex items-center space-x-2 text-xs">
+                {expensesGrowth > 0 && (
+                  <>
+                    <TrendingUp className="h-3 w-3 text-red-600" />
+                    <span className="text-red-600">+{Math.abs(expensesGrowth || 0).toFixed(1)}%</span>
+                  </>
+                )}
+                {expensesGrowth < 0 && (
+                  <>
+                    <TrendingDown className="h-3 w-3 text-green-600" />
+                    <span className="text-green-600">-{Math.abs(expensesGrowth || 0).toFixed(1)}%</span>
+                  </>
+                )}
+                {expensesGrowth === 0 && (
+                  <>
+                    <span className="text-gray-500">0%</span>
+                  </>
+                )}
+                <span className="text-gray-500">vs mês anterior</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 3: Saldo do Mês */}
+          <Card className={`border shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden ${
+            balance >= 0 
+              ? 'border-green-200 bg-green-50' 
+              : 'border-red-200 bg-red-50'
+          }`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+              <CardTitle className={`text-sm font-medium ${
+                balance >= 0 ? 'text-gray-600' : 'text-gray-600'
+              }`}>
+                Saldo do Mês
+              </CardTitle>
+              <div className={`p-2 rounded-lg ${
+                balance >= 0 ? 'bg-green-50' : 'bg-red-50'
+              }`}>
+                <DollarSign className={`h-4 w-4 ${
+                  balance >= 0 ? 'text-green-600' : 'text-red-600'
+                }`} />
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className={`text-2xl font-bold mb-1 ${
+                balance >= 0 ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {balance >= 0 ? '' : '-'} R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <div className="flex items-center space-x-2 text-xs">
+                {balanceGrowth > 0 && (
+                  <>
+                    <TrendingUp className="h-3 w-3 text-green-600" />
+                    <span className="text-green-600">+{Math.abs(balanceGrowth || 0).toFixed(1)}%</span>
+                  </>
+                )}
+                {balanceGrowth < 0 && (
+                  <>
+                    <TrendingDown className="h-3 w-3 text-red-600" />
+                    <span className="text-red-600">-{Math.abs(balanceGrowth || 0).toFixed(1)}%</span>
+                  </>
+                )}
+                {balanceGrowth === 0 && (
+                  <>
+                    <span className="text-gray-500">0%</span>
+                  </>
+                )}
+                <span className="text-gray-500">vs mês anterior</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Novo Card 1: Total de Crédito Usado */}
+          <div className="relative group">
+            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer" onClick={() => setOpenTooltip(openTooltip === 'credit-used' ? null : 'credit-used')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Total de Crédito Usado
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-gray-100">
+                  <CreditCard className="h-4 w-4 text-gray-600" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 relative">
+                <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  R$ {Number(totalCreditUsed).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Em todos os cartões
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Tooltip */}
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[280px] max-w-[400px] md:invisible md:group-hover:visible ${openTooltip === 'credit-used' ? 'visible' : 'invisible'}`}>
+              <p className="text-sm font-semibold text-gray-900 mb-3">Uso por Cartão</p>
+              <div className="space-y-2">
+                {creditCards.length === 0 ? (
+                  <p className="text-sm text-gray-500">Nenhum cartão de crédito cadastrado</p>
+                ) : (
+                  creditCards.map(card => {
+                    const usage = cardsUsage[card.id] || { used: 0, limit: card.credit_limit || 0 };
+                    const percentage = usage.limit > 0 ? ((usage.used / usage.limit) * 100).toFixed(1) : 0;
+                    return (
+                      <div key={card.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2 min-w-0 flex-1">
+                          <div className="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0"></div>
+                          <span className="text-gray-700 font-medium truncate">{card.name || 'Sem nome'}</span>
+                        </div>
+                        <div className="text-right ml-2">
+                          <span className="text-gray-900 font-semibold">R$ {Number(usage.used).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-500 ml-2 text-xs">({percentage}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Novo Card 2: Total de Crédito Disponível */}
+          <div className="relative group">
+            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer" onClick={() => setOpenTooltip(openTooltip === 'credit-available' ? null : 'credit-available')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Total de Crédito Disponível
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-gray-100">
+                  <Wallet className="h-4 w-4 text-gray-600" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 relative">
+                <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  R$ {Number(totalCreditAvailable).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Limite disponível
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Tooltip */}
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[280px] max-w-[400px] md:invisible md:group-hover:visible ${openTooltip === 'credit-available' ? 'visible' : 'invisible'}`}>
+              <p className="text-sm font-semibold text-gray-900 mb-3">Disponível por Cartão</p>
+              <div className="space-y-2">
+                {creditCards.length === 0 ? (
+                  <p className="text-sm text-gray-500">Nenhum cartão de crédito cadastrado</p>
+                ) : (
+                  creditCards.map(card => {
+                    const usage = cardsUsage[card.id] || { used: 0, limit: card.credit_limit || 0 };
+                    const available = Math.max(0, usage.limit - usage.used);
+                    return (
+                      <div key={card.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2 min-w-0 flex-1">
+                          <div className="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0"></div>
+                          <span className="text-gray-700 font-medium truncate">{card.name || 'Sem nome'}</span>
+                        </div>
+                        <div className="text-right ml-2">
+                          <span className="text-gray-900 font-semibold">R$ {Number(available).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Novo Card 3: Total Consolidado das Contas Bancárias */}
+          <div className="relative group">
+            <Card className={`border shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer ${
+              totalBankBalance < 0 
+                ? 'border-red-200 bg-red-50' 
+                : 'border-gray-200 bg-gray-50'
+            }`} onClick={() => setOpenTooltip(openTooltip === 'bank-balance' ? null : 'bank-balance')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className={`text-sm font-medium ${
+                  totalBankBalance < 0 ? 'text-red-700' : 'text-gray-600'
+                }`}>
+                  Total Consolidado das Contas
+                </CardTitle>
+                <div className={`p-2 rounded-lg ${
+                  totalBankBalance < 0 ? 'bg-red-100' : 'bg-gray-100'
+                }`}>
+                  <Wallet className={`h-4 w-4 ${
+                    totalBankBalance < 0 ? 'text-red-600' : 'text-gray-600'
+                  }`} />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 relative">
+                <HelpCircle className={`absolute bottom-2 right-2 h-3 w-3 opacity-50 group-hover:opacity-70 transition-opacity ${
+                  totalBankBalance < 0 ? 'text-red-400' : 'text-gray-400'
+                }`} />
+                <div className={`text-2xl font-bold mb-1 ${
+                  totalBankBalance < 0 ? 'text-red-600' : 'text-gray-900'
+                }`}>
+                  R$ {Number(Math.abs(totalBankBalance)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {totalBankBalance < 0 && <span className="text-lg ml-1">-</span>}
+                </div>
+                <p className={`text-xs mt-1 ${
+                  totalBankBalance < 0 ? 'text-red-600' : 'text-gray-500'
+                }`}>
+                  Saldo total das contas
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Tooltip */}
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[280px] max-w-[400px] md:invisible md:group-hover:visible ${openTooltip === 'bank-balance' ? 'visible' : 'invisible'}`}>
+              <p className="text-sm font-semibold text-gray-900 mb-3">Saldo por Conta</p>
+              <div className="space-y-2">
+                {bankAccounts.length === 0 ? (
+                  <p className="text-sm text-gray-500">Nenhuma conta bancária cadastrada</p>
+                ) : (
+                  bankAccounts.map(account => {
+                    const balance = parseFloat(account.current_balance || 0);
+                    return (
+                      <div key={account.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2 min-w-0 flex-1">
+                          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                            balance < 0 ? 'bg-red-500' : 'bg-green-500'
+                          }`}></div>
+                          <span className="text-gray-700 font-medium truncate">{account.name || 'Sem nome'}</span>
+                        </div>
+                        <div className="text-right ml-2">
+                          <span className={`font-semibold ${
+                            balance < 0 ? 'text-red-600' : 'text-gray-900'
+                          }`}>
+                            R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            {balance < 0 && <span className="ml-1">-</span>}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Quick Actions */}
         <QuickActions />

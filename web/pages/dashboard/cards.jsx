@@ -37,7 +37,7 @@ import Link from 'next/link';
 export default function CardsDashboard() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
-  const { success, showError } = useNotificationContext();
+  const { success, error: showError } = useNotificationContext();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -170,52 +170,140 @@ export default function CardsDashboard() {
   // Funções CRUD para cartões
   const handleAddCard = async (cardData) => {
     try {
-      const { error } = await supabase
+      // Converter cor CSS class para hex se necessário
+      const colorMap = {
+        'bg-blue-600': '#2563EB',
+        'bg-orange-600': '#EA580C',
+        'bg-purple-600': '#9333EA',
+        'bg-green-600': '#16A34A',
+        'bg-gray-600': '#4B5563',
+        'bg-red-600': '#DC2626'
+      };
+      let color = cardData.color?.startsWith('#') 
+        ? cardData.color 
+        : (colorMap[cardData.color] || '#3B82F6');
+      
+      // Garantir que a cor tenha no máximo 7 caracteres (limite da coluna)
+      if (color && color.length > 7) {
+        color = color.substring(0, 7);
+      }
+
+      // Calcular limite disponível baseado em limite usado (se fornecido)
+      const creditLimit = cardData.credit_limit ? parseFloat(cardData.credit_limit) : 0;
+      const usedLimit = cardData.used_limit ? parseFloat(cardData.used_limit) : 0;
+      const availableLimit = Math.max(0, creditLimit - usedLimit);
+
+      // Preparar dados para inserção, garantindo valores corretos
+      const insertData = {
+        name: cardData.name?.trim() || '',
+        bank: cardData.bank?.trim() || null,
+        holder_name: cardData.holder_name?.trim() || null,
+        billing_day: parseInt(cardData.billing_day) || null,
+        closing_day: cardData.closing_day ? parseInt(cardData.closing_day) : null,
+        best_day: cardData.best_day ? parseInt(cardData.best_day) : null,
+        credit_limit: creditLimit || null,
+        available_limit: availableLimit || creditLimit || null,
+        color: color, // Máximo 7 caracteres
+        type: 'credit',
+        organization_id: organization.id,
+        owner_id: orgUser.id,
+        is_active: true
+      };
+
+      // Validações antes de inserir
+      if (!insertData.name) {
+        throw new Error('Nome do cartão é obrigatório');
+      }
+      if (!insertData.billing_day || insertData.billing_day < 1 || insertData.billing_day > 31) {
+        throw new Error('Dia de vencimento deve ser entre 1 e 31');
+      }
+
+      console.log('📝 Inserindo cartão:', insertData);
+
+      const { data, error } = await supabase
         .from('cards')
-        .insert([{
-          ...cardData,
-          organization_id: organization.id,
-          owner_id: orgUser.id,
-          is_active: true,
-          available_limit: cardData.credit_limit,
-          type: 'credit'
-        }]);
+        .insert([insertData])
+        .select();
       
       if (error) {
+        console.error('❌ Erro detalhado do Supabase:', error);
         throw error;
       }
+
+      console.log('✅ Cartão criado:', data);
 
       await fetchCards();
       setShowModal(false);
       success('Cartão criado com sucesso!');
     } catch (error) {
-      console.error('Error adding card:', error);
-      showError('Erro ao criar cartão: ' + (error.message || 'Erro desconhecido'));
+      console.error('❌ Error adding card:', error);
+      const errorMessage = error?.message || error?.details || 'Erro desconhecido';
+      showError('Erro ao criar cartão: ' + errorMessage);
     }
   };
 
   const handleEditCard = async (cardData) => {
     try {
-      const { error } = await supabase
+      // Converter cor CSS class para hex se necessário (mesmo tratamento do add)
+      const colorMap = {
+        'bg-blue-600': '#2563EB',
+        'bg-orange-600': '#EA580C',
+        'bg-purple-600': '#9333EA',
+        'bg-green-600': '#16A34A',
+        'bg-gray-600': '#4B5563',
+        'bg-red-600': '#DC2626'
+      };
+      let color = cardData.color?.startsWith('#') 
+        ? cardData.color 
+        : (colorMap[cardData.color] || '#3B82F6');
+      
+      // Garantir que a cor tenha no máximo 7 caracteres (limite da coluna)
+      if (color && color.length > 7) {
+        color = color.substring(0, 7);
+      }
+
+      // Calcular limite disponível baseado em limite usado (se fornecido)
+      const creditLimit = cardData.credit_limit ? parseFloat(cardData.credit_limit) : 0;
+      const usedLimit = cardData.used_limit ? parseFloat(cardData.used_limit) : 0;
+      const availableLimit = Math.max(0, creditLimit - usedLimit);
+
+      // Preparar dados para atualização
+      const updateData = {
+        name: cardData.name?.trim() || '',
+        bank: cardData.bank?.trim() || null,
+        holder_name: cardData.holder_name?.trim() || null,
+        billing_day: cardData.billing_day ? parseInt(cardData.billing_day) : null,
+        closing_day: cardData.closing_day ? parseInt(cardData.closing_day) : null,
+        best_day: cardData.best_day ? parseInt(cardData.best_day) : null,
+        credit_limit: creditLimit || null,
+        available_limit: availableLimit || creditLimit || null,
+        color: color,
+        type: cardData.type || 'credit'
+      };
+
+      console.log('📝 Atualizando cartão:', updateData);
+
+      const { data, error } = await supabase
         .from('cards')
-        .update({
-          ...cardData,
-          // Em modo "gestão", não calculamos uso aqui; alinhar available ao novo limite
-          available_limit: cardData.credit_limit
-        })
-        .eq('id', editingCard.id);
+        .update(updateData)
+        .eq('id', editingCard.id)
+        .select();
       
       if (error) {
+        console.error('❌ Erro detalhado do Supabase:', error);
         throw error;
       }
+
+      console.log('✅ Cartão atualizado:', data);
 
       await fetchCards();
       setShowModal(false);
       setEditingCard(null);
       success('Cartão atualizado com sucesso!');
     } catch (error) {
-      console.error('Error editing card:', error);
-      showError('Erro ao atualizar cartão: ' + (error.message || 'Erro desconhecido'));
+      console.error('❌ Error editing card:', error);
+      const errorMessage = error?.message || error?.details || 'Erro desconhecido';
+      showError('Erro ao atualizar cartão: ' + errorMessage);
     }
   };
 
@@ -374,12 +462,21 @@ export default function CardsDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {cards.map((card) => {
             const limit = card.credit_limit || 0;
-            console.log('Card color:', card.color, 'Card name:', card.name);
+            
+            // Determinar a cor do card: se for hex (#), usar inline style, senão usar classe CSS
+            const isHexColor = card.color && card.color.startsWith('#');
+            const isCssClass = card.color && card.color.startsWith('bg-');
+            
+            const cardColorStyle = isHexColor ? { backgroundColor: card.color } : {};
+            const cardColorClass = isCssClass ? card.color : (isHexColor ? '' : 'bg-blue-600');
             
             return (
               <Card key={card.id} className="border border-flight-blue/20 bg-white shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden">
                 {/* Card Visual */}
-                <div className={`h-36 ${card.color && card.color.startsWith('bg-') ? card.color : 'bg-blue-600'} p-6 text-white relative`}>
+                <div 
+                  className={`h-36 ${cardColorClass} p-6 text-white relative`}
+                  style={cardColorStyle}
+                >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                     </div>
@@ -518,7 +615,7 @@ export default function CardsDashboard() {
               <p className="text-gray-600 mb-6">Adicione seus cartões para ter controle total sobre seus gastos e limites.</p>
               <Button 
                 onClick={openAddModal}
-                className="bg-gradient-to-r from-deep-sky to-flight-blue hover:from-flight-blue hover:to-feather-blue shadow-lg hover:shadow-xl transition-all duration-300"
+                className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeiro Cartão

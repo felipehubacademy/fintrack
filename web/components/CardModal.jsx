@@ -21,6 +21,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
     billing_day: '',
     closing_day: '',
     credit_limit: '',
+    used_limit: '',
     color: 'bg-blue-600'
   });
   const [errors, setErrors] = useState({});
@@ -28,14 +29,24 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
 
   useEffect(() => {
     if (editingCard) {
+      // Calcular limite usado baseado em available_limit
+      const creditLimit = parseFloat(editingCard.credit_limit || 0);
+      // Se available_limit existe e é diferente do credit_limit, calcular o usado
+      let calculatedUsed = 0;
+      if (editingCard.available_limit !== null && editingCard.available_limit !== undefined) {
+        const availableLimit = parseFloat(editingCard.available_limit || 0);
+        calculatedUsed = Math.max(0, creditLimit - availableLimit);
+      }
+      
       setFormData({
         name: editingCard.name || '',
         bank: editingCard.bank || '',
         holder_name: editingCard.holder_name || '',
         billing_day: editingCard.billing_day?.toString() || '',
         closing_day: editingCard.closing_day?.toString() || '',
-        credit_limit: editingCard.credit_limit?.toString() || '',
-        color: editingCard.color || 'from-blue-600 to-purple-600'
+        credit_limit: creditLimit > 0 ? creditLimit.toString() : '',
+        used_limit: calculatedUsed > 0 ? calculatedUsed.toString() : '',
+        color: editingCard.color || '#3B82F6'
       });
     } else {
       setFormData({
@@ -45,6 +56,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         billing_day: '',
         closing_day: '',
         credit_limit: '',
+        used_limit: '',
         color: 'bg-blue-600'
       });
     }
@@ -78,6 +90,12 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
       newErrors.credit_limit = 'Limite deve ser maior que zero';
     }
 
+    // Validar limite usado: deve ser >= 0 e <= limite de crédito
+    const creditLimit = parseFloat(formData.credit_limit || 0);
+    const usedLimit = parseFloat(formData.used_limit || 0);
+    if (formData.used_limit && (usedLimit < 0 || usedLimit > creditLimit)) {
+      newErrors.used_limit = 'Limite usado deve estar entre 0 e o limite de crédito';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -91,15 +109,24 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
     setLoading(true);
     try {
       // Calcular o melhor dia de compra (dia seguinte ao fechamento)
-      const closingDay = parseInt(formData.closing_day);
-      const bestDay = closingDay === 31 ? 1 : closingDay + 1;
+      // Se não tiver closing_day, não calcular best_day
+      const closingDay = formData.closing_day ? parseInt(formData.closing_day) : null;
+      const bestDay = closingDay && !isNaN(closingDay) 
+        ? (closingDay === 31 ? 1 : closingDay + 1)
+        : null;
+
+      const creditLimit = parseFloat(formData.credit_limit);
+      const usedLimit = parseFloat(formData.used_limit || 0);
+      const availableLimit = Math.max(0, creditLimit - usedLimit);
 
       const cardData = {
         ...formData,
         billing_day: parseInt(formData.billing_day),
         closing_day: closingDay,
         best_day: bestDay,
-        credit_limit: parseFloat(formData.credit_limit)
+        credit_limit: creditLimit,
+        used_limit: usedLimit,
+        calculated_available_limit: availableLimit
       };
 
       await onSave(cardData);
@@ -239,6 +266,42 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                   {errors.credit_limit}
                 </p>
               )}
+            </div>
+
+            {/* Limite Já em Uso */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Limite Já em Uso (Opcional)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.used_limit}
+                onChange={(e) => handleChange('used_limit', e.target.value)}
+                placeholder="0.00"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
+                  errors.used_limit ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+              {errors.used_limit && (
+                <p className="mt-1 text-sm text-red-600 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {errors.used_limit}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                💡 Informe o valor já gasto no cartão antes de cadastrá-lo aqui. 
+                {(() => {
+                  const creditLimit = parseFloat(formData.credit_limit || 0);
+                  const usedLimit = parseFloat(formData.used_limit || 0);
+                  const availableLimit = Math.max(0, creditLimit - usedLimit);
+                  if (creditLimit > 0) {
+                    return ` Limite disponível: R$ ${availableLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                  }
+                  return '';
+                })()}
+              </p>
             </div>
 
             {/* Dias de vencimento e melhor dia */}
