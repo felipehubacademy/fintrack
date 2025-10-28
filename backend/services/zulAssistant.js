@@ -535,7 +535,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             whatsapp_message_id: `msg_${Date.now()}`
           };
           
-          console.log('💾 [SAVE] Dados da despesa:', JSON.stringify(expenseData, null, 2));
+          console.log('💾 [SAVE] Salvando despesa com dados:', JSON.stringify(expenseData, null, 2));
           
           const { data, error } = await supabase
             .from('expenses')
