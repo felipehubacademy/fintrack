@@ -2,7 +2,15 @@ import { useMemo } from 'react';
 
 export function usePrivacyFilter(organization, user, costCenters) {
   const filterByPrivacy = (data) => {
-    if (!user || !costCenters) return data;
+    // Se não tiver user ou costCenters vazio, retorna dados sem filtrar
+    // (evita ocultar tudo antes dos dados carregarem)
+    if (!user || !costCenters || costCenters.length === 0) {
+      console.log('⏳ [FILTER] Aguardando dados (user ou costCenters):', {
+        hasUser: !!user,
+        costCentersLength: costCenters?.length || 0
+      });
+      return data;
+    }
     
     return data.filter(item => {
       // Se for compartilhado/da org: todos veem

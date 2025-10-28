@@ -94,20 +94,21 @@ export default function TransactionsDashboard() {
   }, [router.isReady, router.query]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !orgLoading && organization && isV2Ready) {
       console.log('🔍 [FINANCE] Fetching expenses with:', { 
         user: user?.id, 
         filter, 
         orgLoading, 
         orgError, 
         organization,
-        isV2Ready 
+        isV2Ready,
+        costCentersLength: costCenters?.length || 0
       });
       fetchExpenses();
       fetchIncomes();
       fetchCategories();
     }
-  }, [user, filter, isV2Ready]);
+  }, [user, filter, isV2Ready, orgLoading, organization, costCenters]);
 
   // Combinar expenses e incomes após ambos estarem carregados
   useEffect(() => {
@@ -251,6 +252,11 @@ export default function TransactionsDashboard() {
   };
 
   const fetchIncomes = async () => {
+    if (!organization || !isV2Ready) {
+      console.log('⏳ [FINANCE] Aguardando organização para buscar incomes...');
+      return;
+    }
+    
     try {
       const startOfMonth = `${filter.month}-01`;
       const [year, month] = filter.month.split('-');
