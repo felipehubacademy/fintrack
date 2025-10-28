@@ -458,6 +458,23 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             owner = context.userName || context.firstName || owner;
           }
           
+          // Buscar cost_center_id se owner não for "Compartilhado"
+          let costCenterId = null;
+          const isShared = owner?.toLowerCase()?.includes('compartilhado') || owner?.toLowerCase() === 'compartilhado';
+          
+          if (!isShared && owner) {
+            const { data: costCenter } = await supabase
+              .from('cost_centers')
+              .select('id')
+              .eq('name', owner)
+              .eq('organization_id', context.organizationId)
+              .maybeSingle();
+            
+            if (costCenter) {
+              costCenterId = costCenter.id;
+            }
+          }
+          
           const expenseData = {
             amount,
             description: args.description,
@@ -465,10 +482,15 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             owner: owner || context.userName,
             date: new Date().toISOString().split('T')[0],
             category: args.category || null,
+            cost_center_id: costCenterId,
+            is_shared: isShared,
             organization_id: context.organizationId,
             user_id: context.userId || userId,
             status: 'confirmed',
-            source: 'whatsapp'
+            confirmed_at: new Date().toISOString(),
+            confirmed_by: context.userId || userId,
+            source: 'whatsapp',
+            whatsapp_message_id: `msg_${Date.now()}`
           };
           
           console.log('💾 [SAVE] Dados da despesa:', JSON.stringify(expenseData, null, 2));
