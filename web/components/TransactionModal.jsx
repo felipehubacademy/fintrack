@@ -30,18 +30,24 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
   const isCredit = form.payment_method === 'credit_card';
-  const isShared = form.owner_name === 'Compartilhado';
+  // Verificar se é compartilhado: se owner_name for 'Compartilhado' ou o nome da organização
+  const isShared = form.owner_name === 'Compartilhado' || form.owner_name === (organization?.name || 'Organização');
 
   useEffect(() => {
     if (editingTransaction) {
       setTransactionType(editingTransaction.type || 'expense');
       if (editingTransaction.type === 'income') {
+        // Se for compartilhado, usar o nome da organização (ou 'Compartilhado' se não tiver)
+        const ownerName = editingTransaction.is_shared 
+          ? (organization?.name || 'Compartilhado')
+          : (editingTransaction.cost_center?.name || '');
+        
         setForm({
           description: editingTransaction.description || '',
           amount: editingTransaction.amount?.toString() || '',
           date: editingTransaction.date || new Date().toISOString().slice(0, 10),
           category: editingTransaction.category || '',
-          owner_name: editingTransaction.is_shared ? 'Compartilhado' : (editingTransaction.cost_center?.name || ''),
+          owner_name: ownerName,
           category_id: '',
           payment_method: editingTransaction.payment_method || 'cash',
           card_id: '',
@@ -117,22 +123,26 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     return allCenters;
   }, [costCenters, organization, isSoloUser]);
 
+  // Inicializar splits quando selecionar organização/compartilhado
   useEffect(() => {
-    if (isShared && splitDetails.length === 0) {
+    if (isShared && splitDetails.length === 0 && costCenters && costCenters.length > 0) {
       const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
-      const defaultSplits = activeCenters.map(cc => ({
-        cost_center_id: cc.id,
-        name: cc.name,
-        color: cc.color,
-        percentage: parseFloat(cc.default_split_percentage || 0),
-        amount: 0
-      }));
-      setSplitDetails(defaultSplits);
+      if (activeCenters.length > 0) {
+        const defaultSplits = activeCenters.map(cc => ({
+          cost_center_id: cc.id,
+          name: cc.name,
+          color: cc.color,
+          percentage: parseFloat(cc.default_split_percentage || 0),
+          amount: 0
+        }));
+        setSplitDetails(defaultSplits);
+        console.log('🔍 [TRANSACTION MODAL] Organização/compartilhado selecionado, splits inicializados:', defaultSplits.length);
+      }
     } else if (!isShared) {
       setSplitDetails([]);
       setShowSplitConfig(false);
     }
-  }, [isShared, costCenters]);
+  }, [isShared, costCenters, form.owner_name, organization?.name]);
 
   useEffect(() => {
     if (isShared && form.amount && splitDetails.length > 0) {
@@ -207,7 +217,16 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       return;
     }
 
-    if (isShared && totalPercentage !== 100) {
+    // Recalcular isShared antes de salvar (pode ter mudado)
+    const willBeShared = form.owner_name === 'Compartilhado' || form.owner_name === (organization?.name || 'Organização');
+    
+    // Validar splits se for compartilhado
+    if (willBeShared && splitDetails.length === 0) {
+      warning('É necessário configurar a divisão da entrada/despesa compartilhada');
+      return;
+    }
+
+    if (willBeShared && totalPercentage !== 100) {
       warning(`A divisão deve somar exatamente 100%. Atual: ${totalPercentage}%`);
       return;
     }
@@ -218,7 +237,17 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       if (transactionType === 'income') {
         // Salvar como entrada
         const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
-        const costCenter = selectedOption.isShared ? null : selectedOption;
+        const isOptionShared = selectedOption?.isShared || willBeShared;
+        const costCenter = isOptionShared ? null : selectedOption;
+
+        console.log('💾 [TRANSACTION MODAL] Salvando income:', {
+          owner_name: form.owner_name,
+          organization_name: organization?.name,
+          willBeShared,
+          isOptionShared,
+          cost_center_id: costCenter?.id || null,
+          splitDetails_count: splitDetails.length
+        });
 
         let income;
         let error;
@@ -233,8 +262,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
               date: form.date,
               category: form.category || null,
               payment_method: form.payment_method,
-              cost_center_id: form.is_shared ? null : costCenter?.id,
-              is_shared: form.is_shared,
+              cost_center_id: willBeShared ? null : costCenter?.id,
+              is_shared: willBeShared, // Usar willBeShared calculado acima
               status: 'confirmed'
             })
             .eq('id', editingTransaction.id)
@@ -245,20 +274,24 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           error = updateError;
         } else {
           // Criar nova entrada
+          const insertData = {
+            description: form.description,
+            amount: parseFloat(form.amount),
+            date: form.date,
+            category: form.category || null,
+            payment_method: form.payment_method,
+            cost_center_id: willBeShared ? null : costCenter?.id,
+            is_shared: willBeShared, // Usar willBeShared calculado acima
+            organization_id: organization.id,
+            user_id: orgUser.id,
+            status: 'confirmed'
+          };
+          
+          console.log('💾 [TRANSACTION MODAL] Inserting income:', insertData);
+          
           const { data, error: insertError } = await supabase
             .from('incomes')
-            .insert({
-              description: form.description,
-              amount: parseFloat(form.amount),
-              date: form.date,
-              category: form.category || null,
-              payment_method: form.payment_method,
-              cost_center_id: form.is_shared ? null : costCenter?.id,
-              is_shared: form.is_shared,
-              organization_id: organization.id,
-              user_id: orgUser.id,
-              status: 'confirmed'
-            })
+            .insert(insertData)
             .select()
             .single();
           
@@ -268,7 +301,9 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
         if (error) throw error;
 
-        if (isShared && splitDetails.length > 0) {
+        console.log('✅ [TRANSACTION MODAL] Income saved:', income);
+
+        if (willBeShared && splitDetails.length > 0) {
           // Se está editando, deletar splits antigos primeiro
           if (editingTransaction) {
             const { error: deleteError } = await supabase
@@ -301,10 +336,23 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           throw new Error('Responsável inválido');
         }
         
-        const costCenter = selectedOption.isShared ? null : selectedOption;
+        const isOptionShared = selectedOption.isShared || willBeShared;
+        const costCenter = isOptionShared ? null : selectedOption;
+        
+        console.log('💾 [TRANSACTION MODAL] Salvando expense:', {
+          owner_name: form.owner_name,
+          organization_name: organization?.name,
+          willBeShared,
+          isOptionShared,
+          cost_center_id: costCenter?.id || null,
+          splitDetails_count: splitDetails.length
+        });
 
         if (isCredit) {
           if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
+          
+          // Para a RPC, enviar "Compartilhado" se for compartilhado (a função detecta isso)
+          const ownerForRPC = willBeShared ? 'Compartilhado' : form.owner_name;
           
           const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
             p_amount: Number(form.amount),
@@ -314,14 +362,31 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             p_card_id: form.card_id,
             p_category_id: category?.id || null,
             p_cost_center_id: costCenter?.id || null,
-            p_owner: form.owner_name,
+            p_owner: ownerForRPC, // "Compartilhado" para despesa compartilhada
             p_organization_id: organization.id,
             p_user_id: orgUser.id,
             p_whatsapp_message_id: null
           });
           if (error) throw error;
+          
+          // Atualizar o owner para o nome da organização após criar parcelas
+          if (willBeShared && ownerForRPC !== form.owner_name) {
+            const { error: updateError } = await supabase
+              .from('expenses')
+              .update({ 
+                owner: form.owner_name,
+                is_shared: true 
+              })
+              .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+            
+            if (updateError) {
+              console.error('⚠️ Erro ao atualizar owner das parcelas:', updateError);
+            }
+          }
+          
+          console.log('✅ [TRANSACTION MODAL] Installments created, parent_expense_id:', parentExpenseId);
 
-          if (isShared && splitDetails.length > 0) {
+          if (willBeShared && splitDetails.length > 0) {
             const splitsToInsert = splitDetails.map(split => ({
               expense_id: parentExpenseId,
               cost_center_id: split.cost_center_id,
@@ -339,7 +404,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           const dataToSave = {
             cost_center_id: costCenter?.id || null,
             owner: form.owner_name,
-            is_shared: isShared,
+            is_shared: willBeShared, // Usar willBeShared calculado acima
             category_id: category?.id || null,
             category: category?.name || null,
             amount: Number(form.amount),
@@ -351,6 +416,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             confirmed_by: orgUser.id,
             source: 'manual'
           };
+          
+          console.log('💾 [TRANSACTION MODAL] Inserting expense:', dataToSave);
 
           let expense;
           let error;
@@ -386,7 +453,9 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           
           if (error) throw error;
 
-          if (isShared && splitDetails.length > 0) {
+          console.log('✅ [TRANSACTION MODAL] Expense saved:', expense);
+
+          if (willBeShared && splitDetails.length > 0) {
             // Se está editando, deletar splits antigos primeiro
             if (editingTransaction) {
               const { error: deleteError } = await supabase

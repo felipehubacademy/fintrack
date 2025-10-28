@@ -2,26 +2,42 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
-import { Settings, LogOut, ChevronDown, Menu, X, FileText, Receipt, CreditCard, TrendingUp, Wallet, Target } from 'lucide-react';
+import { Settings, LogOut, ChevronDown, Menu, X, FileText, Receipt, CreditCard, TrendingUp, Wallet, Target, User, Users } from 'lucide-react';
 import Logo from './Logo';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
 import { useDynamicUrls } from '../hooks/useDynamicUrls';
+import { useOrganization } from '../hooks/useOrganization';
+import Avatar from './Avatar';
+import ProfileModal from './ProfileModal';
 
 export default function Header({ 
-  organization, 
-  user: orgUser, 
+  organization: orgProp, 
+  user: orgUserProp, 
   pageTitle = null
 }) {
   const router = useRouter();
   const { getDynamicUrl } = useDynamicUrls();
+  const { organization: orgFromHook, user: orgUserFromHook, costCenters } = useOrganization();
+  
+  // Usar props se fornecidas, senão usar do hook (para compatibilidade)
+  const organization = orgProp || orgFromHook;
+  const orgUser = orgUserProp || orgUserFromHook;
+  
   const [financeDropdownOpen, setFinanceDropdownOpen] = useState(false);
   const [planningDropdownOpen, setPlanningDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFinanceOpen, setMobileFinanceOpen] = useState(false);
   const [mobilePlanningOpen, setMobilePlanningOpen] = useState(false);
+  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const financeRef = useRef(null);
   const planningRef = useRef(null);
+  const settingsRef = useRef(null);
+  
+  // Buscar cor do cost center do usuário
+  const userCostCenter = costCenters?.find(cc => cc.user_id === orgUser?.id);
+  const avatarColor = userCostCenter?.color || null;
 
   // Fechar dropdowns ao clicar fora
   useEffect(() => {
@@ -31,6 +47,9 @@ export default function Header({
       }
       if (planningRef.current && !planningRef.current.contains(event.target)) {
         setPlanningDropdownOpen(false);
+      }
+      if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+        setSettingsDropdownOpen(false);
       }
     };
 
@@ -229,18 +248,91 @@ export default function Header({
                 organizationId={organization.id} 
               />
             )}
-            <Link href={getDynamicUrl('/dashboard/config')} className="hidden md:block">
+            
+            {/* Dropdown de Configurações */}
+            {orgUser && (
+              <div className="relative hidden md:block" ref={settingsRef}>
+                <button
+                  onClick={() => {
+                    setSettingsDropdownOpen(!settingsDropdownOpen);
+                    setFinanceDropdownOpen(false);
+                    setPlanningDropdownOpen(false);
+                  }}
+                  className="flex items-center space-x-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <Avatar 
+                    src={orgUser.avatar_url} 
+                    name={orgUser.name} 
+                    size="sm"
+                    color={avatarColor}
+                  />
+                  <Settings className="h-4 w-4 text-gray-600" />
+                </button>
+                
+                {settingsDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-2 border-b border-gray-200">
+                      <div className="flex items-center space-x-3">
+                        <Avatar 
+                          src={orgUser.avatar_url} 
+                          name={orgUser.name} 
+                          size="md"
+                          color={avatarColor}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {orgUser.name}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {orgUser.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        setShowProfileModal(true);
+                        setSettingsDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors text-gray-700"
+                    >
+                      <User className="h-4 w-4" />
+                      <span className="text-sm">Meu Perfil</span>
+                    </button>
+                    
+                    <Link
+                      href={getDynamicUrl('/dashboard/config')}
+                      onClick={() => setSettingsDropdownOpen(false)}
+                      className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 transition-colors text-gray-700"
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span className="text-sm">Configurações</span>
+                    </Link>
+                    
+                    <div className="border-t border-gray-200 mt-2 pt-2">
+                      <button
+                        onClick={() => {
+                          setSettingsDropdownOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full flex items-center space-x-2 px-4 py-2 hover:bg-red-50 transition-colors text-red-600"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span className="text-sm">Sair</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Mobile: botão simples de settings */}
+            <Link href={getDynamicUrl('/dashboard/config')} className="md:hidden">
               <Button variant="ghost" size="icon">
                 <Settings className="h-4 w-4" />
               </Button>
             </Link>
-            <Button 
-              variant="ghost" 
-              onClick={handleLogout} 
-              className="hidden md:flex text-red-600 hover:bg-red-50 px-3 py-2 text-sm"
-            >
-              Sair
-            </Button>
 
             {/* Mobile Menu Button */}
             <Button
@@ -420,6 +512,14 @@ export default function Header({
             </div>
           </div>
         </>
+      )}
+      
+      {/* Profile Modal */}
+      {orgUser && (
+        <ProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+        />
       )}
     </>
   );

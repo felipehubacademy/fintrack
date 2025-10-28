@@ -292,10 +292,14 @@ export default function CreateOrganization() {
                     type="text"
                     placeholder="Ex: Família Silva"
                     required
+                    maxLength={40}
                     value={formData.name}
                     onChange={(e) => handleChange('name', e.target.value)}
                     className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Máximo de 40 caracteres
+                  </p>
                 </div>
               </div>
 

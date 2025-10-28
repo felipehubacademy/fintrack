@@ -10,9 +10,18 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState('member'); // Padrão: member (pode criar despesas)
+  const [color, setColor] = useState('#3B82F6'); // Azul primário como padrão
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showZulCard, setShowZulCard] = useState(false);
+  
+  // Paleta de cores disponíveis
+  const colors = [
+    '#3B82F6', // Azul primário (padrão)
+    '#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B',
+    '#10B981', '#06B6D4', '#8B5A2B', '#6B7280', '#F97316',
+    '#14B8A6', '#F43F5E', '#0EA5E9', '#A855F7', '#22C55E'
+  ];
 
   // Mostrar card do Zul após 1.5s
   useEffect(() => {
@@ -59,6 +68,7 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
           email: email,
           name: name.trim(),
           role: role, // Enviar role selecionado
+          color: color, // Enviar cor selecionada
           organizationId: organization.id,
           invitedBy: user?.id
         }),
@@ -243,6 +253,31 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
               {role === 'viewer' && 'Apenas visualiza despesas e relatórios'}
               {role === 'member' && 'Pode criar despesas e gerenciar seu centro de custo'}
               {role === 'admin' && 'Acesso total: gerenciar usuários, configurações e despesas'}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-gray-700 text-sm xl:text-base font-medium mb-2">
+              Cor do Perfil
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`w-10 h-10 xl:w-12 xl:h-12 rounded-full transition-all ${
+                    color === c 
+                      ? 'ring-2 ring-gray-800 ring-offset-2 scale-110' 
+                      : 'hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: c }}
+                  title={`Cor ${c}`}
+                />
+              ))}
+            </div>
+            <p className="text-gray-500 text-xs xl:text-sm mt-2">
+              Esta cor será usada para identificar este membro em gráficos e análises
             </p>
           </div>
 

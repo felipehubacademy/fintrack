@@ -41,6 +41,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
   const isCredit = form.payment_method === 'credit_card';
+  // Verificar se é compartilhado: se owner_name for o nome da organização
   const isShared = form.owner_name === (organization?.name || 'Organização');
 
   useEffect(() => {
@@ -69,6 +70,25 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
       }
     }
   }, [isOpen, organization, isSoloUser, orgUser, costCenters]);
+
+  // Quando selecionar organização, garantir que splits estão configurados
+  useEffect(() => {
+    if (isShared && splitDetails.length === 0 && costCenters && costCenters.length > 0) {
+      // Inicializar splits automaticamente quando selecionar organização
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
+      if (activeCenters.length > 0) {
+        const defaultSplits = activeCenters.map(cc => ({
+          cost_center_id: cc.id,
+          name: cc.name,
+          color: cc.color,
+          percentage: parseFloat(cc.default_split_percentage || 0),
+          amount: 0
+        }));
+        setSplitDetails(defaultSplits);
+        console.log('🔍 [EXPENSE MODAL] Organização selecionada, splits inicializados:', defaultSplits.length);
+      }
+    }
+  }, [form.owner_name, organization?.name, costCenters, isShared]);
 
   const ownerOptions = useMemo(() => {
     // Todos os cost centers (não há mais distinção de "type")
@@ -203,8 +223,16 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
       return;
     }
 
+    // Recalcular isShared antes de salvar (pode ter mudado)
+    const willBeShared = form.owner_name === (organization?.name || 'Organização');
+    
     // Validar splits se for compartilhado
-    if (isShared && totalPercentage !== 100) {
+    if (willBeShared && splitDetails.length === 0) {
+      warning('É necessário configurar a divisão da despesa compartilhada');
+      return;
+    }
+    
+    if (willBeShared && totalPercentage !== 100) {
       warning(`A divisão deve somar exatamente 100%. Atual: ${totalPercentage}%`);
       return;
     }
@@ -220,11 +248,25 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         throw new Error('Responsável inválido');
       }
       
-      // Para "Compartilhado", cost_center_id é NULL
-      const costCenter = selectedOption.isShared ? null : selectedOption;
+      // Para despesa compartilhada (nome da organização), cost_center_id é NULL
+      const isOptionShared = selectedOption.isShared || willBeShared;
+      const costCenter = isOptionShared ? null : selectedOption;
+      
+      console.log('💾 [EXPENSE MODAL] Salvando despesa:', {
+        owner_name: form.owner_name,
+        organization_name: organization?.name,
+        willBeShared,
+        isOptionShared,
+        cost_center_id: costCenter?.id || null,
+        splitDetails_count: splitDetails.length
+      });
 
       if (isCredit) {
         if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
+        
+        // Para a RPC, enviar "Compartilhado" se for compartilhado (a função detecta isso)
+        // Mas salvar o nome da org no owner depois
+        const ownerForRPC = willBeShared ? 'Compartilhado' : form.owner_name;
         
         // Call create_installments RPC
         const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
@@ -235,15 +277,33 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           p_card_id: form.card_id,
           p_category_id: category?.id || null,
           p_cost_center_id: costCenter?.id || null, // NULL para compartilhado
-          p_owner: form.owner_name,
+          p_owner: ownerForRPC, // "Compartilhado" para despesa compartilhada
           p_organization_id: organization.id,
           p_user_id: orgUser.id,
           p_whatsapp_message_id: null
         });
         if (error) throw error;
+        
+        // Atualizar o owner para o nome da organização após criar parcelas
+        if (willBeShared && ownerForRPC !== form.owner_name) {
+          const { error: updateError } = await supabase
+            .from('expenses')
+            .update({ 
+              owner: form.owner_name,
+              is_shared: true 
+            })
+            .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+          
+          if (updateError) {
+            console.error('⚠️ Erro ao atualizar owner das parcelas:', updateError);
+            // Não falhar por causa disso, já que is_shared já está correto
+          }
+        }
+
+        console.log('✅ [EXPENSE MODAL] Installments created, parent_expense_id:', parentExpenseId);
 
         // Se for compartilhado, salvar splits para a despesa principal
-        if (isShared && splitDetails.length > 0) {
+        if (willBeShared && splitDetails.length > 0) {
           console.log('🔍 [EXPENSE MODAL] Saving splits for credit card expense:', splitDetails);
           const splitsToInsert = splitDetails.map(split => ({
             expense_id: parentExpenseId,
@@ -260,6 +320,8 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           if (splitError) {
             throw splitError;
           }
+          
+          console.log('✅ [EXPENSE MODAL] Splits saved successfully');
         }
       } else {
         // Insert single expense
@@ -268,7 +330,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           user_id: orgUser.id,
           cost_center_id: costCenter?.id || null, // NULL para compartilhado
           owner: form.owner_name,
-          is_shared: isShared,
+          is_shared: willBeShared, // Usar willBeShared calculado acima
           category_id: category?.id || null,
           category: category?.name || null,
           amount: Number(form.amount),
@@ -281,6 +343,8 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           source: 'manual'
         };
         
+        console.log('💾 [EXPENSE MODAL] Inserting expense:', insertData);
+        
         const { data: expense, error } = await supabase
           .from('expenses')
           .insert(insertData)
@@ -289,8 +353,10 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         
         if (error) throw error;
 
+        console.log('✅ [EXPENSE MODAL] Expense saved:', expense);
+
         // Se for compartilhado, sempre salvar splits (padrão ou personalizado)
-        if (isShared && splitDetails.length > 0) {
+        if (willBeShared && splitDetails.length > 0) {
           console.log('🔍 [EXPENSE MODAL] Saving splits for non-credit expense:', splitDetails);
           const splitsToInsert = splitDetails.map(split => ({
             expense_id: expense.id,

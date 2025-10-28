@@ -8,6 +8,7 @@ import { useTour } from '../hooks/useTour';
 import { getTourForRoute, getTourTypeFromRoute } from '../data/tourSteps';
 import { useOrganization } from '../hooks/useOrganization';
 import Image from 'next/image';
+import Avatar from './Avatar';
 
 export default function ZulFloatingButton() {
   const router = useRouter();
@@ -18,7 +19,11 @@ export default function ZulFloatingButton() {
   const [isLoading, setIsLoading] = useState(false);
   const [highlightedElement, setHighlightedElement] = useState(null);
   const [showZul, setShowZul] = useState(false);
-  const { organization, user, loading: orgLoading } = useOrganization();
+  const { organization, user, costCenters, loading: orgLoading } = useOrganization();
+  
+  // Buscar cor do cost center do usuário
+  const userCostCenter = costCenters?.find(cc => cc.user_id === user?.id);
+  const avatarColor = userCostCenter?.color || null;
   const previousPathRef = useRef(null);
   const highlightedElementsRef = useRef([]); // Track all highlighted elements
   const { 
@@ -868,7 +873,17 @@ export default function ZulFloatingButton() {
             <div className="flex-1 p-4 overflow-y-auto">
               <div className="space-y-3">
                 {messages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div key={msg.id} className={`flex items-end space-x-2 ${msg.type === 'user' ? 'justify-end flex-row-reverse space-x-reverse' : 'justify-start'}`}>
+                    {/* Avatar - apenas para mensagens do usuário */}
+                    {msg.type === 'user' && user && (
+                      <Avatar 
+                        src={user.avatar_url} 
+                        name={user.name} 
+                        size="sm"
+                        color={avatarColor}
+                      />
+                    )}
+                    
                     <div className={`rounded-lg p-3 max-w-xs ${
                       msg.type === 'user' 
                         ? 'bg-blue-600 text-white rounded-tr-sm' 
@@ -883,6 +898,19 @@ export default function ZulFloatingButton() {
                         }}
                       />
                     </div>
+                    
+                    {/* Avatar do Zul - apenas para mensagens do Zul */}
+                    {msg.type === 'zul' && (
+                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Image
+                          src="/images/logo_flat.svg"
+                          alt="Zul"
+                          width={20}
+                          height={20}
+                          className="scale-125"
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
                 
