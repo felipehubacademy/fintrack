@@ -464,14 +464,14 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             payment_method: paymentMethod,
             owner: owner || context.userName,
             date: new Date().toISOString().split('T')[0],
-            card_name: args.card_name || null,
-            installments: args.installments || 1,
             category: args.category || null,
             organization_id: context.organizationId,
-            user_id: context.userId || userId
+            user_id: context.userId || userId,
+            status: 'confirmed',
+            source: 'whatsapp'
           };
           
-          console.log('💾 [SAVE] Dados da despesa:', expenseData);
+          console.log('💾 [SAVE] Dados da despesa:', JSON.stringify(expenseData, null, 2));
           
           const { data, error } = await supabase
             .from('expenses')
