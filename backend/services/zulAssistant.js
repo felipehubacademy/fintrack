@@ -486,6 +486,19 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             if (cat) categoryId = cat.id;
           }
           
+          // Buscar card_id se for cartão de crédito
+          let cardId = null;
+          if (paymentMethod === 'credit_card' && args.card_name) {
+            const { data: card } = await supabase
+              .from('cards')
+              .select('id')
+              .ilike('name', `%${args.card_name}%`)
+              .eq('organization_id', context.organizationId)
+              .maybeSingle();
+            
+            if (card) cardId = card.id;
+          }
+          
           const expenseData = {
             amount: amount,
             description: args.description,
@@ -495,6 +508,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             owner: owner || context.userName,
             cost_center_id: costCenterId,
             payment_method: paymentMethod,
+            card_id: cardId,
             organization_id: context.organizationId,
             user_id: context.userId || userId,
             status: 'confirmed',
