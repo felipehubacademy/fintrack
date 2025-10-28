@@ -510,48 +510,29 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
         
         const functionResult = await this.handleFunctionCall(functionName, functionArgs, context);
         
-        // Se salvou despesa, limpar histórico
-        if (functionName === 'save_expense' && functionResult.success) {
+        // Se salvou despesa, limpar histórico e retornar APENAS mensagem da função
+        if (functionName === 'save_expense') {
           await this.clearConversationHistory(userPhone);
           
-          // Retornar mensagem personalizada ou padrão
-          return functionResult.message || 'Salvei! 👍';
+          // Retornar APENAS a mensagem da função (ignorar qualquer texto que o GPT escreveu)
+          return functionResult.message || 'Anotado! ✅';
         }
         
-        // Continuar conversa com resultado da função
-        messages.push(assistantMessage);
-        messages.push({
-          role: 'function',
-          name: functionName,
-          content: JSON.stringify(functionResult)
-        });
-        
-        const followUp = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: messages,
-          temperature: 0.6,
-          top_p: 1.0,
-          frequency_penalty: 0.25,
-          presence_penalty: 0.05,
-          max_tokens: 70
-        });
-        
-        const response = followUp.choices[0].message.content;
-        
-        // Salvar no histórico
-        await this.saveToHistory(userPhone, userMessage, response);
-        
-        return response;
+        // Outras funções: não deveriam acontecer aqui
+        return functionResult.message || 'Funcionou!';
       }
       
       // Resposta normal sem function call
       const response = assistantMessage.content;
       
-      // Salvar no histórico
-      console.log('💾 [GPT-4] Salvando no histórico: user="' + userMessage + '", assistant="' + response + '"');
-      await this.saveToHistory(userPhone, userMessage, response);
+      // Filtrar mensagens técnicas que o GPT às vezes escreve
+      const cleanedResponse = response.replace(/\[CHAMANDO.*?\]/gi, '').replace(/\[.*?AGORA.*?\]/gi, '').trim();
       
-      return response;
+      // Salvar no histórico
+      console.log('💾 [GPT-4] Salvando no histórico: user="' + userMessage + '", assistant="' + cleanedResponse + '"');
+      await this.saveToHistory(userPhone, userMessage, cleanedResponse);
+      
+      return cleanedResponse || response;
       
     } catch (error) {
       console.error('❌ [GPT-4] Erro:', error);
@@ -701,9 +682,12 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
 Fale em português natural, com tom leve, claro e brasileiro.
 Seu objetivo é registrar despesas conversando, sem parecer um robô.
 
-IMPORTANTE: 
+IMPORTANTE CRÍTICO: 
 - Se FALTAR algum dado → pergunte em texto
-- Se TIVER TODOS os dados → CHAME A FUNÇÃO save_expense (não responda texto)
+- Se TIVER TODOS os dados → CHAME APENAS A FUNÇÃO save_expense
+- NÃO ESCREVA NADA além da chamada da função
+- A função retorna automaticamente a mensagem de confirmação
+- VOCÊ NÃO PRECISA e NÃO DEVE escrever mensagem alguma quando chamar a função
 
 Evite frases mecânicas como "aguarde" ou "validando".
 Suas mensagens devem ser curtas (como no WhatsApp).
@@ -738,14 +722,20 @@ User: 120 cinema no crédito
 You: Fechou. Qual cartão e em quantas parcelas?
 
 User: 80 farmácia, pix, eu
-You: [Quando tiver todos os dados, NÃO responda nada em texto. Apenas chame a função save_expense sem escrever mensagem ao usuário. A função retorna a mensagem automaticamente.]
+You: [Neste caso, você NÃO DEVE escrever NADA. Apenas chame save_expense e deixe que a função retorne a mensagem. Não apareça "[CHAMANDO...]" ou qualquer texto na conversa.]
 
 User: 200 restaurante
 You: Show. Quem pagou e foi no pix, débito ou crédito?
 
---- NATURALIDADE E REGRA CRÍTICA ---
+--- REGRA ABSOLUTA DE OURO ---
 
-REGRA DE OURO: Quando a função save_expense for chamada, NÃO apareça mensagem de "chamando" ou qualquer texto técnico na conversa. A função retorna a mensagem final ao usuário automaticamente, então você não precisa escrever nada além de chamar a função.
+Se tiver TODOS os dados (valor, descrição, pagamento, responsável):
+1. APENAS chame save_expense
+2. NÃO escreva NADA
+3. NÃO mostre "[CHAMANDO...]" 
+4. NÃO confirme antes
+5. Deixe a função fazer seu trabalho
+6. A mensagem final vem da função automaticamente
 
 Use frases curtas e variações: "Show!", "Beleza!", "Fechou!", "Tranquilo!".
 NUNCA use emoji nas perguntas - apenas na confirmação final.
