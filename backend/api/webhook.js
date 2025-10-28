@@ -162,23 +162,33 @@ async function processWebhook(body) {
             console.log('✅ [B2][DEBUG] User found:', user.name);
 
             console.log('🔄 [B2][DEBUG] Calling ZulAssistant processMessage...');
+            console.log('🔄 [B2][DEBUG] User organization_id:', user.organization_id);
+            
+            // Buscar cartões disponíveis
+            const { data: cards } = await supabase
+              .from('cards')
+              .select('name')
+              .eq('organization_id', user.organization_id)
+              .eq('is_active', true);
+            
+            console.log('🔄 [B2][DEBUG] Found cards:', cards?.map(c => c.name));
             
             // Processar mensagem com ZulAssistant
-            // Passar contexto com saveExpense function
             const context = {
               userName: user.name,
+              userId: user.id,
               organizationId: user.organization_id,
-              saveExpense: async (args) => {
-                const { default: supabaseUtil } = await import('../services/supabase.js');
-                return await saveExpenseToDB(args, user.id, user.organization_id);
-              }
+              availableCards: cards?.map(c => c.name) || []
             };
+            
+            console.log('🔄 [B2][DEBUG] Context montado:', JSON.stringify(context, null, 2));
             
             const result = await zul.processMessage(
               message.text.body,
               user.id,
               user.name,
-              message.from
+              message.from,
+              context
             );
             
             // Enviar resposta via WhatsApp
