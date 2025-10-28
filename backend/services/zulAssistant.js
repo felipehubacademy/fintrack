@@ -473,9 +473,10 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             if (costCenter) costCenterId = costCenter.id;
           }
           
-          // Buscar category_id se tiver categoria
+          // Buscar category_id se tiver categoria (org + globais)
           let categoryId = null;
           if (args.category) {
+            // Primeiro busca na org
             const { data: cat } = await supabase
               .from('budget_categories')
               .select('id')
@@ -483,7 +484,41 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
               .eq('organization_id', context.organizationId)
               .maybeSingle();
             
-            if (cat) categoryId = cat.id;
+            if (cat) {
+              categoryId = cat.id;
+            } else {
+              // Se não encontrou na org, busca nas globais
+              const { data: globalCat } = await supabase
+                .from('budget_categories')
+                .select('id')
+                .eq('name', args.category)
+                .is('organization_id', null)
+                .maybeSingle();
+              
+              if (globalCat) {
+                categoryId = globalCat.id;
+              } else {
+                // Categoria não encontrada - retornar lista de categorias disponíveis
+                const { data: orgCats } = await supabase
+                  .from('budget_categories')
+                  .select('name')
+                  .eq('organization_id', context.organizationId)
+                  .or('type.eq.expense,type.eq.both');
+                
+                const { data: globalCats } = await supabase
+                  .from('budget_categories')
+                  .select('name')
+                  .is('organization_id', null)
+                  .or('type.eq.expense,type.eq.both');
+                
+                const categoriesList = [...(orgCats || []), ...(globalCats || [])].map(c => c.name).join(', ');
+                
+                return {
+                  success: false,
+                  message: `Categoria "${args.category}" não encontrada. Categorias disponíveis: ${categoriesList}. Qual categoria?`
+                };
+              }
+            }
           }
           
           // Buscar card_id se for cartão de crédito
@@ -856,7 +891,7 @@ Proibido:
 --- EXEMPLOS ---
 
 User: Gastei 150 no mercado
-You: Boa, ${firstName}! 150 no mercado. Qual categoria? (ex: Alimentação, Mercado, Transporte)
+You: Boa, ${firstName}! 150 no mercado. Qual categoria?
 
 User: Alimentação
 You: Pagou como: pix, débito ou crédito?
