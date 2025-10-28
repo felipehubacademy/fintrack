@@ -23,7 +23,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
       const today = new Date();
       const refDate = today.toISOString().split('T')[0];
 
-      // Buscar ciclo atual
+      // Buscar ciclo atual para destacar na UI
       let startDate, endDate;
       try {
         const { data: cycle } = await supabase.rpc('get_billing_cycle', {
@@ -36,11 +36,18 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
           setCurrentCycle({ start: startDate, end: endDate });
         }
       } catch (error) {
-        console.error('Erro ao buscar ciclo:', error);
+        console.error('⚠️ Erro ao buscar ciclo atual:', error);
       }
 
       // Buscar todas as despesas confirmadas do cartão
-      const { data: expenses } = await supabase
+      console.log(`🔍 Buscando despesas para o cartão:`, {
+        card_id: card.id,
+        card_name: card.name,
+        payment_method: 'credit_card',
+        status: 'confirmed'
+      });
+
+      const { data: expenses, error: expensesError } = await supabase
         .from('expenses')
         .select('*')
         .eq('payment_method', 'credit_card')
@@ -48,80 +55,192 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
         .eq('status', 'confirmed')
         .order('date', { ascending: true });
 
-      if (!expenses) return;
+      if (expensesError) {
+        console.error('⚠️ Erro ao buscar despesas:', expensesError);
+        setInvoices([]);
+        return;
+      }
+
+      console.log(`🔍 Query retornou ${expenses?.length || 0} despesas`);
+
+      // Se não encontrou nada, tentar buscar sem filtros para debug
+      if (!expenses || expenses.length === 0) {
+        console.log('⚠️ Nenhuma despesa encontrada com os filtros. Buscando todas as despesas do cartão para debug...');
+        
+        const { data: allExpenses, error: allExpensesError } = await supabase
+          .from('expenses')
+          .select('id, date, amount, payment_method, card_id, status, installment_info')
+          .eq('card_id', card.id)
+          .order('date', { ascending: true });
+        
+        if (!allExpensesError && allExpenses) {
+          console.log(`🔍 Total de despesas encontradas (sem filtros): ${allExpenses.length}`);
+          console.log('🔍 Detalhes das despesas:', allExpenses.map(e => ({
+            id: e.id,
+            date: e.date,
+            amount: e.amount,
+            payment_method: e.payment_method,
+            status: e.status,
+            has_installment_info: !!e.installment_info
+          })));
+        }
+        
+        // Verificar se o cartão tem available_limit diferente do credit_limit
+        // (isso explicaria o valor de 150 sem despesas)
+        if (card.available_limit !== null && card.credit_limit !== null) {
+          const calculatedUsed = Number(card.credit_limit) - Number(card.available_limit);
+          console.log(`💰 Cartão tem available_limit definido:`, {
+            credit_limit: card.credit_limit,
+            available_limit: card.available_limit,
+            calculated_used: calculatedUsed,
+            info: 'O valor de "usado" pode estar vindo do available_limit, não de despesas no banco.'
+          });
+        }
+        
+        console.log('ℹ️ Nenhuma despesa encontrada para este cartão');
+        setInvoices([]);
+        return;
+      }
+
+      console.log(`🔍 Processando ${expenses.length} despesas para agrupar faturas`);
+      console.log(`🔍 Informações do cartão:`, { 
+        id: card.id, 
+        name: card.name, 
+        closing_day: card.closing_day, 
+        billing_day: card.billing_day 
+      });
 
       // Agrupar despesas por fatura
       const invoicesMap = {};
+      let processedCount = 0;
+      let skippedCount = 0;
       
       for (const expense of expenses) {
-        if (expense.installment_info) {
-          // É uma parcela
-          const currentInstallment = expense.installment_info.current_installment;
-          const totalInstallments = expense.installment_info.total_installments;
-          const installmentAmount = expense.installment_info.installment_amount;
-          
-          // Calcular em qual fatura esta parcela cai
-          let parcelDate = new Date(expense.date);
-          
-          // Avançar (currentInstallment - 1) meses para chegar na fatura desta parcela
-          parcelDate.setMonth(parcelDate.getMonth() + (currentInstallment - 1));
-          
-          // Calcular qual é o ciclo dessa data
-          const parcelRefDate = parcelDate.toISOString().split('T')[0];
-          
-          try {
-            const { data: parcelCycle } = await supabase.rpc('get_billing_cycle', {
-              card_uuid: card.id,
-              reference_date: parcelRefDate
-            });
+        try {
+          console.log(`🔍 Processando despesa ${expense.id}:`, {
+            date: expense.date,
+            amount: expense.amount,
+            has_installment_info: !!expense.installment_info,
+            installment_info: expense.installment_info
+          });
+
+          // Verificar se é parcela: deve ter installment_info E total_installments > 1
+          // Se total_installments = 1, é "à vista no crédito" mesmo tendo installment_info
+          if (expense.installment_info && 
+              expense.installment_info.total_installments && 
+              expense.installment_info.total_installments > 1) {
+            // É uma parcela de compra parcelada - usar a data da parcela (já calculada corretamente na criação)
+            // A data da parcela corresponde ao closing_day da fatura onde ela cai
+            const parcelDate = expense.date;
             
-            if (parcelCycle && parcelCycle.length) {
-              const cycleKey = parcelCycle[0].start_date;
+            console.log(`  📦 É parcela ${expense.installment_info.current_installment}/${expense.installment_info.total_installments} (data: ${parcelDate})`);
+            
+            // Calcular qual é o ciclo dessa data
+            try {
+              const { data: parcelCycle, error: cycleError } = await supabase.rpc('get_billing_cycle', {
+                card_uuid: card.id,
+                reference_date: parcelDate
+              });
               
-              if (!invoicesMap[cycleKey]) {
-                invoicesMap[cycleKey] = {
-                  startDate: parcelCycle[0].start_date,
-                  endDate: parcelCycle[0].end_date,
-                  total: 0,
-                  expenses: []
-                };
+              if (cycleError) {
+                console.error(`  ⚠️ Erro ao calcular ciclo da parcela ${expense.id}:`, cycleError);
+                skippedCount++;
+                continue;
               }
               
-              invoicesMap[cycleKey].total += Number(installmentAmount || expense.amount || 0);
-              invoicesMap[cycleKey].expenses.push({
-                ...expense,
-                installmentAmount
+              console.log(`  📅 Ciclo da parcela:`, parcelCycle);
+              
+              if (parcelCycle && parcelCycle.length) {
+                const cycleKey = parcelCycle[0].start_date;
+                const installmentAmount = expense.installment_info.installment_amount || expense.amount || 0;
+                
+                console.log(`  ✅ Adicionando à fatura do ciclo: ${cycleKey} (valor: ${installmentAmount})`);
+                
+                if (!invoicesMap[cycleKey]) {
+                  invoicesMap[cycleKey] = {
+                    startDate: parcelCycle[0].start_date,
+                    endDate: parcelCycle[0].end_date,
+                    total: 0,
+                    expenses: []
+                  };
+                }
+                
+                invoicesMap[cycleKey].total += Number(installmentAmount);
+                invoicesMap[cycleKey].expenses.push({
+                  ...expense,
+                  installmentAmount
+                });
+                processedCount++;
+              } else {
+                console.warn(`  ⚠️ Nenhum ciclo retornado para a parcela ${expense.id}`);
+                skippedCount++;
+              }
+            } catch (error) {
+              console.error(`  ⚠️ Erro ao calcular ciclo da parcela ${expense.id}:`, error);
+              skippedCount++;
+            }
+          } else {
+            // Despesa à vista no crédito (1x) ou sem parcelamento
+            console.log(`  💳 Despesa à vista no crédito (data: ${expense.date}, valor: ${expense.amount})`);
+            
+            // Calcular em qual ciclo essa despesa cai
+            try {
+              const { data: expenseCycle, error: cycleError } = await supabase.rpc('get_billing_cycle', {
+                card_uuid: card.id,
+                reference_date: expense.date
               });
+              
+              if (cycleError) {
+                console.error(`  ⚠️ Erro ao calcular ciclo da despesa ${expense.id}:`, cycleError);
+                skippedCount++;
+                continue;
+              }
+              
+              console.log(`  📅 Ciclo da despesa:`, expenseCycle);
+              
+              if (expenseCycle && expenseCycle.length) {
+                const cycleKey = expenseCycle[0].start_date;
+                
+                console.log(`  ✅ Adicionando à fatura do ciclo: ${cycleKey} (valor: ${expense.amount})`);
+                
+                if (!invoicesMap[cycleKey]) {
+                  invoicesMap[cycleKey] = {
+                    startDate: expenseCycle[0].start_date,
+                    endDate: expenseCycle[0].end_date,
+                    total: 0,
+                    expenses: []
+                  };
+                }
+                
+                invoicesMap[cycleKey].total += Number(expense.amount || 0);
+                invoicesMap[cycleKey].expenses.push(expense);
+                processedCount++;
+              } else {
+                console.warn(`  ⚠️ Nenhum ciclo retornado para a despesa ${expense.id} (data: ${expense.date})`);
+                skippedCount++;
+              }
+            } catch (error) {
+              console.error(`  ⚠️ Erro ao calcular ciclo da despesa ${expense.id}:`, error);
+              skippedCount++;
             }
-          } catch (error) {
-            console.error('Erro ao calcular ciclo da parcela:', error);
           }
-        } else {
-          // Despesa à vista ou sem parcelamento
-          // Se está no ciclo atual, adiciona à fatura atual
-          if (startDate && endDate && expense.date >= startDate && expense.date <= endDate) {
-            const cycleKey = startDate;
-            
-            if (!invoicesMap[cycleKey]) {
-              invoicesMap[cycleKey] = {
-                startDate,
-                endDate,
-                total: 0,
-                expenses: []
-              };
-            }
-            
-            invoicesMap[cycleKey].total += Number(expense.amount || 0);
-            invoicesMap[cycleKey].expenses.push(expense);
-          }
+        } catch (error) {
+          console.error(`⚠️ Erro ao processar despesa ${expense.id}:`, error);
+          skippedCount++;
         }
       }
+      
+      console.log(`📊 Resumo: ${processedCount} processadas, ${skippedCount} ignoradas`);
+      
+      console.log(`✅ Faturas agrupadas:`, Object.keys(invoicesMap).length);
+      console.log(`📋 Detalhes das faturas:`, invoicesMap);
 
       // Converter para array e ordenar por data
       const invoicesArray = Object.values(invoicesMap).sort((a, b) => 
         new Date(a.startDate) - new Date(b.startDate)
       );
 
+      console.log(`✅ Faturas finais ordenadas:`, invoicesArray);
       setInvoices(invoicesArray);
     } catch (error) {
       console.error('Erro ao buscar faturas:', error);

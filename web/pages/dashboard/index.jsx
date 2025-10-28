@@ -846,10 +846,19 @@ export default function DashboardHome() {
                   creditCards.map(card => {
                     const usage = cardsUsage[card.id] || { used: 0, limit: card.credit_limit || 0 };
                     const percentage = usage.limit > 0 ? ((usage.used / usage.limit) * 100).toFixed(1) : 0;
+                    
+                    // Determinar cor do cartão
+                    const isHexColor = card.color && card.color.startsWith('#');
+                    const cardColorStyle = isHexColor ? { backgroundColor: card.color } : {};
+                    const cardColorClass = card.color && card.color.startsWith('bg-') ? card.color : 'bg-gray-600';
+                    
                     return (
                       <div key={card.id} className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2 min-w-0 flex-1">
-                          <div className="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0"></div>
+                          <div 
+                            className={`w-3 h-3 rounded-full flex-shrink-0 ${cardColorClass}`}
+                            style={cardColorStyle}
+                          ></div>
                           <span className="text-gray-700 font-medium truncate">{card.name || 'Sem nome'}</span>
                         </div>
                         <div className="text-right ml-2">
@@ -896,10 +905,19 @@ export default function DashboardHome() {
                   creditCards.map(card => {
                     const usage = cardsUsage[card.id] || { used: 0, limit: card.credit_limit || 0 };
                     const available = Math.max(0, usage.limit - usage.used);
+                    
+                    // Determinar cor do cartão
+                    const isHexColor = card.color && card.color.startsWith('#');
+                    const cardColorStyle = isHexColor ? { backgroundColor: card.color } : {};
+                    const cardColorClass = card.color && card.color.startsWith('bg-') ? card.color : 'bg-gray-400';
+                    
                     return (
                       <div key={card.id} className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2 min-w-0 flex-1">
-                          <div className="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0"></div>
+                          <div 
+                            className={`w-3 h-3 rounded-full flex-shrink-0 ${cardColorClass}`}
+                            style={cardColorStyle}
+                          ></div>
                           <span className="text-gray-700 font-medium truncate">{card.name || 'Sem nome'}</span>
                         </div>
                         <div className="text-right ml-2">
@@ -924,7 +942,7 @@ export default function DashboardHome() {
                 <CardTitle className={`text-sm font-medium ${
                   totalBankBalance < 0 ? 'text-red-700' : 'text-gray-600'
                 }`}>
-                  Total Consolidado das Contas
+                  Total Consolidado das Contas Bancárias
                 </CardTitle>
                 <div className={`p-2 rounded-lg ${
                   totalBankBalance < 0 ? 'bg-red-100' : 'bg-gray-100'
@@ -941,8 +959,7 @@ export default function DashboardHome() {
                 <div className={`text-2xl font-bold mb-1 ${
                   totalBankBalance < 0 ? 'text-red-600' : 'text-gray-900'
                 }`}>
-                  R$ {Number(Math.abs(totalBankBalance)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  {totalBankBalance < 0 && <span className="text-lg ml-1">-</span>}
+                  {totalBankBalance < 0 ? '-' : ''} R$ {Number(Math.abs(totalBankBalance)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
                 <p className={`text-xs mt-1 ${
                   totalBankBalance < 0 ? 'text-red-600' : 'text-gray-500'

@@ -386,6 +386,33 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           
           console.log('✅ [TRANSACTION MODAL] Installments created, parent_expense_id:', parentExpenseId);
 
+          // Atualizar available_limit do cartão (decrementar o valor total da compra)
+          // IMPORTANTE: No crédito, mesmo parcelado, o valor total é descontado imediatamente
+          if (form.card_id) {
+            try {
+              const { data: card } = await supabase
+                .from('cards')
+                .select('available_limit, credit_limit')
+                .eq('id', form.card_id)
+                .single();
+              
+              if (card) {
+                const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
+                const newAvailable = Math.max(0, currentAvailable - Number(form.amount));
+                
+                await supabase
+                  .from('cards')
+                  .update({ available_limit: newAvailable })
+                  .eq('id', form.card_id);
+                
+                console.log('✅ [TRANSACTION MODAL] Updated card available_limit:', newAvailable);
+              }
+            } catch (cardUpdateError) {
+              console.error('⚠️ Erro ao atualizar limite disponível do cartão:', cardUpdateError);
+              // Não falhar por causa disso
+            }
+          }
+
           if (willBeShared && splitDetails.length > 0) {
             const splitsToInsert = splitDetails.map(split => ({
               expense_id: parentExpenseId,
