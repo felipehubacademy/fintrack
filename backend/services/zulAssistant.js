@@ -431,13 +431,73 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
   async sendConversationalMessage(userId, userMessage, context = {}, userPhone) {
     // Garantir que context tem saveExpense
     if (!context.saveExpense) {
-      console.log('⚠️ Context sem saveExpense, adicionando stub');
+      console.log('⚠️ Context sem saveExpense, adicionando implementação completa');
       context.saveExpense = async (args) => {
-        console.log('💾 [STUB] Salvando despesa:', args);
-        return {
-          success: true,
-          message: `Anotado! R$ ${args.amount} - ${args.description} ✅`
-        };
+        console.log('💾 [SAVE] Salvando despesa com args:', args);
+        
+        try {
+          // Normalizar payment_method
+          const paymentMethodMap = {
+            'pix': 'pix',
+            'cash': 'cash',
+            'dinheiro': 'cash',
+            'debit_card': 'debit_card',
+            'débito': 'debit_card',
+            'credit_card': 'credit_card',
+            'crédito': 'credit_card'
+          };
+          
+          const paymentMethod = paymentMethodMap[args.payment_method?.toLowerCase()] || args.payment_method || 'other';
+          
+          // Extrair valor
+          const amount = parseFloat(args.amount);
+          
+          // Determinar owner (se "eu", usar nome do contexto)
+          let owner = args.responsible;
+          if (owner?.toLowerCase() === 'eu' || owner?.toLowerCase()?.includes('eu')) {
+            owner = context.userName || context.firstName || owner;
+          }
+          
+          const expenseData = {
+            amount,
+            description: args.description,
+            payment_method: paymentMethod,
+            owner: owner || context.userName,
+            date: new Date().toISOString().split('T')[0],
+            card_name: args.card_name || null,
+            installments: args.installments || 1,
+            category: args.category || null,
+            organization_id: context.organizationId,
+            user_id: context.userId || userId
+          };
+          
+          console.log('💾 [SAVE] Dados da despesa:', expenseData);
+          
+          const { data, error } = await supabase
+            .from('expenses')
+            .insert(expenseData)
+            .select()
+            .single();
+          
+          if (error) {
+            console.error('❌ Erro ao salvar:', error);
+            throw error;
+          }
+          
+          console.log('✅ Despesa salva:', data.id);
+          
+          return {
+            success: true,
+            message: `Anotado! R$ ${amount} - ${args.description} ✅`,
+            expense_id: data.id
+          };
+        } catch (error) {
+          console.error('❌ Erro ao salvar despesa:', error);
+          return {
+            success: false,
+            message: 'Ops! Tive um problema ao salvar. 😅'
+          };
+        }
       };
     }
     try {
