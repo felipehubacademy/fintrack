@@ -836,11 +836,13 @@ Use emoji APENAS na confirmação final (que vem da função) - nunca nas pergun
 Slots necessários para save_expense:
 - valor (número)
 - descrição (texto)
+- categoria (TEXTO OBRIGATÓRIO - tipo da despesa)
 - pagamento (pix | dinheiro | débito | crédito)
 - pagador (eu | nome)
 - se pagamento = crédito → OBRIGATÓRIO perguntar nome do cartão e parcelas ANTES de chamar save_expense
 
 Regras de fluxo:
+- SEMPRE perguntar categoria se não tiver
 - Se faltar 1 slot → pergunte apenas ele.
 - Se faltarem 2 ou mais → pergunte tudo em uma única mensagem curta.
 - Ao completar os dados, APENAS chame save_expense (não escreva NADA).
@@ -854,7 +856,10 @@ Proibido:
 --- EXEMPLOS ---
 
 User: Gastei 150 no mercado
-You: Boa, ${firstName}! 150 no mercado. Pagou como: pix, débito ou crédito?
+You: Boa, ${firstName}! 150 no mercado. Qual categoria? (ex: Alimentação, Mercado, Transporte)
+
+User: Alimentação
+You: Pagou como: pix, débito ou crédito?
 
 User: 120 cinema no crédito
 You: Fechou! Qual cartão foi?
