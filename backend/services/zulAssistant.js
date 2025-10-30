@@ -556,8 +556,8 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             const norm = (s) => (s || '').toString().toLowerCase();
             const d = norm(args.description);
             const catHints = [
-              { keys: ['mercado', 'supermercado', 'padaria'], target: 'Casa' },
-              { keys: ['restaurante', 'lanche', 'pizza', 'ifood', 'sushi', 'bar', 'cafeteria'], target: 'Alimentação' },
+              { keys: ['mercado', 'supermercado'], target: 'Casa' },
+              { keys: ['padaria', 'restaurante', 'lanche', 'pizza', 'ifood', 'sushi', 'bar', 'cafeteria'], target: 'Alimentação' },
               { keys: ['posto', 'gasolina', 'etanol', 'uber', '99', 'taxi', 'ônibus', 'onibus', 'metro'], target: 'Transporte' },
               { keys: ['farmácia', 'farmacia', 'remédio', 'remedio', 'médico', 'medico', 'dentista'], target: 'Saúde' },
               { keys: ['aluguel', 'condominio', 'condomínio', 'agua', 'água', 'luz', 'energia', 'internet'], target: 'Contas' },
@@ -722,7 +722,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             if (!args.card_name || String(args.card_name).trim() === '') {
               return {
                 success: false,
-                message: 'Qual cartão?'
+                message: 'Beleza! Qual cartão?'
               };
             }
 
@@ -730,7 +730,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             if (!args.installments || Number(args.installments) < 1) {
               return {
                 success: false,
-                message: 'Em quantas parcelas? (1x à vista)'
+                message: 'E em quantas parcelas? (1x à vista)'
               };
             }
 
@@ -1110,10 +1110,10 @@ IMPORTANTE CRÍTICO:
 - A função retorna automaticamente a mensagem de confirmação
 - VOCÊ NÃO PRECISA e NÃO DEVE escrever mensagem alguma quando chamar a função
 
-REGRAS DE PERGUNTAS CURTAS:
-- Para pagamento: pergunte SOMENTE "Pagou como?" (ou variação curta). NÃO liste opções na primeira pergunta.
+REGRAS DE PERGUNTAS CURTAS E AMIGÁVEIS:
+- Para pagamento: pergunte SOMENTE "Pagou como?" (ou variação curta e calorosa, ex.: "Beleza! Pagou como?"). NÃO liste opções na primeira pergunta.
 - Liste opções (PIX, dinheiro, débito, crédito) apenas após resposta inválida.
-- Para responsável: pergunte "Quem pagou?" (ou variação curta). Se o usuário disser "eu", mapear para o nome dele.
+- Para responsável: pergunte "Quem pagou?" (ou variação curta e calorosa, ex.: "Show! Quem pagou?"). Se o usuário disser "eu", mapear para o nome dele.
 
 Evite frases mecânicas como "aguarde" ou "validando".
 Suas mensagens devem ser curtas (como no WhatsApp).
@@ -1124,7 +1124,7 @@ Use emoji APENAS na confirmação final (que vem da função) - nunca nas pergun
 Slots necessários para save_expense:
 - valor (número)
 - descrição (texto)
-- categoria (TEXTO OBRIGATÓRIO - tipo da despesa)
+- categoria (tente INFERIR pela descrição; só pergunte se não conseguir)
 - pagamento (pix | dinheiro | débito | crédito)
 - pagador (eu | nome)
 - se pagamento = crédito → OBRIGATÓRIO perguntar nome do cartão e parcelas ANTES de chamar save_expense

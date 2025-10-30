@@ -83,9 +83,9 @@ class ZulMessages {
     // Variações mais naturais baseadas no contexto
     const variations = description && description !== 'gasto não especificado'
       ? [
-          `Como você pagou?`,
-          `Qual foi a forma de pagamento?`,
-          `Pagou como?`
+          `Beleza! Como você pagou?`,
+          `Show! Qual foi a forma de pagamento?`,
+          `Tranquilo! Pagou como?`
         ]
       : [
           `Certo${name ? ` ${name}` : ''}! R$ ${valor} 💰\n\nO que foi?`,
