@@ -52,33 +52,6 @@ async function getUserByPhone(phone) {
 }
 
 /**
- * Salvar despesa no banco
- */
-async function saveExpenseToDB(args, userId, orgId) {
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseClient = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    );
-    
-    // TODO: Implementar lógica completa de save
-    console.log('💾 Salvando despesa:', args);
-    
-    return {
-      success: true,
-      message: `Anotado! R$ ${args.amount} - ${args.description} ✅`
-    };
-  } catch (error) {
-    console.error('❌ Erro ao salvar despesa:', error);
-    return {
-      success: false,
-      message: 'Ops! Tive um problema aqui. 😅'
-    };
-  }
-}
-
-/**
  * Enviar mensagem WhatsApp
  */
 async function sendWhatsAppMessage(to, message) {
@@ -127,6 +100,7 @@ async function processWebhook(body) {
       console.log('🔄 [B1][DEBUG] Messages found:', value.messages.length);
       for (const message of value.messages) {
         console.log('🔄 [B1][DEBUG] Message type:', message.type);
+        
         if (message.type === 'text') {
           console.log(`📱 [B1] Processing message from ${message.from}: "${message.text.body}"`);
 
@@ -173,7 +147,9 @@ async function processWebhook(body) {
             
             console.log('🔄 [B2][DEBUG] Found cards:', cards?.map(c => c.name));
             
-            // Processar mensagem com ZulAssistant
+            // Importar função de persistência refatorada
+            // Nota: A lógica completa de saveExpense está em zulAssistant.js (context.saveExpense)
+            // Aqui apenas garantimos que o contexto tem os dados necessários
             const context = {
               userName: user.name,
               userId: user.id,
