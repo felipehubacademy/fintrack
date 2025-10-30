@@ -526,6 +526,25 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             };
           }
           
+          // Se categoria não vier, tentar inferir pela descrição (sinônimos/keywords)
+          if (!args.category && args.description) {
+            const norm = (s) => (s || '').toString().toLowerCase();
+            const d = norm(args.description);
+            const catHints = [
+              { keys: ['mercado', 'supermercado', 'padaria'], target: 'Casa' },
+              { keys: ['restaurante', 'lanche', 'pizza', 'ifood', 'sushi', 'bar', 'cafeteria'], target: 'Alimentação' },
+              { keys: ['posto', 'gasolina', 'etanol', 'uber', '99', 'taxi', 'ônibus', 'onibus', 'metro'], target: 'Transporte' },
+              { keys: ['farmácia', 'farmacia', 'remédio', 'remedio', 'médico', 'medico', 'dentista'], target: 'Saúde' },
+              { keys: ['aluguel', 'condominio', 'condomínio', 'agua', 'água', 'luz', 'energia', 'internet'], target: 'Contas' }
+            ];
+            for (const hint of catHints) {
+              if (hint.keys.some(k => d.includes(k))) {
+                args.category = hint.target;
+                break;
+              }
+            }
+          }
+
           // Buscar category_id se tiver categoria (org + globais) com normalização e sinônimos
           let categoryId = null;
           if (args.category) {
@@ -744,10 +763,40 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           }
           
           console.log('✅ Despesa salva:', data.id);
-          
+
+          const amountFormatted = Number(amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          const paymentDisplayMap = {
+            'credit_card': 'Cartão de Crédito',
+            'debit_card': 'Débito',
+            'pix': 'Pix',
+            'cash': 'Dinheiro',
+            'bank_transfer': 'Transferência',
+            'boleto': 'Boleto',
+            'other': 'Outro'
+          };
+          const paymentDisplay = paymentDisplayMap[paymentMethod] || paymentMethod;
+
+          // Data formatada (pt-BR). Usa a data salva na despesa (yyyy-mm-dd)
+          const savedDate = expenseData.date;
+          const dateObj = new Date(savedDate + 'T00:00:00');
+          const isToday = (() => {
+            const today = new Date();
+            return dateObj.toDateString() === today.toDateString();
+          })();
+          const dateDisplay = isToday ? 'Hoje' : dateObj.toLocaleDateString('pt-BR');
+
+          const confirmationMsg = [
+            'Anotado! ✅',
+            `R$ ${amountFormatted} - ${args.description}`,
+            `- ${args.category || 'Sem categoria'}`,
+            `- ${paymentDisplay}`,
+            `- ${owner}`,
+            `- ${dateDisplay}`
+          ].join('\n');
+
           return {
             success: true,
-            message: `Anotado! R$ ${amount} - ${args.description} ✅`,
+            message: confirmationMsg,
             expense_id: data.id
           };
         } catch (error) {
@@ -878,7 +927,9 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
   extractCollectedInfo(history) {
     const info = {};
     
-    const conversationText = history.map(m => m.content).join(' ').toLowerCase();
+    // Considerar apenas a última mensagem do usuário, para evitar inferências antigas
+    const lastUserMsg = [...history].reverse().find(m => m.role === 'user');
+    const conversationText = (lastUserMsg?.content || '').toLowerCase();
     
     // Extrair valor
     const amountMatch = conversationText.match(/(?:gastei|paguei|foi|valor)?\s*(?:r\$)?\s*(\d+(?:[.,]\d{1,2})?)/i);
@@ -901,13 +952,9 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
     else if (conversationText.includes('débito') || conversationText.includes('debito')) info.payment_method = 'débito';
     else if (conversationText.includes('crédito') || conversationText.includes('credito')) info.payment_method = 'crédito';
     
-    // Extrair responsável
-    if (conversationText.includes('eu') || conversationText.includes('me') || conversationText.includes('mim')) {
+    // Extrair responsável apenas se explicitamente citado na última mensagem
+    if (conversationText.match(/\b(eu|eu mesmo|fui eu)\b/)) {
       info.responsible = 'eu';
-    } else if (conversationText.includes('felipe')) {
-      info.responsible = 'Felipe';
-    } else if (conversationText.includes('letícia') || conversationText.includes('leticia')) {
-      info.responsible = 'Letícia';
     } else if (conversationText.includes('compartilhado')) {
       info.responsible = 'Compartilhado';
     }
