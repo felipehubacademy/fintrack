@@ -461,9 +461,11 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           
           // Determinar owner (se "eu", usar nome do contexto)
           let owner = args.responsible;
-          const ownerNorm = this.normalizeText(owner);
+          let ownerNorm = this.normalizeText(owner);
           if (ownerNorm === 'eu' || ownerNorm.includes('eu')) {
             owner = context.userName || context.firstName || owner;
+            // Recalcular normalizado após mapear "eu" para o nome do usuário
+            ownerNorm = this.normalizeText(owner);
           }
           
           // Buscar cost_center_id se owner não for "Compartilhado"  

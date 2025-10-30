@@ -83,9 +83,9 @@ class ZulMessages {
     // Variações mais naturais baseadas no contexto
     const variations = description && description !== 'gasto não especificado'
       ? [
-          `Opa! R$ ${valor} de ${description} ${emoji}\n\nComo você pagou?`,
-          `Beleza! Anotei R$ ${valor} em ${description} aqui ${emoji}\n\nQual foi a forma de pagamento?`,
-          `Entendi! R$ ${valor} em ${description} ${emoji}\n\nMe diz como pagou?`
+          `Como você pagou?`,
+          `Qual foi a forma de pagamento?`,
+          `Pagou como?`
         ]
       : [
           `Certo${name ? ` ${name}` : ''}! R$ ${valor} 💰\n\nO que foi?`,
@@ -148,16 +148,16 @@ class ZulMessages {
   askResponsible(costCenters, isAfterCard = false) {
     if (isAfterCard) {
       const variations = [
-        `Perfeito! E quem foi o responsável por essa?`,
-        `Certo! Agora me diz quem foi o responsável?`,
-        `Beleza! Só me fala quem pagou?`
+        `Quem pagou?`,
+        `Quem foi o responsável?`,
+        `Me diz quem pagou?`
       ];
       return this.pickRandom(variations);
     }
     
     const variations = [
-      `E quem foi o responsável por essa?`,
-      `Quem é o responsável?`,
+      `Quem pagou?`,
+      `Quem foi o responsável?`,
       `Me diz quem pagou?`
     ];
     
