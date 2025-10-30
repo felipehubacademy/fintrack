@@ -459,7 +459,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           // Extrair valor
           const amount = parseFloat(args.amount);
           
-          // Determinar owner (se "eu", usar nome do contexto)
+          // Determinar owner (se "eu", usar nome do contexto). Não fazer fallback silencioso.
           let owner = args.responsible;
           let ownerNorm = this.normalizeText(owner);
           if (ownerNorm === 'eu' || ownerNorm.includes('eu')) {
@@ -516,6 +516,14 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
                 }
               }
             }
+          }
+
+          // Se não foi possível determinar responsável/centro, pedir explicitamente
+          if (!isShared && (!owner || !costCenterId)) {
+            return {
+              success: false,
+              message: 'Quem pagou?'
+            };
           }
           
           // Buscar category_id se tiver categoria (org + globais) com normalização e sinônimos
@@ -708,7 +716,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             date: new Date().toISOString().split('T')[0],
             category: args.category || null,
             category_id: categoryId,
-            owner: owner || context.userName,
+            owner: owner,
             cost_center_id: costCenterId,
             payment_method: paymentMethod,
             card_id: cardId,
@@ -1046,7 +1054,7 @@ User: Gastei 150 no mercado
 You: Boa, ${firstName}! 150 no mercado. Qual categoria?
 
 User: Alimentação
-You: Pagou como: pix, débito ou crédito?
+You: Pagou como?
 
 User: 120 cinema no crédito
 You: Fechou! Qual cartão foi?
@@ -1061,7 +1069,7 @@ User: 80 farmácia, pix, eu
 You: [Neste caso, você NÃO DEVE escrever NADA. Apenas chame save_expense e deixe que a função retorne a mensagem. Não apareça "[CHAMANDO...]" ou qualquer texto na conversa.]
 
 User: 200 restaurante
-You: Show. Quem pagou e foi no pix, débito ou crédito?
+You: Show. Quem pagou e foi no pix, dinheiro, débito ou crédito?
 
 --- REGRA ABSOLUTA DE OURO ---
 
