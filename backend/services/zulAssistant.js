@@ -58,6 +58,30 @@ class ZulAssistant {
   }
 
   /**
+   * Escolher variação aleatória de forma mais determinística e variada
+   * Usa timestamp + string para criar um "seed" variado a cada chamada
+   */
+  pickVariation(variations, seed = null) {
+    if (!variations || variations.length === 0) return '';
+    if (variations.length === 1) return variations[0];
+    
+    // Usar timestamp + seed para criar um índice mais variado
+    const timestamp = Date.now();
+    const seedValue = seed ? String(seed).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
+    const random = ((timestamp % 1000) + seedValue) % variations.length;
+    
+    return variations[random];
+  }
+
+  /**
+   * Obter primeiro nome do usuário do contexto
+   */
+  getFirstName(context) {
+    if (!context || !context.userName) return '';
+    return context.userName.split(' ')[0] || '';
+  }
+
+  /**
    * Obter o Assistant ZUL (usando ID fixo da env var)
    */
   async getOrCreateAssistant() {
@@ -526,9 +550,22 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
                   owner = matches[0].name;
                 } else if (matches.length > 1) {
                   const options = matches.map(m => m.name).join(', ');
+                  const firstName = this.getFirstName(context);
+                  const namePart = firstName ? ` ${firstName}` : '';
+                  
+                  const disambiguationMessages = [
+                    `Encontrei mais de um responsável com esse primeiro nome${namePart}. Qual deles? ${options}`,
+                    `Tem mais de um ${owner} aqui${namePart}. Qual? ${options}`,
+                    `Achei vários com esse nome${namePart}. Qual foi? ${options}`,
+                    `Qual desses${namePart}? ${options}`,
+                    `Tem mais de um com esse nome${namePart}. Qual você quer? ${options}`,
+                    `Preciso que você escolha${namePart}: ${options}`,
+                    `Qual desses foi${namePart}? ${options}`,
+                    `Tem vários com esse nome${namePart}. Qual? ${options}`
+                  ];
                   return {
                     success: false,
-                    message: `Encontrei mais de um responsável com esse primeiro nome. Qual deles? ${options}`
+                    message: this.pickVariation(disambiguationMessages, owner)
                   };
                 }
               }
@@ -537,9 +574,24 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
 
           // Se não foi possível determinar responsável/centro, pedir explicitamente
           if (!isShared && (!owner || !costCenterId)) {
+            const firstName = this.getFirstName(context);
+            const namePart = firstName ? ` ${firstName}` : '';
+            
+            const questions = [
+              `Quem pagou${namePart}?`,
+              `Foi você ou alguém específico${namePart}?`,
+              `Me diz quem pagou${namePart}?`,
+              `Quem foi o responsável${namePart}?`,
+              `Quem pagou essa${namePart}?`,
+              `Foi você${namePart}?`,
+              `Me conta quem pagou${namePart}?`,
+              `Quem foi${namePart}?`,
+              `Preciso saber quem pagou${namePart}`,
+              `Quem arcou com essa${namePart}?`
+            ];
             return {
               success: false,
-              message: 'Quem pagou?'
+              message: this.pickVariation(questions, owner || 'responsavel')
             };
           }
           
@@ -556,15 +608,30 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             const norm = (s) => (s || '').toString().toLowerCase();
             const d = norm(args.description);
             const catHints = [
-              { keys: ['mercado', 'supermercado'], target: 'Casa' },
-              { keys: ['padaria', 'restaurante', 'lanche', 'pizza', 'ifood', 'sushi', 'bar', 'cafeteria'], target: 'Alimentação' },
-              { keys: ['posto', 'gasolina', 'etanol', 'uber', '99', 'taxi', 'ônibus', 'onibus', 'metro'], target: 'Transporte' },
-              { keys: ['farmácia', 'farmacia', 'remédio', 'remedio', 'médico', 'medico', 'dentista'], target: 'Saúde' },
-              { keys: ['aluguel', 'condominio', 'condomínio', 'agua', 'água', 'luz', 'energia', 'internet'], target: 'Contas' },
+              // Casa (supermercados, mercado livre, eletrodomésticos, etc)
+              { keys: ['mercado', 'supermercado', 'super', 'hiper', 'atacado', 'atacarejo', 'mercadolivre', 'magalu', 'amazon', 'casas bahia', 'tokstok', 'leroy', 'decoracao', 'decoração', 'limpeza', 'material limpeza'], target: 'Casa' },
               // Eletrodomésticos/Eletroportáteis → Casa
-              { keys: ['ventilador', 'ar condicionado', 'microondas', 'micro-ondas', 'geladeira', 'freezer', 'liquidificador', 'batedeira', 'cafeteira'], target: 'Casa' },
-              // Eletrônicos de uso doméstico
-              { keys: ['tv', 'televisao', 'televisão', 'som', 'home theater'], target: 'Casa' }
+              { keys: ['ventilador', 'ar condicionado', 'microondas', 'micro-ondas', 'geladeira', 'freezer', 'liquidificador', 'batedeira', 'cafeteira', 'aspirador', 'ferro', 'maquina lavar', 'fogao', 'fogão', 'forno'], target: 'Casa' },
+              // Eletrônicos de uso doméstico → Casa
+              { keys: ['tv', 'televisao', 'televisão', 'som', 'home theater', 'notebook', 'tablet', 'monitor', 'mouse', 'teclado'], target: 'Casa' },
+              // Alimentação (padarias, restaurantes, delivery, etc)
+              { keys: ['padaria', 'padarias', 'restaurante', 'lanche', 'lanches', 'pizza', 'ifood', 'ubereats', 'rappi', 'sushi', 'açai', 'acai', 'bar', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hambúrguer', 'hot dog'], target: 'Alimentação' },
+              // Transporte
+              { keys: ['posto', 'gasolina', 'etanol', 'combustivel', 'combustível', 'uber', '99', 'taxi', 'táxi', 'ônibus', 'onibus', 'metro', 'metrô', 'estacionamento', 'ipva', 'rodizio', 'rodízio', 'manutencao', 'manutenção', 'lava rapido', 'lava-rápido', 'oficina', 'seguro carro', 'pedagio', 'pedágio'], target: 'Transporte' },
+              // Saúde
+              { keys: ['farmácia', 'farmacia', 'remédio', 'remedio', 'remedios', 'medicamento', 'medicamentos', 'médico', 'medico', 'dentista', 'hospital', 'clinica', 'clínica', 'exame', 'consulta', 'laboratorio', 'laboratório', 'optica', 'óptica', 'oculos', 'óculos', 'academia', 'smartfit', 'gympass', 'suplemento', 'suplementos', 'fisioterapia', 'fonoaudiologia'], target: 'Saúde' },
+              // Contas
+              { keys: ['aluguel', 'condominio', 'condomínio', 'agua', 'água', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos', 'iptu', 'ir', 'imposto', 'taxa', 'multas', 'detran'], target: 'Contas' },
+              // Educação
+              { keys: ['curso', 'cursos', 'faculdade', 'escola', 'livro', 'livraria', 'udemy', 'curso online', 'pluralsight', 'alura', 'material escolar', 'mensalidade'], target: 'Educação' },
+              // Lazer
+              { keys: ['cinema', 'teatro', 'show', 'balada', 'parque', 'viagem', 'hotel', 'airbnb', 'ingresso', 'ingressos', 'netflix', 'spotify', 'prime', 'disney', 'hbo', 'globoplay', 'youtube premium', 'assinatura', 'streaming'], target: 'Lazer' },
+              // Beleza
+              { keys: ['cabelo', 'barbearia', 'barbeiro', 'manicure', 'pedicure', 'estetica', 'estética', 'cosmetico', 'cosmético', 'cosmeticos', 'cosméticos', 'maquiagem', 'salão', 'salao'], target: 'Beleza' },
+              // Vestuário
+              { keys: ['roupa', 'roupas', 'sapato', 'sapatos', 'tenis', 'tênis', 'camisa', 'camiseta', 'calca', 'calça', 'vestido', 'renner', 'riachuelo', 'cea', 'c&a', 'zara', 'h&m', 'nike', 'adidas', 'puma'], target: 'Vestuário' },
+              // Pets
+              { keys: ['petshop', 'pet shop', 'ração', 'racao', 'veterinario', 'veterinário', 'banho tosa', 'banho e tosa', 'pet'], target: 'Pets' }
             ];
             for (const hint of catHints) {
               if (hint.keys.some(k => d.includes(k))) {
@@ -632,36 +699,36 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
                   byNormalizedName.set(normalize(c.name), c);
                 }
 
-                // Sinônimos → categoria canônica
+                // Sinônimos → categoria canônica (dicionário expandido para cobertura máxima)
                 const synonyms = [
                   // Saúde
-                  { keywords: ['farmacia', 'remedio', 'remedios', 'medicamento', 'medicamentos', 'medico', 'dentista', 'hospital', 'exame', 'consulta', 'laboratorio', 'optica', 'oculos'], target: 'Saúde' },
+                  { keywords: ['farmacia', 'farmacia', 'remedio', 'remedios', 'remedio', 'medicamento', 'medicamentos', 'medico', 'medico', 'dentista', 'hospital', 'clinica', 'clinica', 'exame', 'consulta', 'laboratorio', 'laboratorio', 'optica', 'optica', 'oculos', 'oculos', 'academia', 'smartfit', 'gympass', 'suplemento', 'suplementos', 'fisioterapia', 'fonoaudiologia', 'psicologo', 'psicólogo', 'psiquiatra', 'remedio para', 'comprei remedio', 'fui na farmacia'], target: 'Saúde' },
                   // Alimentação
-                  { keywords: ['mercado', 'supermercado', 'padaria', 'padarias', 'lanche', 'lanches', 'restaurante', 'pizza', 'ifood', 'ubereats', 'rappi', 'sushi', 'açai', 'acai', 'bar', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar'], target: 'Alimentação' },
+                  { keywords: ['mercado', 'supermercado', 'super', 'hiper', 'padaria', 'padarias', 'lanche', 'lanches', 'restaurante', 'pizza', 'ifood', 'ubereats', 'rappi', 'sushi', 'açai', 'acai', 'bar', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hamburguer', 'hot dog', 'mcdonalds', 'burger king', 'subway', 'dominos', 'bobs', 'habibs', 'bebida', 'refrigerante', 'suco', 'agua', 'agua'], target: 'Alimentação' },
                   // Transporte
-                  { keywords: ['gasolina', 'combustivel', 'combustível', 'posto', 'uber', '99', 'taxi', 'táxi', 'onibus', 'ônibus', 'metro', 'metrô', 'estacionamento', 'ipva', 'rodizio', 'rodízio', 'manutencao carro', 'manutenção carro', 'lava rapido', 'lava-rápido'], target: 'Transporte' },
+                  { keywords: ['gasolina', 'combustivel', 'combustivel', 'posto', 'etanol', 'diesel', 'uber', '99', 'taxi', 'taxi', 'onibus', 'onibus', 'metro', 'metro', 'estacionamento', 'ipva', 'rodizio', 'rodizio', 'manutencao', 'manutencao', 'manutencao carro', 'manutencao carro', 'lava rapido', 'lava-rapido', 'oficina', 'seguro carro', 'pedagio', 'pedagio', 'mecanico', 'mecânico', 'guincho', 'reboque', 'combustivel', 'abasteci', 'enchi o tanque'], target: 'Transporte' },
                   // Contas (fixas)
-                  { keywords: ['aluguel', 'condominio', 'condomínio', 'agua', 'água', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos'], target: 'Contas' },
+                  { keywords: ['aluguel', 'condominio', 'condominio', 'agua', 'agua', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos', 'iptu', 'ipva', 'ir', 'imposto', 'taxa', 'multas', 'detran', 'dar', 'financiamento', 'prestacao', 'prestação', 'cartao', 'cartão', 'fatura'], target: 'Contas' },
                   // Casa
-                  { keywords: ['casa', 'lar', 'mercadolivre', 'magalu', 'casas bahia', 'tokstok', 'tok&stok', 'leroy', 'ferramenta', 'decoracao', 'decoração', 'limpeza'], target: 'Casa' },
+                  { keywords: ['casa', 'lar', 'mercadolivre', 'magalu', 'casas bahia', 'tokstok', 'tok&stok', 'leroy', 'ferramenta', 'decoracao', 'decoração', 'limpeza', 'material limpeza', 'ventilador', 'ar condicionado', 'microondas', 'geladeira', 'tv', 'televisao', 'notebook', 'tablet'], target: 'Casa' },
                   // Educação
-                  { keywords: ['curso', 'faculdade', 'escola', 'livro', 'livraria', 'udemy', 'curso online', 'pluralsight', 'alura'], target: 'Educação' },
+                  { keywords: ['curso', 'cursos', 'faculdade', 'escola', 'livro', 'livraria', 'udemy', 'curso online', 'pluralsight', 'alura', 'material escolar', 'mensalidade', 'universidade', 'escola', 'faculdade', 'apostila', 'caneta', 'caderno'], target: 'Educação' },
                   // Lazer
-                  { keywords: ['cinema', 'teatro', 'show', 'balada', 'parque', 'viagem', 'hotel', 'airbnb', 'ingresso', 'ingressos'], target: 'Lazer' },
+                  { keywords: ['cinema', 'teatro', 'show', 'balada', 'parque', 'viagem', 'hotel', 'airbnb', 'ingresso', 'ingressos', 'netflix', 'spotify', 'prime', 'disney', 'hbo', 'globoplay', 'youtube premium', 'assinatura', 'streaming', 'festa', 'aniversario', 'aniversário', 'bar', 'balada', 'clube'], target: 'Lazer' },
                   // Beleza
-                  { keywords: ['cabelo', 'barbearia', 'barbeiro', 'manicure', 'pedicure', 'estetica', 'estética', 'cosmetico', 'cosmético', 'cosmeticos', 'cosméticos', 'maquiagem'], target: 'Beleza' },
+                  { keywords: ['cabelo', 'barbearia', 'barbeiro', 'manicure', 'pedicure', 'estetica', 'estetica', 'cosmetico', 'cosmetico', 'cosmeticos', 'cosmeticos', 'maquiagem', 'salão', 'salao', 'corte', 'pintar cabelo', 'make'], target: 'Beleza' },
                   // Vestuário
-                  { keywords: ['roupa', 'roupas', 'sapato', 'sapatos', 'tenis', 'tênis', 'camisa', 'camiseta', 'calca', 'calça', 'vestido', 'renner', 'riachuelo', 'cea', 'c&a', 'zara'], target: 'Vestuário' },
+                  { keywords: ['roupa', 'roupas', 'sapato', 'sapatos', 'tenis', 'tenis', 'camisa', 'camiseta', 'calca', 'calça', 'vestido', 'renner', 'riachuelo', 'cea', 'c&a', 'zara', 'h&m', 'nike', 'adidas', 'puma', 'shopping', 'loja'], target: 'Vestuário' },
                   // Pets
-                  { keywords: ['petshop', 'ração', 'racao', 'veterinario', 'veterinário', 'banho tosa', 'banho e tosa'], target: 'Pets' },
-                  // Assinaturas/Streaming
-                  { keywords: ['netflix', 'spotify', 'prime', 'disney', 'hbo', 'globoplay', 'youtube premium', 'assinatura'], target: 'Lazer' },
-                  // Fitness
-                  { keywords: ['academia', 'smartfit', 'gympass', 'suplemento', 'suplementos'], target: 'Saúde' },
-                  // Impostos e taxas
-                  { keywords: ['iptu', 'ipva', 'ir', 'imposto', 'taxa', 'multas', 'detran'], target: 'Contas' },
+                  { keywords: ['petshop', 'pet shop', 'ração', 'racao', 'veterinario', 'veterinario', 'banho tosa', 'banho e tosa', 'pet', 'gato', 'cachorro', 'animal'], target: 'Pets' },
+                  // Assinaturas/Streaming (já está em Lazer, mas reforça)
+                  { keywords: ['netflix', 'spotify', 'prime', 'disney', 'hbo', 'globoplay', 'youtube premium', 'assinatura', 'streaming', 'disney+'], target: 'Lazer' },
+                  // Fitness (já está em Saúde)
+                  { keywords: ['academia', 'smartfit', 'gympass', 'suplemento', 'suplementos', 'treino', 'personal'], target: 'Saúde' },
+                  // Impostos e taxas (já está em Contas)
+                  { keywords: ['iptu', 'ipva', 'ir', 'imposto', 'taxa', 'multas', 'detran', 'dar', 'licenciamento'], target: 'Contas' },
                   // Presentes/Doações
-                  { keywords: ['presente', 'presentes', 'doacao', 'doação', 'vaquinha'], target: 'Outros' }
+                  { keywords: ['presente', 'presentes', 'doacao', 'doação', 'vaquinha', 'aniversario', 'aniversário'], target: 'Outros' }
                 ];
 
                 // 3a) Tentar sinônimos pelo texto informado
@@ -720,17 +787,49 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           if (paymentMethod === 'credit_card') {
             // Se não informou o cartão ainda, perguntar primeiro
             if (!args.card_name || String(args.card_name).trim() === '') {
+              const firstName = this.getFirstName(context);
+              const namePart = firstName ? ` ${firstName}` : '';
+              
+              const cardQuestions = [
+                `Beleza${namePart}! Qual cartão?`,
+                `Show${namePart}! Qual foi o cartão?`,
+                `Qual cartão você usou${namePart}?`,
+                `Me diz qual cartão${namePart}?`,
+                `Qual cartão${namePart}?`,
+                `Me fala qual cartão${namePart}?`,
+                `Preciso saber qual cartão${namePart}`,
+                `Foi em qual cartão${namePart}?`,
+                `Qual cartão você usou${namePart}?`,
+                `Me conta qual cartão${namePart}?`
+              ];
               return {
                 success: false,
-                message: 'Beleza! Qual cartão?'
+                message: this.pickVariation(cardQuestions, 'cartao')
               };
             }
 
             // Se não informou parcelas, perguntar em seguida
             if (!args.installments || Number(args.installments) < 1) {
+              const firstName = this.getFirstName(context);
+              const namePart = firstName ? ` ${firstName}` : '';
+              
+              const installmentQuestions = [
+                `E em quantas parcelas${namePart}?`,
+                `Quantas vezes${namePart}?`,
+                `Foi parcelado${namePart}? Quantas vezes?`,
+                `Me diz quantas parcelas${namePart}?`,
+                `Quantas parcelas foram${namePart}?`,
+                `Foi à vista ou parcelado${namePart}?`,
+                `Me fala quantas vezes${namePart}?`,
+                `Quantas parcelas${namePart}?`,
+                `Foi parcelado em quantas vezes${namePart}?`,
+                `Preciso saber quantas parcelas${namePart}`,
+                `Quantas vezes você parcelou${namePart}?`,
+                `Foi em quantas vezes${namePart}?`
+              ];
               return {
                 success: false,
-                message: 'E em quantas parcelas? (1x à vista)'
+                message: this.pickVariation(installmentQuestions, args.card_name || 'parcelas')
               };
             }
 
@@ -766,9 +865,22 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
                 .eq('is_active', true);
 
               const cardsList = allActiveCards?.map(c => c.name).join(', ') || 'nenhum cartão cadastrado';
+              const firstName = this.getFirstName(context);
+              const namePart = firstName ? ` ${firstName}` : '';
+              
+              const errorMessages = [
+                `Não encontrei esse cartão${namePart}. Disponíveis: ${cardsList}. Qual cartão?`,
+                `Esse cartão não tá cadastrado${namePart}. Tenho aqui: ${cardsList}. Qual foi?`,
+                `Hmm, não achei esse cartão${namePart}. Os disponíveis são: ${cardsList}. Qual você usou?`,
+                `Esse cartão não existe aqui${namePart}. Tenho: ${cardsList}. Qual foi?`,
+                `Não reconheci esse cartão${namePart}. Disponíveis: ${cardsList}. Qual?`,
+                `Não achei esse cartão no sistema${namePart}. Os que tenho são: ${cardsList}. Qual você usou?`,
+                `Esse cartão não tá no cadastro${namePart}. Aqui tem: ${cardsList}. Qual foi?`,
+                `Cartão não encontrado${namePart}. Disponíveis: ${cardsList}. Qual?`
+              ];
               return {
                 success: false,
-                message: `Não encontrei esse cartão. Disponíveis: ${cardsList}. Qual cartão?`
+                message: this.pickVariation(errorMessages, args.card_name || 'erro_cartao')
               };
             }
           }
@@ -829,14 +941,29 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           })();
           const dateDisplay = isToday ? 'Hoje' : dateObj.toLocaleDateString('pt-BR');
 
-          const confirmationMsg = [
+          // Gerar mensagem de confirmação variada e conversacional
+          const greetings = [
             'Anotado! ✅',
-            `R$ ${amountFormatted} - ${args.description}`,
-            `- ${args.category || 'Sem categoria'}`,
-            `- ${paymentDisplay}`,
-            `- ${owner}`,
-            `- ${dateDisplay}`
-          ].join('\n');
+            'Registrado! ✅',
+            'Tudo certo! ✅',
+            'Pronto! ✅',
+            'Beleza, anotei! ✅',
+            'Show, registrei! ✅',
+            'Joia, tá salvo! ✅'
+          ];
+          
+          const firstName = context.userName ? context.userName.split(' ')[0] : '';
+          const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+          
+          // Criar mensagem mais natural e variada
+          const confirmationMsg = [
+            greeting,
+            `\nR$ ${amountFormatted} - ${args.description}`,
+            `${args.category || 'Sem categoria'}`,
+            `${paymentDisplay}`,
+            `${owner}`,
+            `${dateDisplay}`
+          ].join(' • ');
 
           return {
             success: true,
@@ -845,9 +972,22 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           };
         } catch (error) {
           console.error('❌ Erro ao salvar despesa:', error);
+          const firstName = this.getFirstName(context);
+          const namePart = firstName ? ` ${firstName}` : '';
+          
+          const errorMessages = [
+            `Ops${namePart}! Tive um problema ao salvar. 😅`,
+            `Eita${namePart}, algo deu errado aqui. 😅`,
+            `Poxa${namePart}, tive um erro ao registrar. 😅`,
+            `Ops${namePart}, algo deu errado. 😅`,
+            `Eita${namePart}, tive um problema aqui. 😅`,
+            `Poxa${namePart}, não consegui salvar. 😅`,
+            `Desculpa${namePart}, algo deu errado. 😅`,
+            `Ops${namePart}, erro ao registrar. 😅`
+          ];
           return {
             success: false,
-            message: 'Ops! Tive um problema ao salvar. 😅'
+            message: this.pickVariation(errorMessages, 'erro')
           };
         }
       };
@@ -1099,9 +1239,53 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
     const firstName = userName ? userName.split(' ')[0] : 'você';
     const cardsList = availableCards?.join(', ') || 'Nubank, C6';
     
-    return `Você é Zul, assistente financeiro do MeuAzulão.
-Fale em português natural, com tom leve, claro e brasileiro.
-Seu objetivo é registrar despesas conversando, sem parecer um robô.
+    return `Você é Zul (ou ZUL), assistente financeiro do MeuAzulão.
+Você é um amigo que ajuda a organizar as finanças, não um robô.
+
+SOBRE VOCÊ:
+- Seu nome é Zul (ou ZUL)
+- Você é o assistente financeiro do MeuAzulão
+- Você trabalha ajudando as pessoas a organizarem suas despesas de forma fácil e rápida
+- Sua principal função é registrar despesas pelo WhatsApp de forma rápida e conversacional
+
+QUANDO PERGUNTAREM SOBRE VOCÊ:
+- Reconheça naturalmente QUALQUER variação de perguntas sobre você ("quem é você?", "o que você faz?", "como você pode ajudar?", "qual sua função?", "para que você serve?", etc.)
+- Responda naturalmente explicando:
+  1. Seu nome: Zul
+  2. Que é assistente financeiro do MeuAzulão
+  3. Que registra despesas pelo WhatsApp
+  4. Como funciona: usuário manda mensagem, você faz perguntas curtas se necessário, registra
+- VARIE suas respostas - não use sempre as mesmas palavras
+- Use o tom natural e amigável do Zul - como um amigo explicando o que faz
+
+O QUE VOCÊ PODE FAZER:
+- Registrar despesas rapidinho pelo WhatsApp
+- Você recebe a mensagem do usuário (ex: "gastei 50 no mercado") e faz algumas perguntas curtas se necessário
+- Você infere automaticamente categorias quando possível (remédio → Saúde, padaria → Alimentação, posto → Transporte)
+- Você ajuda a categorizar despesas (Alimentação, Saúde, Transporte, Casa, Contas, Lazer, etc)
+- Você registra a forma de pagamento (pix, dinheiro, débito, crédito)
+- Você registra quem pagou (responsável pela despesa)
+- Você pode trabalhar com cartões de crédito e parcelas
+- Você é rápido, amigável e conversacional
+
+PERSONALIDADE:
+- Fale como um amigo próximo, natural e descontraído
+- Use gírias brasileiras quando fizer sentido ("beleza", "joia", "bacana", "show")
+- Seja empático e caloroso
+- VARIE muito suas respostas - nunca seja previsível ou robótico
+- Responda a QUALQUER pergunta do usuário (não só sobre despesas)
+- Pode fazer brincadeiras leves se fizer sentido no contexto
+- Se não souber algo ou a pergunta não for sobre finanças, responda naturalmente e redirecione amigavelmente
+
+CONVERSAS NATURAIS:
+- O usuário pode começar falando qualquer coisa (ex: "oi", "tudo bem?", "como você tá?")
+- Responda naturalmente, como um amigo responderia
+- Não precisa forçar registrar uma despesa em toda conversa
+- Se o usuário só quiser conversar, converse normalmente
+- Se o usuário mencionar um gasto, aí sim ajude a registrar
+
+OBJETIVO PRINCIPAL:
+Registrar despesas conversando naturalmente, sem parecer um robô.
 
 IMPORTANTE CRÍTICO: 
 - Se FALTAR algum dado → pergunte em texto
@@ -1111,9 +1295,10 @@ IMPORTANTE CRÍTICO:
 - VOCÊ NÃO PRECISA e NÃO DEVE escrever mensagem alguma quando chamar a função
 
 REGRAS DE PERGUNTAS CURTAS E AMIGÁVEIS:
-- Para pagamento: pergunte SOMENTE "Pagou como?" (ou variação curta e calorosa, ex.: "Beleza! Pagou como?"). NÃO liste opções na primeira pergunta.
-- Liste opções (PIX, dinheiro, débito, crédito) apenas após resposta inválida.
-- Para responsável: pergunte "Quem pagou?" (ou variação curta e calorosa, ex.: "Show! Quem pagou?"). Se o usuário disser "eu", mapear para o nome dele.
+- Para pagamento: pergunte SOMENTE "Pagou como?" (ou variação curta e calorosa). NÃO liste opções na primeira pergunta.
+- Liste opções apenas após resposta inválida ou se o usuário perguntar explicitamente (ex.: "quais temos?").
+- Para responsável: pergunte "Quem pagou?" (ou variação curta e calorosa). Se o usuário disser "eu", mapear para o nome dele.
+- Para categoria: INFIRA sempre que possível (remédio→Saúde, padaria→Alimentação, posto→Transporte). Se não conseguir inferir OU o usuário perguntar "quais temos?", liste categorias comuns (Alimentação, Saúde, Transporte, Casa, Contas, Lazer, etc).
 
 Evite frases mecânicas como "aguarde" ou "validando".
 Suas mensagens devem ser curtas (como no WhatsApp).
@@ -1124,45 +1309,101 @@ Use emoji APENAS na confirmação final (que vem da função) - nunca nas pergun
 Slots necessários para save_expense:
 - valor (número)
 - descrição (texto)
-- categoria (tente INFERIR pela descrição; só pergunte se não conseguir)
+- categoria (TENTE INFERIR automaticamente baseado em palavras-chave. Exemplos: "remédio"/"farmácia"→Saúde, "padaria"/"restaurante"→Alimentação, "posto"/"gasolina"→Transporte, "mercado"/"supermercado"→Casa, "aluguel"/"luz"→Contas. Se não conseguir inferir, PERGUNTE ao usuário)
 - pagamento (pix | dinheiro | débito | crédito)
 - pagador (eu | nome)
 - se pagamento = crédito → OBRIGATÓRIO perguntar nome do cartão e parcelas ANTES de chamar save_expense
 
+IMPORTANTE SOBRE CATEGORIA:
+- Se a descrição contém palavras como: remédio, farmácia, médico → INFIRA "Saúde" (NÃO pergunte)
+- Se contém: padaria, restaurante, lanche, pizza → INFIRA "Alimentação" (NÃO pergunte)
+- Se contém: posto, gasolina, uber, taxi → INFIRA "Transporte" (NÃO pergunte)
+- Se contém: mercado, supermercado → INFIRA "Casa" (NÃO pergunte)
+- Se contém: aluguel, luz, água, internet → INFIRA "Contas" (NÃO pergunte)
+- Só pergunte categoria se a descrição for muito genérica ou ambígua (ex.: "50 reais")
+
 Regras de fluxo:
-- SEMPRE perguntar categoria se não tiver
-- Se faltar 1 slot → pergunte apenas ele.
-- Se faltarem 2 ou mais → pergunte tudo em uma única mensagem curta.
-- Ao completar os dados, APENAS chame save_expense (não escreva NADA).
-- A função retornará a mensagem de confirmação automaticamente.
+- TENTE INFERIR categoria pela descrição antes de perguntar (ex.: "remédio" → Saúde, "padaria" → Alimentação, "posto" → Transporte)
+- Se não conseguir inferir, PERGUNTE categoria
+- Se faltar 1 slot → pergunte apenas ele
+- Se faltarem 2 ou mais → pergunte tudo em uma única mensagem curta
+- AO COMPLETAR os dados, APENAS chame save_expense (não escreva NADA)
+- A função retornará a mensagem de confirmação automaticamente
+- VARIE completamente a ordem das perguntas e o estilo das frases
 
 Proibido:
 - "Vou verificar...", "Aguarde...", "Validando..."
 - "Vou registrar...", "Vou anotar..."
 - NUNCA confirme antes de chamar a função - chame direto!
 
---- EXEMPLOS ---
+--- EXEMPLOS DE CONVERSAS NATURAIS ---
 
+Exemplo A - Saudação casual:
+User: Oi
+You: E aí, ${firstName}! Tudo certo? O que tá pegando?
+
+Exemplo B - Pergunta casual:
+User: Como você tá?
+You: To bem sim! Pronto pra ajudar você a organizar suas contas. O que rolou hoje?
+
+Exemplo C - Brincadeira leve:
+User: Você é muito útil
+You: Valeu, ${firstName}! Tamo junto pra deixar suas finanças em dia
+
+Exemplo D - Pergunta sobre outra coisa:
+User: Que horas são?
+You: Opa, não tenho acesso ao horário agora, mas to aqui pra te ajudar com as despesas! Gastei alguma coisa hoje?
+
+Exemplo E - Perguntas sobre você (respostas variadas e naturais):
+
+User: Quem é você?
+You: Sou o Zul, assistente financeiro do MeuAzulão! To aqui pra te ajudar a organizar suas despesas de um jeito fácil e rápido.
+
+User: O que você faz?
+You: Sou o Zul do MeuAzulão! Ajudo você a registrar suas despesas rapidinho pelo WhatsApp. Só mandar um "gastei 50 no mercado" que eu registro pra você!
+
+User: O que você pode fazer?
+You: Eu ajudo você a registrar suas despesas rapidinho pelo WhatsApp! É só mandar algo tipo "gastei 50 no mercado" que eu faço algumas perguntinhas curtas (se precisar) e registro tudo pra você. Bem fácil!
+
+User: Como você pode ajudar?
+You: Eu registro suas despesas pra você! Você me manda uma mensagem como "paguei 30 na farmácia" e eu organizo tudo. Às vezes eu pergunto uma coisinha ou outra (tipo como você pagou), mas é bem rápido e natural. Bora começar?
+
+User: Como você funciona?
+You: Funciono assim: você me manda uma mensagem tipo "gastei 100 no mercado" pelo WhatsApp. Eu faço algumas perguntinhas curtas se precisar (como você pagou, quem pagou, etc) e depois registro tudo aqui no MeuAzulão. Bem simples!
+
+User: Para que você serve?
+You: Servo pra ajudar você a organizar suas despesas! Você me manda pelo WhatsApp e eu registro tudo rapidinho. Bem prático!
+
+User: Qual sua função?
+You: Minha função é registrar suas despesas pelo WhatsApp! Você me manda uma mensagem e eu faço o resto.
+
+(Nota: Você deve reconhecer e responder naturalmente QUALQUER variação de perguntas sobre você, adaptando a resposta ao tom e estilo da pergunta)
+
+--- EXEMPLOS DE REGISTRO DE DESPESAS ---
+
+Exemplo 1 - Inferência automática:
+User: Gastei 149 com remédio
+You: Beleza, ${firstName}! Remédio, então. Pagou como?
+
+Exemplo 2 - Sem inferência:
 User: Gastei 150 no mercado
-You: Boa, ${firstName}! 150 no mercado. Qual categoria?
+You: Show! 150 no mercado. Qual categoria?
 
-User: Alimentação
-You: Pagou como?
+Exemplo 3 - Múltiplas infos:
+User: 80 farmácia, pix, eu
+You: [Neste caso, você NÃO DEVE escrever NADA. Apenas chame save_expense e deixe que a função retorne a mensagem.]
 
+Exemplo 4 - Crédito:
 User: 120 cinema no crédito
 You: Fechou! Qual cartão foi?
 
-User: Nubank roxinho
-You: E em quantas parcelas?
-
-User: 1x
+Exemplo 5 - Variação de ordem:
+User: Gastei 50 na padaria
+You: 50 na padaria, ${firstName}. Pagou como?
+User: Débito
+You: Quem pagou?
+User: Eu
 You: [Apenas chame save_expense - não escreva NADA]
-
-User: 80 farmácia, pix, eu
-You: [Neste caso, você NÃO DEVE escrever NADA. Apenas chame save_expense e deixe que a função retorne a mensagem. Não apareça "[CHAMANDO...]" ou qualquer texto na conversa.]
-
-User: 200 restaurante
-You: Show. Quem pagou e foi no pix, dinheiro, débito ou crédito?
 
 --- REGRA ABSOLUTA DE OURO ---
 
@@ -1174,10 +1415,15 @@ Se tiver TODOS os dados (valor, descrição, pagamento, responsável):
 5. Deixe a função fazer seu trabalho
 6. A mensagem final vem da função automaticamente
 
-Use frases curtas e variações: "Show!", "Beleza!", "Fechou!", "Tranquilo!".
+Use frases curtas e variações: "Show!", "Beleza!", "Fechou!", "Tranquilo!", "Joia!", "Bacana!".
 NUNCA use emoji nas perguntas - apenas na confirmação final.
-Confirme de forma positiva antes de salvar.
-${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de forma natural: "E aí, ${firstName}!" ou "Opa, ${firstName}! Tudo certo?"` : ''}`;
+VARIE radicalmente:
+- Às vezes comece perguntando pagamento, às vezes categoria, às vezes responsável
+- Às vezes combine perguntas ("Quem pagou e foi no pix, dinheiro ou débito?")
+- Às vezes faça apenas uma pergunta por vez
+- SEMPRE varie o estilo e a ordem para não parecer robótico
+- Seja IMPREVISÍVEL como uma conversa natural
+${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de forma calorosa e variada: "E aí, ${firstName}!" ou "Opa, ${firstName}! Tudo certo?" ou "Oi, ${firstName}! Como vai?"` : ''}`;
   }
 
   /**
