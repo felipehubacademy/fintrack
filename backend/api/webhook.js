@@ -51,11 +51,6 @@ async function getUserByPhone(phone) {
   }
 }
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> a40cb5ee21be9d4d05373ccaa03e1d03d68f504c
 /**
  * Enviar mensagem WhatsApp
  */
@@ -128,9 +123,6 @@ async function processWebhook(body) {
             // Buscar usuário por telefone
             console.log('🔄 [B2][DEBUG] Looking up user by phone...');
             const user = await getUserByPhone(message.from);
-
-            // Importar a nova função de persistência
-            const { saveExpense } = await import('../services/supabase.js');
             
             if (!user) {
               console.log('❌ [B2][DEBUG] User not found for phone:', message.from);
@@ -155,7 +147,6 @@ async function processWebhook(body) {
             
             console.log('🔄 [B2][DEBUG] Found cards:', cards?.map(c => c.name));
             
-            // Importar função de persistência refatorada
             // Nota: A lógica completa de saveExpense está em zulAssistant.js (context.saveExpense)
             // Aqui apenas garantimos que o contexto tem os dados necessários
             const context = {
@@ -164,21 +155,15 @@ async function processWebhook(body) {
               organizationId: user.organization_id,
               availableCards: cards?.map(c => c.name) || []
             };
-            
-            // Adicionar a função saveExpense ao contexto
-            const contextWithFunctions = {
-              ...context,
-              saveExpense: saveExpense // Injeta a função de persistência refatorada
-            };
 
-            console.log('🔄 [B2][DEBUG] Context montado:', JSON.stringify(contextWithFunctions, null, 2));
+            console.log('🔄 [B2][DEBUG] Context montado:', JSON.stringify(context, null, 2));
             
             const result = await zul.processMessage(
               message.text.body,
               user.id,
               user.name,
               message.from,
-              contextWithFunctions
+              context
             );
             
             // Enviar resposta via WhatsApp
