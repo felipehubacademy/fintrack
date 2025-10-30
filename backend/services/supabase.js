@@ -19,28 +19,47 @@ try {
 export { supabase };
 
 /**
- * Save a new expense to Supabase
+ * Salvar despesa no banco (Função chamada pelo ZulAssistant)
  */
-export async function saveExpense(expense) {
-  const { data, error } = await supabase
-    .from('expenses')
-    .insert([
-      {
-        date: expense.date,
-        description: expense.description,
-        amount: expense.amount,
-        source: expense.source || 'manual',
-        owner: expense.owner || null,
-        split: expense.split || false,
-      },
-    ])
-    .select();
+export async function saveExpense(args, userId, orgId) {
+  try {
+    // TODO: Implementar lógica completa de save (incluindo userId, orgId, category, payment_method, etc.)
+    console.log('💾 [SUPABASE] Salvando despesa:', args);
+    
+    // Simulação de inserção no banco (A função original do webhook era apenas um stub)
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert([
+        {
+          date: new Date().toISOString().split('T')[0], // Usar data atual como placeholder
+          description: args.description,
+          amount: args.amount,
+          owner: args.responsible,
+          source: 'whatsapp',
+          payment_method: args.payment_method,
+          category: args.category || 'Outros',
+          // Campos adicionais do args: card_name, installments
+          // Campos do contexto: userId, orgId
+        },
+      ])
+      .select();
 
-  if (error) {
-    throw new Error(`Failed to save expense: ${error.message}`);
+    if (error) {
+      console.error('❌ Erro ao salvar despesa no Supabase:', error);
+      throw new Error(`Erro ao salvar despesa: ${error.message}`);
+    }
+
+    return {
+      success: true,
+      message: `Anotado! R$ ${args.amount} - ${args.description} ✅`
+    };
+  } catch (error) {
+    console.error('❌ Erro ao salvar despesa (Service):', error);
+    return {
+      success: false,
+      message: 'Ops! Tive um problema aqui. 😅'
+    };
   }
-
-  return data[0];
 }
 
 /**

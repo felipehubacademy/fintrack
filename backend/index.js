@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import whatsappRoutes from './routes/whatsapp.js';
+// import whatsappRoutes from './routes/whatsapp.js'; // Removido após consolidação do webhook em api/webhook.js
 
 dotenv.config();
 
@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/', whatsappRoutes);
+// app.use('/', whatsappRoutes); // Rota removida: o endpoint principal de webhook agora está em api/webhook.js (Vercel)
 
 // Health check
 app.get('/health', (req, res) => {

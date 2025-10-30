@@ -51,32 +51,7 @@ async function getUserByPhone(phone) {
   }
 }
 
-/**
- * Salvar despesa no banco
- */
-async function saveExpenseToDB(args, userId, orgId) {
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseClient = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    );
-    
-    // TODO: Implementar lógica completa de save
-    console.log('💾 Salvando despesa:', args);
-    
-    return {
-      success: true,
-      message: `Anotado! R$ ${args.amount} - ${args.description} ✅`
-    };
-  } catch (error) {
-    console.error('❌ Erro ao salvar despesa:', error);
-    return {
-      success: false,
-      message: 'Ops! Tive um problema aqui. 😅'
-    };
-  }
-}
+
 
 /**
  * Enviar mensagem WhatsApp
@@ -125,8 +100,42 @@ async function processWebhook(body) {
     // Process messages
     if (value?.messages) {
       console.log('🔄 [B1][DEBUG] Messages found:', value.messages.length);
+      
+      const { parseButtonReply } = await import('../services/whatsapp.js');
+      const { updateExpenseOwner } = await import('../services/supabase.js');
+
       for (const message of value.messages) {
         console.log('🔄 [B1][DEBUG] Message type:', message.type);
+
+        // 1. Processar Resposta de Botão (Prioridade)
+        const reply = parseButtonReply({ entry: [entry] }); // Re-parse o body para garantir que a resposta do botão seja detectada
+        
+        if (reply && reply.buttonId) {
+          console.log(`🔘 [B1] Processing button reply from ${reply.from}: "${reply.buttonTitle}"`);
+          
+          try {
+            // O botão ID deve conter os dados necessários (expenseId, owner, split)
+            // Assumindo que o buttonId segue o padrão 'EXPENSEID_OWNER_SPLIT'
+            const [expenseId, owner, splitStr] = reply.buttonId.split('_');
+            const split = splitStr === 'true';
+
+            // Update expense in Supabase
+            await updateExpenseOwner(expenseId, owner, split);
+            
+            // Enviar confirmação (usando a função local)
+            await sendWhatsAppMessage(reply.from, 
+              `✅ Despesa atribuída a: ${owner}${split ? ' (compartilhado)' : ''}`
+            );
+            
+            console.log(`✅ Updated expense ${expenseId} - Owner: ${owner}, Split: ${split}`);
+          } catch (error) {
+            console.error('❌ Error processing button reply:', error);
+            await sendWhatsAppMessage(reply.from, 'Ops! Não consegui atualizar a despesa. Tenta de novo?');
+          }
+          continue; // Pular o processamento de texto se for uma resposta de botão
+        }
+
+        // 2. Processar Mensagem de Texto (ZUL Assistant)
         if (message.type === 'text') {
           console.log(`📱 [B1] Processing message from ${message.from}: "${message.text.body}"`);
 
@@ -149,6 +158,9 @@ async function processWebhook(body) {
             // Buscar usuário por telefone
             console.log('🔄 [B2][DEBUG] Looking up user by phone...');
             const user = await getUserByPhone(message.from);
+
+            // Importar a nova função de persistência
+            const { saveExpense } = await import('../services/supabase.js');
             
             if (!user) {
               console.log('❌ [B2][DEBUG] User not found for phone:', message.from);
@@ -181,14 +193,20 @@ async function processWebhook(body) {
               availableCards: cards?.map(c => c.name) || []
             };
             
-            console.log('🔄 [B2][DEBUG] Context montado:', JSON.stringify(context, null, 2));
+            // Adicionar a função saveExpense ao contexto
+            const contextWithFunctions = {
+              ...context,
+              saveExpense: saveExpense // Injeta a função de persistência refatorada
+            };
+
+            console.log('🔄 [B2][DEBUG] Context montado:', JSON.stringify(contextWithFunctions, null, 2));
             
             const result = await zul.processMessage(
               message.text.body,
               user.id,
               user.name,
               message.from,
-              context
+              contextWithFunctions
             );
             
             // Enviar resposta via WhatsApp
