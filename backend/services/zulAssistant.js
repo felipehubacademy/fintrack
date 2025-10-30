@@ -538,6 +538,8 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
 
             if (catCI) {
               categoryId = catCI.id;
+              // Usar nome canônico (capitalização correta)
+              args.category = catCI.name;
             } else {
               // 2) Tentativa nas globais (case-insensitive)
               const { data: globalCatCI } = await supabase
@@ -549,6 +551,8 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
 
               if (globalCatCI) {
                 categoryId = globalCatCI.id;
+                // Usar nome canônico (capitalização correta)
+                args.category = globalCatCI.name;
               } else {
                 // 3) Carregar todas as categorias válidas (org + globais) e fazer matching inteligente
                 const [{ data: orgCatsAll }, { data: globalCatsAll }] = await Promise.all([
