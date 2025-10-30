@@ -40,20 +40,44 @@ class ZulAssistant {
       .replace(/\p{Diacritic}+/gu, '');
   }
 
-  // Extrair núcleo descritivo (remove verbos/artigos/preposições comuns)
+  // Extrair núcleo descritivo (remove apenas verbos/artigos/preposições comuns)
+  // Permite números na descrição (ex: "2 televisões", "5kg de carne", "TV 50 polegadas")
+  // Remove apenas quando claramente é valor monetário no início (ex: "150 mercado" -> "mercado")
   extractCoreDescription(text) {
     if (!text) return '';
-    const noAccent = this.normalizeText(text);
+    let cleaned = text.trim();
+    
+    // Remover números no início APENAS se for padrão "NÚMERO + palavra única" e número >= 20
+    // Isso detecta valores monetários (ex: "150 mercado", "200 farmácia")
+    // Mas mantém quantidades (ex: "2 televisões", "5kg de carne", "TV 50 polegadas")
+    const match = cleaned.match(/^(\d+)\s+(.+)$/);
+    if (match) {
+      const number = parseInt(match[1]);
+      const rest = match[2].trim();
+      
+      // Remover APENAS se:
+      // 1. Número >= 20 (valores monetários típicos)
+      // 2. Resto é uma única palavra (não "2 televisões" ou "5kg de carne")
+      // 3. Não tem palavras relacionadas a quantidade (kg, unidade, etc)
+      const quantityWords = /(kg|g|ml|l|unidade|unidades|pacote|pacotes|peça|peças|par|pares|polegada|polegadas|tv|televis)/i;
+      const isSingleWord = !rest.includes(' ');
+      
+      if (number >= 20 && isSingleWord && !quantityWords.test(cleaned)) {
+        cleaned = rest;
+      }
+    }
+    
+    const noAccent = this.normalizeText(cleaned);
     // Remover pontuação leve
-    const cleaned = noAccent.replace(/[.,!?;:]/g, ' ');
+    const normalized = noAccent.replace(/[.,!?;:]/g, ' ');
     const stopwords = new Set([
       'comprei','paguei','gastei','foi','deu','peguei','compre','comprar','pagando','pagamento',
       'um','uma','uns','umas','o','a','os','as',
       'no','na','nos','nas','num','numa','em','de','do','da','dos','das','para','pra','pro','pela','pelo','por','ao','à','aos','às'
     ]);
-    const tokens = cleaned.split(/\s+/).filter(Boolean).filter(t => !stopwords.has(t));
-    if (tokens.length === 0) return text.trim();
-    // Retornar até 3 palavras significativas
+    const tokens = normalized.split(/\s+/).filter(Boolean).filter(t => !stopwords.has(t));
+    if (tokens.length === 0) return cleaned.trim();
+    // Retornar até 3 palavras significativas (mantendo números se fizerem parte)
     return tokens.slice(0, 3).join(' ');
   }
 
@@ -196,7 +220,7 @@ class ZulAssistant {
                   },
                   description: {
                     type: 'string',
-                    description: 'Descrição da despesa (ex: mercado, farmácia, gasolina)'
+                    description: 'Descrição da despesa SEM o valor monetário. Exemplos: "mercado" (não "150 mercado"), "farmácia", "2 televisões", "5kg de carne". Permita números de quantidade, mas NUNCA inclua valor monetário.'
                   },
                   payment_method: {
                     type: 'string',
@@ -615,7 +639,7 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
               // Eletrônicos de uso doméstico → Casa
               { keys: ['tv', 'televisao', 'televisão', 'som', 'home theater', 'notebook', 'tablet', 'monitor', 'mouse', 'teclado'], target: 'Casa' },
               // Alimentação (padarias, restaurantes, delivery, etc)
-              { keys: ['padaria', 'padarias', 'restaurante', 'lanche', 'lanches', 'pizza', 'ifood', 'ubereats', 'rappi', 'sushi', 'açai', 'acai', 'bar', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hambúrguer', 'hot dog'], target: 'Alimentação' },
+              { keys: ['padaria', 'padarias', 'restaurante', 'lanche', 'lanches', 'pizza', 'ifood', 'ubereats', 'rappi', 'sushi', 'açai', 'acai', 'bar', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hambúrguer', 'hot dog', 'cerveja', 'cervejas', 'bebida', 'bebidas', 'refrigerante', 'suco', 'agua', 'água', 'coquinha', 'pepsi', 'guarana', 'vitamina', 'smoothie', 'milk shake', 'milkshake', 'sorvete', 'doces', 'doce', 'bombom', 'chocolate', 'salgado', 'salgados', 'coxinha', 'pastel', 'empada', 'torta', 'bolo', 'pao', 'pão', 'baguete', 'croissant', 'massa', 'macarrao', 'macarrão', 'arroz', 'feijao', 'feijão', 'carne', 'frango', 'peixe', 'verdura', 'legume', 'fruta', 'frutas', 'acougue', 'açougue', 'peixaria', 'quitanda', 'hortifruti', 'frios', 'laticinios', 'laticínios', 'leite', 'queijo', 'iogurte', 'manteiga', 'margarina', 'pao de acucar', 'pao de açúcar', 'atacadao', 'atacadão', 'extra', 'carrefour', 'walmart'], target: 'Alimentação' },
               // Transporte
               { keys: ['posto', 'gasolina', 'etanol', 'combustivel', 'combustível', 'uber', '99', 'taxi', 'táxi', 'ônibus', 'onibus', 'metro', 'metrô', 'estacionamento', 'ipva', 'rodizio', 'rodízio', 'manutencao', 'manutenção', 'lava rapido', 'lava-rápido', 'oficina', 'seguro carro', 'pedagio', 'pedágio'], target: 'Transporte' },
               // Saúde
@@ -703,8 +727,8 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
                 const synonyms = [
                   // Saúde
                   { keywords: ['farmacia', 'farmacia', 'remedio', 'remedios', 'remedio', 'medicamento', 'medicamentos', 'medico', 'medico', 'dentista', 'hospital', 'clinica', 'clinica', 'exame', 'consulta', 'laboratorio', 'laboratorio', 'optica', 'optica', 'oculos', 'oculos', 'academia', 'smartfit', 'gympass', 'suplemento', 'suplementos', 'fisioterapia', 'fonoaudiologia', 'psicologo', 'psicólogo', 'psiquiatra', 'remedio para', 'comprei remedio', 'fui na farmacia'], target: 'Saúde' },
-                  // Alimentação
-                  { keywords: ['mercado', 'supermercado', 'super', 'hiper', 'padaria', 'padarias', 'lanche', 'lanches', 'restaurante', 'pizza', 'ifood', 'ubereats', 'rappi', 'sushi', 'açai', 'acai', 'bar', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hamburguer', 'hot dog', 'mcdonalds', 'burger king', 'subway', 'dominos', 'bobs', 'habibs', 'bebida', 'refrigerante', 'suco', 'agua', 'agua'], target: 'Alimentação' },
+                  // Alimentação (expandido MUITO para cobrir todas possibilidades)
+                  { keywords: ['mercado', 'supermercado', 'super', 'hiper', 'padaria', 'padarias', 'lanche', 'lanches', 'restaurante', 'pizza', 'ifood', 'ubereats', 'rappi', 'iFood', 'sushi', 'açai', 'acai', 'bar', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hamburguer', 'hot dog', 'mcdonalds', 'mcdonald', 'burger king', 'subway', 'dominos', 'dominos pizza', 'bobs', 'habibs', 'bebida', 'bebidas', 'refrigerante', 'suco', 'cerveja', 'cervejas', 'agua', 'água', 'coquinha', 'pepsi', 'guarana', 'antartica', 'antarctica', 'vitamina', 'smoothie', 'milk shake', 'milkshake', 'sorvete', 'sorvetes', 'doces', 'doce', 'bombom', 'chocolate', 'chocolates', 'salgado', 'salgados', 'coxinha', 'coxinhas', 'pastel', 'pasteis', 'empada', 'empadas', 'torta', 'tortas', 'bolo', 'bolos', 'pao', 'pão', 'paes', 'pães', 'baguete', 'baguetes', 'croissant', 'massa', 'massas', 'macarrao', 'macarrão', 'arroz', 'feijao', 'feijão', 'carne', 'carnes', 'frango', 'peixe', 'peixes', 'verdura', 'verduras', 'legume', 'legumes', 'fruta', 'frutas', 'acougue', 'açougue', 'peixaria', 'quitanda', 'hortifruti', 'frios', 'laticinios', 'laticínios', 'leite', 'queijo', 'queijos', 'iogurte', 'iogurtes', 'manteiga', 'margarina', 'pao de acucar', 'pao de açúcar', 'atacadao', 'atacadão', 'extra', 'carrefour', 'walmart', 'big', 'copacabana', 'assai', 'atacarejo', 'makro', 'savegnago', 'comper', 'prezunic', 'zona sul', 'st marche', 'emporio sao paulo', 'emporio são paulo', 'pao de acucar', 'pao de açúcar', 'drogasil', 'raia', 'pague menos', 'drograria', 'farmácia', 'drogaria', 'balcao', 'balcão', 'lanchonete', 'chopperia', 'pizzaria', 'churrascaria', 'rodizio', 'rodízio', 'self service', 'buffet', 'fast food', 'cafeteria', 'café', 'cafe', 'confeteira', 'confeitaria', 'doceria', 'sorveteria', 'sorvete', 'taco bell', 'kfc', 'popeyes', 'outback', 'texas', 'applebees', 'chilli', 'olive garden', 'red lobster', 'buffalo wild wings'], target: 'Alimentação' },
                   // Transporte
                   { keywords: ['gasolina', 'combustivel', 'combustivel', 'posto', 'etanol', 'diesel', 'uber', '99', 'taxi', 'taxi', 'onibus', 'onibus', 'metro', 'metro', 'estacionamento', 'ipva', 'rodizio', 'rodizio', 'manutencao', 'manutencao', 'manutencao carro', 'manutencao carro', 'lava rapido', 'lava-rapido', 'oficina', 'seguro carro', 'pedagio', 'pedagio', 'mecanico', 'mecânico', 'guincho', 'reboque', 'combustivel', 'abasteci', 'enchi o tanque'], target: 'Transporte' },
                   // Contas (fixas)
@@ -778,6 +802,62 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
                 }
 
                 // Se mesmo assim não encontrou, manter null (sem quebrar o fluxo)
+              }
+            }
+          }
+          
+          // VALIDAÇÃO OBRIGATÓRIA: categoria é obrigatória - não pode salvar sem categoria
+          if (!args.category || !categoryId) {
+            // Tentar usar "Outros" como fallback apenas se existir
+            if (!categoryId) {
+              const normalize = (s) => (s || '')
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/\p{Diacritic}+/gu, '');
+              
+              const [{ data: orgCats }, { data: globalCats }] = await Promise.all([
+                supabase
+                  .from('budget_categories')
+                  .select('id, name')
+                  .eq('organization_id', context.organizationId)
+                  .or('type.eq.expense,type.eq.both'),
+                supabase
+                  .from('budget_categories')
+                  .select('id, name')
+                  .is('organization_id', null)
+                  .or('type.eq.expense,type.eq.both')
+              ]);
+              
+              const allCats = [...(orgCats || []), ...(globalCats || [])];
+              const byNorm = new Map();
+              for (const c of allCats) {
+                byNorm.set(normalize(c.name), c);
+              }
+              
+              const outros = byNorm.get(normalize('Outros')) || byNorm.get(normalize('Outras'));
+              
+              if (outros) {
+                categoryId = outros.id;
+                args.category = outros.name;
+              } else {
+                // Se não existe "Outros", PERGUNTAR categoria (obrigatória)
+                const categoryNames = allCats.map(c => c.name).filter(Boolean);
+                const firstName = this.getFirstName(context);
+                const namePart = firstName ? ` ${firstName}` : '';
+                
+                const categoryQuestions = [
+                  `Preciso saber a categoria${namePart}. Qual é?`,
+                  `Qual categoria${namePart}?`,
+                  `Me diz a categoria${namePart}?`,
+                  `Categoria${namePart}?`
+                ];
+                
+                return {
+                  success: false,
+                  message: `${this.pickVariation(categoryQuestions, 'categoria')}${categoryNames.length > 0 ? `\n\nDisponíveis: ${categoryNames.slice(0, 10).join(', ')}${categoryNames.length > 10 ? '...' : ''}` : ''}`
+                };
               }
             }
           }
@@ -885,12 +965,42 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             }
           }
           
+          // Extrair número de parcelas se for crédito
+          const installments = paymentMethod === 'credit_card' && args.installments 
+            ? Number(args.installments) 
+            : 1;
+          
+          // Se for parcelada (>1), calcular valor da parcela
+          const installmentAmount = installments > 1 
+            ? Math.round((amount / installments) * 100) / 100 
+            : amount;
+          
+          // Preparar installment_info se for parcelada
+          let installmentInfo = null;
+          if (paymentMethod === 'credit_card' && installments > 1) {
+            installmentInfo = {
+              total_installments: installments,
+              current_installment: 1,
+              installment_amount: installmentAmount,
+              total_amount: amount
+            };
+          }
+          
+          // Validação final: garantir que nunca salve sem categoria
+          if (!args.category || !categoryId) {
+            console.error('❌ [SAVE] Tentativa de salvar sem categoria!', { category: args.category, categoryId });
+            return {
+              success: false,
+              message: 'Ops! Preciso saber a categoria. Qual é?'
+            };
+          }
+          
           const expenseData = {
-            amount: amount,
+            amount: installmentAmount, // Valor da parcela se parcelado, senão valor total
             description: args.description,
             date: new Date().toISOString().split('T')[0],
-            category: args.category || null,
-            category_id: categoryId,
+            category: args.category, // Já validado - não pode ser null
+            category_id: categoryId, // Já validado - não pode ser null
             owner: owner,
             cost_center_id: costCenterId,
             payment_method: paymentMethod,
@@ -902,7 +1012,9 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             confirmed_at: new Date().toISOString(),
             confirmed_by: context.userId || userId,
             source: 'whatsapp',
-            whatsapp_message_id: `msg_${Date.now()}`
+            whatsapp_message_id: `msg_${Date.now()}`,
+            installment_info: installmentInfo,
+            parent_expense_id: null // Será atualizado se houver parcelas futuras
           };
           
           console.log('💾 [SAVE] Salvando despesa com dados:', JSON.stringify(expenseData, null, 2));
@@ -920,6 +1032,63 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           
           console.log('✅ Despesa salva:', data.id);
 
+          // Se for parcelada (>1), atualizar parent_expense_id e criar parcelas futuras
+          if (paymentMethod === 'credit_card' && installments > 1 && data.id) {
+            // Atualizar parent_expense_id da primeira parcela para referenciar a si mesma
+            await supabase
+              .from('expenses')
+              .update({ parent_expense_id: data.id })
+              .eq('id', data.id);
+            
+            // Criar parcelas futuras (2 até installments)
+            const baseDate = new Date(expenseData.date + 'T00:00:00');
+            const futureInstallments = [];
+            
+            for (let i = 2; i <= installments; i++) {
+              const installmentDate = new Date(baseDate);
+              installmentDate.setMonth(installmentDate.getMonth() + (i - 1));
+              
+              futureInstallments.push({
+                amount: installmentAmount,
+                description: args.description,
+                date: installmentDate.toISOString().split('T')[0],
+                category: args.category || null,
+                category_id: categoryId,
+                owner: owner,
+                cost_center_id: costCenterId,
+                payment_method: paymentMethod,
+                card_id: cardId,
+                organization_id: context.organizationId,
+                user_id: context.userId || userId,
+                status: 'pending',
+                is_shared: isShared || false,
+                source: 'whatsapp',
+                whatsapp_message_id: `msg_${Date.now()}_${i}`,
+                installment_info: {
+                  total_installments: installments,
+                  current_installment: i,
+                  installment_amount: installmentAmount,
+                  total_amount: amount
+                },
+                parent_expense_id: data.id
+              });
+            }
+            
+            // Inserir parcelas futuras em batch
+            if (futureInstallments.length > 0) {
+              const { error: installmentsError } = await supabase
+                .from('expenses')
+                .insert(futureInstallments);
+              
+              if (installmentsError) {
+                console.error('❌ Erro ao criar parcelas futuras:', installmentsError);
+                // Não falha o processo, apenas loga o erro
+              } else {
+                console.log(`✅ ${futureInstallments.length} parcelas futuras criadas`);
+              }
+            }
+          }
+
           const amountFormatted = Number(amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
           const paymentDisplayMap = {
             'credit_card': 'Cartão de Crédito',
@@ -930,7 +1099,12 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             'boleto': 'Boleto',
             'other': 'Outro'
           };
-          const paymentDisplay = paymentDisplayMap[paymentMethod] || paymentMethod;
+          // Adicionar informações de parcelas ao paymentDisplay se for parcelada
+          let paymentDisplay = paymentDisplayMap[paymentMethod] || paymentMethod;
+          if (paymentMethod === 'credit_card' && installments > 1) {
+            const cardName = args.card_name || 'Cartão';
+            paymentDisplay = `${paymentDisplay} • ${cardName} ${installments}x`;
+          }
 
           // Data formatada (pt-BR). Usa a data salva na despesa (yyyy-mm-dd)
           const savedDate = expenseData.date;
@@ -955,15 +1129,8 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
           const firstName = context.userName ? context.userName.split(' ')[0] : '';
           const greeting = greetings[Math.floor(Math.random() * greetings.length)];
           
-          // Criar mensagem mais natural e variada
-          const confirmationMsg = [
-            greeting,
-            `\nR$ ${amountFormatted} - ${args.description}`,
-            `${args.category || 'Sem categoria'}`,
-            `${paymentDisplay}`,
-            `${owner}`,
-            `${dateDisplay}`
-          ].join(' • ');
+          // Criar mensagem mais natural e legível (com quebras de linha)
+          const confirmationMsg = `${greeting}\nR$ ${amountFormatted} - ${args.description}\n${args.category || 'Sem categoria'}\n${paymentDisplay}\n${owner}\n${dateDisplay}`;
 
           return {
             success: true,
@@ -1307,24 +1474,39 @@ Use emoji APENAS na confirmação final (que vem da função) - nunca nas pergun
 --- DEVELOPER PROMPT ---
 
 Slots necessários para save_expense:
-- valor (número)
-- descrição (texto)
+- valor (número) - NÃO inclua valor na descrição!
+- descrição (texto) - Apenas o que foi comprado/gasto, SEM o valor. Ex: "mercado" (não "150 mercado"), "2 televisões", "5kg de carne". Permita números de quantidade, mas NUNCA valor monetário.
 - categoria (TENTE INFERIR automaticamente baseado em palavras-chave. Exemplos: "remédio"/"farmácia"→Saúde, "padaria"/"restaurante"→Alimentação, "posto"/"gasolina"→Transporte, "mercado"/"supermercado"→Casa, "aluguel"/"luz"→Contas. Se não conseguir inferir, PERGUNTE ao usuário)
 - pagamento (pix | dinheiro | débito | crédito)
 - pagador (eu | nome)
 - se pagamento = crédito → OBRIGATÓRIO perguntar nome do cartão e parcelas ANTES de chamar save_expense
 
-IMPORTANTE SOBRE CATEGORIA:
-- Se a descrição contém palavras como: remédio, farmácia, médico → INFIRA "Saúde" (NÃO pergunte)
-- Se contém: padaria, restaurante, lanche, pizza → INFIRA "Alimentação" (NÃO pergunte)
-- Se contém: posto, gasolina, uber, taxi → INFIRA "Transporte" (NÃO pergunte)
-- Se contém: mercado, supermercado → INFIRA "Casa" (NÃO pergunte)
-- Se contém: aluguel, luz, água, internet → INFIRA "Contas" (NÃO pergunte)
-- Só pergunte categoria se a descrição for muito genérica ou ambígua (ex.: "50 reais")
+IMPORTANTE SOBRE CATEGORIA - INFIRA QUANDO TIVER CERTEZA, PERGUNTE QUANDO TIVER DÚVIDA:
+- Use SEU CONHECIMENTO GERAL sobre categorias financeiras para inferir quando tiver CERTEZA
+- Exemplos óbvios que DEVEM ser inferidos automaticamente (NÃO pergunte):
+  * Alimentação: padaria, restaurante, lanche, pizza, ifood, delivery, comida, bebida, cerveja, suco, mercado (alimentos), açougue, peixaria, frutas, verduras, etc
+  * Saúde: remédio, farmácia, médico, dentista, hospital, consulta, exame, laboratório, óculos, academia, suplemento, etc
+  * Transporte: posto, gasolina, combustível, uber, taxi, ônibus, metro, estacionamento, ipva, oficina, manutenção, etc
+  * Casa: mercado/supermercado (compras), eletrodomésticos, eletrônicos, móveis, decoração, limpeza, etc
+  * Contas: aluguel, condomínio, água, luz, energia, internet, telefone, iptu, imposto, etc
+  * Lazer: cinema, teatro, show, balada, parque, viagem, hotel, netflix, spotify, streaming, etc
+  * Beleza: cabelo, barbearia, manicure, pedicure, salão, cosmético, etc
+  * Vestuário: roupa, sapato, tênis, camisa, etc
+  * Educação: curso, faculdade, escola, livro, etc
+  * Pets: petshop, ração, veterinário, etc
+
+REGRA CRÍTICA:
+- Se você TEM CERTEZA do que é (ex: cerveja = bebida = Alimentação), INFIRA automaticamente
+- Se você NÃO TEM CERTEZA ou está em DÚVIDA, OBRIGATORIAMENTE PERGUNTE a categoria
+- Se a descrição for genérica ou ambígua (ex.: "50 reais", "gasto", "compra"), PERGUNTE
+- Se não souber ou não estiver seguro, PERGUNTE - é melhor perguntar do que errar
+- Quando em dúvida entre duas categorias, PERGUNTE ao usuário
+- A segurança é mais importante que a velocidade - perguntar é sempre melhor que inferir errado
 
 Regras de fluxo:
-- TENTE INFERIR categoria pela descrição antes de perguntar (ex.: "remédio" → Saúde, "padaria" → Alimentação, "posto" → Transporte)
-- Se não conseguir inferir, PERGUNTE categoria
+- TENTE INFERIR categoria pela descrição quando tiver CERTEZA (ex.: "remédio" → Saúde, "padaria" → Alimentação, "posto" → Transporte)
+- Se não tiver CERTEZA ou estiver em DÚVIDA, OBRIGATORIAMENTE PERGUNTE categoria
+- NUNCA inferir se não estiver seguro - é melhor perguntar do que errar
 - Se faltar 1 slot → pergunte apenas ele
 - Se faltarem 2 ou mais → pergunte tudo em uma única mensagem curta
 - AO COMPLETAR os dados, APENAS chame save_expense (não escreva NADA)
@@ -1443,7 +1625,7 @@ ${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de for
             },
             description: { 
               type: 'string',
-              description: 'Descrição da despesa'
+              description: 'Descrição da despesa SEM o valor monetário. Exemplos corretos: "mercado" (não "150 mercado"), "farmácia", "2 televisões", "5kg de carne", "TV 50 polegadas". Permita números relacionados a quantidade (2, 5kg, etc) mas NUNCA inclua o valor monetário na descrição.'
             },
             payment_method: { 
               type: 'string',
