@@ -572,11 +572,34 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
 
                 // Sinônimos → categoria canônica
                 const synonyms = [
-                  { keywords: ['farmacia', 'remedio', 'medico', 'hospital'], target: 'Saúde' },
-                  { keywords: ['mercado', 'supermercado', 'padaria', 'lanche', 'restaurante', 'pizza', 'ifood'], target: 'Alimentação' },
-                  { keywords: ['gasolina', 'posto', 'uber', '99', 'taxi', 'ônibus', 'onibus', 'metro', 'combustivel', 'combustível'], target: 'Transporte' },
-                  { keywords: ['aluguel', 'condominio', 'água', 'agua', 'luz', 'energia', 'internet', 'net', 'vivo', 'claro'], target: 'Contas' },
-                  { keywords: ['casa', 'lar'], target: 'Casa' }
+                  // Saúde
+                  { keywords: ['farmacia', 'remedio', 'remedios', 'medicamento', 'medicamentos', 'medico', 'dentista', 'hospital', 'exame', 'consulta', 'laboratorio', 'optica', 'oculos'], target: 'Saúde' },
+                  // Alimentação
+                  { keywords: ['mercado', 'supermercado', 'padaria', 'padarias', 'lanche', 'lanches', 'restaurante', 'pizza', 'ifood', 'ubereats', 'rappi', 'sushi', 'açai', 'acai', 'bar', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar'], target: 'Alimentação' },
+                  // Transporte
+                  { keywords: ['gasolina', 'combustivel', 'combustível', 'posto', 'uber', '99', 'taxi', 'táxi', 'onibus', 'ônibus', 'metro', 'metrô', 'estacionamento', 'ipva', 'rodizio', 'rodízio', 'manutencao carro', 'manutenção carro', 'lava rapido', 'lava-rápido'], target: 'Transporte' },
+                  // Contas (fixas)
+                  { keywords: ['aluguel', 'condominio', 'condomínio', 'agua', 'água', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos'], target: 'Contas' },
+                  // Casa
+                  { keywords: ['casa', 'lar', 'mercadolivre', 'magalu', 'casas bahia', 'tokstok', 'tok&stok', 'leroy', 'ferramenta', 'decoracao', 'decoração', 'limpeza'], target: 'Casa' },
+                  // Educação
+                  { keywords: ['curso', 'faculdade', 'escola', 'livro', 'livraria', 'udemy', 'curso online', 'pluralsight', 'alura'], target: 'Educação' },
+                  // Lazer
+                  { keywords: ['cinema', 'teatro', 'show', 'balada', 'parque', 'viagem', 'hotel', 'airbnb', 'ingresso', 'ingressos'], target: 'Lazer' },
+                  // Beleza
+                  { keywords: ['cabelo', 'barbearia', 'barbeiro', 'manicure', 'pedicure', 'estetica', 'estética', 'cosmetico', 'cosmético', 'cosmeticos', 'cosméticos', 'maquiagem'], target: 'Beleza' },
+                  // Vestuário
+                  { keywords: ['roupa', 'roupas', 'sapato', 'sapatos', 'tenis', 'tênis', 'camisa', 'camiseta', 'calca', 'calça', 'vestido', 'renner', 'riachuelo', 'cea', 'c&a', 'zara'], target: 'Vestuário' },
+                  // Pets
+                  { keywords: ['petshop', 'ração', 'racao', 'veterinario', 'veterinário', 'banho tosa', 'banho e tosa'], target: 'Pets' },
+                  // Assinaturas/Streaming
+                  { keywords: ['netflix', 'spotify', 'prime', 'disney', 'hbo', 'globoplay', 'youtube premium', 'assinatura'], target: 'Lazer' },
+                  // Fitness
+                  { keywords: ['academia', 'smartfit', 'gympass', 'suplemento', 'suplementos'], target: 'Saúde' },
+                  // Impostos e taxas
+                  { keywords: ['iptu', 'ipva', 'ir', 'imposto', 'taxa', 'multas', 'detran'], target: 'Contas' },
+                  // Presentes/Doações
+                  { keywords: ['presente', 'presentes', 'doacao', 'doação', 'vaquinha'], target: 'Outros' }
                 ];
 
                 // 3a) Tentar sinônimos pelo texto informado
