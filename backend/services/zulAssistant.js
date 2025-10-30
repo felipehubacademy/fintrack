@@ -40,6 +40,23 @@ class ZulAssistant {
       .replace(/\p{Diacritic}+/gu, '');
   }
 
+  // Extrair núcleo descritivo (remove verbos/artigos/preposições comuns)
+  extractCoreDescription(text) {
+    if (!text) return '';
+    const noAccent = this.normalizeText(text);
+    // Remover pontuação leve
+    const cleaned = noAccent.replace(/[.,!?;:]/g, ' ');
+    const stopwords = new Set([
+      'comprei','paguei','gastei','foi','deu','peguei','compre','comprar','pagando','pagamento',
+      'um','uma','uns','umas','o','a','os','as',
+      'no','na','nos','nas','num','numa','em','de','do','da','dos','das','para','pra','pro','pela','pelo','por','ao','à','aos','às'
+    ]);
+    const tokens = cleaned.split(/\s+/).filter(Boolean).filter(t => !stopwords.has(t));
+    if (tokens.length === 0) return text.trim();
+    // Retornar até 3 palavras significativas
+    return tokens.slice(0, 3).join(' ');
+  }
+
   /**
    * Obter o Assistant ZUL (usando ID fixo da env var)
    */
@@ -526,6 +543,14 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             };
           }
           
+          // Normalizar/limpar descrição para salvar e inferir
+          if (args.description) {
+            const core = this.extractCoreDescription(args.description);
+            if (core) {
+              args.description = core;
+            }
+          }
+
           // Se categoria não vier, tentar inferir pela descrição (sinônimos/keywords)
           if (!args.category && args.description) {
             const norm = (s) => (s || '').toString().toLowerCase();
@@ -535,7 +560,11 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
               { keys: ['restaurante', 'lanche', 'pizza', 'ifood', 'sushi', 'bar', 'cafeteria'], target: 'Alimentação' },
               { keys: ['posto', 'gasolina', 'etanol', 'uber', '99', 'taxi', 'ônibus', 'onibus', 'metro'], target: 'Transporte' },
               { keys: ['farmácia', 'farmacia', 'remédio', 'remedio', 'médico', 'medico', 'dentista'], target: 'Saúde' },
-              { keys: ['aluguel', 'condominio', 'condomínio', 'agua', 'água', 'luz', 'energia', 'internet'], target: 'Contas' }
+              { keys: ['aluguel', 'condominio', 'condomínio', 'agua', 'água', 'luz', 'energia', 'internet'], target: 'Contas' },
+              // Eletrodomésticos/Eletroportáteis → Casa
+              { keys: ['ventilador', 'ar condicionado', 'microondas', 'micro-ondas', 'geladeira', 'freezer', 'liquidificador', 'batedeira', 'cafeteira'], target: 'Casa' },
+              // Eletrônicos de uso doméstico
+              { keys: ['tv', 'televisao', 'televisão', 'som', 'home theater'], target: 'Casa' }
             ];
             for (const hint of catHints) {
               if (hint.keys.some(k => d.includes(k))) {
@@ -686,9 +715,25 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
             }
           }
           
-          // Buscar card_id se for cartão de crédito (normalização global)
+          // Subfluxo de cartão de crédito: exigir cartão e parcelas antes de salvar
           let cardId = null;
-          if (paymentMethod === 'credit_card' && args.card_name) {
+          if (paymentMethod === 'credit_card') {
+            // Se não informou o cartão ainda, perguntar primeiro
+            if (!args.card_name || String(args.card_name).trim() === '') {
+              return {
+                success: false,
+                message: 'Qual cartão?'
+              };
+            }
+
+            // Se não informou parcelas, perguntar em seguida
+            if (!args.installments || Number(args.installments) < 1) {
+              return {
+                success: false,
+                message: 'Em quantas parcelas? (1x à vista)'
+              };
+            }
+
             const { data: cards } = await supabase
               .from('cards')
               .select('id, name')
@@ -713,18 +758,17 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
               cardId = foundCard.id;
               args.card_name = foundCard.name;
             } else {
-              // Cartão não encontrado - retornar lista de cartões disponíveis
-              const { data: allCards } = await supabase
+              // Cartão não encontrado - listar opções disponíveis
+              const { data: allActiveCards } = await supabase
                 .from('cards')
                 .select('name')
                 .eq('organization_id', context.organizationId)
                 .eq('is_active', true);
-              
-              const cardsList = allCards?.map(c => c.name).join(', ') || 'nenhum cartão cadastrado';
-              
+
+              const cardsList = allActiveCards?.map(c => c.name).join(', ') || 'nenhum cartão cadastrado';
               return {
                 success: false,
-                message: `Cartão "${args.card_name}" não encontrado. Cartões disponíveis: ${cardsList}. Qual foi?`
+                message: `Não encontrei esse cartão. Disponíveis: ${cardsList}. Qual cartão?`
               };
             }
           }
@@ -937,13 +981,10 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
       info.amount = parseFloat(amountMatch[1].replace(',', '.'));
     }
     
-    // Extrair descrição (palavras-chave comuns)
-    const descKeywords = ['mercado', 'farmácia', 'posto', 'gasolina', 'restaurante', 'uber', 'almoço', 'jantar', 'café', 'lanche'];
-    for (const keyword of descKeywords) {
-      if (conversationText.includes(keyword)) {
-        info.description = keyword;
-        break;
-      }
+    // Extrair descrição: usar núcleo descritivo da última mensagem
+    const core = this.extractCoreDescription(conversationText);
+    if (core) {
+      info.description = core;
     }
     
     // Extrair forma de pagamento
@@ -1068,6 +1109,11 @@ IMPORTANTE CRÍTICO:
 - NÃO ESCREVA NADA além da chamada da função
 - A função retorna automaticamente a mensagem de confirmação
 - VOCÊ NÃO PRECISA e NÃO DEVE escrever mensagem alguma quando chamar a função
+
+REGRAS DE PERGUNTAS CURTAS:
+- Para pagamento: pergunte SOMENTE "Pagou como?" (ou variação curta). NÃO liste opções na primeira pergunta.
+- Liste opções (PIX, dinheiro, débito, crédito) apenas após resposta inválida.
+- Para responsável: pergunte "Quem pagou?" (ou variação curta). Se o usuário disser "eu", mapear para o nome dele.
 
 Evite frases mecânicas como "aguarde" ou "validando".
 Suas mensagens devem ser curtas (como no WhatsApp).
