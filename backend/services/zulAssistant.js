@@ -206,28 +206,7 @@ class ZulAssistant {
               }
             }
           },
-          {
-            type: 'function',
-            function: {
-              name: 'validate_category',
-              description: 'Validar se a categoria da despesa informada ou inferida é uma das categorias válidas do usuário',
-              parameters: {
-                type: 'object',
-                properties: {
-                  category_name: {
-                    type: 'string',
-                    description: 'Nome da categoria inferida pelo assistente'
-                  },
-                  available_categories: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Lista de categorias válidas do usuário (ex: Alimentação, Transporte, Moradia, Lazer)'
-                  }
-                },
-                required: ['category_name', 'available_categories']
-              }
-            }
-          },
+
           {
             type: 'function',
             function: {
@@ -298,16 +277,15 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
 3.  **INFERÊNCIA ATIVA**: Se o usuário fornecer informações parciais, use o contexto para inferir e perguntar apenas pela **lacuna CRÍTICA** restante. Ex: Se ele diz "100 no mercado, débito", pergunte apenas "E o responsável?".
 4.  **HUMANIZAÇÃO LEVE**: Use emojis leves (🤔, ❓, 💰) com moderação e apenas para humanizar a pergunta ou confirmação. Não use emojis em excesso.
 5.  **MANUTENÇÃO DE CONTEXTO**: NUNCA repita perguntas já respondidas ou informações já fornecidas.
-6.  **FLUXO DE VALIDAÇÃO**: A ordem de prioridade para coleta é: Valor & Descrição, Pagamento, Responsável, **Categoria**.
-    *   **Categoria**: Use a função `validate_category` para verificar se a categoria inferida é válida antes de salvar. Se for inválida, pergunte ao usuário qual a categoria correta, usando a lista de categorias válidas.
-7.  **SALVAMENTO AUTOMÁTICO**: Chame a função `save_expense` **IMEDIATAMENTE** quando tiver: valor, descrição, pagamento, responsável **E categoria validada**.
+6.  **FLUXO DE VALIDAÇÃO**: A ordem de prioridade para coleta é: Valor & Descrição, Pagamento, Responsável.
+7.  **SALVAMENTO AUTOMÁTICO**: Chame a função `save_expense` **IMEDIATAMENTE** quando tiver: valor, descrição, pagamento, e responsável.
 8.  **TRATAMENTO DE DESVIO**: Se a mensagem não for uma despesa (ex: saudação, pergunta sobre saldo), responda brevemente, mantenha a personalidade e **redirecione gentilmente** para o foco principal: "Oi, [Nome]! Tudo ótimo por aqui. Lembre-se que meu foco é anotar suas despesas rapidinho. Qual foi o gasto de hoje? 😉"
 
 FUNÇÕES:
 - validate_payment_method
 - validate_card
 - validate_responsible
-- **validate_category**
+
 - save_expense (chame quando tiver tudo validado)
 
 Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um assistente humano e eficiente.`;
@@ -1798,10 +1776,7 @@ ${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de for
             output = { success: true, isValid: true };
         } else if (functionName === 'validate_responsible') {
             output = { success: true, isValid: true };
-        } else if (functionName === 'validate_category') {
-            const availableCategories = context.available_categories || [];
-            const isValid = availableCategories.some(cat => this.normalizeText(cat) === this.normalizeText(args.category_name));
-            output = { success: true, isValid: isValid };
+
         } else if (functionName === 'save_expense') {
             output = await context.saveExpense(args, context.userId, context.organizationId);
         } else {
