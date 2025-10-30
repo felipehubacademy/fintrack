@@ -30,6 +30,16 @@ class ZulAssistant {
     this.webChat = new ZulWebChat();
   }
 
+  // Normalização global: minúsculas e sem acentos
+  normalizeText(str) {
+    return (str || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}+/gu, '');
+  }
+
   /**
    * Obter o Assistant ZUL (usando ID fixo da env var)
    */
@@ -436,103 +446,216 @@ Seja IMPREVISÍVEL e NATURAL como o ChatGPT é. Cada conversa deve parecer únic
         console.log('💾 [SAVE] Salvando despesa com args:', args);
         
         try {
-          // Normalizar payment_method
-          const paymentMethodMap = {
-            'pix': 'pix',
-            'cash': 'cash',
-            'dinheiro': 'cash',
-            'debit_card': 'debit_card',
-            'débito': 'debit_card',
-            'credit_card': 'credit_card',
-            'crédito': 'credit_card'
-          };
-          
-          const paymentMethod = paymentMethodMap[args.payment_method?.toLowerCase()] || args.payment_method || 'other';
+          // Normalizar payment_method (case/acento) + sinônimos
+          const nm = this.normalizeText(args.payment_method);
+          let paymentMethod = 'other';
+          if (nm.includes('pix')) paymentMethod = 'pix';
+          else if (nm.includes('dinheir') || nm.includes('cash') || nm.includes('especie')) paymentMethod = 'cash';
+          else if (nm.includes('deb')) paymentMethod = 'debit_card';
+          else if (nm.includes('cred')) paymentMethod = 'credit_card';
+          else if (nm.includes('boleto')) paymentMethod = 'boleto';
+          else if (nm.includes('transfer')) paymentMethod = 'bank_transfer';
           
           // Extrair valor
           const amount = parseFloat(args.amount);
           
           // Determinar owner (se "eu", usar nome do contexto)
           let owner = args.responsible;
-          if (owner?.toLowerCase() === 'eu' || owner?.toLowerCase()?.includes('eu')) {
+          const ownerNorm = this.normalizeText(owner);
+          if (ownerNorm === 'eu' || ownerNorm.includes('eu')) {
             owner = context.userName || context.firstName || owner;
           }
           
           // Buscar cost_center_id se owner não for "Compartilhado"  
           let costCenterId = null;
-          const isShared = owner?.toLowerCase()?.includes('compartilhado');
-          
+          const isShared = ownerNorm.includes('compartilhado');
+
           if (!isShared && owner) {
-            const { data: costCenter } = await supabase
+            // Matching normalizado (case/acento) com suporte a primeiro nome e desambiguação
+            const { data: centers } = await supabase
               .from('cost_centers')
-              .select('id')
-              .eq('name', owner)
-              .eq('organization_id', context.organizationId)
-              .maybeSingle();
-            
-            if (costCenter) costCenterId = costCenter.id;
-          }
-          
-          // Buscar category_id se tiver categoria (org + globais)
-          let categoryId = null;
-          if (args.category) {
-            // Primeiro busca na org
-            const { data: cat } = await supabase
-              .from('budget_categories')
-              .select('id')
-              .eq('name', args.category)
-              .eq('organization_id', context.organizationId)
-              .maybeSingle();
-            
-            if (cat) {
-              categoryId = cat.id;
-            } else {
-              // Se não encontrou na org, busca nas globais
-              const { data: globalCat } = await supabase
-                .from('budget_categories')
-                .select('id')
-                .eq('name', args.category)
-                .is('organization_id', null)
-                .maybeSingle();
-              
-              if (globalCat) {
-                categoryId = globalCat.id;
+              .select('id, name')
+              .eq('organization_id', context.organizationId);
+
+            if (centers && centers.length) {
+              const byNorm = new Map();
+              for (const c of centers) byNorm.set(this.normalizeText(c.name), c);
+
+              // 1) Match exato normalizado
+              const exact = byNorm.get(ownerNorm);
+              if (exact) {
+                costCenterId = exact.id;
+                owner = exact.name; // padroniza capitalização
               } else {
-                // Categoria não encontrada - retornar lista de categorias disponíveis
-                const { data: orgCats } = await supabase
-                  .from('budget_categories')
-                  .select('name')
-                  .eq('organization_id', context.organizationId)
-                  .or('type.eq.expense,type.eq.both');
-                
-                const { data: globalCats } = await supabase
-                  .from('budget_categories')
-                  .select('name')
-                  .is('organization_id', null)
-                  .or('type.eq.expense,type.eq.both');
-                
-                const categoriesList = [...(orgCats || []), ...(globalCats || [])].map(c => c.name).join(', ');
-                
-                return {
-                  success: false,
-                  message: `Categoria "${args.category}" não encontrada. Categorias disponíveis: ${categoriesList}. Qual categoria?`
-                };
+                // 2) Match parcial (substring)
+                let matches = centers.filter(c => {
+                  const n = this.normalizeText(c.name);
+                  return n.includes(ownerNorm) || ownerNorm.includes(n);
+                });
+
+                // 3) Se usuário passou apenas o primeiro nome, tentar por primeiro token
+                if (!matches.length) {
+                  const firstToken = ownerNorm.split(/\s+/)[0];
+                  matches = centers.filter(c => {
+                    const tokens = this.normalizeText(c.name).split(/\s+/);
+                    return tokens[0] === firstToken; // primeiro nome igual
+                  });
+                }
+
+                if (matches.length === 1) {
+                  costCenterId = matches[0].id;
+                  owner = matches[0].name;
+                } else if (matches.length > 1) {
+                  const options = matches.map(m => m.name).join(', ');
+                  return {
+                    success: false,
+                    message: `Encontrei mais de um responsável com esse primeiro nome. Qual deles? ${options}`
+                  };
+                }
               }
             }
           }
           
-          // Buscar card_id se for cartão de crédito
-          let cardId = null;
-          if (paymentMethod === 'credit_card' && args.card_name) {
-            const { data: card } = await supabase
-              .from('cards')
+          // Buscar category_id se tiver categoria (org + globais) com normalização e sinônimos
+          let categoryId = null;
+          if (args.category) {
+            const normalize = (s) => (s || '')
+              .toString()
+              .trim()
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/\p{Diacritic}+/gu, '');
+
+            const inputCategory = normalize(args.category);
+
+            // 1) Tentativa direta case-insensitive na org
+            const { data: catCI } = await supabase
+              .from('budget_categories')
               .select('id, name')
-              .ilike('name', `%${args.card_name}%`)
+              .ilike('name', args.category)
               .eq('organization_id', context.organizationId)
               .maybeSingle();
-            
-            if (card) {
-              cardId = card.id;
+
+            if (catCI) {
+              categoryId = catCI.id;
+            } else {
+              // 2) Tentativa nas globais (case-insensitive)
+              const { data: globalCatCI } = await supabase
+                .from('budget_categories')
+                .select('id, name')
+                .ilike('name', args.category)
+                .is('organization_id', null)
+                .maybeSingle();
+
+              if (globalCatCI) {
+                categoryId = globalCatCI.id;
+              } else {
+                // 3) Carregar todas as categorias válidas (org + globais) e fazer matching inteligente
+                const [{ data: orgCatsAll }, { data: globalCatsAll }] = await Promise.all([
+                  supabase
+                    .from('budget_categories')
+                    .select('id, name')
+                    .eq('organization_id', context.organizationId)
+                    .or('type.eq.expense,type.eq.both'),
+                  supabase
+                    .from('budget_categories')
+                    .select('id, name')
+                    .is('organization_id', null)
+                    .or('type.eq.expense,type.eq.both')
+                ]);
+
+                const allCats = [...(orgCatsAll || []), ...(globalCatsAll || [])];
+                const byNormalizedName = new Map();
+                for (const c of allCats) {
+                  byNormalizedName.set(normalize(c.name), c);
+                }
+
+                // Sinônimos → categoria canônica
+                const synonyms = [
+                  { keywords: ['farmacia', 'remedio', 'medico', 'hospital'], target: 'Saúde' },
+                  { keywords: ['mercado', 'supermercado', 'padaria', 'lanche', 'restaurante', 'pizza', 'ifood'], target: 'Alimentação' },
+                  { keywords: ['gasolina', 'posto', 'uber', '99', 'taxi', 'ônibus', 'onibus', 'metro', 'combustivel', 'combustível'], target: 'Transporte' },
+                  { keywords: ['aluguel', 'condominio', 'água', 'agua', 'luz', 'energia', 'internet', 'net', 'vivo', 'claro'], target: 'Contas' },
+                  { keywords: ['casa', 'lar'], target: 'Casa' }
+                ];
+
+                // 3a) Tentar sinônimos pelo texto informado
+                let resolvedName = null;
+                for (const group of synonyms) {
+                  if (group.keywords.some(k => inputCategory.includes(k))) {
+                    const targetNorm = normalize(group.target);
+                    if (byNormalizedName.has(targetNorm)) {
+                      resolvedName = byNormalizedName.get(targetNorm).name;
+                      categoryId = byNormalizedName.get(targetNorm).id;
+                      break;
+                    }
+                  }
+                }
+
+                // 3b) Caso específico: "farmacia" sem "Saúde" disponível → cair para "Casa" se existir
+                if (!categoryId && inputCategory.includes('farmacia')) {
+                  const casa = byNormalizedName.get(normalize('Casa'));
+                  if (casa) {
+                    categoryId = casa.id;
+                    resolvedName = casa.name;
+                  }
+                }
+
+                // 3c) Matching por similaridade simples (substring) entre nomes normalizados
+                if (!categoryId) {
+                  const match = allCats.find(c => normalize(c.name).includes(inputCategory) || inputCategory.includes(normalize(c.name)));
+                  if (match) {
+                    categoryId = match.id;
+                    resolvedName = match.name;
+                  }
+                }
+
+                // 3d) Se ainda não achou, não perguntar novamente — use "Outros" se existir
+                if (!categoryId) {
+                  const outros = byNormalizedName.get(normalize('Outros'))
+                    || byNormalizedName.get(normalize('Outras'));
+                  if (outros) {
+                    categoryId = outros.id;
+                    resolvedName = outros.name;
+                  }
+                }
+
+                // Atualizar args.category para refletir a resolução, se houver
+                if (categoryId && resolvedName) {
+                  args.category = resolvedName;
+                }
+
+                // Se mesmo assim não encontrou, manter null (sem quebrar o fluxo)
+              }
+            }
+          }
+          
+          // Buscar card_id se for cartão de crédito (normalização global)
+          let cardId = null;
+          if (paymentMethod === 'credit_card' && args.card_name) {
+            const { data: cards } = await supabase
+              .from('cards')
+              .select('id, name')
+              .eq('organization_id', context.organizationId)
+              .eq('is_active', true);
+
+            const cardNorm = this.normalizeText(args.card_name);
+            let foundCard = null;
+            if (cards && cards.length) {
+              const byNorm = new Map();
+              for (const c of cards) byNorm.set(this.normalizeText(c.name), c);
+              foundCard = byNorm.get(cardNorm);
+              if (!foundCard) {
+                foundCard = cards.find(c => {
+                  const n = this.normalizeText(c.name);
+                  return n.includes(cardNorm) || cardNorm.includes(n);
+                });
+              }
+            }
+
+            if (foundCard) {
+              cardId = foundCard.id;
+              args.card_name = foundCard.name;
             } else {
               // Cartão não encontrado - retornar lista de cartões disponíveis
               const { data: allCards } = await supabase
