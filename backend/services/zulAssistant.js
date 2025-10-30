@@ -1788,33 +1788,32 @@ ${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de for
    * Processar chamadas de função
    */
   async handleFunctionCall(functionName, args, context) {
-    console.log(`🔧 [FUNCTION_CALL] ===== INÍCIO =====`);
-    console.log(`🔧 [FUNCTION_CALL] Função: ${functionName}`);
-    console.log(`🔧 [FUNCTION_CALL] Args:`, JSON.stringify(args, null, 2));
-    
-    let result;
-    if (functionName === 'save_expense') {
-      console.log(`🔧 [FUNCTION_CALL] CHAMANDO save_expense com args:`, args);
-      result = await context.saveExpense(args);
-      console.log(`🔧 [FUNCTION_CALL] save_expense retornou:`, result);
-    } else if (functionName === 'validate_category') {
-      console.log(`🔧 [FUNCTION_CALL] CHAMANDO validate_category com args:`, args);
-      // A lógica de validação de categoria é feita pelo Assistant,
-      // que compara args.category_name com args.available_categories.
-      // O resultado é apenas um feedback para o Assistant.
-      const isValid = args.available_categories.some(cat => this.normalizeText(cat) === this.normalizeText(args.category_name));
-      result = { 
-        success: isValid, 
-        message: isValid ? `Categoria '${args.category_name}' é válida.` : `Categoria '${args.category_name}' NÃO é válida. O usuário deve ser questionado.` 
-      };
-      console.log(`🔧 [FUNCTION_CALL] validate_category retornou:`, result);
-    } else {
-      result = { error: `Função desconhecida: ${functionName}` };
+    console.log(`🔧 [FUNCTION_CALL] Executing: ${functionName}`);
+    let output = {};
+
+    try {
+        if (functionName === 'validate_payment_method') {
+            output = { success: true, isValid: true };
+        } else if (functionName === 'validate_card') {
+            output = { success: true, isValid: true };
+        } else if (functionName === 'validate_responsible') {
+            output = { success: true, isValid: true };
+        } else if (functionName === 'validate_category') {
+            const availableCategories = context.available_categories || [];
+            const isValid = availableCategories.some(cat => this.normalizeText(cat) === this.normalizeText(args.category_name));
+            output = { success: true, isValid: isValid };
+        } else if (functionName === 'save_expense') {
+            output = await context.saveExpense(args, context.userId, context.organizationId);
+        } else {
+            output = { success: false, error: `Unknown function: ${functionName}` };
+        }
+    } catch (error) {
+        console.error(`❌ Error in handleFunctionCall for ${functionName}:`, error);
+        output = { success: false, error: error.message };
     }
-    
-    console.log(`🔧 [FUNCTION_CALL] Resultado:`, JSON.stringify(result, null, 2));
-    console.log(`🔧 [FUNCTION_CALL] ===== FIM =====`);
-    return result;
+
+    console.log(`  -> Result for ${functionName}:`, output);
+    return output;
   }
 
   /**
