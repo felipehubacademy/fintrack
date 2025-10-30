@@ -1778,7 +1778,7 @@ ${context.isFirstMessage ? `\nPRIMEIRA MENSAGEM: Cumprimente ${firstName} de for
             output = { success: true, isValid: true };
 
         } else if (functionName === 'save_expense') {
-            output = await context.saveExpense(args, context.userId, context.organizationId);
+            output = await context.saveExpense(args);
         } else {
             output = { success: false, error: `Unknown function: ${functionName}` };
         }
