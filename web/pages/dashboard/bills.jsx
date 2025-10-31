@@ -201,11 +201,11 @@ export default function BillsDashboard() {
 
       await fetchBills();
       setShowModal(false);
-      success('✅ Conta criada com sucesso!');
+      success('Conta criada com sucesso!');
     } catch (error) {
       console.error('❌ [BILLS] Erro ao criar conta:', error);
       const errorMessage = error?.message || error?.details || 'Erro desconhecido';
-      showError(`❌ Erro ao criar conta: ${errorMessage}`);
+      showError(`Erro ao criar conta: ${errorMessage}`);
       throw error;
     }
   };
@@ -218,7 +218,18 @@ export default function BillsDashboard() {
       if (billData.revert_to_pending && billData.expense_id) {
         console.log('🔄 [BILLS] Revertendo status e excluindo expense:', billData.expense_id);
         
-        // 1. Excluir expense_splits relacionados
+        // 1. Primeiro, remover a referência expense_id da bill para quebrar a foreign key constraint
+        const { error: updateBillRefError } = await supabase
+          .from('bills')
+          .update({ expense_id: null })
+          .eq('id', editingBill.id);
+        
+        if (updateBillRefError) {
+          console.error('❌ [BILLS] Erro ao remover referência expense_id da bill:', updateBillRefError);
+          throw new Error('Erro ao remover referência da despesa: ' + (updateBillRefError.message || 'Erro desconhecido'));
+        }
+        
+        // 2. Excluir expense_splits relacionados
         const { error: splitsError } = await supabase
           .from('expense_splits')
           .delete()
@@ -228,7 +239,7 @@ export default function BillsDashboard() {
           console.warn('⚠️ [BILLS] Erro ao excluir splits (pode não existir):', splitsError);
         }
         
-        // 2. Excluir expense
+        // 3. Excluir expense
         const { error: expenseError } = await supabase
           .from('expenses')
           .delete()
@@ -274,7 +285,7 @@ export default function BillsDashboard() {
         await fetchBills();
         setShowModal(false);
         setEditingBill(null);
-        success('✅ Conta revertida para pendente e despesa excluída com sucesso!');
+        success('Conta revertida para pendente e despesa excluída com sucesso!');
         return;
       }
       
@@ -323,23 +334,23 @@ export default function BillsDashboard() {
       await fetchBills();
       setShowModal(false);
       setEditingBill(null);
-      success('✅ Conta atualizada com sucesso!');
+      success('Conta atualizada com sucesso!');
     } catch (error) {
       console.error('❌ [BILLS] Erro ao atualizar conta:', error);
       const errorMessage = error?.message || error?.details || 'Erro desconhecido';
-      showError(`❌ Erro ao atualizar conta: ${errorMessage}`);
+      showError(`Erro ao atualizar conta: ${errorMessage}`);
       throw error;
     }
   };
 
   const handleMarkAsPaid = (bill) => {
     if (!bill.payment_method) {
-      warning('⚠️ Por favor, edite a conta e defina um método de pagamento antes de marcar como paga.');
+      warning('Por favor, edite a conta e defina um método de pagamento antes de marcar como paga.');
       return;
     }
 
     if (bill.status === 'paid') {
-      warning('⚠️ Esta conta já está marcada como paga.');
+      warning('Esta conta já está marcada como paga.');
       return;
     }
 
@@ -485,10 +496,10 @@ export default function BillsDashboard() {
       }
 
       await fetchBills();
-      success('✅ Conta marcada como paga com sucesso! A despesa foi criada automaticamente.');
+      success('Conta marcada como paga com sucesso! A despesa foi criada automaticamente.');
     } catch (error) {
       console.error('❌ [BILLS] Erro ao marcar conta como paga:', error);
-      showError('❌ Erro ao processar pagamento: ' + (error.message || 'Erro desconhecido'));
+      showError('Erro ao processar pagamento: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setShowConfirmModal(false);
       setBillToMarkAsPaid(null);
@@ -558,7 +569,7 @@ export default function BillsDashboard() {
       const billToDeleteObj = bills.find(b => b.id === billToDelete);
       
       if (!billToDeleteObj) {
-        showError('❌ Conta não encontrada.');
+        showError('Conta não encontrada.');
         return;
       }
 
@@ -566,7 +577,18 @@ export default function BillsDashboard() {
       if (billToDeleteObj.status === 'paid' && billToDeleteObj.expense_id) {
         console.log('🗑️ [BILLS] Excluindo expense associada:', billToDeleteObj.expense_id);
         
-        // 1. Excluir expense_splits relacionados
+        // 1. Primeiro, remover a referência expense_id da bill para quebrar a foreign key constraint
+        const { error: updateBillError } = await supabase
+          .from('bills')
+          .update({ expense_id: null })
+          .eq('id', billToDelete);
+        
+        if (updateBillError) {
+          console.error('❌ [BILLS] Erro ao remover referência expense_id da bill:', updateBillError);
+          throw new Error('Erro ao remover referência da despesa: ' + (updateBillError.message || 'Erro desconhecido'));
+        }
+        
+        // 2. Excluir expense_splits relacionados
         const { error: splitsError } = await supabase
           .from('expense_splits')
           .delete()
@@ -576,7 +598,7 @@ export default function BillsDashboard() {
           console.warn('⚠️ [BILLS] Erro ao excluir splits (pode não existir):', splitsError);
         }
         
-        // 2. Excluir expense
+        // 3. Excluir expense
         const { error: expenseError } = await supabase
           .from('expenses')
           .delete()
@@ -590,10 +612,10 @@ export default function BillsDashboard() {
         console.log('✅ [BILLS] Expense excluída com sucesso');
       }
 
-      // 3. Excluir a bill (ou marcar como cancelled)
+      // 4. Excluir a bill permanentemente
       const { error } = await supabase
         .from('bills')
-        .update({ status: 'cancelled' })
+        .delete()
         .eq('id', billToDelete);
 
       if (error) throw error;
@@ -601,13 +623,13 @@ export default function BillsDashboard() {
       await fetchBills();
       
       if (billToDeleteObj.status === 'paid' && billToDeleteObj.expense_id) {
-        success('✅ Conta e despesa associada excluídas com sucesso!');
+        success('Conta e despesa associada excluídas com sucesso!');
       } else {
-        success('✅ Conta excluída com sucesso!');
+        success('Conta excluída com sucesso!');
       }
     } catch (error) {
       console.error('❌ [BILLS] Erro ao excluir conta:', error);
-      showError('❌ Erro ao excluir conta: ' + (error.message || 'Erro desconhecido'));
+      showError('Erro ao excluir conta: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setShowConfirmModal(false);
       setBillToDelete(null);

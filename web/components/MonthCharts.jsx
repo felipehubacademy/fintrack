@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildCategoryColorMap, paymentMethodColor, normalizeKey, resolveColor } from '../lib/colors';
-import PrivacyToggle from './PrivacyToggle';
 
 export default function MonthCharts({ expenses, selectedMonth, onMonthChange, costCenters = [], categories = [], organization = null, user = null }) {
   const [hoverCategory, setHoverCategory] = useState(null);
-  const [viewMode, setViewMode] = useState('all'); // 'all', 'individual', 'org'
+  // Sempre mostrar todos (não há mais filtro de privacidade)
+  const viewMode = 'all';
   
   const parseAmount = (raw) => {
     if (raw == null) return 0;
@@ -361,14 +361,6 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
             </div>
           </div>
           
-          {/* Privacy Toggle */}
-          <div className="mt-4 flex justify-end">
-            <PrivacyToggle 
-              value={viewMode} 
-              onChange={setViewMode}
-              orgName={organization?.name || 'Família'}
-            />
-          </div>
         </div>
       </div>
       
