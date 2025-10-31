@@ -1200,12 +1200,12 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
         
         const functionResult = await this.handleFunctionCall(functionName, functionArgs, context);
         
-        // Se salvou despesa, limpar histórico e retornar APENAS mensagem da função
-        if (functionName === 'save_expense') {
+        // Se salvou despesa ou entrada, limpar histórico e retornar APENAS mensagem da função
+        if (functionName === 'save_expense' || functionName === 'save_income') {
           await this.clearConversationHistory(userPhone);
           
           // Retornar APENAS a mensagem da função (ignorar qualquer texto que o GPT escreveu)
-          return functionResult.message || 'Anotado! ✅';
+          return functionResult.message || (functionName === 'save_income' ? 'Entrada registrada! ✅' : 'Anotado! ✅');
         }
         
         // Outras funções: não deveriam acontecer aqui
@@ -1400,12 +1400,25 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
 11. **VARIAÇÃO DE SAUDAÇÃO INICIAL**: Se o usuário chamar pelo nome ("Zul", "Oi Zul"), VARIE completamente a resposta: "E aí, ${firstName}!", "Opa, ${firstName}! Tudo certo?", "Oi, ${firstName}! O que tá pegando?", "E aí! Como posso ajudar?", "Tudo certo, ${firstName}?", "Opa! Precisa de alguma coisa?", "Oi! Tudo bem?", "E aí! Qual foi o gasto hoje?", etc.
 12. **TRATAMENTO DE DESVIO**: Se a mensagem for totalmente fora de contexto (ex: pergunta sobre clima, política, etc.) e você não souber responder, aí sim redirecione gentilmente: "Opa, ${firstName}! Não tenho acesso a isso, mas to aqui pra te ajudar com as despesas. Gastei algo hoje?"
 13. **SOBRE VOCÊ**: Se perguntarem "quem é você?", "o que você faz?", "como você pode ajudar?", etc., responda naturalmente: "Sou o Zul, assistente financeiro do MeuAzulão! To aqui pra te ajudar a organizar suas despesas rapidinho pelo WhatsApp."
+${process.env.USE_INCOME_FEATURE === 'true' ? `
+14. **REGISTRAR ENTRADAS/RECEITAS**: Quando o usuário mencionar valores recebidos (ex: "recebi comissão de 200 reais", "salário", "freelance", "comissão", "venda"), chame a função save_income. Pergunte apenas o que faltar:
+   - Valor (já extrair da mensagem se mencionado)
+   - Descrição (ex: "comissão", "salário", "freelance")
+   - Conta bancária (OBRIGATÓRIO - sempre perguntar "Qual conta adiciono?" ou "Em qual conta foi recebido?" se não mencionado)
+   - Responsável (se não mencionado, perguntar "Quem recebeu?")
+   - Categoria será inferida automaticamente da descrição quando possível
+
+Exemplos de quando usar save_income:
+- "recebi comissão de 200" → save_income(amount: 200, description: "comissão", ...)
+- "salário de 5000" → save_income(amount: 5000, description: "salário", ...)
+- "freelance 1500" → save_income(amount: 1500, description: "freelance", ...)` : ''}
 
 FUNÇÕES DISPONÍVEIS:
 - validate_payment_method (opcional - função já valida internamente)
 - validate_card (opcional - função já valida internamente)
 - validate_responsible (opcional - função já valida internamente)
 - save_expense (chame quando tiver: valor, descrição, categoria, pagamento, responsável. Se for crédito: cartão e parcelas também)
+${process.env.USE_INCOME_FEATURE === 'true' ? '- save_income (chame quando usuário mencionar valores recebidos: comissão, salário, freelance, venda, etc. Precisa: valor, descrição, responsável, conta bancária. Opcional: categoria)' : ''}
 
 FLUXO DE EXEMPLO (ênfase na fluidez e variação):
 
@@ -1429,7 +1442,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
    * Definir funções disponíveis para GPT-4
    */
   getFunctions() {
-    return [
+    const functions = [
       {
         name: 'save_expense',
         description: 'Salvar despesa quando tiver TODAS as informações (valor, descrição, pagamento, responsável). Validação acontece automaticamente dentro da função.',
@@ -1469,6 +1482,46 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         }
       }
     ];
+
+    // ✅ FEATURE FLAG: Registrar Entradas/Receitas (Incomes)
+    if (process.env.USE_INCOME_FEATURE === 'true') {
+      functions.push({
+        name: 'save_income',
+        description: 'Registrar entrada/receita quando o usuário mencionar valores recebidos (ex: "recebi comissão de 200 reais", "salário", "freelance", "comissão").',
+        parameters: {
+          type: 'object',
+          properties: {
+            amount: {
+              type: 'number',
+              description: 'Valor numérico da entrada/receita'
+            },
+            description: {
+              type: 'string',
+              description: 'Descrição da entrada (ex: "comissão", "salário", "freelance", "venda", "bonus")'
+            },
+            category: {
+              type: 'string',
+              description: 'Categoria da entrada (ex: "Salário", "Comissão", "Freelance", "Venda", "Bônus"). Se não informado, será inferido da descrição.'
+            },
+            account_name: {
+              type: 'string',
+              description: 'Nome da conta bancária onde o dinheiro foi recebido (ex: "Nubank", "C6"). OBRIGATÓRIO - se não informado, perguntar ao usuário qual conta.'
+            },
+            responsible: {
+              type: 'string',
+              description: 'Quem recebeu: nome exato (ex: "Felipe", "Letícia") ou "eu" (será mapeado automaticamente)'
+            },
+            date: {
+              type: 'string',
+              description: 'Data da entrada no formato YYYY-MM-DD (opcional, default: hoje)'
+            }
+          },
+          required: ['amount', 'description', 'responsible', 'account_name']
+        }
+      });
+    }
+
+    return functions;
   }
 
   /**
@@ -1638,6 +1691,13 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
 
         } else if (functionName === 'save_expense') {
             output = await context.saveExpense(args);
+        } else if (functionName === 'save_income') {
+            // ✅ FEATURE FLAG: Registrar Entradas/Receitas
+            if (process.env.USE_INCOME_FEATURE === 'true') {
+                output = await this.saveIncome(args, context);
+            } else {
+                output = { success: false, error: 'Feature save_income is disabled' };
+            }
         } else {
             output = { success: false, error: `Unknown function: ${functionName}` };
         }
@@ -1648,6 +1708,330 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
 
     console.log(`  -> Result for ${functionName}:`, output);
     return output;
+  }
+
+  /**
+   * Salvar entrada/receita (income)
+   * ✅ FEATURE FLAG: USE_INCOME_FEATURE
+   */
+  async saveIncome(args, context) {
+    try {
+      console.log('💾 [INCOME] Salvando entrada com args:', args);
+      
+      const { amount, description, category, account_name, responsible, date } = args;
+      
+      // Validar campos obrigatórios
+      if (!amount || !description || !responsible) {
+        return {
+          success: false,
+          message: 'Ops! Preciso do valor, descrição e quem recebeu.'
+        };
+      }
+      
+      // Normalizar owner (mapear "eu" para nome do usuário)
+      let owner = responsible;
+      let ownerNorm = this.normalizeText(owner);
+      if (ownerNorm === 'eu' || ownerNorm.includes('eu')) {
+        owner = context.userName || context.firstName || owner;
+        ownerNorm = this.normalizeText(owner);
+      }
+      
+      // Buscar cost_center_id
+      let costCenterId = null;
+      const isShared = ownerNorm.includes('compartilhado');
+      
+      if (!isShared && owner) {
+        const { data: centers } = await supabase
+          .from('cost_centers')
+          .select('id, name')
+          .eq('organization_id', context.organizationId);
+        
+        if (centers && centers.length) {
+          const byNorm = new Map();
+          for (const c of centers) byNorm.set(this.normalizeText(c.name), c);
+          
+          // Match exato normalizado
+          const exact = byNorm.get(ownerNorm);
+          if (exact) {
+            costCenterId = exact.id;
+            owner = exact.name;
+          } else {
+            // Match parcial (substring)
+            let matches = centers.filter(c => {
+              const n = this.normalizeText(c.name);
+              return n.includes(ownerNorm) || ownerNorm.includes(n);
+            });
+            
+            // Se usuário passou apenas o primeiro nome
+            if (!matches.length) {
+              const firstToken = ownerNorm.split(/\s+/)[0];
+              matches = centers.filter(c => {
+                const tokens = this.normalizeText(c.name).split(/\s+/);
+                return tokens[0] === firstToken;
+              });
+            }
+            
+            if (matches.length === 1) {
+              costCenterId = matches[0].id;
+              owner = matches[0].name;
+            } else if (matches.length > 1) {
+              // Desambiguação necessária
+              const options = matches.map(m => m.name).join(', ');
+              const firstName = this.getFirstName(context);
+              const namePart = firstName ? ` ${firstName}` : '';
+              
+              const disambiguationMessages = [
+                `Encontrei mais de um responsável com esse nome${namePart}. Qual deles? ${options}`,
+                `Tem mais de um ${owner} aqui${namePart}. Qual? ${options}`,
+                `Preciso que você escolha${namePart}: ${options}`
+              ];
+              
+              return {
+                success: false,
+                message: this.pickVariation(disambiguationMessages, owner)
+              };
+            }
+          }
+        }
+      }
+      
+      // Se não foi possível determinar responsável, perguntar
+      if (!isShared && (!owner || !costCenterId)) {
+        const firstName = this.getFirstName(context);
+        const namePart = firstName ? ` ${firstName}` : '';
+        
+        const questions = [
+          `Quem recebeu${namePart}?`,
+          `Foi você ou alguém específico${namePart}?`,
+          `Me diz quem recebeu${namePart}?`
+        ];
+        
+        return {
+          success: false,
+          message: this.pickVariation(questions, owner || 'responsavel')
+        };
+      }
+      
+      // Inferir categoria se não informada
+      let finalCategory = category;
+      if (!finalCategory && description) {
+        const descNorm = this.normalizeText(description);
+        const categoryHints = [
+          { keys: ['salario', 'salário', 'proventos'], target: 'Salário' },
+          { keys: ['comissao', 'comissão', 'comissões'], target: 'Comissão' },
+          { keys: ['freelance', 'freela', 'projeto'], target: 'Freelance' },
+          { keys: ['venda', 'vendas'], target: 'Venda' },
+          { keys: ['bonus', 'bônus', 'gratificacao', 'gratificação'], target: 'Bônus' },
+          { keys: ['investimento', 'dividendo', 'juros'], target: 'Investimento' }
+        ];
+        
+        for (const hint of categoryHints) {
+          if (hint.keys.some(k => descNorm.includes(k))) {
+            finalCategory = hint.target;
+            break;
+          }
+        }
+      }
+      
+      // Buscar bank_account_id (OBRIGATÓRIO para entradas)
+      let bankAccountId = null;
+      let finalAccountName = account_name;
+      
+      // Buscar todas as contas ativas da organização
+      const { data: accounts } = await supabase
+        .from('bank_accounts')
+        .select('id, name')
+        .eq('organization_id', context.organizationId)
+        .eq('is_active', true);
+      
+      if (!accounts || accounts.length === 0) {
+        return {
+          success: false,
+          message: 'Ops! Não encontrei nenhuma conta bancária cadastrada. Cadastre uma conta primeiro.'
+        };
+      }
+      
+      // Se account_name foi informado, buscar a conta específica
+      if (account_name) {
+        const accountNorm = this.normalizeText(account_name);
+        const byNorm = new Map();
+        for (const a of accounts) byNorm.set(this.normalizeText(a.name), a);
+        
+        const found = byNorm.get(accountNorm);
+        if (found) {
+          bankAccountId = found.id;
+          finalAccountName = found.name;
+        } else {
+          // Tentar match parcial
+          const match = accounts.find(a => {
+            const n = this.normalizeText(a.name);
+            return n.includes(accountNorm) || accountNorm.includes(n);
+          });
+          
+          if (match) {
+            bankAccountId = match.id;
+            finalAccountName = match.name;
+          } else {
+            // Conta não encontrada - listar opções
+            const accountsList = accounts.map(a => a.name).join(', ');
+            const firstName = this.getFirstName(context);
+            const namePart = firstName ? ` ${firstName}` : '';
+            
+            return {
+              success: false,
+              message: `Não encontrei essa conta${namePart}. Disponíveis: ${accountsList}. Qual conta?`
+            };
+          }
+        }
+      } else {
+        // Se não informou conta, PERGUNTAR (obrigatório)
+        const accountsList = accounts.map(a => a.name).join(', ');
+        const firstName = this.getFirstName(context);
+        const namePart = firstName ? ` ${firstName}` : '';
+        
+        const accountQuestions = [
+          `Qual conta adiciono${namePart}?`,
+          `Em qual conta foi recebido${namePart}?`,
+          `Qual conta${namePart}?`,
+          `Me diz qual conta${namePart}?`
+        ];
+        
+        return {
+          success: false,
+          message: `${this.pickVariation(accountQuestions, 'conta')}\n\nDisponíveis: ${accountsList}`
+        };
+      }
+      
+      // Preparar dados da entrada (bank_account_id é obrigatório)
+      const incomeData = {
+        amount: parseFloat(amount),
+        description: description,
+        date: date || new Date().toISOString().split('T')[0],
+        category: finalCategory || null,
+        cost_center_id: costCenterId,
+        bank_account_id: bankAccountId, // ✅ OBRIGATÓRIO
+        organization_id: context.organizationId,
+        user_id: context.userId,
+        status: 'confirmed',
+        is_shared: isShared || false,
+        source: 'whatsapp'
+      };
+      
+      console.log('💾 [INCOME] Dados preparados:', incomeData);
+      
+      // Salvar entrada
+      const { data, error } = await supabase
+        .from('incomes')
+        .insert(incomeData)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('❌ Erro ao salvar entrada:', error);
+        throw error;
+      }
+      
+      console.log('✅ Entrada salva:', data.id);
+      
+      // Atualizar saldo da conta (sempre, pois bank_account_id é obrigatório)
+      if (bankAccountId) {
+        try {
+          // Buscar saldo atual
+          const { data: account } = await supabase
+            .from('bank_accounts')
+            .select('balance')
+            .eq('id', bankAccountId)
+            .single();
+          
+          if (account) {
+            const currentBalance = parseFloat(account.balance) || 0;
+            const newBalance = currentBalance + parseFloat(amount);
+            
+            // Atualizar saldo
+            await supabase
+              .from('bank_accounts')
+              .update({ balance: newBalance })
+              .eq('id', bankAccountId);
+            
+            // Criar transação bancária (se a tabela existir)
+            try {
+              await supabase
+                .from('bank_account_transactions')
+                .insert({
+                  bank_account_id: bankAccountId,
+                  transaction_type: 'income_deposit',
+                  amount: parseFloat(amount),
+                  description: description,
+                  date: incomeData.date,
+                  balance_after: newBalance,
+                  income_id: data.id,
+                  organization_id: context.organizationId,
+                  user_id: context.userId
+                });
+            } catch (transError) {
+              // Se tabela não existir, apenas logar (não falhar)
+              console.log('⚠️ Tabela bank_account_transactions não encontrada ou erro:', transError.message);
+            }
+          }
+        } catch (accountError) {
+          // Se erro na atualização de conta, apenas logar (não falhar o salvamento)
+          console.error('⚠️ Erro ao atualizar saldo da conta:', accountError);
+        }
+      }
+      
+      // Formatar resposta
+      const amountFormatted = Number(amount).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+      
+      const dateObj = new Date(incomeData.date + 'T00:00:00');
+      const isToday = dateObj.toDateString() === new Date().toDateString();
+      const dateDisplay = isToday ? 'Hoje' : dateObj.toLocaleDateString('pt-BR');
+      
+      const greetings = [
+        'Entrada registrada! ✅',
+        'Receita anotada! ✅',
+        'Pronto! ✅',
+        'Beleza, anotei! ✅'
+      ];
+      
+      const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+      
+      let response = `${greeting}\nR$ ${amountFormatted} - ${description}`;
+      
+      if (finalCategory) {
+        response += `\n${finalCategory}`;
+      }
+      
+      if (finalAccountName) {
+        response += `\n${finalAccountName}`;
+      }
+      
+      response += `\n${owner}\n${dateDisplay}`;
+      
+      return {
+        success: true,
+        message: response,
+        income_id: data.id
+      };
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar entrada:', error);
+      const firstName = this.getFirstName(context);
+      const namePart = firstName ? ` ${firstName}` : '';
+      
+      const errorMessages = [
+        `Ops${namePart}! Tive um problema ao registrar a entrada. 😅`,
+        `Eita${namePart}, algo deu errado aqui. 😅`,
+        `Poxa${namePart}, tive um erro. 😅`
+      ];
+      
+      return {
+        success: false,
+        message: this.pickVariation(errorMessages, 'erro')
+      };
+    }
   }
 
   /**
