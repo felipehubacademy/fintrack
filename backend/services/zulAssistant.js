@@ -595,7 +595,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
               // Eletrodomésticos/Eletroportáteis → Casa
               { keys: ['ventilador', 'ar condicionado', 'microondas', 'micro-ondas', 'geladeira', 'freezer', 'liquidificador', 'batedeira', 'cafeteira', 'aspirador', 'ferro', 'maquina lavar', 'fogao', 'fogão', 'forno'], target: 'Casa' },
               // Eletrônicos de uso doméstico → Casa
-              { keys: ['tv', 'televisao', 'televisão', 'som', 'home theater', 'notebook', 'tablet', 'monitor', 'mouse', 'teclado'], target: 'Casa' },
+              { keys: ['tv', 'televisao', 'televisão', 'som', 'home theater', 'notebook', 'tablet', 'monitor', 'mouse', 'teclado', 'computador', 'computadores', 'pc', 'desktop', 'laptop'], target: 'Casa' },
               // Alimentação (padarias, restaurantes, delivery, etc)
               { keys: ['padaria', 'padarias', 'restaurante', 'lanche', 'lanches', 'pizza', 'ifood', 'ubereats', 'rappi', 'sushi', 'açai', 'acai', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hambúrguer', 'hot dog', 'cerveja', 'cervejas', 'bebida', 'bebidas', 'refrigerante', 'suco', 'agua', 'água', 'coquinha', 'pepsi', 'guarana', 'vitamina', 'smoothie', 'milk shake', 'milkshake', 'sorvete', 'doces', 'doce', 'bombom', 'chocolate', 'salgado', 'salgados', 'coxinha', 'pastel', 'empada', 'torta', 'bolo', 'pao', 'pão', 'baguete', 'croissant', 'massa', 'macarrao', 'macarrão', 'arroz', 'feijao', 'feijão', 'carne', 'frango', 'peixe', 'verdura', 'legume', 'fruta', 'frutas', 'acougue', 'açougue', 'peixaria', 'quitanda', 'hortifruti', 'frios', 'laticinios', 'laticínios', 'leite', 'queijo', 'iogurte', 'manteiga', 'margarina', 'pao de acucar', 'pao de açúcar', 'atacadao', 'atacadão', 'extra', 'carrefour', 'walmart', 'pipoca', 'pipocas'], target: 'Alimentação' },
               // Transporte
@@ -692,7 +692,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                   // Contas (fixas)
                   { keywords: ['aluguel', 'condominio', 'condominio', 'agua', 'agua', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos', 'iptu', 'ipva', 'ir', 'imposto', 'taxa', 'multas', 'detran', 'dar', 'financiamento', 'prestacao', 'prestação', 'cartao', 'cartão', 'fatura'], target: 'Contas' },
                   // Casa
-                  { keywords: ['casa', 'lar', 'mercadolivre', 'magalu', 'casas bahia', 'tokstok', 'tok&stok', 'leroy', 'ferramenta', 'decoracao', 'decoração', 'limpeza', 'material limpeza', 'ventilador', 'ar condicionado', 'microondas', 'geladeira', 'tv', 'televisao', 'notebook', 'tablet'], target: 'Casa' },
+                  { keywords: ['casa', 'lar', 'mercadolivre', 'magalu', 'casas bahia', 'tokstok', 'tok&stok', 'leroy', 'ferramenta', 'decoracao', 'decoração', 'limpeza', 'material limpeza', 'ventilador', 'ar condicionado', 'microondas', 'geladeira', 'tv', 'televisao', 'notebook', 'tablet', 'computador', 'computadores', 'pc', 'desktop', 'laptop'], target: 'Casa' },
                   // Educação
                   { keywords: ['curso', 'cursos', 'faculdade', 'escola', 'livro', 'livraria', 'udemy', 'curso online', 'pluralsight', 'alura', 'material escolar', 'mensalidade', 'universidade', 'escola', 'faculdade', 'apostila', 'caneta', 'caderno'], target: 'Educação' },
                   // Lazer
@@ -1379,7 +1379,7 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    - Alimentação: padaria, restaurante, lanche, pizza, ifood, delivery, comida, bebida, cerveja, suco, açougue, peixaria, frutas, verduras, pipoca
    - Saúde: remédio, farmácia, médico, dentista, hospital, consulta, exame, laboratório, óculos, academia, suplemento
    - Transporte: posto, gasolina, combustível, uber, taxi, ônibus, metro, estacionamento, ipva, oficina, manutenção
-   - Casa: mercado/supermercado (compras), eletrodomésticos, eletrônicos, móveis, decoração, limpeza
+   - Casa: mercado/supermercado (compras), eletrodomésticos, eletrônicos (tv, notebook, computador, tablet), móveis, decoração, limpeza
    - Contas: aluguel, condomínio, água, luz, energia, internet, telefone, iptu, imposto
    - Lazer: cinema, teatro, show, balada, **bar**, parque, viagem, hotel, netflix, spotify, streaming
    - Beleza: cabelo, barbearia, manicure, pedicure, salão, cosmético
