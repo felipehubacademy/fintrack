@@ -32,16 +32,16 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
   const isCredit = form.payment_method === 'credit_card';
-  // Verificar se é compartilhado: se owner_name for 'Compartilhado' ou o nome da organização
-  const isShared = form.owner_name === 'Compartilhado' || form.owner_name === (organization?.name || 'Organização');
+  // Verificar se é compartilhado: se owner_name for o nome da família
+  const isShared = form.owner_name === (organization?.name || 'Família');
 
   useEffect(() => {
     if (editingTransaction) {
       setTransactionType(editingTransaction.type || 'expense');
       if (editingTransaction.type === 'income') {
-        // Se for compartilhado, usar o nome da organização (ou 'Compartilhado' se não tiver)
+        // Se for compartilhado, usar o nome da família
         const ownerName = editingTransaction.is_shared 
-          ? (organization?.name || 'Compartilhado')
+          ? (organization?.name || 'Família')
           : (editingTransaction.cost_center?.name || '');
         
         setForm({
@@ -61,12 +61,39 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           setShowSplitConfig(true);
         }
       } else {
+        // Para expenses, encontrar o nome correspondente em costCenters
+        // para garantir que o valor corresponda exatamente ao dropdown
+        const rawOwnerName = editingTransaction.cost_center?.name 
+          || editingTransaction.owner 
+          || (editingTransaction.is_shared ? (organization?.name || 'Família') : '');
+        
+        // Buscar o nome correspondente usando costCenters diretamente
+        let ownerName = rawOwnerName;
+        if (rawOwnerName) {
+          // Função de normalização
+          const normalize = (str) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          
+          // Buscar em costCenters
+          const matchingCenter = costCenters?.find(cc => {
+            const normalizedCC = normalize(cc.name);
+            const normalizedRaw = normalize(rawOwnerName);
+            return normalizedCC === normalizedRaw;
+          });
+          
+          if (matchingCenter) {
+            ownerName = matchingCenter.name;
+          } else if (editingTransaction.is_shared || normalize(rawOwnerName) === normalize(organization?.name || 'Família')) {
+            // Se for compartilhado, usar o nome exato da família
+            ownerName = organization?.name || 'Família';
+          }
+        }
+        
         setForm({
           description: editingTransaction.description || '',
           amount: editingTransaction.amount?.toString() || '',
           date: editingTransaction.date || new Date().toISOString().slice(0, 10),
           category_id: editingTransaction.category_id || '',
-          owner_name: editingTransaction.owner || '',
+          owner_name: ownerName,
           payment_method: editingTransaction.payment_method || 'cash',
           card_id: editingTransaction.card_id || '',
           installments: editingTransaction.installments || 1,
@@ -80,7 +107,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     } else {
       resetForm();
     }
-  }, [editingTransaction, isOpen]);
+  }, [editingTransaction, isOpen, costCenters, organization]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -127,7 +154,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     if (!isSoloUser) {
       allCenters.push({
         id: null,
-        name: organization?.name || 'Organização',
+        name: organization?.name || 'Família',
         default_split_percentage: 0,
         color: '#8B5CF6',
         isShared: true
@@ -220,7 +247,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
   const handleSave = async () => {
     if (!organization?.id || !orgUser?.id) {
-      showError('Organização ou usuário não encontrados');
+      showError('Família ou usuário não encontrados');
       return;
     }
     if (!form.description || !form.amount || !form.date) {
@@ -239,7 +266,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     }
 
     // Recalcular isShared antes de salvar (pode ter mudado)
-    const willBeShared = form.owner_name === 'Compartilhado' || form.owner_name === (organization?.name || 'Organização');
+    const willBeShared = form.owner_name === (organization?.name || 'Família');
     
     // Validar splits se for compartilhado
     if (willBeShared && splitDetails.length === 0) {
@@ -457,8 +484,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         if (isCredit) {
           if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
           
-          // Para a RPC, enviar "Compartilhado" se for compartilhado (a função detecta isso)
-          const ownerForRPC = willBeShared ? 'Compartilhado' : form.owner_name;
+          // Para a RPC, enviar nome da família se for compartilhado (a função detecta isso)
+          const ownerForRPC = willBeShared ? (organization?.name || 'Família') : form.owner_name;
           
           const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
             p_amount: Number(form.amount),
@@ -468,7 +495,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             p_card_id: form.card_id,
             p_category_id: category?.id || null,
             p_cost_center_id: costCenter?.id || null,
-            p_owner: ownerForRPC, // "Compartilhado" para despesa compartilhada
+            p_owner: ownerForRPC, // Nome da família para despesa compartilhada
             p_organization_id: organization.id,
             p_user_id: orgUser.id,
             p_whatsapp_message_id: null

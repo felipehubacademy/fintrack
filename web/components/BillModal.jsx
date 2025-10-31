@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
+import ConfirmationModal from './ConfirmationModal';
 import { X, AlertCircle, Calendar, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
@@ -23,7 +24,7 @@ const RECURRENCE_OPTIONS = [
   { value: 'yearly', label: 'Anual' }
 ];
 
-export default function BillModal({ isOpen, onClose, onSave, editingBill = null, costCenters = [], categories = [], cards = [] }) {
+export default function BillModal({ isOpen, onClose, onSave, editingBill = null, costCenters = [], categories = [], cards = [], organization = null }) {
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -34,14 +35,33 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
     is_recurring: false,
     recurrence_frequency: 'monthly',
     payment_method: '',
-    card_id: ''
+    card_id: '',
+    status: 'pending'
   });
   
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showRevertModal, setShowRevertModal] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState(null);
 
   useEffect(() => {
     if (editingBill) {
+      // Usar o status atual da bill
+      let status = editingBill.status || 'pending';
+      
+      // Se não tiver status definido, determinar baseado na due_date
+      if (!editingBill.status) {
+        const dueDate = new Date(editingBill.due_date + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate < today) {
+          status = 'overdue';
+        } else {
+          status = 'pending';
+        }
+      }
+      
       setFormData({
         description: editingBill.description || '',
         amount: editingBill.amount?.toString() || '',
@@ -52,8 +72,11 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         is_recurring: editingBill.is_recurring || false,
         recurrence_frequency: editingBill.recurrence_frequency || 'monthly',
         payment_method: editingBill.payment_method || '',
-        card_id: editingBill.card_id || ''
+        card_id: editingBill.card_id || '',
+        status: status
       });
+      setShowRevertModal(false);
+      setPendingStatusChange(null);
     } else {
       resetForm();
     }
@@ -70,9 +93,12 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       is_recurring: false,
       recurrence_frequency: 'monthly',
       payment_method: '',
-      card_id: ''
+      card_id: '',
+      status: 'pending'
     });
     setErrors({});
+    setShowRevertModal(false);
+    setPendingStatusChange(null);
   };
 
   const validateForm = () => {
@@ -129,6 +155,11 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         is_recurring: formData.is_recurring,
         recurrence_frequency: formData.is_recurring ? formData.recurrence_frequency : null
       };
+
+      // Incluir status apenas ao editar
+      if (editingBill) {
+        billData.status = formData.status;
+      }
       
       // Adicionar payment_method apenas se tiver valor válido (não incluir se for null)
       if (paymentMethod && VALID_PAYMENT_METHODS.includes(paymentMethod)) {
@@ -144,6 +175,26 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       }
       
       console.log('🔍 [BILLMODAL] billData antes de enviar:', billData);
+
+      // Se estiver editando uma bill paga e o status foi alterado para pendente
+      if (editingBill && editingBill.status === 'paid' && formData.status === 'pending') {
+        billData.revert_to_pending = true;
+        billData.expense_id = editingBill.expense_id; // Passar expense_id para exclusão
+        
+        // O sistema determinará automaticamente se é "overdue" baseado na due_date
+        // Não precisamos definir isso aqui, será feito no handleUpdateBill
+      }
+
+      // Se status for "pending", deixar o sistema determinar se é "overdue" baseado na due_date
+      if (editingBill && billData.status === 'pending') {
+        const dueDate = new Date(billData.due_date + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate < today) {
+          billData.status = 'overdue';
+        }
+      }
 
       await onSave(billData);
       resetForm();
@@ -174,9 +225,34 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
   };
 
   const handleChange = (field, value) => {
+    // Se estiver alterando o status de uma bill paga para pendente
+    if (field === 'status' && editingBill && editingBill.status === 'paid' && value === 'pending') {
+      setPendingStatusChange(value);
+      setShowRevertModal(true);
+      return; // Não atualizar ainda, aguardar confirmação
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleConfirmRevert = () => {
+    if (pendingStatusChange) {
+      setFormData(prev => ({ ...prev, status: pendingStatusChange }));
+      setPendingStatusChange(null);
+      setShowRevertModal(false);
+    }
+  };
+
+  const handleCancelRevert = () => {
+    setPendingStatusChange(null);
+    setShowRevertModal(false);
+    // Reverter para o status original da bill
+    if (editingBill) {
+      const originalStatus = editingBill.status || 'pending';
+      setFormData(prev => ({ ...prev, status: originalStatus }));
     }
   };
 
@@ -331,7 +407,9 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                     >
                       <option value="">Selecione...</option>
-                      <option value="shared">Compartilhado</option>
+                      <option value="shared">
+                        {organization && organization.name ? organization.name : 'Família'}
+                      </option>
                       {costCenters.map(cc => (
                         <option key={cc.id} value={cc.id}>{cc.name}</option>
                       ))}
@@ -339,6 +417,23 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                   </div>
                 </div>
               </div>
+
+              {/* Status (apenas ao editar) */}
+              {editingBill && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status === 'overdue' ? 'pending' : formData.status}
+                    onChange={(e) => handleChange('status', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  >
+                    <option value="pending">Pendente</option>
+                    <option value="paid">Paga</option>
+                  </select>
+                </div>
+              )}
 
               {/* Recorrência */}
               <div className="border border-gray-200 rounded-lg p-4">
@@ -447,6 +542,18 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
           </Button>
         </div>
       </div>
+
+      {/* Modal de Confirmação para Reverter Status */}
+      <ConfirmationModal
+        isOpen={showRevertModal}
+        onClose={handleCancelRevert}
+        onConfirm={handleConfirmRevert}
+        title="Confirmar reversão de status"
+        message="Ao reverter esta conta para Pendente, a despesa criada quando ela foi marcada como paga será excluída permanentemente. Esta ação não pode ser desfeita."
+        confirmText="Confirmar"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   );
 }

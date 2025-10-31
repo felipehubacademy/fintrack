@@ -153,7 +153,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
     
     const isCompartilhado = expense.split || expense.is_shared;
     
-    if (isCompartilhado && expense.owner === 'Compartilhado') {
+    if (isCompartilhado && (expense.owner === (organization?.name || 'Família') || expense.is_shared)) {
       // Despesa compartilhada - processar splits
       if (expense.expense_splits && expense.expense_splits.length > 0) {
         // Usar splits personalizados
@@ -366,7 +366,7 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
             <PrivacyToggle 
               value={viewMode} 
               onChange={setViewMode}
-              orgName={organization?.name || 'Organização'}
+              orgName={organization?.name || 'Família'}
             />
           </div>
         </div>

@@ -468,7 +468,7 @@ export default function BudgetsDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Total Orçado
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
+              <div className="p-2 rounded-lg bg-flight-blue/10">
                 <Target className="h-4 w-4 text-flight-blue" />
               </div>
             </CardHeader>
@@ -484,7 +484,7 @@ export default function BudgetsDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Total Gasto
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
+              <div className="p-2 rounded-lg bg-flight-blue/10">
                 <TrendingDown className="h-4 w-4 text-flight-blue" />
               </div>
             </CardHeader>
@@ -500,7 +500,7 @@ export default function BudgetsDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Restante
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
+              <div className="p-2 rounded-lg bg-flight-blue/10">
                 <DollarSign className="h-4 w-4 text-flight-blue" />
               </div>
             </CardHeader>

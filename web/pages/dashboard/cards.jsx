@@ -28,7 +28,7 @@ import {
   LogOut,
   Settings,
   Bell,
-  
+  HelpCircle,
   Wifi,
   Shield
 } from 'lucide-react';
@@ -44,12 +44,14 @@ export default function CardsDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [usageByCardId, setUsageByCardId] = useState({});
+  const [currentInvoiceByCardId, setCurrentInvoiceByCardId] = useState({});
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedCardForInvoice, setSelectedCardForInvoice] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [cardToDelete, setCardToDelete] = useState(null);
+  const [openTooltip, setOpenTooltip] = useState(null);
 
   const computeClosingDay = (bestDay) => {
     if (!bestDay || typeof bestDay !== 'number') return null;
@@ -135,49 +137,63 @@ export default function CardsDashboard() {
 
         const limit = Number(card.credit_limit || 0);
         
-        // Prioridade: usar available_limit do banco (fonte da verdade)
-        // Se available_limit não estiver definido ou for igual ao credit_limit, calcular das despesas
-        let availableLimit = card.available_limit !== null && card.available_limit !== undefined 
-          ? Number(card.available_limit) 
-          : null;
+        // Sempre calcular uso baseado nas despesas confirmadas
+        // Incluir todas as despesas confirmadas do cartão (não filtrar por ciclo ainda)
+        const { data: expenses } = await supabase
+          .from('expenses')
+          .select('amount, date, installment_info')
+          .eq('payment_method', 'credit_card')
+          .eq('card_id', card.id)
+          .eq('status', 'confirmed');
         
-        let finalUsed = 0;
+        const finalUsed = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
         
-        if (availableLimit !== null && availableLimit !== limit) {
-          // available_limit foi definido manualmente (diferente do limite total)
-          // Uso = Limite Total - Limite Disponível
-          finalUsed = Math.max(0, limit - availableLimit);
-        } else {
-          // Calcular uso baseado nas despesas confirmadas
-          const { data: expenses } = await supabase
-            .from('expenses')
-            .select('amount')
-            .eq('payment_method', 'credit_card')
-            .eq('card_id', card.id)
-            .eq('status', 'confirmed');
-          
-          finalUsed = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
-          
-          // Se tiver despesas, atualizar available_limit no banco para manter consistência
-          if (finalUsed > 0 && (availableLimit === null || availableLimit === limit)) {
-            const newAvailable = Math.max(0, limit - finalUsed);
-            // Atualizar silenciosamente (não aguardar para não bloquear a UI)
-            supabase
-              .from('cards')
-              .update({ available_limit: newAvailable })
-              .eq('id', card.id)
-              .then(() => console.log('✅ Updated available_limit for card:', card.id, 'to', newAvailable))
-              .catch(err => console.warn('⚠️ Failed to update available_limit:', err));
+        // Calcular fatura atual (despesas do ciclo atual)
+        let currentInvoiceTotal = 0;
+        if (startDate && endDate && expenses) {
+          for (const expense of expenses) {
+            // Verificar se é parcela
+            if (expense.installment_info && 
+                expense.installment_info.total_installments > 1) {
+              // Para parcelas, verificar se a data da parcela está no ciclo atual
+              const parcelDate = expense.date;
+              if (parcelDate >= startDate && parcelDate <= endDate) {
+                const installmentAmount = expense.installment_info.installment_amount || expense.amount || 0;
+                currentInvoiceTotal += Number(installmentAmount);
+              }
+            } else {
+              // Despesa à vista: verificar se está no ciclo atual
+              if (expense.date >= startDate && expense.date <= endDate) {
+                currentInvoiceTotal += Number(expense.amount || 0);
+              }
+            }
           }
         }
         
+        // Atualizar available_limit no banco automaticamente baseado nas despesas
+        const newAvailable = Math.max(0, limit - finalUsed);
+        supabase
+          .from('cards')
+          .update({ available_limit: newAvailable })
+          .eq('id', card.id)
+          .then(() => console.log('✅ Updated available_limit for card:', card.id, 'to', newAvailable))
+          .catch(err => console.warn('⚠️ Failed to update available_limit:', err));
+        
         const percentage = limit > 0 ? (finalUsed / limit) * 100 : 0;
         const status = percentage >= 90 ? 'danger' : percentage >= 70 ? 'warning' : 'ok';
-        return [card.id, { used: finalUsed, percentage, status }];
+        return [card.id, { used: finalUsed, percentage, status, currentInvoice: currentInvoiceTotal }];
       })
     );
 
-    setUsageByCardId(Object.fromEntries(entries));
+    const usageMap = Object.fromEntries(entries);
+    setUsageByCardId(usageMap);
+    
+    // Extrair fatura atual de cada cartão
+    const invoiceMap = {};
+    entries.forEach(([cardId, data]) => {
+      invoiceMap[cardId] = data.currentInvoice || 0;
+    });
+    setCurrentInvoiceByCardId(invoiceMap);
   };
 
   // Agregados: limite total de crédito e uso total no ciclo
@@ -188,6 +204,11 @@ export default function CardsDashboard() {
     .filter(c => c.type === 'credit')
     .reduce((sum, c) => sum + Number(usageByCardId[c.id]?.used || 0), 0);
   const totalCreditUsagePct = totalCreditLimit > 0 ? (totalCreditUsed / totalCreditLimit) * 100 : 0;
+  
+  // Calcular soma de todas as faturas atuais
+  const totalCurrentInvoices = cards
+    .filter(c => c.type === 'credit')
+    .reduce((sum, c) => sum + Number(currentInvoiceByCardId[c.id] || 0), 0);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -215,12 +236,10 @@ export default function CardsDashboard() {
         color = color.substring(0, 7);
       }
 
-      // Calcular limite disponível baseado em limite usado (se fornecido)
       const creditLimit = cardData.credit_limit ? parseFloat(cardData.credit_limit) : 0;
-      const usedLimit = cardData.used_limit ? parseFloat(cardData.used_limit) : 0;
-      const availableLimit = Math.max(0, creditLimit - usedLimit);
 
       // Preparar dados para inserção, garantindo valores corretos
+      // Não definir available_limit - será calculado automaticamente baseado nas despesas
       const insertData = {
         name: cardData.name?.trim() || '',
         bank: cardData.bank?.trim() || null,
@@ -229,7 +248,7 @@ export default function CardsDashboard() {
         closing_day: cardData.closing_day ? parseInt(cardData.closing_day) : null,
         best_day: cardData.best_day ? parseInt(cardData.best_day) : null,
         credit_limit: creditLimit || null,
-        available_limit: availableLimit || creditLimit || null,
+        available_limit: null, // Sempre null - será calculado automaticamente das despesas
         color: color, // Máximo 7 caracteres
         type: 'credit',
         organization_id: organization.id,
@@ -289,12 +308,10 @@ export default function CardsDashboard() {
         color = color.substring(0, 7);
       }
 
-      // Calcular limite disponível baseado em limite usado (se fornecido)
       const creditLimit = cardData.credit_limit ? parseFloat(cardData.credit_limit) : 0;
-      const usedLimit = cardData.used_limit ? parseFloat(cardData.used_limit) : 0;
-      const availableLimit = Math.max(0, creditLimit - usedLimit);
 
       // Preparar dados para atualização
+      // Não atualizar available_limit - será calculado automaticamente baseado nas despesas
       const updateData = {
         name: cardData.name?.trim() || '',
         bank: cardData.bank?.trim() || null,
@@ -303,7 +320,7 @@ export default function CardsDashboard() {
         closing_day: cardData.closing_day ? parseInt(cardData.closing_day) : null,
         best_day: cardData.best_day ? parseInt(cardData.best_day) : null,
         credit_limit: creditLimit || null,
-        available_limit: availableLimit || creditLimit || null,
+        // available_limit não é atualizado - permanece null ou será recalculado automaticamente
         color: color,
         type: cardData.type || 'credit'
       };
@@ -433,46 +450,46 @@ export default function CardsDashboard() {
         </Card>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Limite Total
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
-                <TrendingUp className="h-4 w-4 text-flight-blue" />
+              <div className="p-2 rounded-lg bg-gray-100">
+                <TrendingUp className="h-4 w-4 text-gray-600" />
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0).toLocaleString('pt-BR')}
+                R$ {cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Limite Disponível
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
-                <DollarSign className="h-4 w-4 text-flight-blue" />
+              <div className="p-2 rounded-lg bg-gray-100">
+                <DollarSign className="h-4 w-4 text-gray-600" />
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {(totalCreditLimit - totalCreditUsed).toLocaleString('pt-BR')}
+                R$ {(totalCreditLimit - totalCreditUsed).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Uso Total de Crédito
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
-                <TrendingDown className={`h-4 w-4 ${totalCreditUsagePct >= 90 ? 'text-red-600' : totalCreditUsagePct >= 70 ? 'text-yellow-600' : 'text-flight-blue'}`} />
+              <div className="p-2 rounded-lg bg-gray-100">
+                <TrendingDown className="h-4 w-4 text-gray-600" />
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
@@ -480,10 +497,111 @@ export default function CardsDashboard() {
                 {totalCreditUsagePct.toFixed(1)}%
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                R$ {totalCreditUsed.toLocaleString('pt-BR')} de R$ {totalCreditLimit.toLocaleString('pt-BR')}
+                R$ {totalCreditUsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} de R$ {totalCreditLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </CardContent>
           </Card>
+
+          {/* Card Faturas Atuais */}
+          <div className="relative group">
+            <Card 
+              className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+              onClick={() => setOpenTooltip(openTooltip === 'current-invoices' ? null : 'current-invoices')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Faturas Atuais
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-gray-100">
+                  <CreditCard className="h-4 w-4 text-gray-600" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 relative">
+                <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  R$ {totalCurrentInvoices.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Total de faturas em aberto
+                </p>
+              </CardContent>
+            </Card>
+            
+            {/* Tooltip */}
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'current-invoices' ? 'visible' : 'invisible'}`}>
+              <p className="text-sm font-semibold text-gray-900 mb-3">Faturas por Cartão</p>
+              <div className="space-y-3">
+                {(() => {
+                  const creditCards = cards.filter(c => c.type === 'credit');
+                  
+                  if (creditCards.length === 0) {
+                    return (
+                      <p className="text-sm text-gray-500">Nenhum cartão de crédito cadastrado</p>
+                    );
+                  }
+                  
+                  const cardsWithInvoices = creditCards
+                    .map(card => ({
+                      card,
+                      invoice: Number(currentInvoiceByCardId[card.id] || 0)
+                    }))
+                    .filter(item => item.invoice > 0)
+                    .sort((a, b) => b.invoice - a.invoice);
+                  
+                  if (cardsWithInvoices.length === 0) {
+                    return (
+                      <p className="text-sm text-gray-500">Nenhuma fatura em aberto</p>
+                    );
+                  }
+                  
+                  const total = cardsWithInvoices.reduce((sum, item) => sum + item.invoice, 0);
+                  
+                  return (
+                    <>
+                      {cardsWithInvoices.map(({ card, invoice }) => {
+                        const percentage = total > 0 ? ((invoice / total) * 100).toFixed(1) : 0;
+                        const isHexColor = card.color && card.color.startsWith('#');
+                        const cardColorStyle = isHexColor ? { backgroundColor: card.color } : {};
+                        const cardColorClass = card.color && card.color.startsWith('bg-') ? card.color : 'bg-gray-400';
+                        
+                        return (
+                          <div key={card.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                            <div className="flex items-center space-x-3 flex-1">
+                              <div 
+                                className={`w-4 h-4 rounded ${cardColorClass}`}
+                                style={cardColorStyle}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {card.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {percentage}% do total
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-gray-900">
+                                R$ {invoice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-gray-900">Total</p>
+                          <p className="text-sm font-bold text-gray-900">
+                            R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
 
         </div>
 
@@ -552,7 +670,19 @@ export default function CardsDashboard() {
                       <>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Limite:</span>
-                          <span className="font-semibold">R$ {limit.toLocaleString('pt-BR')}</span>
+                          <span className="font-semibold">R$ {limit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Limite Utilizado:</span>
+                          <span className="font-semibold">
+                            R$ {Number(usageByCardId[card.id]?.used || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Fatura Atual:</span>
+                          <span className="font-semibold">
+                            R$ {Number(currentInvoiceByCardId[card.id] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Limite Disponível:</span>
@@ -560,7 +690,7 @@ export default function CardsDashboard() {
                             {(() => {
                               const used = Number(usageByCardId[card.id]?.used || 0);
                               const available = Math.max(0, Number(limit) - used);
-                              return `R$ ${available.toLocaleString('pt-BR')}`;
+                              return `R$ ${available.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                             })()}
                           </span>
                         </div>
@@ -577,12 +707,6 @@ export default function CardsDashboard() {
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Vencimento:</span>
                           <span className="font-semibold">{card.billing_day || '—'}</span>
-                        </div>
-                        <div className="flex justify-between border-t pt-2">
-                          <span className="text-sm text-gray-600">Status:</span>
-                          <span className={`font-semibold ${card.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                            {card.is_active ? 'Ativo' : 'Inativo'}
-                          </span>
                         </div>
                       </>
                     ) : (

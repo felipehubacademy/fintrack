@@ -19,7 +19,8 @@ import {
   Plus, 
   AlertCircle, 
   CheckCircle, 
-  XCircle,
+  Trash2,
+  Edit,
   DollarSign,
   Filter,
   Clock,
@@ -200,11 +201,11 @@ export default function BillsDashboard() {
 
       await fetchBills();
       setShowModal(false);
-      success('Conta criada com sucesso!');
+      success('✅ Conta criada com sucesso!');
     } catch (error) {
       console.error('❌ [BILLS] Erro ao criar conta:', error);
       const errorMessage = error?.message || error?.details || 'Erro desconhecido';
-      showError(`Erro ao criar conta: ${errorMessage}`);
+      showError(`❌ Erro ao criar conta: ${errorMessage}`);
       throw error;
     }
   };
@@ -213,8 +214,84 @@ export default function BillsDashboard() {
     try {
       console.log('💾 [BILLS] Atualizando conta:', editingBill.id, 'com dados:', billData);
       
-      // Preparar dados para atualização
-      let updateData = { ...billData };
+      // Verificar se precisa reverter o status e excluir expense
+      if (billData.revert_to_pending && billData.expense_id) {
+        console.log('🔄 [BILLS] Revertendo status e excluindo expense:', billData.expense_id);
+        
+        // 1. Excluir expense_splits relacionados
+        const { error: splitsError } = await supabase
+          .from('expense_splits')
+          .delete()
+          .eq('expense_id', billData.expense_id);
+        
+        if (splitsError) {
+          console.warn('⚠️ [BILLS] Erro ao excluir splits (pode não existir):', splitsError);
+        }
+        
+        // 2. Excluir expense
+        const { error: expenseError } = await supabase
+          .from('expenses')
+          .delete()
+          .eq('id', billData.expense_id);
+        
+        if (expenseError) {
+          console.error('❌ [BILLS] Erro ao excluir expense:', expenseError);
+          throw expenseError;
+        }
+        
+        console.log('✅ [BILLS] Expense excluída com sucesso');
+        
+        // 3. Determinar novo status baseado na due_date
+        const dueDate = new Date(billData.due_date || editingBill.due_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        dueDate.setHours(0, 0, 0, 0);
+        
+        const newStatus = dueDate < today ? 'overdue' : 'pending';
+        
+        // 4. Preparar dados de atualização removendo campos relacionados ao pagamento
+        const { revert_to_pending, expense_id, ...dataToUpdate } = billData;
+        const updateData = {
+          ...dataToUpdate,
+          status: newStatus,
+          expense_id: null,
+          paid_at: null
+        };
+        
+        let { data, error } = await supabase
+          .from('bills')
+          .update(updateData)
+          .eq('id', editingBill.id)
+          .select();
+        
+        if (error) {
+          console.error('❌ [BILLS] Erro do Supabase ao reverter:', error);
+          throw error;
+        }
+        
+        console.log('✅ [BILLS] Status revertido para:', newStatus);
+        
+        await fetchBills();
+        setShowModal(false);
+        setEditingBill(null);
+        success('✅ Conta revertida para pendente e despesa excluída com sucesso!');
+        return;
+      }
+      
+      // Preparar dados para atualização normal
+      const { revert_to_pending, expense_id, ...normalUpdateData } = billData;
+      let updateData = { ...normalUpdateData };
+      
+      // Se status for "pending", verificar se deve ser "overdue" baseado na due_date
+      if (updateData.status === 'pending') {
+        const dueDate = new Date(updateData.due_date || editingBill.due_date + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate < today) {
+          updateData.status = 'overdue';
+        }
+      }
       
       // Tentar atualizar primeiro
       let { data, error } = await supabase
@@ -246,18 +323,23 @@ export default function BillsDashboard() {
       await fetchBills();
       setShowModal(false);
       setEditingBill(null);
-      success('Conta atualizada com sucesso!');
+      success('✅ Conta atualizada com sucesso!');
     } catch (error) {
       console.error('❌ [BILLS] Erro ao atualizar conta:', error);
       const errorMessage = error?.message || error?.details || 'Erro desconhecido';
-      showError(`Erro ao atualizar conta: ${errorMessage}`);
+      showError(`❌ Erro ao atualizar conta: ${errorMessage}`);
       throw error;
     }
   };
 
   const handleMarkAsPaid = (bill) => {
     if (!bill.payment_method) {
-      warning('Por favor, edite a conta e defina um método de pagamento antes de marcar como paga.');
+      warning('⚠️ Por favor, edite a conta e defina um método de pagamento antes de marcar como paga.');
+      return;
+    }
+
+    if (bill.status === 'paid') {
+      warning('⚠️ Esta conta já está marcada como paga.');
       return;
     }
 
@@ -296,7 +378,7 @@ export default function BillsDashboard() {
         const costCenter = costCenters?.find(cc => cc.id === costCenterId);
         ownerName = costCenter?.name || null;
       } else if (isShared) {
-        ownerName = organization?.name || 'Compartilhado';
+        ownerName = organization?.name || 'Família';
       }
       
       // Buscar o nome da categoria se houver category_id
@@ -403,10 +485,10 @@ export default function BillsDashboard() {
       }
 
       await fetchBills();
-      success('Conta marcada como paga com sucesso!');
+      success('✅ Conta marcada como paga com sucesso! A despesa foi criada automaticamente.');
     } catch (error) {
-      console.error('Erro ao marcar conta como paga:', error);
-      showError('Erro ao processar pagamento: ' + (error.message || 'Erro desconhecido'));
+      console.error('❌ [BILLS] Erro ao marcar conta como paga:', error);
+      showError('❌ Erro ao processar pagamento: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setShowConfirmModal(false);
       setBillToMarkAsPaid(null);
@@ -453,15 +535,62 @@ export default function BillsDashboard() {
     }
   };
 
-  const handleDeleteBill = (billId) => {
+  const handleDeleteBill = async (billId) => {
+    // Buscar a bill para verificar se tem expense_id
+    const bill = bills.find(b => b.id === billId);
+    if (!bill) return;
+    
     setBillToDelete(billId);
-    setShowConfirmModal(true);
+    
+    // Se a bill estiver paga e tiver expense_id, mostrar alerta adicional
+    if (bill.status === 'paid' && bill.expense_id) {
+      setShowConfirmModal(true);
+    } else {
+      setShowConfirmModal(true);
+    }
   };
 
   const confirmDeleteBill = async () => {
     if (!billToDelete) return;
 
     try {
+      // Buscar a bill para verificar se tem expense_id
+      const billToDeleteObj = bills.find(b => b.id === billToDelete);
+      
+      if (!billToDeleteObj) {
+        showError('❌ Conta não encontrada.');
+        return;
+      }
+
+      // Se a bill estiver paga e tiver expense_id, excluir a expense também
+      if (billToDeleteObj.status === 'paid' && billToDeleteObj.expense_id) {
+        console.log('🗑️ [BILLS] Excluindo expense associada:', billToDeleteObj.expense_id);
+        
+        // 1. Excluir expense_splits relacionados
+        const { error: splitsError } = await supabase
+          .from('expense_splits')
+          .delete()
+          .eq('expense_id', billToDeleteObj.expense_id);
+        
+        if (splitsError) {
+          console.warn('⚠️ [BILLS] Erro ao excluir splits (pode não existir):', splitsError);
+        }
+        
+        // 2. Excluir expense
+        const { error: expenseError } = await supabase
+          .from('expenses')
+          .delete()
+          .eq('id', billToDeleteObj.expense_id);
+        
+        if (expenseError) {
+          console.error('❌ [BILLS] Erro ao excluir expense:', expenseError);
+          throw new Error('Erro ao excluir despesa associada: ' + (expenseError.message || 'Erro desconhecido'));
+        }
+        
+        console.log('✅ [BILLS] Expense excluída com sucesso');
+      }
+
+      // 3. Excluir a bill (ou marcar como cancelled)
       const { error } = await supabase
         .from('bills')
         .update({ status: 'cancelled' })
@@ -470,10 +599,15 @@ export default function BillsDashboard() {
       if (error) throw error;
 
       await fetchBills();
-      success('Conta excluída com sucesso!');
+      
+      if (billToDeleteObj.status === 'paid' && billToDeleteObj.expense_id) {
+        success('✅ Conta e despesa associada excluídas com sucesso!');
+      } else {
+        success('✅ Conta excluída com sucesso!');
+      }
     } catch (error) {
-      console.error('Erro ao excluir conta:', error);
-      showError('Erro ao excluir conta: ' + (error.message || 'Erro desconhecido'));
+      console.error('❌ [BILLS] Erro ao excluir conta:', error);
+      showError('❌ Erro ao excluir conta: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setShowConfirmModal(false);
       setBillToDelete(null);
@@ -783,7 +917,9 @@ export default function BillsDashboard() {
                     style={{ height: '48px', boxSizing: 'border-box' }}
                   >
                     <option value="all">Todos</option>
-                    <option value="shared">Compartilhado</option>
+                    <option value="shared">
+                      {organization && organization.name ? organization.name : 'Família'}
+                    </option>
                     {(costCenters || []).map(cc => (
                       <option key={cc.id} value={cc.id}>{cc.name}</option>
                     ))}
@@ -844,153 +980,203 @@ export default function BillsDashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
-            {/* Header da lista com ordenação */}
-            <Card className="border border-gray-200 bg-gray-50">
-              <CardContent className="p-4">
-                <div className="grid grid-cols-12 gap-4 items-center text-sm font-semibold text-gray-700">
-                  <div 
-                    className="col-span-4 cursor-pointer hover:text-gray-900 flex items-center space-x-1 transition-colors"
-                    onClick={() => handleSort('description')}
-                  >
-                    <span>Descrição</span>
-                    {getSortIcon('description')}
-                  </div>
-                  <div 
-                    className="col-span-2 cursor-pointer hover:text-gray-900 flex items-center space-x-1 transition-colors"
-                    onClick={() => handleSort('due_date')}
-                  >
-                    <span>Vencimento</span>
-                    {getSortIcon('due_date')}
-                  </div>
-                  <div 
-                    className="col-span-2 cursor-pointer hover:text-gray-900 flex items-center space-x-1 transition-colors"
-                    onClick={() => handleSort('amount')}
-                  >
-                    <span>Valor</span>
-                    {getSortIcon('amount')}
-                  </div>
-                  <div 
-                    className="col-span-2 cursor-pointer hover:text-gray-900 flex items-center space-x-1 transition-colors"
-                    onClick={() => handleSort('status')}
-                  >
-                    <span>Status</span>
-                    {getSortIcon('status')}
-                  </div>
-                  <div className="col-span-2 text-right">Ações</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            {filteredBills.map((bill) => {
-              const daysUntil = getDaysUntilDue(bill.due_date);
-              const statusBadge = getStatusBadge(bill.status);
+          <Card className="border border-gray-200 bg-white shadow-sm">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th 
+                        scope="col" 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('due_date')}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Vencimento</span>
+                          {getSortIcon('due_date')}
+                        </div>
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Descrição
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Categoria
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Forma
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Responsável
+                      </th>
+                      <th 
+                        scope="col" 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('amount')}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Valor</span>
+                          {getSortIcon('amount')}
+                        </div>
+                      </th>
+                      <th 
+                        scope="col" 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('status')}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Status</span>
+                          {getSortIcon('status')}
+                        </div>
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ações
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredBills.map((bill) => {
+                      const daysUntil = getDaysUntilDue(bill.due_date);
+                      const statusBadge = getStatusBadge(bill.status);
+                      
+                      // Formatação da forma de pagamento
+                      const getPaymentMethodLabel = (method) => {
+                        const methods = {
+                          'pix': 'PIX',
+                          'credit_card': 'Cartão de Crédito',
+                          'debit_card': 'Cartão de Débito',
+                          'cash': 'Dinheiro',
+                          'bank_transfer': 'Transferência',
+                          'boleto': 'Boleto',
+                          'other': 'Outro'
+                        };
+                        return methods[method] || method || '—';
+                      };
+                      
+                      return (
+                        <tr key={bill.id} className="hover:bg-gray-50 transition-colors">
+                          {/* Vencimento */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {new Date(bill.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            </div>
+                            {bill.status === 'pending' && daysUntil >= 0 && (
+                              <div className={`text-xs mt-1 font-medium ${
+                                daysUntil <= 3 ? 'text-red-600' : 
+                                daysUntil <= 7 ? 'text-yellow-600' : 
+                                'text-gray-500'
+                              }`}>
+                                {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`}
+                              </div>
+                            )}
+                            {bill.status === 'overdue' && (
+                              <div className="text-xs mt-1 font-medium text-red-600">
+                                Vencido há {Math.abs(daysUntil)} {Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}
+                              </div>
+                            )}
+                          </td>
+                          
+                          {/* Descrição */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-gray-900">{bill.description}</span>
+                              {bill.is_recurring && (
+                                <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs">
+                                  Recorrente
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          
+                          {/* Categoria */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-600">
+                              {bill.category ? bill.category.name : '—'}
+                            </span>
+                          </td>
+                          
+                          {/* Forma de Pagamento */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-600">
+                              {bill.payment_method ? getPaymentMethodLabel(bill.payment_method) : '—'}
+                            </span>
+                            {bill.payment_method === 'credit_card' && bill.card && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {bill.card.name}
+                              </div>
+                            )}
+                          </td>
+                          
+                          {/* Responsável */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {bill.is_shared ? (
+                              <span className="text-sm text-gray-600 font-medium">
+                                {organization?.name || 'Família'}
+                              </span>
+                            ) : bill.cost_center ? (
+                              <span className="text-sm text-gray-600">{bill.cost_center.name}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400">—</span>
+                            )}
+                          </td>
+                          
+                          {/* Valor */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-semibold text-gray-900">
+                              R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </td>
+                          
+                          {/* Status */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge className={statusBadge.className}>
+                              {statusBadge.label}
+                            </Badge>
+                          </td>
+                          
+                          {/* Ações */}
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end space-x-2">
+                              {(bill.status === 'pending' || bill.status === 'overdue') && (
+                                <button
+                                  onClick={() => handleMarkAsPaid(bill)}
+                                  className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50 transition-colors"
+                                  title="Marcar como Paga"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </button>
+                              )}
+                              
+                              <button
+                                onClick={() => openEditModal(bill)}
+                                className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors"
+                                title="Editar"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBill(bill.id)}
+                                className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
               
-              return (
-                <Card key={bill.id} className="border border-gray-200 bg-white hover:shadow-lg hover:border-gray-300 transition-all">
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-12 gap-4 items-center">
-                      {/* Descrição com badges */}
-                      <div className="col-span-4">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-semibold text-gray-900">{bill.description}</h3>
-                        </div>
-                        <div className="flex items-center space-x-2 flex-wrap">
-                          <Badge className={statusBadge.className}>
-                            {statusBadge.label}
-                          </Badge>
-                          {bill.is_recurring && (
-                            <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs">
-                              Recorrente
-                            </Badge>
-                          )}
-                          {bill.is_shared && (
-                            <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs">
-                              Compartilhado
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Vencimento */}
-                      <div className="col-span-2">
-                        <div className="text-sm text-gray-900">
-                          {new Date(bill.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
-                        </div>
-                        {bill.status === 'pending' && daysUntil >= 0 && (
-                          <div className={`text-xs mt-1 font-medium ${daysUntil <= 3 ? 'text-gray-800' : daysUntil <= 7 ? 'text-gray-700' : 'text-gray-500'}`}>
-                            {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Valor */}
-                      <div className="col-span-2">
-                        <div className="text-sm font-medium text-gray-900">
-                          R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </div>
-                      </div>
-                      
-                      {/* Status e Info */}
-                      <div className="col-span-2">
-                        {bill.category && (
-                          <div className="flex items-center space-x-1 text-sm text-gray-600 mb-1">
-                            <div 
-                              className="w-3 h-3 rounded-full bg-gray-400" 
-                            />
-                            <span>{bill.category.name}</span>
-                          </div>
-                        )}
-                        {bill.is_shared ? (
-                          <span className="text-xs text-gray-600 font-medium">
-                            Compartilhado
-                          </span>
-                        ) : bill.cost_center && (
-                          <span className="text-xs text-gray-500">
-                            {bill.cost_center.name}
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Ações */}
-                      <div className="col-span-2 flex items-center justify-end space-x-2">
-                        {(bill.status === 'pending' || bill.status === 'overdue') && (
-                          <Button
-                            onClick={() => handleMarkAsPaid(bill)}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Marcar como Paga
-                          </Button>
-                        )}
-                        
-                        {bill.status !== 'paid' && (
-                          <>
-                            <Button
-                              onClick={() => openEditModal(bill)}
-                              size="sm"
-                              variant="outline"
-                            >
-                              Editar
-                            </Button>
-                            <Button
-                              onClick={() => handleDeleteBill(bill.id)}
-                              size="sm"
-                              variant="outline"
-                              className="text-red-600 border-red-200 hover:bg-red-50"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+              {filteredBills.length === 0 && (
+                <div className="p-8 text-center">
+                  <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">Nenhuma conta a pagar encontrada</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Bill Modal */}
@@ -1005,6 +1191,7 @@ export default function BillsDashboard() {
           costCenters={costCenters || []}
           categories={categories}
           cards={cards}
+          organization={organization}
         />
       </main>
 
@@ -1028,7 +1215,15 @@ export default function BillsDashboard() {
         }}
         onConfirm={confirmDeleteBill}
         title="Confirmar exclusão"
-        message="Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita."
+        message={
+          (() => {
+            const billToDeleteObj = bills.find(b => b.id === billToDelete);
+            if (billToDeleteObj?.status === 'paid' && billToDeleteObj?.expense_id) {
+              return `Tem certeza que deseja excluir esta conta? Esta ação também excluirá a despesa associada criada quando a conta foi marcada como paga. Esta ação não pode ser desfeita.`;
+            }
+            return "Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.";
+          })()
+        }
         confirmText="Excluir"
         cancelText="Cancelar"
         type="danger"

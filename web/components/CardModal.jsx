@@ -5,13 +5,27 @@ import { Button } from './ui/Button';
 import { X, AlertCircle } from 'lucide-react';
 
 const CARD_COLORS = [
-  { value: 'bg-blue-600', label: 'Azul', preview: 'bg-blue-600' },
-  { value: 'bg-orange-600', label: 'Laranja', preview: 'bg-orange-600' },
-  { value: 'bg-purple-600', label: 'Roxo', preview: 'bg-purple-600' },
-  { value: 'bg-green-600', label: 'Verde', preview: 'bg-green-600' },
-  { value: 'bg-gray-600', label: 'Cinza', preview: 'bg-gray-600' },
-  { value: 'bg-red-600', label: 'Vermelho', preview: 'bg-red-600' }
+  { value: 'bg-blue-600', label: 'Azul', preview: 'bg-blue-600', hex: '#2563EB' },
+  { value: 'bg-orange-600', label: 'Laranja', preview: 'bg-orange-600', hex: '#EA580C' },
+  { value: 'bg-purple-600', label: 'Roxo', preview: 'bg-purple-600', hex: '#9333EA' },
+  { value: 'bg-green-600', label: 'Verde', preview: 'bg-green-600', hex: '#16A34A' },
+  { value: 'bg-gray-600', label: 'Cinza', preview: 'bg-gray-600', hex: '#4B5563' },
+  { value: 'bg-red-600', label: 'Vermelho', preview: 'bg-red-600', hex: '#DC2626' }
 ];
+
+// Função para converter hex para classe CSS
+const hexToCssClass = (hex) => {
+  const colorMap = {
+    '#2563EB': 'bg-blue-600',
+    '#EA580C': 'bg-orange-600',
+    '#9333EA': 'bg-purple-600',
+    '#16A34A': 'bg-green-600',
+    '#4B5563': 'bg-gray-600',
+    '#DC2626': 'bg-red-600',
+    '#3B82F6': 'bg-blue-600' // Fallback padrão
+  };
+  return colorMap[hex] || 'bg-blue-600';
+};
 
 export default function CardModal({ isOpen, onClose, onSave, editingCard = null }) {
   const [formData, setFormData] = useState({
@@ -21,7 +35,6 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
     billing_day: '',
     closing_day: '',
     credit_limit: '',
-    used_limit: '',
     color: 'bg-blue-600'
   });
   const [errors, setErrors] = useState({});
@@ -29,14 +42,11 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
 
   useEffect(() => {
     if (editingCard) {
-      // Calcular limite usado baseado em available_limit
       const creditLimit = parseFloat(editingCard.credit_limit || 0);
-      // Se available_limit existe e é diferente do credit_limit, calcular o usado
-      let calculatedUsed = 0;
-      if (editingCard.available_limit !== null && editingCard.available_limit !== undefined) {
-        const availableLimit = parseFloat(editingCard.available_limit || 0);
-        calculatedUsed = Math.max(0, creditLimit - availableLimit);
-      }
+      
+      // Converter cor hex do banco para classe CSS do formulário
+      const cardColor = editingCard.color || '#3B82F6';
+      const cssColor = cardColor.startsWith('#') ? hexToCssClass(cardColor) : cardColor;
       
       setFormData({
         name: editingCard.name || '',
@@ -45,8 +55,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         billing_day: editingCard.billing_day?.toString() || '',
         closing_day: editingCard.closing_day?.toString() || '',
         credit_limit: creditLimit > 0 ? creditLimit.toString() : '',
-        used_limit: calculatedUsed > 0 ? calculatedUsed.toString() : '',
-        color: editingCard.color || '#3B82F6'
+        color: cssColor
       });
     } else {
       setFormData({
@@ -56,7 +65,6 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         billing_day: '',
         closing_day: '',
         credit_limit: '',
-        used_limit: '',
         color: 'bg-blue-600'
       });
     }
@@ -90,12 +98,6 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
       newErrors.credit_limit = 'Limite deve ser maior que zero';
     }
 
-    // Validar limite usado: deve ser >= 0 e <= limite de crédito
-    const creditLimit = parseFloat(formData.credit_limit || 0);
-    const usedLimit = parseFloat(formData.used_limit || 0);
-    if (formData.used_limit && (usedLimit < 0 || usedLimit > creditLimit)) {
-      newErrors.used_limit = 'Limite usado deve estar entre 0 e o limite de crédito';
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -116,8 +118,9 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         : null;
 
       const creditLimit = parseFloat(formData.credit_limit);
-      const usedLimit = parseFloat(formData.used_limit || 0);
-      const availableLimit = Math.max(0, creditLimit - usedLimit);
+      
+      // Converter classe CSS para hex antes de enviar
+      const colorHex = CARD_COLORS.find(c => c.value === formData.color)?.hex || '#2563EB';
 
       const cardData = {
         ...formData,
@@ -125,9 +128,10 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         closing_day: closingDay,
         best_day: bestDay,
         credit_limit: creditLimit,
-        used_limit: usedLimit,
-        calculated_available_limit: availableLimit
+        color: colorHex // Enviar hex para o banco
       };
+      
+      // Não definir available_limit - deixar o sistema calcular baseado nas despesas
 
       await onSave(cardData);
     } catch (error) {
@@ -268,42 +272,6 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
               )}
             </div>
 
-            {/* Limite Já em Uso */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Limite Já em Uso (Opcional)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.used_limit}
-                onChange={(e) => handleChange('used_limit', e.target.value)}
-                placeholder="0.00"
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
-                  errors.used_limit ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-              {errors.used_limit && (
-                <p className="mt-1 text-sm text-red-600 flex items-center">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  {errors.used_limit}
-                </p>
-              )}
-              <p className="mt-1 text-xs text-gray-500">
-                💡 Informe o valor já gasto no cartão antes de cadastrá-lo aqui. 
-                {(() => {
-                  const creditLimit = parseFloat(formData.credit_limit || 0);
-                  const usedLimit = parseFloat(formData.used_limit || 0);
-                  const availableLimit = Math.max(0, creditLimit - usedLimit);
-                  if (creditLimit > 0) {
-                    return ` Limite disponível: R$ ${availableLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-                  }
-                  return '';
-                })()}
-              </p>
-            </div>
-
             {/* Dias de vencimento e melhor dia */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -398,6 +366,27 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Instrução sobre Despesas - Movido para o final */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm font-medium text-blue-900 mb-2">
+                💡 Como configurar o uso do cartão corretamente
+              </p>
+              <p className="text-xs text-blue-800 mb-2">
+                Para que o sistema calcule automaticamente o limite disponível, cadastre todos os lançamentos que já foram feitos neste cartão:
+              </p>
+              <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                <li>Despesas já pagas mas ainda não lançadas no sistema</li>
+                <li>Parcelas futuras de compras parceladas que já foram iniciadas</li>
+                <li>Qualquer gasto feito no cartão antes do cadastro</li>
+                <li>Anuidades e taxas do cartão (como anuidade anual, taxa de manutenção, etc.)</li>
+                <li>Impostos e encargos relacionados ao cartão (IOF, tarifas, etc.)</li>
+                <li>Outros lançamentos que impactam o limite disponível</li>
+              </ul>
+              <p className="text-xs text-blue-700 mt-2 font-medium">
+                O limite disponível será calculado automaticamente com base em todos os lançamentos cadastrados, garantindo maior precisão.
+              </p>
             </div>
 
           </form>

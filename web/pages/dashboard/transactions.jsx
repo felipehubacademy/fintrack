@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 import { useOrganization } from '../../hooks/useOrganization';
-import { usePrivacyFilter } from '../../hooks/usePrivacyFilter';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 import { Button } from '../../components/ui/Button';
 import TransactionModal from '../../components/TransactionModal';
@@ -13,7 +12,7 @@ import ConfirmationModal from '../../components/ConfirmationModal';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import NotificationModal from '../../components/NotificationModal';
 import LoadingLogo from '../../components/LoadingLogo';
-import { TrendingUp, Bell, Settings, Search, LogOut, Calendar, Users, Target, Edit, Trash2, CreditCard, Plus, DollarSign, User, HelpCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Bell, Settings, Search, LogOut, Calendar, Users, Target, Edit, Trash2, CreditCard, Plus, DollarSign, User, HelpCircle } from 'lucide-react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
@@ -21,8 +20,7 @@ import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 export default function TransactionsDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError, user: orgUser } = useOrganization();
-  const { filterByPrivacy } = usePrivacyFilter(organization, orgUser, costCenters);
+  const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError, user: orgUser, isSoloUser } = useOrganization();
   const { success, showError } = useNotificationContext();
   const [openTooltip, setOpenTooltip] = useState(null);
   
@@ -34,7 +32,7 @@ export default function TransactionsDashboard() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({
-    month: '2025-10', // Temporariamente fixo para outubro 2025
+    month: new Date().toISOString().slice(0, 7), // Mês atual
     owner: 'all',
     payment_method: 'all',
     card_id: null,
@@ -116,7 +114,22 @@ export default function TransactionsDashboard() {
       const combined = [
         ...expenses.map(e => ({ ...e, type: 'expense' })),
         ...incomes.map(i => ({ ...i, type: 'income' }))
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+      ].sort((a, b) => {
+        // Primeiro ordenar por data (mais recente primeiro)
+        const dateA = new Date(a.date + 'T00:00:00');
+        const dateB = new Date(b.date + 'T00:00:00');
+        
+        if (dateB.getTime() !== dateA.getTime()) {
+          return dateB.getTime() - dateA.getTime();
+        }
+        
+        // Se a data for igual, ordenar por created_at (mais recente primeiro)
+        // Isso garante ordem cronológica real mesmo quando transações têm a mesma data
+        const createdA = new Date(a.created_at || a.confirmed_at || 0);
+        const createdB = new Date(b.created_at || b.confirmed_at || 0);
+        
+        return createdB.getTime() - createdA.getTime();
+      });
       
       setTransactions(combined);
     }
@@ -156,6 +169,8 @@ export default function TransactionsDashboard() {
         .from('expenses')
         .select(`
           *,
+          category:budget_categories(name, color),
+          cost_center:cost_centers(name, color),
           expense_splits (
             id,
             cost_center_id,
@@ -164,7 +179,8 @@ export default function TransactionsDashboard() {
           )
         `)
         .eq('status', 'confirmed')
-        .order('date', { ascending: false });
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false }); // Desempate cronológico
 
       if (filter.month) {
         const startOfMonth = `${filter.month}-01`;
@@ -182,6 +198,8 @@ export default function TransactionsDashboard() {
           .from('expenses')
           .select(`
             *,
+            category:budget_categories(name, color),
+            cost_center:cost_centers(name, color),
             expense_splits (
               id,
               cost_center_id,
@@ -190,7 +208,9 @@ export default function TransactionsDashboard() {
             )
           `)
           .eq('status', 'confirmed')
-          .eq('organization_id', organization.id);
+          .eq('organization_id', organization.id)
+          .order('date', { ascending: false })
+          .order('created_at', { ascending: false }); // Desempate cronológico
         
         const filteredExpenses = allExpenses?.filter(expense => 
           isSameName(expense.owner, filter.owner)
@@ -238,9 +258,8 @@ export default function TransactionsDashboard() {
         queryString: query.toString()
       });
 
-      // Aplicar filtro de privacidade
-      const filteredExpenses = filterByPrivacy(data || []);
-      setExpenses(filteredExpenses);
+      // Dados sem filtro de privacidade (tudo visível)
+      setExpenses(data || []);
       setIsDataLoaded(true);
     } catch (error) {
       console.error('Error fetching expenses:', error);
@@ -280,15 +299,15 @@ export default function TransactionsDashboard() {
         .eq('status', 'confirmed')
         .gte('date', startOfMonth)
         .lte('date', endOfMonthStr)
-        .order('date', { ascending: false });
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false }); // Desempate cronológico
 
       const { data, error } = await query;
       
       if (error) throw error;
 
-      // Aplicar filtro de privacidade
-      const filteredIncomes = filterByPrivacy(data || []);
-      setIncomes(filteredIncomes);
+      // Dados sem filtro de privacidade (tudo visível)
+      setIncomes(data || []);
     } catch (error) {
       console.error('Error fetching incomes:', error);
     }
@@ -491,7 +510,7 @@ export default function TransactionsDashboard() {
     if (filter.owner !== 'all') {
       filtered = filtered.filter(t => {
         const owner = t.type === 'income' 
-          ? (t.is_shared ? 'Compartilhado' : t.cost_center?.name)
+          ? (t.is_shared ? (organization?.name || 'Família') : t.cost_center?.name)
           : t.owner;
         return isSameName(owner, filter.owner);
       });
@@ -562,13 +581,23 @@ export default function TransactionsDashboard() {
           bValue = (bValue || '').toString().toLowerCase();
       }
 
+      let comparison = 0;
       if (aValue < bValue) {
-        return sortConfig.direction === 'asc' ? -1 : 1;
+        comparison = sortConfig.direction === 'asc' ? -1 : 1;
+      } else if (aValue > bValue) {
+        comparison = sortConfig.direction === 'asc' ? 1 : -1;
       }
-      if (aValue > bValue) {
-        return sortConfig.direction === 'asc' ? 1 : -1;
+      
+      // Se os valores são iguais (especialmente para date), usar created_at como desempate
+      if (comparison === 0 && sortConfig.key === 'date') {
+        const createdA = new Date(a.created_at || a.confirmed_at || 0);
+        const createdB = new Date(b.created_at || b.confirmed_at || 0);
+        comparison = sortConfig.direction === 'asc' 
+          ? createdA.getTime() - createdB.getTime()
+          : createdB.getTime() - createdA.getTime();
       }
-      return 0;
+      
+      return comparison;
     });
   };
 
@@ -609,12 +638,12 @@ export default function TransactionsDashboard() {
     });
   };
 
-  // Calcular totais dinamicamente por centro de custo
-  // SEMPRE incluir todos os cost centers individuais + owners das despesas
+  // Calcular totais dinamicamente por responsável
+  // SEMPRE incluir todos os responsáveis individuais + owners das despesas
   const uniqueOwners = [];
   const seenOwners = new Set();
   
-  // 1. Adicionar todos os cost centers individuais primeiro
+  // 1. Adicionar todos os responsáveis individuais primeiro
   (costCenters || []).forEach(cc => {
     if (cc.type === 'individual') {
       const normalized = normalizeName(cc.name);
@@ -625,7 +654,7 @@ export default function TransactionsDashboard() {
     }
   });
   
-  // 2. Adicionar owners das despesas (incluindo "Compartilhado")
+  // 2. Adicionar owners das despesas (incluindo compartilhadas da família)
   expenses.forEach(e => {
     if (e.owner) {
       const normalized = normalizeName(e.owner);
@@ -640,10 +669,10 @@ export default function TransactionsDashboard() {
   
   // Calcular totais considerando splits para despesas compartilhadas
   uniqueOwners.forEach(owner => {
-    const isCompartilhado = normalizeName(owner) === 'compartilhado';
+    const isCompartilhado = normalizeName(owner) === 'compartilhado' || normalizeName(owner) === normalizeName(organization?.name || 'família');
     
     if (isCompartilhado) {
-      // Para "Compartilhado", somar o valor TOTAL das despesas compartilhadas
+      // Para despesas compartilhadas da família, somar o valor TOTAL das despesas compartilhadas
       totals[owner] = expenses
         .filter(e => e.status === 'confirmed' && isSameName(e.owner, owner))
         .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
@@ -654,7 +683,7 @@ export default function TransactionsDashboard() {
       expenses.forEach(e => {
         if (e.status !== 'confirmed') return;
         
-        if (e.split && e.owner === 'Compartilhado') {
+        if (e.split && (e.owner === 'Compartilhado' || e.owner === (organization?.name || 'Família'))) {
           // Despesa compartilhada: buscar o split deste responsável
           if (e.expense_splits && e.expense_splits.length > 0) {
             // Usar splits personalizados
@@ -703,7 +732,7 @@ export default function TransactionsDashboard() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
+          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma família.</p>
           <button
             onClick={() => router.push('/')}
             className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
@@ -834,7 +863,7 @@ export default function TransactionsDashboard() {
                   Total de Despesas
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
-                  <Target className="h-4 w-4 text-gray-600" />
+                  <TrendingDown className="h-4 w-4 text-gray-600" />
                 </div>
               </CardHeader>
               <CardContent className="p-3 pt-0 relative">
@@ -910,171 +939,64 @@ export default function TransactionsDashboard() {
             </div>
           </div>
 
-          {/* Card Total de Despesas Individuais - CINZA */}
-          <div className="relative group">
-            <Card 
-              className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
-              onClick={() => setOpenTooltip(openTooltip === 'individuais' ? null : 'individuais')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Total de Despesas Individuais
-                </CardTitle>
-                <div className="p-2 rounded-lg bg-gray-100">
-                  <User className="h-4 w-4 text-gray-600" />
-                </div>
-              </CardHeader>
-              <CardContent className="p-3 pt-0 relative">
-                {/* Ícone de ajuda discreto */}
-                <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
-                <div className="text-2xl font-bold text-gray-900 mb-1">
-                  - R$ {Number(
-                    (() => {
-                      // Buscar cost center do usuário atual
-                      const userCostCenter = costCenters?.find(cc => cc.user_id === orgUser?.id);
-                      if (!userCostCenter) return 0;
-                      
-                      const confirmedExpenses = expenses.filter(e => e.status === 'confirmed');
-                      
-                      return confirmedExpenses.reduce((sum, e) => {
-                        const isCompartilhado = e.is_shared || normalizeName(e.owner) === 'compartilhado';
-                        
-                        if (isCompartilhado) {
-                          // Despesa compartilhada: buscar a parte deste usuário
-                          if (e.expense_splits && e.expense_splits.length > 0) {
-                            // Usar splits personalizados
-                            const split = e.expense_splits.find(s => s.cost_center_id === userCostCenter.id);
-                            if (split) {
-                              return sum + parseFloat(split.amount || 0);
-                            }
-                          } else {
-                            // Usar fallback (split_percentage do cost_center)
-                            const percentage = parseFloat(userCostCenter.split_percentage || userCostCenter.default_split_percentage || 0);
-                            return sum + (parseFloat(e.amount || 0) * percentage / 100);
-                          }
-                        } else {
-                          // Despesa individual: verificar se é deste usuário
-                          if (isSameName(e.owner, userCostCenter.name)) {
-                            return sum + parseFloat(e.amount || 0);
-                          }
-                        }
-                        return sum;
-                      }, 0);
-                    })()
-                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Suas despesas totais
-                </p>
-              </CardContent>
-            </Card>
+          {/* Card Total de Despesas Individuais - CINZA (apenas para contas solo) */}
+          {isSoloUser && (
+            <div className="relative group">
+              <Card 
+                className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+                onClick={() => setOpenTooltip(openTooltip === 'individuais' ? null : 'individuais')}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                  <CardTitle className="text-sm font-medium text-gray-600">
+                    Total de Despesas
+                  </CardTitle>
+                  <div className="p-2 rounded-lg bg-gray-100">
+                    <User className="h-4 w-4 text-gray-600" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 relative">
+                  <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    - R$ {Number(
+                      expenses
+                        .filter(e => e.status === 'confirmed')
+                        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+                    ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Total de todas as despesas
+                  </p>
+                </CardContent>
+              </Card>
             
-            {/* Tooltip */}
-            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'individuais' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Forma de Pagamento</p>
-              <div className="space-y-3">
-                {(() => {
-                  // Buscar cost center do usuário atual
-                  const userCostCenter = costCenters?.find(cc => cc.user_id === orgUser?.id);
-                  if (!userCostCenter) {
-                    return <p className="text-sm text-gray-500">Carregando...</p>;
-                  }
-                  
-                  const confirmedExpenses = expenses.filter(e => e.status === 'confirmed');
-                  
-                  // Calcular total individual + parte compartilhada
-                  const calcularTotal = (paymentMethodsFilter) => {
-                    return confirmedExpenses.reduce((sum, e) => {
-                      // Filtrar por método de pagamento se fornecido
-                      if (paymentMethodsFilter && !paymentMethodsFilter(e.payment_method)) {
-                        return sum;
-                      }
-                      
-                      const isCompartilhado = e.is_shared || normalizeName(e.owner) === 'compartilhado';
-                      
-                      if (isCompartilhado) {
-                        // Despesa compartilhada: buscar a parte deste usuário
-                        if (e.expense_splits && e.expense_splits.length > 0) {
-                          const split = e.expense_splits.find(s => s.cost_center_id === userCostCenter.id);
-                          if (split) {
-                            return sum + parseFloat(split.amount || 0);
-                          }
-                        } else {
-                          const percentage = parseFloat(userCostCenter.split_percentage || userCostCenter.default_split_percentage || 0);
-                          return sum + (parseFloat(e.amount || 0) * percentage / 100);
-                        }
-                      } else {
-                        // Despesa individual: verificar se é deste usuário
-                        if (isSameName(e.owner, userCostCenter.name)) {
-                          return sum + parseFloat(e.amount || 0);
-                        }
-                      }
-                      return sum;
-                    }, 0);
-                  };
-                  
-                  // Calcular total à vista
-                  const totalAVista = calcularTotal(e => 
-                    e === 'cash' || 
-                    e === 'debit_card' || 
-                    e === 'pix' || 
-                    e === 'bank_transfer' || 
-                    e === 'boleto' || 
-                    e === 'other'
-                  );
-                  
-                  // Calcular total crédito
-                  const totalCredito = calcularTotal(e => e === 'credit_card');
-                  
-                  const totalIndividuais = totalAVista + totalCredito;
-                  const porcentagemAVista = totalIndividuais > 0 ? ((totalAVista / totalIndividuais) * 100).toFixed(1) : 0;
-                  const porcentagemCredito = totalIndividuais > 0 ? ((totalCredito / totalIndividuais) * 100).toFixed(1) : 0;
-                  
-                  // Calcular o que é individual vs compartilhado
-                  const calcularPorOrigem = (paymentMethodsFilter) => {
-                    let individual = 0;
-                    let compartilhado = 0;
+              {/* Tooltip */}
+              <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'individuais' ? 'visible' : 'invisible'}`}>
+                <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Forma de Pagamento</p>
+                <div className="space-y-3">
+                  {(() => {
+                    const confirmedExpenses = expenses.filter(e => e.status === 'confirmed');
                     
-                    confirmedExpenses.forEach(e => {
-                      // Filtrar por método de pagamento se fornecido
-                      if (paymentMethodsFilter && !paymentMethodsFilter(e.payment_method)) {
-                        return;
-                      }
-                      
-                      const isCompartilhado = e.is_shared || normalizeName(e.owner) === 'compartilhado';
-                      
-                      if (isCompartilhado) {
-                        // Despesa compartilhada: buscar a parte deste usuário
-                        if (e.expense_splits && e.expense_splits.length > 0) {
-                          const split = e.expense_splits.find(s => s.cost_center_id === userCostCenter.id);
-                          if (split) {
-                            compartilhado += parseFloat(split.amount || 0);
-                          }
-                        } else {
-                          const percentage = parseFloat(userCostCenter.split_percentage || userCostCenter.default_split_percentage || 0);
-                          compartilhado += (parseFloat(e.amount || 0) * percentage / 100);
-                        }
-                      } else {
-                        // Despesa individual: verificar se é deste usuário
-                        if (isSameName(e.owner, userCostCenter.name)) {
-                          individual += parseFloat(e.amount || 0);
-                        }
-                      }
-                    });
+                    const totalAVista = confirmedExpenses
+                      .filter(e => 
+                        e.payment_method === 'cash' || 
+                        e.payment_method === 'debit_card' || 
+                        e.payment_method === 'pix' || 
+                        e.payment_method === 'bank_transfer' || 
+                        e.payment_method === 'boleto' || 
+                        e.payment_method === 'other'
+                      )
+                      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
                     
-                    return { individual, compartilhado };
-                  };
-                  
-                  const totalPorOrigem = calcularPorOrigem(null); // Sem filtro de método de pagamento
-                  const totalGeral = totalPorOrigem.individual + totalPorOrigem.compartilhado;
-                  const porcentagemIndividual = totalGeral > 0 ? ((totalPorOrigem.individual / totalGeral) * 100).toFixed(1) : 0;
-                  const porcentagemCompartilhado = totalGeral > 0 ? ((totalPorOrigem.compartilhado / totalGeral) * 100).toFixed(1) : 0;
-                  
-                  return (
-                    <>
-                      {/* Divisão por Forma de Pagamento */}
-                      <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
-                        <p className="text-xs font-semibold text-gray-700 mb-2">Forma de Pagamento</p>
+                    const totalCredito = confirmedExpenses
+                      .filter(e => e.payment_method === 'credit_card')
+                      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                    
+                    const totalDespesas = totalAVista + totalCredito;
+                    const porcentagemAVista = totalDespesas > 0 ? ((totalAVista / totalDespesas) * 100).toFixed(1) : 0;
+                    const porcentagemCredito = totalDespesas > 0 ? ((totalCredito / totalDespesas) * 100).toFixed(1) : 0;
+                    
+                    return (
+                      <>
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center space-x-2">
                             <div className="w-3 h-3 rounded-full bg-gray-600"></div>
@@ -1095,128 +1017,115 @@ export default function TransactionsDashboard() {
                             <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
                           </div>
                         </div>
-                      </div>
-                      
-                      {/* Divisão por Origem */}
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-700 mb-2">Origem</p>
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                            <span className="text-gray-700 font-medium">Individual</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-gray-900 font-semibold">- R$ {Number(totalPorOrigem.individual).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                            <span className="text-gray-500 ml-2">{porcentagemIndividual}%</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <div className="w-3 h-3 rounded-full bg-purple-600 flex-shrink-0"></div>
-                            <span className="text-gray-700 font-medium truncate" title={organization?.name || 'Organização'}>
-                              {organization?.name && organization.name.length > 20 
-                                ? `${organization.name.substring(0, 20)}...` 
-                                : (organization?.name || 'Organização')}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-gray-900 font-semibold">- R$ {Number(totalPorOrigem.compartilhado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                            <span className="text-gray-500 ml-2">{porcentagemCompartilhado}%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Card Total de Despesas da Família - CINZA */}
-          <div className="relative group">
-            <Card 
-              className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
-              onClick={() => setOpenTooltip(openTooltip === 'familia' ? null : 'familia')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Total de Despesas da Família
-                </CardTitle>
-                <div className="p-2 rounded-lg bg-gray-100">
-                  <Users className="h-4 w-4 text-gray-600" />
-                </div>
-              </CardHeader>
-              <CardContent className="p-3 pt-0 relative">
-                {/* Ícone de ajuda discreto */}
-                <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
-                <div className="text-2xl font-bold text-gray-900 mb-1">
-                  - R$ {Number(
-                    expenses
-                      .filter(e => 
-                        e.status === 'confirmed' && 
-                        (e.is_shared || normalizeName(e.owner) === 'compartilhado')
-                      )
-                      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
-                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Despesas compartilhadas
-                </p>
-              </CardContent>
-            </Card>
+          {/* StatsCards por Responsável - Apenas para contas família - DENTRO DO MESMO GRID */}
+          {!isSoloUser && costCenters && costCenters.filter(cc => cc && cc.is_active !== false && !cc.is_shared).map((cc) => {
+            // Despesas individuais deste responsável
+            const individualExpenses = expenses
+              .filter(e => e.status === 'confirmed' && !e.is_shared && e.cost_center_id === cc.id)
+              .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
             
-            {/* Tooltip */}
-            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'familia' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
-              <div className="space-y-2">
-                {costCenters
-                  .filter(cc => cc && cc.is_active !== false && !cc.is_shared)
-                  .map((cc) => {
-                    const sharedExpenses = expenses.filter(e => 
-                      e.status === 'confirmed' && 
-                      (e.is_shared || normalizeName(e.owner) === 'compartilhado')
-                    );
-                    
-                    // Calcular total deste cost center nas despesas compartilhadas
-                    const ccTotal = sharedExpenses.reduce((sum, e) => {
-                      if (e.expense_splits && e.expense_splits.length > 0) {
-                        // Usar splits personalizados
-                        const split = e.expense_splits.find(s => s.cost_center_id === cc.id);
-                        if (split) {
-                          return sum + parseFloat(split.amount || 0);
-                        }
-                      } else {
-                        // Usar fallback (split_percentage do cost_center)
-                        const percentage = parseFloat(cc.split_percentage || cc.default_split_percentage || 0);
-                        return sum + (parseFloat(e.amount || 0) * percentage / 100);
-                      }
-                      return sum;
-                    }, 0);
-                    
-                    const totalCompartilhado = sharedExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-                    const percentage = totalCompartilhado > 0 ? ((ccTotal / totalCompartilhado) * 100) : 0;
-                    
-                    return { cc, total: ccTotal, percentage: percentage.toFixed(1) };
-                  })
-                  .filter(item => item.total > 0)
-                  .map(({ cc, total, percentage }) => (
-                    <div key={cc.id} className="flex items-center justify-between text-sm">
+            // Parte deste responsável nas despesas compartilhadas (via expense_splits)
+            const sharedExpenses = expenses
+              .filter(e => e.status === 'confirmed' && (e.is_shared || e.expense_splits?.length > 0))
+              .flatMap(e => e.expense_splits || [])
+              .filter(s => s.cost_center_id === cc.id)
+              .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+            
+            const totalExpenses = individualExpenses + sharedExpenses;
+            
+            // Calcular total geral para porcentagem
+            const totalAllExpenses = expenses
+              .filter(e => e.status === 'confirmed')
+              .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            
+            const percentage = totalAllExpenses > 0 ? ((totalExpenses / totalAllExpenses) * 100).toFixed(1) : 0;
+            
+            return (
+              <div key={cc.id} className="relative group">
+                <Card 
+                  className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+                  onClick={() => setOpenTooltip(openTooltip === `cc-${cc.id}` ? null : `cc-${cc.id}`)}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                    <CardTitle className="text-sm font-medium text-gray-600 truncate flex-1">
+                      {cc.name}
+                    </CardTitle>
+                    <div className="p-2 rounded-lg bg-gray-100">
+                      <User className="h-4 w-4 text-gray-600" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0 relative">
+                    <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
+                    <div className="text-2xl font-bold text-gray-900 mb-1">
+                      - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {percentage}% do total
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                {/* Tooltip */}
+                <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 w-full md:invisible md:group-hover:visible ${openTooltip === `cc-${cc.id}` ? 'visible' : 'invisible'}`}>
+                  <p className="text-sm font-semibold text-gray-900 mb-3">Composição das Despesas</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-2">
                         <div 
                           className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: cc.color || '#207DFF' }}
+                          style={{ backgroundColor: cc.color || '#6B7280' }}
                         />
-                        <span className="text-gray-700">{cc.name}</span>
+                        <span className="text-gray-700 font-medium">Individuais</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-gray-900 font-semibold">- R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                        <span className="text-gray-500 ml-2">{percentage}%</span>
+                        <span className="text-gray-900 font-semibold">
+                          - R$ {Number(individualExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                        {totalExpenses > 0 && (
+                          <span className="text-gray-500 ml-2">
+                            {((individualExpenses / totalExpenses) * 100).toFixed(1)}%
+                          </span>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                        <span className="text-gray-700 font-medium">{organization?.name || 'Família'}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-gray-900 font-semibold">
+                          - R$ {Number(sharedExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                        {totalExpenses > 0 && (
+                          <span className="text-gray-500 ml-2">
+                            {((sharedExpenses / totalExpenses) * 100).toFixed(1)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-gray-200">
+                      <div className="flex items-center justify-between text-sm font-semibold">
+                        <span className="text-gray-900">Total</span>
+                        <span className="text-gray-900">
+                          - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })}
+
         </div>
 
         {/* Filters */}
@@ -1289,8 +1198,8 @@ export default function TransactionsDashboard() {
                     {(costCenters || []).map(cc => (
                       <option key={cc.id || cc.name} value={cc.name}>{cc.name}</option>
                     ))}
-                    {!costCenters?.some(cc => cc.name === 'Compartilhado') && (
-                      <option value="Compartilhado">Compartilhado</option>
+                    {!costCenters?.some(cc => cc.name === (organization?.name || 'Família')) && (
+                      <option value={organization?.name || 'Família'}>{organization?.name || 'Família'}</option>
                     )}
                   </>
                 ) : (
@@ -1530,7 +1439,9 @@ export default function TransactionsDashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {isIncome ? transaction.category : transaction.category || '-'}
+                      {isIncome 
+                        ? transaction.category 
+                        : (transaction.category?.name || '-')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {!isIncome && (
@@ -1570,11 +1481,11 @@ export default function TransactionsDashboard() {
                       {(() => {
                         // Determinar owner e se é compartilhado
                         const owner = isIncome 
-                          ? (transaction.is_shared ? (organization?.name || 'Compartilhado') : transaction.cost_center?.name)
-                          : transaction.owner;
+                          ? (transaction.is_shared ? (organization?.name || 'Família') : transaction.cost_center?.name)
+                          : (transaction.cost_center?.name || transaction.owner || (transaction.is_shared ? (organization?.name || 'Família') : '-'));
                         
-                        // Verificar se é compartilhado: owner é 'Compartilhado' ou nome da organização
-                        const isShared = transaction.is_shared || owner === 'Compartilhado' || owner === (organization?.name || 'Organização');
+                        // Verificar se é compartilhado: owner é nome da família
+                        const isShared = transaction.is_shared || owner === (organization?.name || 'Família');
                         
                         // Calcular splits para tooltip
                         let splitInfo = null;
@@ -1597,7 +1508,7 @@ export default function TransactionsDashboard() {
                             };
                           });
                         } else if (isShared) {
-                          // Usar fallback dos cost centers
+                          // Usar fallback dos responsáveis
                           splitInfo = costCenters
                             .filter(cc => cc.is_active !== false && cc.user_id)
                             .map(cc => ({

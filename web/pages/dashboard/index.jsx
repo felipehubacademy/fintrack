@@ -9,7 +9,6 @@ import QuickActions from '../../components/dashboard/QuickActions';
 import NotificationModal from '../../components/NotificationModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import { useOrganization } from '../../hooks/useOrganization';
-import { usePrivacyFilter } from '../../hooks/usePrivacyFilter';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { 
@@ -35,8 +34,7 @@ import Footer from '../../components/Footer';
 export default function DashboardHome() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, budgetCategories, incomeCategories, loading: orgLoading, error: orgError } = useOrganization();
-  const { filterByPrivacy } = usePrivacyFilter(organization, orgUser, costCenters);
-  const [selectedMonth, setSelectedMonth] = useState('2025-10');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   // Raw expenses for the selected month (used by MonthCharts)
   const [monthExpenses, setMonthExpenses] = useState([]);
   const [monthIncomes, setMonthIncomes] = useState([]);
@@ -56,6 +54,20 @@ export default function DashboardHome() {
   const [cardsUsage, setCardsUsage] = useState({});
   const [bankAccounts, setBankAccounts] = useState([]);
   const [openTooltip, setOpenTooltip] = useState(null);
+
+  // Fechar tooltip ao clicar fora em mobile
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openTooltip && !event.target.closest('.relative.group')) {
+        setOpenTooltip(null);
+      }
+    };
+    
+    if (openTooltip) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openTooltip]);
 
   useEffect(() => {
     console.log('🔍 [Dashboard] useEffect triggered:', { orgLoading, orgError, organization: !!organization });
@@ -165,10 +177,9 @@ export default function DashboardHome() {
     try {
       // Buscar todas as despesas confirmadas do mês da organização
       const startOfMonth = `${selectedMonth}-01`;
-      const endExclusive = new Date(selectedMonth + '-01');
-      endExclusive.setMonth(endExclusive.getMonth() + 1);
-      // endExclusive é o 1º dia do próximo mês; usaremos '<' para evitar problemas de fuso
-
+      const [year, month] = selectedMonth.split('-');
+      const lastDay = new Date(year, month, 0).getDate();
+      const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
 
       // Buscar despesas (compatível V1/V2) com expense_splits
       let query = supabase
@@ -182,10 +193,10 @@ export default function DashboardHome() {
             amount
           )
         `)
-        // status: confirmed, paid, ou null (legado)
-        .or('status.eq.confirmed,status.eq.paid,status.is.null')
+        // status: apenas confirmed (alinhado com transactions e closing)
+        .eq('status', 'confirmed')
         .gte('date', startOfMonth)
-        .lt('date', endExclusive.toISOString().split('T')[0])
+        .lte('date', endOfMonthStr)
         .order('date', { ascending: false });
 
       // Adicionar filtro V2 se organização tem ID real (não mock)
@@ -209,14 +220,12 @@ export default function DashboardHome() {
         console.log('✅ [DASHBOARD] No expenses found for this organization in the selected month.');
       }
 
-      // Aplicar filtro de privacidade
-      const filteredExpenses = filterByPrivacy(expensesData);
-      
-      setMonthExpenses(filteredExpenses);
+      // Dados sem filtro de privacidade (tudo visível)
+      setMonthExpenses(expensesData);
 
       // Separar cartão e a vista
-      const card = (filteredExpenses || []).filter(e => e.payment_method === 'credit_card');
-      const cash = (filteredExpenses || []).filter(e => 
+      const card = (expensesData || []).filter(e => e.payment_method === 'credit_card');
+      const cash = (expensesData || []).filter(e => 
         e.payment_method === 'cash' || 
         e.payment_method === 'debit_card' || 
         e.payment_method === 'pix' || 
@@ -244,8 +253,9 @@ export default function DashboardHome() {
     
     try {
       const startOfMonth = `${selectedMonth}-01`;
-      const endExclusive = new Date(selectedMonth + '-01');
-      endExclusive.setMonth(endExclusive.getMonth() + 1);
+      const [year, month] = selectedMonth.split('-');
+      const lastDay = new Date(year, month, 0).getDate();
+      const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
 
       let query = supabase
         .from('incomes')
@@ -262,7 +272,7 @@ export default function DashboardHome() {
         `)
         .eq('status', 'confirmed')
         .gte('date', startOfMonth)
-        .lt('date', endExclusive.toISOString().split('T')[0])
+        .lte('date', endOfMonthStr)
         .order('date', { ascending: false });
 
       if (organization?.id && organization.id !== 'default-org') {
@@ -276,9 +286,8 @@ export default function DashboardHome() {
         throw error;
       }
 
-      // Aplicar filtro de privacidade
-      const filteredIncomes = filterByPrivacy(data || []);
-      setMonthIncomes(filteredIncomes);
+      // Dados sem filtro de privacidade (tudo visível)
+      setMonthIncomes(data || []);
     } catch (error) {
       console.error('Error fetching incomes:', error);
     }
@@ -360,27 +369,24 @@ export default function DashboardHome() {
 
         const limit = Number(card.credit_limit || 0);
         
-        // Prioridade: usar available_limit do banco (fonte da verdade)
-        let availableLimit = card.available_limit !== null && card.available_limit !== undefined 
-          ? Number(card.available_limit) 
-          : null;
+        // Sempre calcular uso baseado nas despesas confirmadas
+        const { data: expenses } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('payment_method', 'credit_card')
+          .eq('card_id', card.id)
+          .eq('status', 'confirmed');
         
-        let used = 0;
+        const used = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
         
-        if (availableLimit !== null && availableLimit !== limit) {
-          // available_limit foi definido manualmente
-          used = Math.max(0, limit - availableLimit);
-        } else {
-          // Calcular das despesas
-          const { data: expenses } = await supabase
-            .from('expenses')
-            .select('amount')
-            .eq('payment_method', 'credit_card')
-            .eq('card_id', card.id)
-            .eq('status', 'confirmed');
-          
-          used = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
-        }
+        // Atualizar available_limit automaticamente baseado nas despesas
+        const newAvailable = Math.max(0, limit - used);
+        supabase
+          .from('cards')
+          .update({ available_limit: newAvailable })
+          .eq('id', card.id)
+          .then(() => {})
+          .catch(err => console.warn('⚠️ Failed to update available_limit:', err));
         
         return [card.id, { used, limit }];
       })
@@ -548,9 +554,8 @@ export default function DashboardHome() {
   };
 
   // Calcular totais diretamente de monthExpenses (mesmo usado nos gráficos)
-  const confirmedMonthExpenses = monthExpenses.filter(e => 
-    e.status === 'confirmed' || e.status === 'paid' || !e.status
-  );
+  // Filtrar apenas confirmed (alinhado com transactions e closing)
+  const confirmedMonthExpenses = monthExpenses.filter(e => e.status === 'confirmed');
   
   const cardTotal = confirmedMonthExpenses
     .filter(e => e.payment_method === 'credit_card')
@@ -570,6 +575,8 @@ export default function DashboardHome() {
   const grandTotal = cardTotal + cashTotal;
 
   // Recalcular dados do mês anterior baseado no mês selecionado
+  const [previousMonthIncomes, setPreviousMonthIncomes] = useState(0);
+  
   useEffect(() => {
     if (monthlyData.length === 0) return;
     
@@ -585,12 +592,14 @@ export default function DashboardHome() {
         cashExpenses: previousData.despesas || 0,
         totalExpenses: (previousData.cartoes || 0) + (previousData.despesas || 0)
       });
+      setPreviousMonthIncomes(previousData.entradas || 0);
     } else {
       setPreviousMonthData({
         cardExpenses: 0,
         cashExpenses: 0,
         totalExpenses: 0
       });
+      setPreviousMonthIncomes(0);
     }
   }, [selectedMonth, monthlyData]);
   
@@ -616,7 +625,9 @@ export default function DashboardHome() {
   }, 0);
 
   // Calcular dados para os cards existentes
-  const totalIncomes = monthIncomes.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+  // Filtrar apenas entradas confirmadas (mesmo que a query já filtre, garantimos aqui)
+  const confirmedMonthIncomes = monthIncomes.filter(i => i.status === 'confirmed');
+  const totalIncomes = confirmedMonthIncomes.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
   const balance = totalIncomes - grandTotal;
   
   const calculateGrowth = (current, previous) => {
@@ -626,10 +637,9 @@ export default function DashboardHome() {
   };
 
   const expensesGrowth = calculateGrowth(grandTotal, previousMonthData?.totalExpenses || 0);
-  const incomesGrowth = calculateGrowth(totalIncomes, 0);
-  const balanceGrowth = previousMonthData?.totalExpenses
-    ? calculateGrowth(balance, (0 - previousMonthData.totalExpenses))
-    : 0;
+  const incomesGrowth = calculateGrowth(totalIncomes, previousMonthIncomes || 0);
+  const previousBalance = (previousMonthIncomes || 0) - (previousMonthData?.totalExpenses || 0);
+  const balanceGrowth = calculateGrowth(balance, previousBalance);
 
 
   if (orgLoading || !isDataLoaded) {
@@ -645,7 +655,7 @@ export default function DashboardHome() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
+          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma família.</p>
           <button
             onClick={() => router.push('/')}
             className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"
@@ -692,78 +702,201 @@ export default function DashboardHome() {
         {/* Stats Cards - Grid 2x3 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {/* Card 1: Total de Entradas */}
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total de Entradas
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/5">
-                <ArrowDownCircle className="h-4 w-4 text-flight-blue" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {Number(totalIncomes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <div className="flex items-center space-x-2 text-xs">
-                {incomesGrowth > 0 && (
-                  <>
-                    <TrendingUp className="h-3 w-3 text-green-600" />
-                    <span className="text-green-600">+{Math.abs(incomesGrowth || 0).toFixed(1)}%</span>
-                  </>
+          <div className="relative group">
+            <Card 
+              className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+              onClick={() => setOpenTooltip(openTooltip === 'entradas' ? null : 'entradas')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Total de Entradas
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-flight-blue/10">
+                  <TrendingUp className="h-4 w-4 text-flight-blue" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 relative">
+                <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  R$ {Number(totalIncomes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <div className="flex items-center space-x-2 text-xs">
+                  {incomesGrowth > 0 && (
+                    <>
+                      <TrendingUp className="h-3 w-3 text-green-600" />
+                      <span className="text-green-600">+{Math.abs(incomesGrowth || 0).toFixed(1)}%</span>
+                    </>
+                  )}
+                  {incomesGrowth < 0 && (
+                    <>
+                      <TrendingDown className="h-3 w-3 text-red-600" />
+                      <span className="text-red-600">-{Math.abs(incomesGrowth || 0).toFixed(1)}%</span>
+                    </>
+                  )}
+                  {incomesGrowth === 0 && (
+                    <>
+                      <span className="text-gray-500">0%</span>
+                    </>
+                  )}
+                  <span className="text-gray-500">vs mês anterior</span>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Tooltip */}
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'entradas' ? 'visible' : 'invisible'}`}>
+              <p className="text-sm font-semibold text-gray-900 mb-2">Divisão por Responsável</p>
+              <p className="text-xs text-gray-500 mb-3">Divisão completa da família por responsável</p>
+              <div className="space-y-2">
+                {costCenters
+                  .filter(cc => cc && cc.is_active !== false && !cc.is_shared)
+                  .map((cc) => {
+                    // Entradas individuais deste responsável
+                    const individualTotal = confirmedMonthIncomes
+                      .filter(i => !i.is_shared && i.cost_center_id === cc.id)
+                      .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+                    
+                    // Parte deste responsável nas entradas compartilhadas
+                    const sharedTotal = confirmedMonthIncomes
+                      .filter(i => i.is_shared && i.income_splits)
+                      .flatMap(i => i.income_splits || [])
+                      .filter(s => s.cost_center_id === cc.id)
+                      .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+                    
+                    const total = individualTotal + sharedTotal;
+                    const percentage = totalIncomes > 0 ? ((total / totalIncomes) * 100).toFixed(1) : 0;
+                    
+                    return { cc, total, percentage, individualTotal, sharedTotal };
+                  })
+                  .filter(item => item.total > 0)
+                  .map(({ cc, total, percentage, individualTotal, sharedTotal }) => (
+                    <div key={cc.id} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: cc.color || '#207DFF' }}
+                          />
+                          <span className="text-gray-700 font-medium">{cc.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-500 ml-2">{percentage}%</span>
+                        </div>
+                      </div>
+                      {(individualTotal > 0 || sharedTotal > 0) && (
+                        <div className="text-xs text-gray-500 ml-5">
+                          {individualTotal > 0 && `Individual: R$ ${individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                          {individualTotal > 0 && sharedTotal > 0 && ' • '}
+                          {sharedTotal > 0 && `Compartilhada: R$ ${sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                {costCenters.filter(cc => cc && cc.is_active !== false && !cc.is_shared).length === 0 && (
+                  <p className="text-sm text-gray-500">Nenhum dado disponível</p>
                 )}
-                {incomesGrowth < 0 && (
-                  <>
-                    <TrendingDown className="h-3 w-3 text-red-600" />
-                    <span className="text-red-600">-{Math.abs(incomesGrowth || 0).toFixed(1)}%</span>
-                  </>
-                )}
-                {incomesGrowth === 0 && (
-                  <>
-                    <span className="text-gray-500">0%</span>
-                  </>
-                )}
-                <span className="text-gray-500">vs mês anterior</span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Card 2: Total de Despesas */}
-          <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total de Despesas
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-gray-50">
-                <ArrowUpCircle className="h-4 w-4 text-gray-600" />
+          <div className="relative group">
+            <Card 
+              className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+              onClick={() => setOpenTooltip(openTooltip === 'despesas' ? null : 'despesas')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Total de Despesas
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-gray-100">
+                  <TrendingDown className="h-4 w-4 text-gray-600" />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 relative">
+                <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  - R$ {Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <div className="flex items-center space-x-2 text-xs">
+                  {expensesGrowth > 0 && (
+                    <>
+                      <TrendingUp className="h-3 w-3 text-red-600" />
+                      <span className="text-red-600">+{Math.abs(expensesGrowth || 0).toFixed(1)}%</span>
+                    </>
+                  )}
+                  {expensesGrowth < 0 && (
+                    <>
+                      <TrendingDown className="h-3 w-3 text-green-600" />
+                      <span className="text-green-600">-{Math.abs(expensesGrowth || 0).toFixed(1)}%</span>
+                    </>
+                  )}
+                  {expensesGrowth === 0 && (
+                    <>
+                      <span className="text-gray-500">0%</span>
+                    </>
+                  )}
+                  <span className="text-gray-500">vs mês anterior</span>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Tooltip */}
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'despesas' ? 'visible' : 'invisible'}`}>
+              <p className="text-sm font-semibold text-gray-900 mb-2">Divisão por Forma de Pagamento</p>
+              <p className="text-xs text-gray-500 mb-3">Divisão completa da família</p>
+              <div className="space-y-3">
+                {(() => {
+                  // Calcular total à vista (total da organização)
+                  const totalAVista = confirmedMonthExpenses
+                    .filter(e => 
+                      e.payment_method === 'cash' || 
+                      e.payment_method === 'debit_card' || 
+                      e.payment_method === 'pix' || 
+                      e.payment_method === 'bank_transfer' || 
+                      e.payment_method === 'boleto' || 
+                      e.payment_method === 'other'
+                    )
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                  
+                  // Calcular total crédito (total da organização)
+                  const totalCredito = confirmedMonthExpenses
+                    .filter(e => e.payment_method === 'credit_card')
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                  
+                  const totalDespesas = totalAVista + totalCredito;
+                  const porcentagemAVista = totalDespesas > 0 ? ((totalAVista / totalDespesas) * 100).toFixed(1) : 0;
+                  const porcentagemCredito = totalDespesas > 0 ? ((totalCredito / totalDespesas) * 100).toFixed(1) : 0;
+                  
+                  return (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-gray-600"></div>
+                          <span className="text-gray-700 font-medium">À Vista</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                          <span className="text-gray-700 font-medium">Crédito</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                - R$ {Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-              <div className="flex items-center space-x-2 text-xs">
-                {expensesGrowth > 0 && (
-                  <>
-                    <TrendingUp className="h-3 w-3 text-red-600" />
-                    <span className="text-red-600">+{Math.abs(expensesGrowth || 0).toFixed(1)}%</span>
-                  </>
-                )}
-                {expensesGrowth < 0 && (
-                  <>
-                    <TrendingDown className="h-3 w-3 text-green-600" />
-                    <span className="text-green-600">-{Math.abs(expensesGrowth || 0).toFixed(1)}%</span>
-                  </>
-                )}
-                {expensesGrowth === 0 && (
-                  <>
-                    <span className="text-gray-500">0%</span>
-                  </>
-                )}
-                <span className="text-gray-500">vs mês anterior</span>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Card 3: Saldo do Mês */}
           <Card className={`border shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden ${
@@ -778,7 +911,7 @@ export default function DashboardHome() {
                 Saldo do Mês
               </CardTitle>
               <div className={`p-2 rounded-lg ${
-                balance >= 0 ? 'bg-green-50' : 'bg-red-50'
+                balance >= 0 ? 'bg-green-100' : 'bg-red-100'
               }`}>
                 <DollarSign className={`h-4 w-4 ${
                   balance >= 0 ? 'text-green-600' : 'text-red-600'

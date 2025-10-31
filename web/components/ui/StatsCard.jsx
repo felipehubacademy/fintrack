@@ -19,7 +19,16 @@ export default function StatsCard({
         <CardTitle className="text-sm font-medium text-gray-600">
           {title}
         </CardTitle>
-        <div className={`p-2 rounded-lg ${bgColor === 'bg-gray-50' ? 'bg-gray-100' : bgColor}`}>
+        <div className={`p-2 rounded-lg ${
+          bgColor === 'bg-gray-50' ? 'bg-gray-100' : 
+          bgColor === 'bg-flight-blue/5' ? 'bg-flight-blue/10' :
+          bgColor === 'bg-green-50' ? 'bg-green-100' :
+          bgColor === 'bg-red-50' ? 'bg-red-100' :
+          bgColor.includes('blue') ? 'bg-blue-100' :
+          bgColor.includes('green') ? 'bg-green-100' :
+          bgColor.includes('red') ? 'bg-red-100' :
+          bgColor
+        }`}>
           <Icon className={`h-4 w-4 ${color}`} />
         </div>
       </CardHeader>

@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Button } from './ui/Button';
 import { X, AlertCircle } from 'lucide-react';
 
-export default function MarkBillAsPaidModal({ 
+export default function MarkInvoiceAsPaidModal({ 
   isOpen, 
   onClose, 
   onConfirm,
-  bill,
+  invoice,
+  card,
   costCenters = [],
   organization = null
 }) {
@@ -14,18 +15,12 @@ export default function MarkBillAsPaidModal({
   const [isShared, setIsShared] = useState(false);
 
   useEffect(() => {
-    if (bill && isOpen) {
-      // Se a bill já tem cost_center_id, usar como padrão
-      if (bill.cost_center_id) {
-        setSelectedOwner(bill.cost_center_id);
-        setIsShared(false);
-      } else {
-        // Se não tem, verificar se é compartilhado
-        setIsShared(bill.is_shared || false);
-        setSelectedOwner('');
-      }
+    if (isOpen) {
+      // Resetar seleção ao abrir
+      setIsShared(false);
+      setSelectedOwner('');
     }
-  }, [bill, isOpen]);
+  }, [isOpen]);
 
   const handleConfirm = () => {
     // Validar que tem responsável selecionado OU está marcado como compartilhado
@@ -39,11 +34,18 @@ export default function MarkBillAsPaidModal({
     });
   };
 
-  if (!isOpen || !bill) return null;
+  if (!isOpen || !invoice || !card) return null;
 
   const ownerOptions = costCenters
     .filter(cc => cc.is_active !== false && !cc.is_shared)
     .map(cc => ({ value: cc.id, label: cc.name }));
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -53,7 +55,7 @@ export default function MarkBillAsPaidModal({
           <div className="flex items-center space-x-3">
             <AlertCircle className="w-8 h-8 text-yellow-600" />
             <h2 className="text-xl font-semibold text-gray-900">
-              Confirmar pagamento
+              Marcar fatura como paga
             </h2>
           </div>
           <button
@@ -66,11 +68,14 @@ export default function MarkBillAsPaidModal({
 
         {/* Content */}
         <div className="p-6">
-          <p className="text-gray-600 mb-4">
-            Marcar <strong>{bill.description}</strong> (R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) como paga?
+          <p className="text-gray-600 mb-2">
+            Cartão: <strong>{card.name}</strong>
+          </p>
+          <p className="text-gray-600 mb-2">
+            Valor: <strong>{formatCurrency(invoice.total)}</strong>
           </p>
           <p className="text-sm text-gray-500 mb-6">
-            Isso criará uma despesa automaticamente.
+            Isso criará uma despesa e liberará o limite do cartão.
           </p>
 
           {/* Quem pagou? */}

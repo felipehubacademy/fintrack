@@ -2,12 +2,19 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import { X, Calendar, CreditCard, ArrowRight } from 'lucide-react';
+import { X, Calendar, CreditCard, ArrowRight, CheckCircle } from 'lucide-react';
+import MarkInvoiceAsPaidModal from './MarkInvoiceAsPaidModal';
+import { useOrganization } from '../hooks/useOrganization';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function CardInvoiceModal({ isOpen, onClose, card }) {
+  const { organization, user, costCenters } = useOrganization();
+  const { success, error: showError } = useNotificationContext();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentCycle, setCurrentCycle] = useState(null);
+  const [showMarkAsPaidModal, setShowMarkAsPaidModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   useEffect(() => {
     if (isOpen && card) {
@@ -265,6 +272,141 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
     }).format(value);
   };
 
+  const handleMarkInvoiceAsPaid = async (ownerData) => {
+    if (!selectedInvoice || !card) return;
+
+    try {
+      const { cost_center_id, is_shared } = ownerData;
+      
+      // Buscar o nome do cost center ou organização
+      let ownerName = null;
+      if (cost_center_id) {
+        const costCenter = costCenters?.find(cc => cc.id === cost_center_id);
+        ownerName = costCenter?.name || null;
+      } else if (is_shared) {
+        ownerName = organization?.name || 'Família';
+      }
+
+      // Buscar categoria "Contas" ou usar primeira disponível
+      const { data: categories } = await supabase
+        .from('budget_categories')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .or('type.eq.expense,type.eq.both')
+        .order('name');
+      
+      // Tentar encontrar categoria "Contas"
+      let category = categories?.find(cat => 
+        cat.name.toLowerCase() === 'contas'
+      );
+      
+      // Se não encontrar, usar primeira disponível
+      if (!category && categories && categories.length > 0) {
+        category = categories[0];
+      }
+
+      // 1. Criar despesa representando o pagamento da fatura
+      const invoiceDescription = `Fatura ${card.name} - ${formatDate(selectedInvoice.startDate)}`;
+      
+      const expenseData = {
+        description: invoiceDescription,
+        amount: selectedInvoice.total,
+        date: new Date().toISOString().split('T')[0],
+        category_id: category?.id || null,
+        category: category?.name || null,
+        cost_center_id: cost_center_id || null,
+        owner: ownerName,
+        is_shared: is_shared,
+        payment_method: 'bank_transfer', // Pagamento da fatura geralmente é por transferência/PIX
+        card_id: null, // Não é mais despesa no cartão, é pagamento
+        status: 'confirmed',
+        organization_id: organization.id,
+        user_id: user?.id,
+        source: 'manual'
+      };
+
+      const { data: expense, error: expenseError } = await supabase
+        .from('expenses')
+        .insert(expenseData)
+        .select()
+        .single();
+
+      if (expenseError) {
+        console.error('❌ Erro ao criar expense da fatura:', expenseError);
+        throw expenseError;
+      }
+
+      // 2. Se for compartilhado, criar splits
+      if (is_shared && costCenters) {
+        const activeCenters = costCenters.filter(cc => cc.is_active !== false && cc.user_id);
+        const splitsToInsert = activeCenters.map(cc => ({
+          expense_id: expense.id,
+          cost_center_id: cc.id,
+          percentage: parseFloat(cc.default_split_percentage || 50),
+          amount: (selectedInvoice.total * parseFloat(cc.default_split_percentage || 50)) / 100
+        }));
+
+        if (splitsToInsert.length > 0) {
+          const { error: splitError } = await supabase
+            .from('expense_splits')
+            .insert(splitsToInsert);
+
+          if (splitError) {
+            console.error('❌ Erro ao criar splits:', splitError);
+            throw splitError;
+          }
+        }
+      }
+
+      // 3. Atualizar status de todas as despesas que compõem a fatura de 'confirmed' para 'paid'
+      // Isso libera o limite do cartão porque o cálculo só considera despesas 'confirmed'
+      const expenseIds = selectedInvoice.expenses.map(exp => exp.id);
+      
+      if (expenseIds.length > 0) {
+        const { error: updateError } = await supabase
+          .from('expenses')
+          .update({ 
+            status: 'paid',
+            paid_at: new Date().toISOString()
+          })
+          .in('id', expenseIds);
+
+        if (updateError) {
+          console.error('❌ Erro ao atualizar status das despesas:', updateError);
+          throw updateError;
+        }
+      }
+
+      // 4. Recalcular available_limit do cartão (remover despesas pagas do cálculo)
+      const { data: remainingExpenses } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('payment_method', 'credit_card')
+        .eq('card_id', card.id)
+        .eq('status', 'confirmed');
+
+      const remainingUsed = (remainingExpenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      const newAvailableLimit = Math.max(0, Number(card.credit_limit) - remainingUsed);
+
+      await supabase
+        .from('cards')
+        .update({ available_limit: newAvailableLimit })
+        .eq('id', card.id);
+
+      success(`Fatura de ${formatCurrency(selectedInvoice.total)} marcada como paga! Limite do cartão liberado.`);
+      
+      // Recarregar faturas
+      await fetchInvoices();
+      
+      // Fechar modal
+      setShowMarkAsPaidModal(false);
+      setSelectedInvoice(null);
+    } catch (error) {
+      console.error('❌ Erro ao marcar fatura como paga:', error);
+      showError('Erro ao marcar fatura como paga. Tente novamente.');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -304,24 +446,74 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
               {invoices.map((invoice, index) => {
                 const isCurrentCycle = invoice.startDate === currentCycle?.start;
                 
+                // Calcular data de fechamento (dia seguinte ao end_date)
+                const closingDate = new Date(invoice.endDate + 'T00:00:00');
+                closingDate.setDate(closingDate.getDate() + 1); // Dia de fechamento = end_date + 1
+                
+                // Verificar se a fatura já fechou (data de fechamento <= hoje)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const hasClosed = closingDate <= today;
+                
+                // Verificar se é fatura futura (ainda não chegou no período)
+                const invoiceStartDate = new Date(invoice.startDate + 'T00:00:00');
+                invoiceStartDate.setHours(0, 0, 0, 0);
+                const isFuture = invoiceStartDate > today;
+                
+                // Mostrar botão apenas se a fatura fechou (não é atual e não é futura)
+                const canMarkAsPaid = hasClosed && !isCurrentCycle && !isFuture;
+                
+                // Determinar label do status
+                let statusLabel = '';
+                if (isCurrentCycle) {
+                  statusLabel = 'Fatura Atual';
+                } else if (isFuture) {
+                  statusLabel = 'Fatura Futura';
+                } else if (hasClosed) {
+                  statusLabel = 'Fatura Fechada';
+                } else {
+                  statusLabel = `Fatura de ${formatDate(invoice.startDate)}`;
+                }
+                
                 return (
-                  <Card key={index} className={`border-2 ${isCurrentCycle ? 'border-flight-blue bg-flight-blue/5' : 'border-gray-200'}`}>
+                  <Card key={index} className={`border-2 ${isCurrentCycle ? 'border-flight-blue bg-flight-blue/5' : hasClosed ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200'}`}>
                     <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-3">
                         <div>
                           <CardTitle className="text-base font-semibold text-gray-900">
-                            {isCurrentCycle ? 'Fatura Atual' : `Fatura de ${formatDate(invoice.startDate)}`}
+                            {statusLabel}
                           </CardTitle>
                           <p className="text-xs text-gray-500 mt-1">
                             {new Date(invoice.startDate + 'T00:00:00').toLocaleDateString('pt-BR')} - {new Date(invoice.endDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            {hasClosed && !isFuture && (
+                              <span className="ml-2 text-yellow-600 font-medium">
+                                • Fechou em {closingDate.toLocaleDateString('pt-BR')}
+                              </span>
+                            )}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className={`text-2xl font-bold ${isCurrentCycle ? 'text-flight-blue' : 'text-gray-900'}`}>
+                          <p className={`text-2xl font-bold ${isCurrentCycle ? 'text-flight-blue' : hasClosed ? 'text-yellow-700' : 'text-gray-900'}`}>
                             {formatCurrency(invoice.total)}
                           </p>
                         </div>
                       </div>
+                      {canMarkAsPaid && (
+                        <div className="flex justify-end mt-3 pt-3 border-t border-gray-200">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedInvoice(invoice);
+                              setShowMarkAsPaidModal(true);
+                            }}
+                            className="text-green-600 border-green-200 hover:bg-green-50"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Marcar como Paga
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );
@@ -340,6 +532,20 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
           </Button>
         </div>
       </div>
+      
+      {/* Modal para marcar fatura como paga */}
+      <MarkInvoiceAsPaidModal
+        isOpen={showMarkAsPaidModal}
+        onClose={() => {
+          setShowMarkAsPaidModal(false);
+          setSelectedInvoice(null);
+        }}
+        onConfirm={handleMarkInvoiceAsPaid}
+        invoice={selectedInvoice}
+        card={card}
+        costCenters={costCenters || []}
+        organization={organization}
+      />
     </div>
   );
 }
