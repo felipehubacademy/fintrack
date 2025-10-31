@@ -327,49 +327,86 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         console.log('✅ [TRANSACTION MODAL] Income saved:', income);
         
         // Atualizar saldo da conta bancária usando RPC
-        // Só criar transação se for novo income ou se o income antigo não tinha transação vinculada
         if (form.bank_account_id) {
           try {
-            // Se estiver editando, verificar se já existe transação vinculada
-            let shouldCreateTransaction = true;
-            if (editingTransaction) {
-              const { data: existingTransaction, error: checkError } = await supabase
-                .from('bank_account_transactions')
-                .select('id')
-                .eq('income_id', income.id)
-                .limit(1)
-                .maybeSingle();
+            console.log('💾 [TRANSACTION MODAL] Verificando transações bancárias para income:', income.id);
+            
+            // Verificar se já existe transação vinculada ao income
+            const { data: existingTransactions, error: checkError } = await supabase
+              .from('bank_account_transactions')
+              .select('id, bank_account_id, amount')
+              .eq('income_id', income.id);
+            
+            if (checkError) {
+              console.error('⚠️ Erro ao verificar transações existentes:', checkError);
+            }
+            
+            console.log('📋 [TRANSACTION MODAL] Transações existentes:', existingTransactions);
+            
+            // Se existe transação em conta diferente, deletar todas
+            if (existingTransactions && existingTransactions.length > 0) {
+              const differentAccount = existingTransactions.find(t => t.bank_account_id !== form.bank_account_id);
+              if (differentAccount) {
+                console.log('🔄 Conta bancária mudou, removendo transação(ões) antiga(s)...');
+                const { error: deleteError } = await supabase
+                  .from('bank_account_transactions')
+                  .delete()
+                  .eq('income_id', income.id);
+                
+                if (deleteError) {
+                  console.error('⚠️ Erro ao deletar transações antigas:', deleteError);
+                } else {
+                  console.log('✅ Transações antigas removidas');
+                }
+              }
               
-              if (existingTransaction && !checkError) {
-                shouldCreateTransaction = false;
-                console.log('ℹ️ Transação bancária já existe para este income, não será criada novamente');
+              // Se já existe transação na mesma conta, verificar se precisa atualizar valor
+              const sameAccount = existingTransactions.find(t => t.bank_account_id === form.bank_account_id);
+              if (sameAccount) {
+                // Se o valor mudou, deletar e recriar
+                if (parseFloat(sameAccount.amount) !== parseFloat(form.amount)) {
+                  console.log('🔄 Valor mudou, removendo e recriando transação...');
+                  await supabase
+                    .from('bank_account_transactions')
+                    .delete()
+                    .eq('id', sameAccount.id);
+                } else {
+                  console.log('ℹ️ Transação bancária já existe com mesmo valor, mantendo existente');
+                  // O trigger já atualiza o saldo automaticamente, não precisa fazer nada
+                  return; // Não criar nova transação
+                }
               }
             }
             
-            if (shouldCreateTransaction) {
-              const { data: transactionData, error: transError } = await supabase.rpc('create_bank_transaction', {
-                p_bank_account_id: form.bank_account_id,
-                p_transaction_type: 'income_deposit',
-                p_amount: parseFloat(form.amount),
-                p_description: form.description,
-                p_date: form.date,
-                p_organization_id: organization.id,
-                p_user_id: orgUser.id,
-                p_expense_id: null,
-                p_bill_id: null,
-                p_income_id: income.id,
-                p_related_account_id: null
-              });
-              
-              if (transError) {
-                console.error('⚠️ Erro ao criar transação bancária:', transError);
-              } else {
-                console.log('✅ Transação bancária criada e saldo atualizado:', transactionData);
-              }
+            // Criar nova transação bancária
+            console.log('💾 [TRANSACTION MODAL] Criando transação bancária...');
+            const { data: transactionData, error: transError } = await supabase.rpc('create_bank_transaction', {
+              p_bank_account_id: form.bank_account_id,
+              p_transaction_type: 'income_deposit',
+              p_amount: parseFloat(form.amount),
+              p_description: form.description,
+              p_date: form.date,
+              p_organization_id: organization.id,
+              p_user_id: orgUser.id,
+              p_expense_id: null,
+              p_bill_id: null,
+              p_income_id: income.id,
+              p_related_account_id: null
+            });
+            
+            if (transError) {
+              console.error('⚠️ Erro ao criar transação bancária:', transError);
+              showError('Erro ao atualizar saldo da conta: ' + (transError.message || 'Erro desconhecido'));
+            } else {
+              console.log('✅ Transação bancária criada e saldo atualizado:', transactionData);
+              // Sucesso será mostrado no final do handleSave
             }
           } catch (accountError) {
             console.error('⚠️ Erro ao atualizar saldo da conta:', accountError);
+            showError('Erro ao atualizar saldo da conta: ' + (accountError.message || 'Erro desconhecido'));
           }
+        } else {
+          console.warn('⚠️ [TRANSACTION MODAL] bank_account_id não fornecido, não será criada transação bancária');
         }
 
         if (willBeShared && splitDetails.length > 0) {
