@@ -1208,6 +1208,11 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
           return functionResult.message || (functionName === 'save_income' ? 'Entrada registrada! ✅' : 'Anotado! ✅');
         }
         
+        // Funções de resumo/consulta: retornar mensagem sem limpar histórico (permite continuar conversa)
+        if (functionName === 'get_expenses_summary' || functionName === 'get_category_summary' || functionName === 'get_account_balance') {
+          return functionResult.message || 'Não consegui buscar a informação. 😅';
+        }
+        
         // Outras funções: não deveriam acontecer aqui
         return functionResult.message || 'Funcionou!';
       }
@@ -1414,12 +1419,29 @@ Exemplos de INFERÊNCIA AUTOMÁTICA:
 - "salário de 5000 na nubank" → INFERE: amount=5000, description="salário", account_name="nubank" → Pergunta apenas: responsável (ou infere "eu" se contexto indicar)
 - "recebi bonus de 500, coloca na conta nubank" → INFERE: amount=500, description="bonus", account_name="nubank", responsible="eu" → Chama save_income direto (sem perguntar nada)` : ''}
 
+15. **RESUMOS E CONSULTAS**: Quando o usuário perguntar sobre gastos (ex: "quanto gastei?", "resumo de despesas", "quanto já gastei de alimentação esse mês?", "resumo esse mês", "quanto foi em transporte hoje?"), chame as funções apropriadas:
+   - "quanto gastei?" / "resumo de despesas" / "resumo esse mês" / "quanto já gastei esse mês?" → get_expenses_summary (period: este_mes) - se não mencionar período, assume "este_mes"
+   - "quanto gastei de X?" / "quanto já gastei de alimentação esse mês?" / "resumo de alimentação" → get_category_summary (category: X, period: este_mes)
+   - "quanto gastei hoje?" → get_expenses_summary (period: hoje)
+   - "quanto gastei essa semana?" → get_expenses_summary (period: esta_semana)
+   - "quanto gastei no mês passado?" → get_expenses_summary (period: mes_anterior)
+   - Se mencionar período específico (hoje, semana, mês, mês passado), use o período correto
+   - NÃO pergunte nada - INFIRA o período e categoria da mensagem do usuário e chame a função diretamente
+
+16. **CONSULTAR SALDO**: Quando o usuário perguntar sobre saldo (ex: "qual meu saldo?", "quanto tenho na conta?", "saldo da nubank", "quanto tem na conta X?", "meu saldo"), chame get_account_balance:
+   - "qual meu saldo?" / "quanto tenho?" / "meu saldo" → get_account_balance (sem account_name) - retorna todas as contas
+   - "saldo da nubank" / "quanto tem na nubank?" / "saldo nubank" → get_account_balance (account_name: "Nubank")
+   - INFIRA o nome da conta quando mencionado e chame a função diretamente
+
 FUNÇÕES DISPONÍVEIS:
 - validate_payment_method (opcional - função já valida internamente)
 - validate_card (opcional - função já valida internamente)
 - validate_responsible (opcional - função já valida internamente)
 - save_expense (chame quando tiver: valor, descrição, categoria, pagamento, responsável. Se for crédito: cartão e parcelas também)
 ${process.env.USE_INCOME_FEATURE === 'true' ? '- save_income (chame quando usuário mencionar valores recebidos: comissão, salário, freelance, venda, etc. Precisa: valor, descrição, responsável, conta bancária. Opcional: categoria)' : ''}
+- get_expenses_summary (chame quando usuário perguntar sobre gastos totais: "quanto gastei?", "resumo de despesas", etc. Parâmetros: period (hoje, esta_semana, este_mes, mes_anterior), category (opcional))
+- get_category_summary (chame quando usuário perguntar sobre gastos por categoria: "quanto gastei de X?", etc. Parâmetros: category, period)
+- get_account_balance (chame quando usuário perguntar sobre saldo: "qual meu saldo?", "saldo da X", etc. Parâmetros: account_name (opcional))
 
 FLUXO DE EXEMPLO (ênfase na fluidez e variação):
 
@@ -1525,6 +1547,64 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         }
       });
     }
+
+    // ✅ NOVA FUNÇÃO: Resumo de Despesas
+    functions.push({
+      name: 'get_expenses_summary',
+      description: 'Obter resumo de despesas quando o usuário perguntar "quanto gastei?", "resumo de despesas", "quanto já gastei esse mês?", "resumo esse mês", etc.',
+      parameters: {
+        type: 'object',
+        properties: {
+          period: {
+            type: 'string',
+            description: 'Período para o resumo: "hoje", "esta_semana", "este_mes", "mes_anterior"',
+            enum: ['hoje', 'esta_semana', 'este_mes', 'mes_anterior']
+          },
+          category: {
+            type: 'string',
+            description: 'Categoria específica para filtrar (opcional, ex: "Alimentação", "Transporte"). Se não informado, retorna todas as categorias.'
+          }
+        },
+        required: ['period']
+      }
+    });
+
+    // ✅ NOVA FUNÇÃO: Resumo por Categoria
+    functions.push({
+      name: 'get_category_summary',
+      description: 'Obter resumo de despesas por categoria quando o usuário perguntar "quanto gastei de X?", "quanto já gastei de alimentação esse mês?", "resumo de alimentação", etc.',
+      parameters: {
+        type: 'object',
+        properties: {
+          category: {
+            type: 'string',
+            description: 'Nome da categoria (ex: "Alimentação", "Transporte", "Saúde", "Lazer", "Casa")'
+          },
+          period: {
+            type: 'string',
+            description: 'Período para o resumo: "hoje", "esta_semana", "este_mes", "mes_anterior"',
+            enum: ['hoje', 'esta_semana', 'este_mes', 'mes_anterior']
+          }
+        },
+        required: ['category', 'period']
+      }
+    });
+
+    // ✅ NOVA FUNÇÃO: Consultar Saldo de Contas
+    functions.push({
+      name: 'get_account_balance',
+      description: 'Consultar saldo de contas bancárias quando o usuário perguntar "qual meu saldo?", "quanto tenho na conta?", "saldo da nubank", "quanto tem na conta?", etc.',
+      parameters: {
+        type: 'object',
+        properties: {
+          account_name: {
+            type: 'string',
+            description: 'Nome da conta bancária específica para consultar (opcional, ex: "Nubank", "C6"). Se não informado, retorna saldo de todas as contas ativas.'
+          }
+        },
+        required: []
+      }
+    });
 
     return functions;
   }
@@ -1703,6 +1783,15 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             } else {
                 output = { success: false, error: 'Feature save_income is disabled' };
             }
+        } else if (functionName === 'get_expenses_summary') {
+            // ✅ NOVA FUNÇÃO: Resumo de Despesas
+            output = await this.getExpensesSummary(args, context);
+        } else if (functionName === 'get_category_summary') {
+            // ✅ NOVA FUNÇÃO: Resumo por Categoria
+            output = await this.getCategorySummary(args, context);
+        } else if (functionName === 'get_account_balance') {
+            // ✅ NOVA FUNÇÃO: Consultar Saldo de Contas
+            output = await this.getAccountBalance(args, context);
         } else {
             output = { success: false, error: `Unknown function: ${functionName}` };
         }
@@ -2058,6 +2147,342 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         message: this.pickVariation(errorMessages, 'erro')
       };
     }
+  }
+
+  /**
+   * Obter resumo de despesas
+   */
+  async getExpensesSummary(args, context) {
+    try {
+      console.log('📊 [SUMMARY] Buscando resumo de despesas:', args);
+      
+      const { period, category } = args;
+      
+      if (!period) {
+        return {
+          success: false,
+          message: 'Preciso saber o período para buscar o resumo (hoje, esta semana, este mês, mês anterior)'
+        };
+      }
+      
+      // Calcular datas baseado no período
+      const today = new Date();
+      let startDate, endDate;
+      
+      switch (period) {
+        case 'hoje':
+          startDate = new Date(today);
+          endDate = new Date(today);
+          break;
+        case 'esta_semana':
+          const dayOfWeek = today.getDay();
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - dayOfWeek);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(today);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'este_mes':
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'mes_anterior':
+          startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        default:
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          endDate = new Date(today);
+      }
+      
+      // Construir query
+      let query = supabase
+        .from('expenses')
+        .select('amount, category')
+        .eq('organization_id', context.organizationId)
+        .eq('status', 'confirmed')
+        .gte('date', startDate.toISOString().split('T')[0])
+        .lte('date', endDate.toISOString().split('T')[0]);
+      
+      // Filtrar por categoria se fornecida
+      if (category) {
+        // Buscar categoria normalizada
+        const { data: categories } = await supabase
+          .from('budget_categories')
+          .select('id, name')
+          .eq('organization_id', context.organizationId);
+        
+        if (categories && categories.length) {
+          const categoryNorm = this.normalizeText(category);
+          const matchedCat = categories.find(c => {
+            const catNorm = this.normalizeText(c.name);
+            return catNorm === categoryNorm || catNorm.includes(categoryNorm) || categoryNorm.includes(catNorm);
+          });
+          
+          if (matchedCat) {
+            query = query.eq('category', matchedCat.name);
+          } else {
+            query = query.eq('category', category);
+          }
+        } else {
+          query = query.eq('category', category);
+        }
+      }
+      
+      const { data: expenses, error } = await query;
+      
+      if (error) {
+        console.error('❌ Erro ao buscar despesas:', error);
+        throw error;
+      }
+      
+      if (!expenses || expenses.length === 0) {
+        const periodLabel = this.formatPeriod(period);
+        return {
+          success: true,
+          message: `💰 Nenhuma despesa encontrada ${periodLabel.toLowerCase()}.`
+        };
+      }
+      
+      // Calcular total
+      const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+      const totalFormatted = total.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+      
+      // Formatar resposta
+      let response = `💰 *Resumo de Despesas* (${this.formatPeriod(period)})\n\n`;
+      
+      if (category) {
+        // Resumo de categoria específica
+        response += `*Total em ${category}:* R$ ${totalFormatted}\n`;
+        response += `(${expenses.length} despesa${expenses.length !== 1 ? 's' : ''})`;
+      } else {
+        // Agrupar por categoria
+        const byCategory = {};
+        expenses.forEach(e => {
+          const cat = e.category || 'Sem categoria';
+          byCategory[cat] = (byCategory[cat] || 0) + parseFloat(e.amount || 0);
+        });
+        
+        response += `*Total: R$ ${totalFormatted}*\n\n`;
+        
+        // Ordenar por valor (maior primeiro)
+        const sorted = Object.entries(byCategory)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10); // Top 10
+        
+        sorted.forEach(([cat, value]) => {
+          const valueFormatted = value.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+          const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+          response += `• ${cat}: R$ ${valueFormatted} (${percent}%)\n`;
+        });
+        
+        response += `\n(${expenses.length} despesa${expenses.length !== 1 ? 's' : ''} no total)`;
+      }
+      
+      return {
+        success: true,
+        message: response
+      };
+      
+    } catch (error) {
+      console.error('❌ Erro ao buscar resumo:', error);
+      const firstName = this.getFirstName(context);
+      const namePart = firstName ? ` ${firstName}` : '';
+      
+      return {
+        success: false,
+        message: `Ops${namePart}! Tive um problema ao buscar o resumo. 😅`
+      };
+    }
+  }
+
+  /**
+   * Obter resumo por categoria
+   */
+  async getCategorySummary(args, context) {
+    try {
+      console.log('📊 [CATEGORY_SUMMARY] Buscando resumo por categoria:', args);
+      
+      const { category, period } = args;
+      
+      if (!category || !period) {
+        return {
+          success: false,
+          message: 'Preciso da categoria e do período para buscar o resumo'
+        };
+      }
+      
+      // Reutilizar lógica de getExpensesSummary
+      const summaryResult = await this.getExpensesSummary({ period, category }, context);
+      
+      if (!summaryResult.success) {
+        return summaryResult;
+      }
+      
+      // Personalizar mensagem para resumo por categoria
+      let response = summaryResult.message;
+      
+      // Se a mensagem começa com "Total em", personalizar
+      if (response.includes(`*Total em ${category}:*`)) {
+        response = response.replace(
+          `*Total em ${category}:*`,
+          `*Você gastou em ${category}:*`
+        );
+      }
+      
+      return {
+        success: true,
+        message: response
+      };
+      
+    } catch (error) {
+      console.error('❌ Erro ao buscar resumo por categoria:', error);
+      const firstName = this.getFirstName(context);
+      const namePart = firstName ? ` ${firstName}` : '';
+      
+      return {
+        success: false,
+        message: `Ops${namePart}! Tive um problema ao buscar o resumo. 😅`
+      };
+    }
+  }
+
+  /**
+   * Consultar saldo de contas bancárias
+   */
+  async getAccountBalance(args, context) {
+    try {
+      console.log('💰 [BALANCE] Consultando saldo:', args);
+      
+      const { account_name } = args;
+      
+      // Buscar contas bancárias
+      let query = supabase
+        .from('bank_accounts')
+        .select('id, name, bank, current_balance, account_type')
+        .eq('organization_id', context.organizationId)
+        .eq('is_active', true);
+      
+      // Se especificou conta, filtrar
+      if (account_name) {
+        const { data: accounts } = await supabase
+          .from('bank_accounts')
+          .select('id, name, bank')
+          .eq('organization_id', context.organizationId)
+          .eq('is_active', true);
+        
+        if (accounts && accounts.length) {
+          const accountNorm = this.normalizeText(account_name);
+          const matchedAccount = accounts.find(a => {
+            const nameNorm = this.normalizeText(a.name);
+            const bankNorm = this.normalizeText(a.bank || '');
+            return nameNorm.includes(accountNorm) || accountNorm.includes(nameNorm) || 
+                   bankNorm.includes(accountNorm) || accountNorm.includes(bankNorm);
+          });
+          
+          if (matchedAccount) {
+            query = query.eq('id', matchedAccount.id);
+          } else {
+            // Conta não encontrada, retornar todas
+            console.log('⚠️ Conta não encontrada, retornando todas');
+          }
+        }
+      }
+      
+      const { data: accounts, error } = await query.order('name');
+      
+      if (error) {
+        console.error('❌ Erro ao buscar contas:', error);
+        throw error;
+      }
+      
+      if (!accounts || accounts.length === 0) {
+        return {
+          success: true,
+          message: '💰 Nenhuma conta bancária cadastrada.'
+        };
+      }
+      
+      // Formatar resposta
+      let response = '💰 *Saldo das Contas*\n\n';
+      
+      if (accounts.length === 1) {
+        // Uma conta específica
+        const account = accounts[0];
+        const balance = parseFloat(account.current_balance || 0);
+        const balanceFormatted = balance.toLocaleString('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+        const accountTypeLabel = account.account_type === 'checking' ? 'Conta Corrente' : 'Poupança';
+        
+        response += `*${account.name}*\n`;
+        if (account.bank) {
+          response += `${account.bank} - `;
+        }
+        response += `${accountTypeLabel}\n`;
+        response += `Saldo: *R$ ${balanceFormatted}*`;
+      } else {
+        // Múltiplas contas
+        let total = 0;
+        
+        accounts.forEach(account => {
+          const balance = parseFloat(account.current_balance || 0);
+          total += balance;
+          const balanceFormatted = balance.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+          const accountTypeLabel = account.account_type === 'checking' ? 'CC' : 'PP';
+          const bankPart = account.bank ? ` (${account.bank})` : '';
+          
+          response += `• ${account.name}${bankPart} ${accountTypeLabel}: R$ ${balanceFormatted}\n`;
+        });
+        
+        const totalFormatted = total.toLocaleString('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+        
+        response += `\n*Total: R$ ${totalFormatted}*`;
+      }
+      
+      return {
+        success: true,
+        message: response
+      };
+      
+    } catch (error) {
+      console.error('❌ Erro ao consultar saldo:', error);
+      const firstName = this.getFirstName(context);
+      const namePart = firstName ? ` ${firstName}` : '';
+      
+      return {
+        success: false,
+        message: `Ops${namePart}! Tive um problema ao consultar o saldo. 😅`
+      };
+    }
+  }
+
+  /**
+   * Formatar período para exibição
+   */
+  formatPeriod(period) {
+    const map = {
+      'hoje': 'Hoje',
+      'esta_semana': 'Esta Semana',
+      'este_mes': 'Este Mês',
+      'mes_anterior': 'Mês Anterior'
+    };
+    return map[period] || period;
   }
 
   /**
