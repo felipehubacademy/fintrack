@@ -35,9 +35,32 @@ END $$;
 -- IMPORTANTE: Execute o UPDATE acima antes de fazer isso, ou defina uma conta padrão
 -- ALTER TABLE incomes ALTER COLUMN bank_account_id SET NOT NULL;
 
--- 4. Criar índice para performance
-CREATE INDEX IF NOT EXISTS idx_incomes_bank_account ON incomes(bank_account_id);
+-- 4. Adicionar payment_method se não existir (métodos de recebimento específicos para incomes)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'incomes' AND column_name = 'payment_method'
+  ) THEN
+    ALTER TABLE incomes 
+    ADD COLUMN payment_method TEXT DEFAULT 'deposit';
+    
+    -- Adicionar constraint para validar os valores específicos de incomes
+    ALTER TABLE incomes DROP CONSTRAINT IF EXISTS incomes_payment_method_check;
+    ALTER TABLE incomes ADD CONSTRAINT incomes_payment_method_check 
+    CHECK (payment_method IN ('cash', 'pix', 'deposit', 'bank_transfer', 'boleto', 'other'));
+    
+    -- Atualizar registros existentes para ter um valor padrão
+    UPDATE incomes SET payment_method = 'deposit' WHERE payment_method IS NULL;
+    
+    COMMENT ON COLUMN incomes.payment_method IS 'Forma de recebimento: cash (Dinheiro), pix (PIX), deposit (Depósito), bank_transfer (Transferência Bancária/TED/DOC), boleto (Boleto), other (Outros)';
+  END IF;
+END $$;
 
--- 5. Comentário na coluna
+-- 5. Criar índice para performance
+CREATE INDEX IF NOT EXISTS idx_incomes_bank_account ON incomes(bank_account_id);
+CREATE INDEX IF NOT EXISTS idx_incomes_payment_method ON incomes(payment_method);
+
+-- 6. Comentário na coluna
 COMMENT ON COLUMN incomes.bank_account_id IS 'Conta bancária onde a entrada foi registrada (obrigatório para novas entradas)';
 

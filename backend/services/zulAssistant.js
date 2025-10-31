@@ -1405,6 +1405,7 @@ ${process.env.USE_INCOME_FEATURE === 'true' ? `
    - Valor (já extrair da mensagem se mencionado)
    - Descrição (ex: "comissão", "salário", "freelance")
    - Conta bancária (OBRIGATÓRIO - sempre perguntar "Qual conta adiciono?" ou "Em qual conta foi recebido?" se não mencionado)
+   - Método de recebimento (OPCIONAL - pix, dinheiro, depósito, transferência. Se não mencionado e conta bancária informada, assume depósito)
    - Responsável (se não mencionado, perguntar "Quem recebeu?")
    - Categoria será inferida automaticamente da descrição quando possível
 
@@ -1506,6 +1507,10 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             account_name: {
               type: 'string',
               description: 'Nome da conta bancária onde o dinheiro foi recebido (ex: "Nubank", "C6"). OBRIGATÓRIO - se não informado, perguntar ao usuário qual conta.'
+            },
+            payment_method: {
+              type: 'string',
+              description: 'Método de recebimento (opcional, será inferido automaticamente se não informado): "pix" (PIX), "cash" (Dinheiro), "deposit" (Depósito em conta), "bank_transfer" (Transferência bancária/TED/DOC), "boleto" (Boleto), "other" (Outros). Se conta bancária for informada, default será "deposit".'
             },
             responsible: {
               type: 'string',
@@ -1902,7 +1907,26 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         };
       }
       
-      // Preparar dados da entrada (bank_account_id é obrigatório)
+      // Normalizar método de recebimento (para incomes: cash, pix, deposit, bank_transfer, boleto, other)
+      let paymentMethod = 'deposit'; // Default: depósito em conta
+      
+      // Se o usuário mencionou o método de recebimento, normalizar
+      if (args.payment_method) {
+        const pmNorm = this.normalizeText(args.payment_method);
+        if (pmNorm.includes('pix')) paymentMethod = 'pix';
+        else if (pmNorm.includes('dinheir') || pmNorm.includes('cash') || pmNorm.includes('especie')) paymentMethod = 'cash';
+        else if (pmNorm.includes('deposito') || pmNorm.includes('depósito')) paymentMethod = 'deposit';
+        else if (pmNorm.includes('transfer') || pmNorm.includes('ted') || pmNorm.includes('doc')) paymentMethod = 'bank_transfer';
+        else if (pmNorm.includes('boleto')) paymentMethod = 'boleto';
+        else paymentMethod = 'other';
+      } else {
+        // Se não informou e foi via conta bancária, assumir depósito
+        if (bankAccountId) {
+          paymentMethod = 'deposit';
+        }
+      }
+      
+      // Preparar dados da entrada (bank_account_id e payment_method são obrigatórios)
       const incomeData = {
         amount: parseFloat(amount),
         description: description,
@@ -1910,6 +1934,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         category: finalCategory || null,
         cost_center_id: costCenterId,
         bank_account_id: bankAccountId, // ✅ OBRIGATÓRIO
+        payment_method: paymentMethod, // ✅ Método de recebimento (cash, pix, deposit, bank_transfer, boleto, other)
         organization_id: context.organizationId,
         user_id: context.userId,
         status: 'confirmed',
