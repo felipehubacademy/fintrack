@@ -9,6 +9,7 @@ import { Badge } from '../../components/ui/Badge';
 import StatsCard from '../../components/ui/StatsCard';
 import BillModal from '../../components/BillModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import MarkBillAsPaidModal from '../../components/MarkBillAsPaidModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
@@ -47,6 +48,7 @@ export default function BillsDashboard() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [billToDelete, setBillToDelete] = useState(null);
   const [billToMarkAsPaid, setBillToMarkAsPaid] = useState(null);
+  const [selectedOwnerForBill, setSelectedOwnerForBill] = useState(null); // { cost_center_id, is_shared }
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -263,38 +265,87 @@ export default function BillsDashboard() {
     setShowConfirmModal(true);
   };
 
-  const confirmMarkAsPaid = async () => {
+  const handleMarkAsPaidWithOwner = (ownerData) => {
+    // ownerData contém: { cost_center_id, is_shared }
+    if (!billToMarkAsPaid) return;
+
+    // Salvar dados do responsável selecionado e executar confirmação
+    confirmMarkAsPaid(ownerData);
+  };
+
+  const confirmMarkAsPaid = async (ownerDataFromModal = null) => {
     if (!billToMarkAsPaid) return;
 
     try {
-      // TODO: Perguntar se é individual ou compartilhado aqui
-      // Por enquanto, usamos o cost_center_id da bill como individual
-      // Se cost_center_id for NULL, considera-se compartilhado
+      console.log('💾 [BILLS] Marcar como paga - bill original:', billToMarkAsPaid);
+      console.log('💾 [BILLS] category_id:', billToMarkAsPaid.category_id);
+      console.log('💾 [BILLS] ownerDataFromModal:', ownerDataFromModal);
       
-      const isShared = !billToMarkAsPaid.cost_center_id;
+      // Usar dados do modal se fornecidos, senão usar dados da bill
+      const ownerData = ownerDataFromModal || selectedOwnerForBill || {
+        cost_center_id: billToMarkAsPaid.cost_center_id,
+        is_shared: billToMarkAsPaid.is_shared || !billToMarkAsPaid.cost_center_id
+      };
+      
+      const isShared = ownerData.is_shared || !ownerData.cost_center_id;
+      const costCenterId = ownerData.cost_center_id || null;
+      
+      // Buscar o nome do cost center se houver cost_center_id
+      let ownerName = null;
+      if (costCenterId) {
+        const costCenter = costCenters?.find(cc => cc.id === costCenterId);
+        ownerName = costCenter?.name || null;
+      } else if (isShared) {
+        ownerName = organization?.name || 'Compartilhado';
+      }
+      
+      // Buscar o nome da categoria se houver category_id
+      let categoryName = null;
+      if (billToMarkAsPaid.category_id) {
+        const category = categories?.find(cat => cat.id === billToMarkAsPaid.category_id);
+        categoryName = category?.name || null;
+      }
       
       // 1. Criar expense correspondente
+      console.log('💾 [BILLS] Criando expense com category_id:', billToMarkAsPaid.category_id);
+      console.log('💾 [BILLS] Criando expense com cost_center_id:', billToMarkAsPaid.cost_center_id);
+      console.log('💾 [BILLS] ownerName:', ownerName);
+      console.log('💾 [BILLS] categoryName:', categoryName);
+      
+      const expenseData = {
+        description: billToMarkAsPaid.description,
+        amount: billToMarkAsPaid.amount,
+        date: new Date().toISOString().split('T')[0],
+        // SEMPRE incluir category_id e category (mesmo se null)
+        category_id: billToMarkAsPaid.category_id || null,
+        category: categoryName, // Nome da categoria (campo legado)
+        cost_center_id: costCenterId, // Usar cost_center_id do modal/seleção
+        owner: ownerName, // Nome do cost center ou nome da organização se compartilhado
+        is_shared: isShared,
+        payment_method: billToMarkAsPaid.payment_method,
+        card_id: billToMarkAsPaid.card_id || null,
+        status: 'confirmed',
+        organization_id: organization.id,
+        user_id: orgUser.id,
+        source: 'manual'
+      };
+      
+      console.log('💾 [BILLS] expenseData completo:', JSON.stringify(expenseData, null, 2));
+      
       const { data: expense, error: expenseError } = await supabase
         .from('expenses')
-        .insert({
-          description: billToMarkAsPaid.description,
-          amount: billToMarkAsPaid.amount,
-          date: new Date().toISOString().split('T')[0],
-          category_id: billToMarkAsPaid.category_id,
-          cost_center_id: billToMarkAsPaid.cost_center_id, // NULL se compartilhado
-          owner: billToMarkAsPaid.cost_center_id ? undefined : (organization?.name || 'Organização'),
-          is_shared: isShared,
-          payment_method: billToMarkAsPaid.payment_method,
-          card_id: billToMarkAsPaid.card_id,
-          status: 'confirmed',
-          organization_id: organization.id,
-          user_id: orgUser.id,
-          source: 'manual'
-        })
+        .insert(expenseData)
         .select()
         .single();
 
-      if (expenseError) throw expenseError;
+      if (expenseError) {
+        console.error('❌ [BILLS] Erro ao criar expense:', expenseError);
+        throw expenseError;
+      }
+      
+      console.log('✅ [BILLS] Expense criada com sucesso:', expense);
+      console.log('✅ [BILLS] Expense category_id:', expense?.category_id);
+      console.log('✅ [BILLS] Expense cost_center_id:', expense?.cost_center_id);
 
       // 2. Se for compartilhado, criar splits
       if (isShared) {
@@ -316,17 +367,35 @@ export default function BillsDashboard() {
         }
       }
 
-      // 3. Atualizar bill
-      const { error: billError } = await supabase
+      // 3. Atualizar bill para paid (preservando category_id e cost_center_id)
+      const updateData = {
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+        expense_id: expense.id,
+        // SEMPRE preservar category_id e cost_center_id (usar dados do modal/seleção)
+        category_id: billToMarkAsPaid.category_id || null,
+        cost_center_id: costCenterId, // Usar cost_center_id do modal/seleção
+        is_shared: isShared
+      };
+      
+      console.log('💾 [BILLS] Atualizando bill como paga:', billToMarkAsPaid.id);
+      console.log('💾 [BILLS] updateData completo:', JSON.stringify(updateData, null, 2));
+      
+      const { data: updatedBill, error: billError } = await supabase
         .from('bills')
-        .update({
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-          expense_id: expense.id
-        })
-        .eq('id', billToMarkAsPaid.id);
+        .update(updateData)
+        .eq('id', billToMarkAsPaid.id)
+        .select()
+        .single();
 
-      if (billError) throw billError;
+      if (billError) {
+        console.error('❌ [BILLS] Erro ao atualizar bill:', billError);
+        throw billError;
+      }
+      
+      console.log('✅ [BILLS] Bill atualizada com sucesso:', updatedBill);
+      console.log('✅ [BILLS] category_id salvo:', updatedBill?.category_id);
+      console.log('✅ [BILLS] cost_center_id salvo:', updatedBill?.cost_center_id);
 
       // 4. Se for recorrente, criar próxima conta
       if (billToMarkAsPaid.is_recurring) {
@@ -341,6 +410,7 @@ export default function BillsDashboard() {
     } finally {
       setShowConfirmModal(false);
       setBillToMarkAsPaid(null);
+      setSelectedOwnerForBill(null);
     }
   };
 
@@ -884,7 +954,7 @@ export default function BillsDashboard() {
                       
                       {/* Ações */}
                       <div className="col-span-2 flex items-center justify-end space-x-2">
-                        {bill.status === 'pending' && (
+                        {(bill.status === 'pending' || bill.status === 'overdue') && (
                           <Button
                             onClick={() => handleMarkAsPaid(bill)}
                             size="sm"
@@ -947,24 +1017,35 @@ export default function BillsDashboard() {
         onClose={() => setShowNotificationModal(false)}
       />
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Modal (para deletar) */}
       <ConfirmationModal
-        isOpen={showConfirmModal}
+        isOpen={showConfirmModal && !!billToDelete}
         onClose={() => {
           setShowConfirmModal(false);
           setBillToDelete(null);
           setBillToMarkAsPaid(null);
+          setSelectedOwnerForBill(null);
         }}
-        onConfirm={billToDelete ? confirmDeleteBill : confirmMarkAsPaid}
-        title={billToDelete ? "Confirmar exclusão" : "Confirmar pagamento"}
-        message={
-          billToDelete 
-            ? "Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita."
-            : "Marcar esta conta como paga? Isso criará uma despesa automaticamente."
-        }
-        confirmText={billToDelete ? "Excluir" : "Marcar como Paga"}
+        onConfirm={confirmDeleteBill}
+        title="Confirmar exclusão"
+        message="Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
         cancelText="Cancelar"
-        type={billToDelete ? "danger" : "warning"}
+        type="danger"
+      />
+
+      {/* Mark as Paid Modal (com seleção de responsável) */}
+      <MarkBillAsPaidModal
+        isOpen={showConfirmModal && !!billToMarkAsPaid}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setBillToMarkAsPaid(null);
+          setSelectedOwnerForBill(null);
+        }}
+        onConfirm={handleMarkAsPaidWithOwner}
+        bill={billToMarkAsPaid}
+        costCenters={costCenters || []}
+        organization={organization}
       />
     </div>
   );

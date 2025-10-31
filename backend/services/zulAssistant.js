@@ -1428,9 +1428,9 @@ ${process.env.USE_INCOME_FEATURE === 'true' ? '15' : '14'}. **REGISTRAR CONTAS A
    - Método de pagamento e recorrência são opcionais
 
 Exemplos de INFERÊNCIA AUTOMÁTICA:
-- "tenho que pagar aluguel de 1500 no dia 5" → INFERE: amount=1500, description="aluguel", due_date (calcular dia 5), category="Casa" → Chama save_bill
-- "conta de luz vence dia 10, 300 reais" → INFERE: amount=300, description="conta de luz", due_date (calcular dia 10), category="Serviços" → Chama save_bill
-- "aluguel mensal de 2000 no dia 1" → INFERE: amount=2000, description="aluguel", due_date (calcular dia 1), is_recurring=true, recurrence_frequency="monthly" → Chama save_bill
+- "tenho que pagar aluguel de 1500 no dia 5" → INFERE: amount=1500, description="aluguel", due_date (calcular dia 5), category será "Contas" automaticamente → Chama save_bill
+- "conta de luz vence dia 10, 300 reais" → INFERE: amount=300, description="conta de luz", due_date (calcular dia 10), category será "Contas" automaticamente → Chama save_bill
+- "aluguel mensal de 2000 no dia 1" → INFERE: amount=2000, description="aluguel", due_date (calcular dia 1), is_recurring=true, recurrence_frequency="monthly", category será "Contas" automaticamente → Chama save_bill
 
 ${process.env.USE_INCOME_FEATURE === 'true' ? '16' : '15'}. **RESUMOS E CONSULTAS**: Quando o usuário perguntar sobre gastos (ex: "quanto gastei?", "resumo de despesas", "quanto já gastei de alimentação esse mês?", "resumo esse mês", "quanto foi em transporte hoje?"), chame as funções apropriadas:
    - "quanto gastei?" / "resumo de despesas" / "resumo esse mês" / "quanto já gastei esse mês?" → get_expenses_summary (period: este_mes) - se não mencionar período, assume "este_mes"
@@ -2225,75 +2225,81 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
     
     // Tentar parse direto como YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      // Extrair ano ANTES de fazer parse para comparar diretamente
+      const parts = dateStr.split('-');
+      const inputYear = parseInt(parts[0]);
+      const inputMonth = parseInt(parts[1]);
+      const inputDay = parseInt(parts[2]);
+      
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      
+      console.log(`📅 [PARSE_DUE_DATE] Input: ${dateStr}, inputYear=${inputYear}, currentYear=${currentYear}`);
+      
+      // Se o ano é menor que o atual, SEMPRE recalcular (independente de diffDays)
+      if (inputYear < currentYear) {
+        console.warn(`⚠️ [PARSE_DUE_DATE] Ano incorreto detectado ANTES do parse: ${inputYear} < ${currentYear}`);
+        console.warn('⚠️ [PARSE_DUE_DATE] Recalculando data com ano correto...');
+        
+        // Usar mês e dia do input, mas recalcular ano
+        const currentDay = today.getDate();
+        const currentMonth = today.getMonth() + 1; // JavaScript usa 0-11, converter para 1-12
+          
+        // Se o mês/dia já passou neste ano, usar próximo ano
+        // Comparar: se mês < mês atual OU (mês == mês atual E dia < dia atual)
+        let targetYear = currentYear;
+        if (inputMonth < currentMonth || (inputMonth === currentMonth && inputDay < currentDay)) {
+          // Data já passou neste ano - usar próximo ano
+          targetYear = currentYear + 1;
+          console.log(`📅 [PARSE_DUE_DATE] Mês/dia já passou, usando próximo ano: ${inputDay}/${inputMonth}/${targetYear}`);
+        } else {
+          // Data ainda não passou neste ano
+          console.log(`📅 [PARSE_DUE_DATE] Mês/dia ainda não passou, usando ano atual: ${inputDay}/${inputMonth}/${targetYear}`);
+        }
+        
+        // Garantir que o dia existe no mês
+        const daysInMonth = new Date(targetYear, inputMonth, 0).getDate();
+        const finalDay = Math.min(inputDay, daysInMonth);
+        
+        const monthStr = String(inputMonth).padStart(2, '0');
+        const dayStr = String(finalDay).padStart(2, '0');
+        
+        const result = `${targetYear}-${monthStr}-${dayStr}`;
+        console.log(`✅ [PARSE_DUE_DATE] Recalculado (corrigido): ${result}`);
+        return result;
+      }
+      
+      // Se chegou aqui, ano está correto ou igual ao atual
+      // Validar se data não está muito no passado (mais de 1 ano)
       const parsed = new Date(dateStr + 'T00:00:00');
       if (!isNaN(parsed.getTime())) {
-        // Validar se a data não está muito no passado (erro de GPT)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const todayOnly = new Date();
+        todayOnly.setHours(0, 0, 0, 0);
         const parsedDateOnly = new Date(parsed);
         parsedDateOnly.setHours(0, 0, 0, 0);
+        const diffDays = (todayOnly - parsedDateOnly) / (1000 * 60 * 60 * 24);
         
-        // Se a data está no passado (qualquer data passada que não seja hoje/ontem é suspeita para conta a pagar)
-        // OU se está mais de 1 ano no passado, provavelmente é erro do GPT
-        // Extrair apenas o dia e recalcular com ano atual
-        const diffDays = (today - parsedDateOnly) / (1000 * 60 * 60 * 24);
-        
-        // Se a data está muito no passado (> 1 ano) OU se o ano é diferente do ano atual
-        const parsedYear = parsed.getFullYear();
-        const currentYear = today.getFullYear();
-        
-        console.log(`📅 [PARSE_DUE_DATE] Comparação: parsedYear=${parsedYear}, currentYear=${currentYear}, diffDays=${diffDays}`);
-        
-        // Se o ano é menor que o atual, SEMPRE recalcular
-        // Ou se está mais de 365 dias no passado
-        if (parsedYear < currentYear || diffDays > 365) {
-          console.warn(`⚠️ [PARSE_DUE_DATE] Ano incorreto detectado: ${parsedYear} < ${currentYear} ou diffDays=${diffDays} > 365`);
-          console.warn('⚠️ [PARSE_DUE_DATE] Data muito no passado detectada:', dateStr);
-          console.warn('⚠️ [PARSE_DUE_DATE] Extraindo apenas o dia para recalcular...');
-          // Extrair dia e mês da data antiga e recalcular com ano atual
-          const parts = dateStr.split('-');
-          const oldYear = parseInt(parts[0]);
-          const oldMonth = parseInt(parts[1]);
-          const oldDay = parseInt(parts[2]);
+        if (diffDays > 365) {
+          console.warn(`⚠️ [PARSE_DUE_DATE] Data muito no passado (${diffDays} dias), recalculando...`);
+          // Recalcular similar ao caso anterior
+          const currentDay = todayOnly.getDate();
+          const currentMonth = todayOnly.getMonth() + 1;
           
-          console.log(`📅 [PARSE_DUE_DATE] Extraído: dia=${oldDay}, mês=${oldMonth}, ano antigo=${oldYear}`);
-          
-          // Recalcular usando apenas dia e mês, mas com ano atual/próximo
-          const today = new Date();
-          const currentDay = today.getDate();
-          const currentMonth = today.getMonth();
-          const currentYear = today.getFullYear();
-          
-          // Usar o mês e dia que o GPT enviou (assumindo que estão corretos)
-          let targetMonth = oldMonth - 1; // JavaScript usa mês 0-11
-          let targetYear = currentYear;
-          
-          // Se o mês/dia já passou neste ano, usar próximo ano
-          // Comparar: se mês < mês atual OU (mês == mês atual E dia < dia atual)
-          const oldMonthIndex = oldMonth - 1; // Converter para índice 0-11
-          if (oldMonthIndex < currentMonth || (oldMonthIndex === currentMonth && oldDay < currentDay)) {
-            // Data já passou neste ano - usar próximo ano
-            targetYear = currentYear + 1;
-            console.log(`📅 [PARSE_DUE_DATE] Mês/dia já passou, usando próximo ano: ${oldDay}/${oldMonth}/${targetYear}`);
-          } else {
-            // Data ainda não passou neste ano
-            console.log(`📅 [PARSE_DUE_DATE] Mês/dia ainda não passou, usando ano atual: ${oldDay}/${oldMonth}/${targetYear}`);
+          let targetYear2 = currentYear;
+          if (inputMonth < currentMonth || (inputMonth === currentMonth && inputDay < currentDay)) {
+            targetYear2 = currentYear + 1;
           }
           
-          // Garantir que o dia existe no mês
-          const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
-          const finalDay = Math.min(oldDay, daysInMonth);
+          const daysInMonth2 = new Date(targetYear2, inputMonth, 0).getDate();
+          const finalDay2 = Math.min(inputDay, daysInMonth2);
           
-          const monthStr = String(oldMonth).padStart(2, '0');
-          const dayStr = String(finalDay).padStart(2, '0');
-          
-          const result = `${targetYear}-${monthStr}-${dayStr}`;
-          console.log(`✅ [PARSE_DUE_DATE] Recalculado (corrigido): ${result}`);
-          return result;
-        } else {
-          console.log('✅ [PARSE_DUE_DATE] Data válida:', dateStr);
-          return dateStr;
+          const result2 = `${targetYear2}-${String(inputMonth).padStart(2, '0')}-${String(finalDay2).padStart(2, '0')}`;
+          console.log(`✅ [PARSE_DUE_DATE] Recalculado (diffDays): ${result2}`);
+          return result2;
         }
+        
+        console.log('✅ [PARSE_DUE_DATE] Data válida:', dateStr);
+        return dateStr;
       }
     }
     
@@ -2343,21 +2349,43 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
     const parsed = new Date(dateStr);
     if (!isNaN(parsed.getTime())) {
       const year = parsed.getFullYear();
-      const month = String(parsed.getMonth() + 1).padStart(2, '0');
-      const day = String(parsed.getDate()).padStart(2, '0');
-      const result = `${year}-${month}-${day}`;
+      const month = parsed.getMonth() + 1;
+      const day = parsed.getDate();
       
-      // Validar se não está muito no passado
+      // Validar se não está muito no passado OU se ano é menor que atual
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const parsedDateOnly = new Date(parsed);
       parsedDateOnly.setHours(0, 0, 0, 0);
       
-      if ((today - parsedDateOnly) / (1000 * 60 * 60 * 24) > 730) {
-        console.warn('⚠️ [PARSE_DUE_DATE] Date nativo retornou data muito no passado, retornando null');
-        return null;
+      const currentYear = today.getFullYear();
+      const diffDays = (today - parsedDateOnly) / (1000 * 60 * 60 * 24);
+      
+      console.log(`📅 [PARSE_DUE_DATE] Date nativo: year=${year}, currentYear=${currentYear}, diffDays=${diffDays}`);
+      
+      if (year < currentYear || diffDays > 365) {
+        console.warn(`⚠️ [PARSE_DUE_DATE] Date nativo retornou data incorreta (ano=${year}), recalculando...`);
+        // Recalcular usando dia e mês mas com ano correto
+        const currentDay = today.getDate();
+        const currentMonth = today.getMonth() + 1;
+        
+        let targetMonth = month;
+        let finalYear = currentYear;
+        
+        // Se mês/dia já passou, usar próximo ano
+        if (month < currentMonth || (month === currentMonth && day < currentDay)) {
+          finalYear = currentYear + 1;
+        }
+        
+        const daysInMonth = new Date(finalYear, month, 0).getDate();
+        const finalDay = Math.min(day, daysInMonth);
+        
+        const result = `${finalYear}-${String(month).padStart(2, '0')}-${String(finalDay).padStart(2, '0')}`;
+        console.log(`✅ [PARSE_DUE_DATE] Recalculado (Date nativo): ${result}`);
+        return result;
       }
       
+      const result = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       console.log('✅ [PARSE_DUE_DATE] Resultado (Date nativo):', result);
       return result;
     }
@@ -2478,106 +2506,71 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         owner = context.organizationName || 'Compartilhado';
       }
       
-      // Buscar categoria
+      // ✅ SEMPRE usar categoria "Contas" para contas a pagar (fixo)
+      // Buscar categoria "Contas" nas categorias da organização ou globais
+      const normalize = (s) => (s || '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}+/gu, '');
+      
+      const [{ data: orgCats }, { data: globalCats }] = await Promise.all([
+        supabase
+          .from('budget_categories')
+          .select('id, name')
+          .eq('organization_id', context.organizationId)
+          .or('type.eq.expense,type.eq.both'),
+        supabase
+          .from('budget_categories')
+          .select('id, name')
+          .is('organization_id', null)
+          .or('type.eq.expense,type.eq.both')
+      ]);
+      
+      const allCats = [...(orgCats || []), ...(globalCats || [])];
+      const byNorm = new Map();
+      for (const c of allCats) {
+        byNorm.set(normalize(c.name), c);
+      }
+      
+      // Buscar "Contas" como categoria padrão
       let categoryId = null;
       let categoryName = null;
       
-      if (category) {
-        const normalize = (s) => (s || '')
-          .toString()
-          .trim()
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/\p{Diacritic}+/gu, '');
+      const contasNorm = normalize('Contas');
+      const foundContas = byNorm.get(contasNorm);
+      
+      if (foundContas) {
+        categoryId = foundContas.id;
+        categoryName = foundContas.name;
+        console.log('✅ [BILL] Usando categoria "Contas" (padrão):', categoryName);
+      } else {
+        // Se não encontrar "Contas", usar "Outros" como fallback
+        const outrosNorm = normalize('Outros');
+        const foundOutros = byNorm.get(outrosNorm);
         
-        const [{ data: orgCats }, { data: globalCats }] = await Promise.all([
-          supabase
-            .from('budget_categories')
-            .select('id, name')
-            .eq('organization_id', context.organizationId)
-            .or('type.eq.expense,type.eq.both'),
-          supabase
-            .from('budget_categories')
-            .select('id, name')
-            .is('organization_id', null)
-            .or('type.eq.expense,type.eq.both')
-        ]);
-        
-        const allCats = [...(orgCats || []), ...(globalCats || [])];
-        const byNorm = new Map();
-        for (const c of allCats) {
-          byNorm.set(normalize(c.name), c);
-        }
-        
-        const catNorm = normalize(category);
-        const found = byNorm.get(catNorm);
-        
-        if (found) {
-          categoryId = found.id;
-          categoryName = found.name;
+        if (foundOutros) {
+          categoryId = foundOutros.id;
+          categoryName = foundOutros.name;
+          console.log('⚠️ [BILL] Categoria "Contas" não encontrada, usando "Outros":', categoryName);
         } else {
-          // Tentar match parcial
-          const match = allCats.find(c => {
-            const n = normalize(c.name);
-            return n.includes(catNorm) || catNorm.includes(n);
-          });
-          
-          if (match) {
-            categoryId = match.id;
-            categoryName = match.name;
+          console.warn('❌ [BILL] Nenhuma categoria padrão (Contas/Outros) encontrada');
+          // Ainda assim tentar qualquer categoria disponível como último recurso
+          if (allCats.length > 0) {
+            categoryId = allCats[0].id;
+            categoryName = allCats[0].name;
+            console.log('⚠️ [BILL] Usando primeira categoria disponível:', categoryName);
           }
         }
       }
       
-      // Inferir categoria se não informada
-      if (!categoryId && description) {
-        const descNorm = this.normalizeText(description);
-        const categoryHints = [
-          { keys: ['aluguel', 'condominio', 'condomínio', 'iptu', 'taxa'], target: 'Casa' },
-          { keys: ['luz', 'energia', 'eletrica', 'elétrica', 'internet', 'telefone', 'celular', 'agua', 'água', 'agua e esgoto'], target: 'Serviços' },
-          { keys: ['supermercado', 'mercado', 'padaria', 'açougue', 'feira'], target: 'Alimentação' },
-          { keys: ['gasolina', 'combustivel', 'combustível', 'uber', 'taxi', 'transporte'], target: 'Transporte' },
-          { keys: ['farmacia', 'farmácia', 'remedio', 'remédio', 'medicamento'], target: 'Saúde' },
-          { keys: ['academia', 'cinema', 'bar', 'restaurante', 'shopping'], target: 'Lazer' }
-        ];
-        
-        for (const hint of categoryHints) {
-          if (hint.keys.some(k => descNorm.includes(k))) {
-            // Buscar categoria correspondente
-            const normalize = (s) => (s || '')
-              .toString()
-              .trim()
-              .toLowerCase()
-              .normalize('NFD')
-              .replace(/\p{Diacritic}+/gu, '');
-            
-            const [{ data: orgCats }, { data: globalCats }] = await Promise.all([
-              supabase
-                .from('budget_categories')
-                .select('id, name')
-                .eq('organization_id', context.organizationId)
-                .or('type.eq.expense,type.eq.both'),
-              supabase
-                .from('budget_categories')
-                .select('id, name')
-                .is('organization_id', null)
-                .or('type.eq.expense,type.eq.both')
-            ]);
-            
-            const allCats = [...(orgCats || []), ...(globalCats || [])];
-            const byNorm = new Map();
-            for (const c of allCats) {
-              byNorm.set(normalize(c.name), c);
-            }
-            
-            const found = byNorm.get(normalize(hint.target));
-            if (found) {
-              categoryId = found.id;
-              categoryName = found.name;
-            }
-            break;
-          }
-        }
+      // Garantir que sempre tenha categoria
+      if (!categoryId) {
+        return {
+          success: false,
+          message: 'Ops! Não encontrei nenhuma categoria no sistema. Cadastre uma categoria primeiro.'
+        };
       }
       
       // Normalizar método de pagamento
