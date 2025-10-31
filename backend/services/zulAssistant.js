@@ -2184,8 +2184,8 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
           break;
         case 'este_mes':
           startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-          endDate.setHours(23, 59, 59, 999);
+          // Usar primeiro dia do próximo mês para comparação com '<' (igual ao frontend)
+          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
           break;
         case 'mes_anterior':
           startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -2197,14 +2197,21 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
           endDate = new Date(today);
       }
       
-      // Construir query
+      // Construir query (usar mesmo filtro do frontend: confirmed, paid ou null)
       let query = supabase
         .from('expenses')
         .select('amount, category')
         .eq('organization_id', context.organizationId)
-        .eq('status', 'confirmed')
-        .gte('date', startDate.toISOString().split('T')[0])
-        .lte('date', endDate.toISOString().split('T')[0]);
+        .or('status.eq.confirmed,status.eq.paid,status.is.null')
+        .gte('date', startDate.toISOString().split('T')[0]);
+      
+      // Para 'este_mes', usar '<' no endDate (primeiro dia do próximo mês) para consistência com frontend
+      // Para outros períodos, usar '<='
+      if (period === 'este_mes') {
+        query = query.lt('date', endDate.toISOString().split('T')[0]);
+      } else {
+        query = query.lte('date', endDate.toISOString().split('T')[0]);
+      }
       
       // Filtrar por categoria se fornecida
       if (category) {
