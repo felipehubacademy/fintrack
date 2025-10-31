@@ -11,6 +11,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
   const { success, error: showError, warning } = useNotificationContext();
   
   const [cards, setCards] = useState([]);
+  const [bankAccounts, setBankAccounts] = useState([]);
   const [saving, setSaving] = useState(false);
   const [transactionType, setTransactionType] = useState('expense');
 
@@ -24,6 +25,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     payment_method: 'cash',
     card_id: '',
     installments: 1,
+    bank_account_id: '', // Para incomes
   });
 
   const [splitDetails, setSplitDetails] = useState([]);
@@ -52,6 +54,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           payment_method: editingTransaction.payment_method || 'cash',
           card_id: '',
           installments: 1,
+          bank_account_id: editingTransaction.bank_account_id || '',
         });
         if (editingTransaction.income_splits) {
           setSplitDetails(editingTransaction.income_splits);
@@ -83,6 +86,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     if (!isOpen) return;
     const load = async () => {
       if (organization?.id && organization.id !== 'default-org') {
+        // Carregar cartões
         const { data: cardsData } = await supabase
           .from('cards')
           .select('*')
@@ -90,8 +94,18 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           .eq('is_active', true)
           .order('name');
         setCards(cardsData || []);
+        
+        // Carregar contas bancárias
+        const { data: accountsData } = await supabase
+          .from('bank_accounts')
+          .select('id, name, bank')
+          .eq('organization_id', organization.id)
+          .eq('is_active', true)
+          .order('name');
+        setBankAccounts(accountsData || []);
       } else {
         setCards([]);
+        setBankAccounts([]);
       }
     };
     load();
@@ -197,6 +211,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       payment_method: 'cash',
       card_id: '',
       installments: 1,
+      bank_account_id: '',
     });
     setSplitDetails([]);
     setShowSplitConfig(false);
@@ -214,6 +229,12 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     }
     if (!form.owner_name) {
       warning('Selecione um responsável');
+      return;
+    }
+    
+    // Validar conta bancária para incomes
+    if (transactionType === 'income' && !form.bank_account_id) {
+      warning('Selecione uma conta bancária para a entrada');
       return;
     }
 
@@ -262,6 +283,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
               date: form.date,
               category: form.category || null,
               payment_method: form.payment_method,
+              bank_account_id: form.bank_account_id,
               cost_center_id: willBeShared ? null : costCenter?.id,
               is_shared: willBeShared, // Usar willBeShared calculado acima
               status: 'confirmed'
@@ -280,6 +302,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             date: form.date,
             category: form.category || null,
             payment_method: form.payment_method,
+            bank_account_id: form.bank_account_id,
             cost_center_id: willBeShared ? null : costCenter?.id,
             is_shared: willBeShared, // Usar willBeShared calculado acima
             organization_id: organization.id,
@@ -302,6 +325,52 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         if (error) throw error;
 
         console.log('✅ [TRANSACTION MODAL] Income saved:', income);
+        
+        // Atualizar saldo da conta bancária usando RPC
+        // Só criar transação se for novo income ou se o income antigo não tinha transação vinculada
+        if (form.bank_account_id) {
+          try {
+            // Se estiver editando, verificar se já existe transação vinculada
+            let shouldCreateTransaction = true;
+            if (editingTransaction) {
+              const { data: existingTransaction, error: checkError } = await supabase
+                .from('bank_account_transactions')
+                .select('id')
+                .eq('income_id', income.id)
+                .limit(1)
+                .maybeSingle();
+              
+              if (existingTransaction && !checkError) {
+                shouldCreateTransaction = false;
+                console.log('ℹ️ Transação bancária já existe para este income, não será criada novamente');
+              }
+            }
+            
+            if (shouldCreateTransaction) {
+              const { data: transactionData, error: transError } = await supabase.rpc('create_bank_transaction', {
+                p_bank_account_id: form.bank_account_id,
+                p_transaction_type: 'income_deposit',
+                p_amount: parseFloat(form.amount),
+                p_description: form.description,
+                p_date: form.date,
+                p_organization_id: organization.id,
+                p_user_id: orgUser.id,
+                p_expense_id: null,
+                p_bill_id: null,
+                p_income_id: income.id,
+                p_related_account_id: null
+              });
+              
+              if (transError) {
+                console.error('⚠️ Erro ao criar transação bancária:', transError);
+              } else {
+                console.log('✅ Transação bancária criada e saldo atualizado:', transactionData);
+              }
+            }
+          } catch (accountError) {
+            console.error('⚠️ Erro ao atualizar saldo da conta:', accountError);
+          }
+        }
 
         if (willBeShared && splitDetails.length > 0) {
           // Se está editando, deletar splits antigos primeiro
@@ -670,6 +739,27 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                     <option value="boleto">Boleto</option>
                     <option value="other">Outros</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Conta Bancária *</label>
+                  <select
+                    value={form.bank_account_id}
+                    onChange={(e) => setForm({ ...form, bank_account_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                    required
+                  >
+                    <option value="">Selecione uma conta...</option>
+                    {bankAccounts.map(account => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} - {account.bank || ''}
+                      </option>
+                    ))}
+                  </select>
+                  {bankAccounts.length === 0 && (
+                    <p className="text-xs text-yellow-600 mt-1">
+                      Nenhuma conta bancária cadastrada. Cadastre uma conta primeiro.
+                    </p>
+                  )}
                 </div>
               </>
             ) : (
