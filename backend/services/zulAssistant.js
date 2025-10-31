@@ -2221,11 +2221,28 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
   parseDueDate(dateStr) {
     if (!dateStr) return null;
     
+    console.log('📅 [PARSE_DUE_DATE] Input:', dateStr);
+    
     // Tentar parse direto como YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       const parsed = new Date(dateStr + 'T00:00:00');
       if (!isNaN(parsed.getTime())) {
-        return dateStr;
+        // Validar se a data não está muito no passado (erro de GPT)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const parsedDateOnly = new Date(parsed);
+        parsedDateOnly.setHours(0, 0, 0, 0);
+        
+        // Se a data está mais de 2 anos no passado, provavelmente é erro
+        // Recalcular baseado apenas no dia
+        const diffDays = (today - parsedDateOnly) / (1000 * 60 * 60 * 24);
+        if (diffDays > 730) {
+          console.warn('⚠️ [PARSE_DUE_DATE] Data muito no passado, recalculando...');
+          // Continuar para recalcular baseado no dia
+        } else {
+          console.log('✅ [PARSE_DUE_DATE] Data válida:', dateStr);
+          return dateStr;
+        }
       }
     }
     
@@ -2239,6 +2256,8 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();
         
+        console.log(`📅 [PARSE_DUE_DATE] Hoje: ${currentDay}/${currentMonth + 1}/${currentYear}, Dia solicitado: ${day}`);
+        
         // Se o dia já passou neste mês, usar próximo mês
         // Senão, usar mês atual
         let targetMonth = currentMonth;
@@ -2251,6 +2270,9 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             targetMonth = 0;
             targetYear = currentYear + 1;
           }
+          console.log(`📅 [PARSE_DUE_DATE] Dia já passou, usando próximo mês: ${day}/${targetMonth + 1}/${targetYear}`);
+        } else {
+          console.log(`📅 [PARSE_DUE_DATE] Dia ainda não passou, usando mês atual: ${day}/${targetMonth + 1}/${targetYear}`);
         }
         
         // Garantir que o dia existe no mês (ex: 31 de fevereiro → 28/29)
@@ -2260,7 +2282,9 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         const monthStr = String(targetMonth + 1).padStart(2, '0');
         const dayStr = String(finalDay).padStart(2, '0');
         
-        return `${targetYear}-${monthStr}-${dayStr}`;
+        const result = `${targetYear}-${monthStr}-${dayStr}`;
+        console.log('✅ [PARSE_DUE_DATE] Resultado:', result);
+        return result;
       }
     }
     
@@ -2270,9 +2294,24 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       const year = parsed.getFullYear();
       const month = String(parsed.getMonth() + 1).padStart(2, '0');
       const day = String(parsed.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      const result = `${year}-${month}-${day}`;
+      
+      // Validar se não está muito no passado
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const parsedDateOnly = new Date(parsed);
+      parsedDateOnly.setHours(0, 0, 0, 0);
+      
+      if ((today - parsedDateOnly) / (1000 * 60 * 60 * 24) > 730) {
+        console.warn('⚠️ [PARSE_DUE_DATE] Date nativo retornou data muito no passado, retornando null');
+        return null;
+      }
+      
+      console.log('✅ [PARSE_DUE_DATE] Resultado (Date nativo):', result);
+      return result;
     }
     
+    console.warn('❌ [PARSE_DUE_DATE] Não conseguiu parsear:', dateStr);
     return null;
   }
 
@@ -2281,7 +2320,8 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
    */
   async saveBill(args, context) {
     try {
-      console.log('💾 [BILL] Salvando conta a pagar com args:', args);
+      console.log('💾 [BILL] Salvando conta a pagar com args:', JSON.stringify(args, null, 2));
+      console.log('💾 [BILL] due_date recebido do GPT:', args.due_date);
       
       const { amount, description, due_date, category, responsible, payment_method, card_name, is_recurring, recurrence_frequency } = args;
       
@@ -2294,7 +2334,10 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       }
       
       // Parsear e calcular data de vencimento
+      console.log('📅 [BILL] Chamando parseDueDate com:', due_date);
       const parsedDueDate = this.parseDueDate(due_date);
+      console.log('📅 [BILL] Data parseada:', parsedDueDate);
+      
       if (!parsedDueDate) {
         return {
           success: false,
@@ -2310,6 +2353,8 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
           message: 'A data de vencimento está inválida.'
         };
       }
+      
+      console.log('✅ [BILL] Data de vencimento válida:', parsedDueDate);
       
       // Normalizar owner (mapear "eu" para nome do usuário)
       let owner = responsible;
