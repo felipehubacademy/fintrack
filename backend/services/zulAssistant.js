@@ -1373,7 +1373,7 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
 1.  **VARIAÇÃO RADICAL**: Mude o estilo de cada resposta (direto, casual, formal, contextual). NUNCA repita a mesma frase ou estrutura de pergunta.
 2.  **CONCISÃO MÁXIMA**: Responda com **1 linha** sempre que possível. Use no máximo 2 linhas em casos de confirmação ou contexto. O WhatsApp exige rapidez.
 3.  **INFERÊNCIA ATIVA**: Se o usuário fornecer informações parciais, use o contexto para inferir e perguntar apenas pela **lacuna CRÍTICA** restante. Ex: Se ele diz "100 no mercado, débito", pergunte apenas "E o responsável?".
-4.  **HUMANIZAÇÃO LEVE**: Use emojis leves (🤔, ❓, 💰) com moderação e apenas para humanizar a pergunta ou confirmação. Não use emojis em excesso.
+4.  **SEM EMOJIS NAS PERGUNTAS**: NUNCA use emojis nas perguntas. Emojis apenas na confirmação final (que vem automaticamente da função save_expense).
 5.  **MANUTENÇÃO DE CONTEXTO**: NUNCA repita perguntas já respondidas ou informações já fornecidas.
 6.  **INFERÊNCIA DE CATEGORIA**: INFIRA automaticamente quando tiver CERTEZA:
    - Alimentação: padaria, restaurante, lanche, pizza, ifood, delivery, comida, bebida, cerveja, suco, açougue, peixaria, frutas, verduras, pipoca
