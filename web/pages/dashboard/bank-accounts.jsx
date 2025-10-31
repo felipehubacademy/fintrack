@@ -229,7 +229,7 @@ export default function BankAccounts() {
                         }}
                         className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
                       >
-                        Nova Transação
+                        Transferir
                       </Button>
                       <Button
                         variant="outline"

@@ -2,66 +2,75 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader } from './ui/Card';
-import { X, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { X, ArrowRight } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useOrganization } from '../hooks/useOrganization';
 
 export default function BankTransactionModal({ isOpen, onClose, account, organizationId, onSuccess }) {
-  const { incomeCategories, budgetCategories } = useOrganization();
+  const { organization } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
   const [formData, setFormData] = useState({
-    transaction_type: 'manual_credit',
+    to_account_id: '',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
-    category: '',
-    payment_method: 'cash'
+    date: new Date().toISOString().split('T')[0]
   });
   
+  const [availableAccounts, setAvailableAccounts] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen && organizationId) {
+      fetchAvailableAccounts();
       resetForm();
     }
-  }, [isOpen]);
+  }, [isOpen, organizationId, account]);
+
+  const fetchAvailableAccounts = async () => {
+    try {
+      setLoadingAccounts(true);
+      const { data, error } = await supabase
+        .from('bank_accounts')
+        .select('id, name, bank')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .neq('id', account?.id) // Excluir a conta origem
+        .order('name');
+
+      if (error) throw error;
+      setAvailableAccounts(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar contas:', error);
+      showError('Erro ao buscar contas disponíveis');
+    } finally {
+      setLoadingAccounts(false);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
-      transaction_type: 'manual_credit',
+      to_account_id: '',
       amount: '',
       description: '',
-      date: new Date().toISOString().split('T')[0],
-      category: '',
-      payment_method: 'cash'
+      date: new Date().toISOString().split('T')[0]
     });
   };
 
-  // Obter categorias baseadas no tipo de transação
-  const getCategories = () => {
-    if (formData.transaction_type === 'manual_credit') {
-      // Para crédito, usar categorias de entrada
-      return incomeCategories.map(cat => cat.name);
-    } else {
-      // Para débito, usar categorias de despesas
-      return budgetCategories.map(cat => cat.name);
-    }
-  };
-
   const handleChange = (field, value) => {
-    // Se mudar o tipo de transação, resetar a categoria
-    if (field === 'transaction_type') {
-      setFormData(prev => ({ ...prev, [field]: value, category: '' }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.amount || !formData.description || !formData.date || !formData.category) {
+    if (!formData.amount || !formData.to_account_id) {
       warning('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    if (parseFloat(formData.amount) <= 0) {
+      warning('O valor deve ser maior que zero');
       return;
     }
 
@@ -73,31 +82,26 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
 
       if (!organizationId) throw new Error('Organização não encontrada');
 
-      // Chamar função RPC para criar transação
-      const { data, error } = await supabase.rpc('create_bank_transaction', {
-        p_bank_account_id: account.id,
-        p_transaction_type: formData.transaction_type,
-        p_payment_method: formData.payment_method,
+      // Chamar função RPC para transferência entre contas
+      const { data, error } = await supabase.rpc('transfer_between_accounts', {
+        p_from_account_id: account.id,
+        p_to_account_id: formData.to_account_id,
         p_amount: parseFloat(formData.amount),
-        p_description: formData.description,
+        p_description: formData.description || 'Transferência entre contas',
         p_date: formData.date,
         p_organization_id: organizationId,
-        p_user_id: user.id,
-        p_expense_id: null,
-        p_bill_id: null,
-        p_income_id: null,
-        p_related_account_id: null
+        p_user_id: user.id
       });
 
       if (error) throw error;
 
       resetForm();
-      success('Transação criada com sucesso!');
+      success('Transferência realizada com sucesso!');
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error('Erro ao criar transação:', error);
-      showError('Erro ao criar transação: ' + (error.message || 'Erro desconhecido'));
+      console.error('Erro ao realizar transferência:', error);
+      showError('Erro ao realizar transferência: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setSaving(false);
     }
@@ -111,7 +115,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg pr-2">
-            Nova Transação
+            Transferir Entre Contas
           </h2>
           <Button 
             variant="ghost" 
@@ -126,86 +130,51 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
         {/* Conteúdo com scroll */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 pt-0">
           <div className="space-y-4 pt-4">
-            {/* Conta Bancária */}
+            {/* Conta de Origem */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Conta Bancária
+                Conta de Origem
               </label>
               <input
                 type="text"
-                value={account.name}
+                value={`${account?.name} - ${account?.bank || ''}`}
                 disabled
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
               />
             </div>
 
-            {/* Tipo de Transação */}
+            {/* Conta de Destino */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Transação *
+                Conta de Destino *
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleChange('transaction_type', 'manual_credit')}
-                  className={`p-3 border-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                    formData.transaction_type === 'manual_credit'
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  <ArrowDownCircle className={`h-5 w-5 ${
-                    formData.transaction_type === 'manual_credit' ? 'text-green-600' : 'text-gray-400'
-                  }`} />
-                  <span className={`font-medium ${
-                    formData.transaction_type === 'manual_credit' ? 'text-green-600' : 'text-gray-700'
-                  }`}>
-                    Entrada
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleChange('transaction_type', 'manual_debit')}
-                  className={`p-3 border-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                    formData.transaction_type === 'manual_debit'
-                      ? 'border-red-500 bg-red-50'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  <ArrowUpCircle className={`h-5 w-5 ${
-                    formData.transaction_type === 'manual_debit' ? 'text-red-600' : 'text-gray-400'
-                  }`} />
-                  <span className={`font-medium ${
-                    formData.transaction_type === 'manual_debit' ? 'text-red-600' : 'text-gray-700'
-                  }`}>
-                    Saída
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Grid para Desktop */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Categoria */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Categoria *
-                </label>
+              {loadingAccounts ? (
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-center">
+                  Carregando contas...
+                </div>
+              ) : availableAccounts.length === 0 ? (
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-yellow-50 text-yellow-700 text-sm">
+                  Nenhuma outra conta ativa disponível para transferência
+                </div>
+              ) : (
                 <select
-                  value={formData.category}
-                  onChange={(e) => handleChange('category', e.target.value)}
+                  value={formData.to_account_id}
+                  onChange={(e) => handleChange('to_account_id', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 >
-                  <option value="">Selecione uma categoria</option>
-                  {getCategories().map(category => (
-                    <option key={category} value={category}>
-                      {category}
+                  <option value="">Selecione a conta de destino</option>
+                  {availableAccounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name} - {acc.bank || ''}
                     </option>
                   ))}
                 </select>
-              </div>
+              )}
+            </div>
 
+            {/* Valor e Data */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Valor */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -214,47 +183,13 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
                 <input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.amount}
                   onChange={(e) => handleChange('amount', e.target.value)}
                   placeholder="0.00"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 />
-              </div>
-
-              {/* Descrição - ocupando largura total */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Descrição *
-                </label>
-                <input
-                  type="text"
-                  value={formData.description}
-                  onChange={(e) => handleChange('description', e.target.value)}
-                  placeholder="Ex: Salário, Transferência, etc."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  required
-                />
-              </div>
-
-              {/* Forma de Pagamento/Recebimento */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Forma de {formData.transaction_type === 'manual_credit' ? 'Recebimento' : 'Pagamento'} *
-                </label>
-                <select
-                  value={formData.payment_method}
-                  onChange={(e) => handleChange('payment_method', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  required
-                >
-                  <option value="cash">Dinheiro</option>
-                  <option value="pix">PIX</option>
-                  <option value="deposit">Depósito</option>
-                  <option value="bank_transfer">Transferência Bancária</option>
-                  <option value="boleto">Boleto</option>
-                  <option value="other">Outros</option>
-                </select>
               </div>
 
               {/* Data */}
@@ -271,6 +206,39 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
                 />
               </div>
             </div>
+
+            {/* Descrição */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descrição (opcional)
+              </label>
+              <input
+                type="text"
+                value={formData.description}
+                onChange={(e) => handleChange('description', e.target.value)}
+                placeholder="Ex: Transferência para investimento, etc."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+              />
+            </div>
+
+            {/* Indicador Visual */}
+            {formData.to_account_id && formData.amount && (
+              <div className="flex items-center justify-center p-4 bg-flight-blue/5 rounded-lg border border-flight-blue/20">
+                <div className="flex items-center space-x-3">
+                  <div className="text-left">
+                    <p className="text-xs text-gray-500">De</p>
+                    <p className="font-medium text-gray-900">{account?.name}</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-flight-blue" />
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Para</p>
+                    <p className="font-medium text-gray-900">
+                      {availableAccounts.find(a => a.id === formData.to_account_id)?.name || ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </form>
 
@@ -286,10 +254,10 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || availableAccounts.length === 0}
             className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
           >
-            {saving ? 'Salvando...' : 'Salvar Transação'}
+            {saving ? 'Transferindo...' : 'Transferir'}
           </Button>
         </div>
       </div>

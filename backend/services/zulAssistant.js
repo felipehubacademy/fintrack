@@ -1958,45 +1958,46 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       
       console.log('✅ Entrada salva:', data.id);
       
-      // Atualizar saldo da conta (sempre, pois bank_account_id é obrigatório)
+      // Atualizar saldo da conta usando RPC (sempre, pois bank_account_id é obrigatório)
       if (bankAccountId) {
         try {
-          // Buscar saldo atual
-          const { data: account } = await supabase
-            .from('bank_accounts')
-            .select('balance')
-            .eq('id', bankAccountId)
-            .single();
+          // Usar função RPC para criar transação bancária (atualiza saldo automaticamente via trigger)
+          const { data: transactionData, error: transError } = await supabase.rpc('create_bank_transaction', {
+            p_bank_account_id: bankAccountId,
+            p_transaction_type: 'income_deposit',
+            p_amount: parseFloat(amount),
+            p_description: description,
+            p_date: incomeData.date,
+            p_organization_id: context.organizationId,
+            p_user_id: context.userId,
+            p_expense_id: null,
+            p_bill_id: null,
+            p_income_id: data.id,
+            p_related_account_id: null
+          });
           
-          if (account) {
-            const currentBalance = parseFloat(account.balance) || 0;
-            const newBalance = currentBalance + parseFloat(amount);
-            
-            // Atualizar saldo
-            await supabase
+          if (transError) {
+            console.error('⚠️ Erro ao criar transação bancária:', transError);
+            // Se RPC falhar, tentar atualização manual como fallback
+            const { data: account } = await supabase
               .from('bank_accounts')
-              .update({ balance: newBalance })
-              .eq('id', bankAccountId);
+              .select('current_balance')
+              .eq('id', bankAccountId)
+              .single();
             
-            // Criar transação bancária (se a tabela existir)
-            try {
+            if (account) {
+              const currentBalance = parseFloat(account.current_balance) || 0;
+              const newBalance = currentBalance + parseFloat(amount);
+              
               await supabase
-                .from('bank_account_transactions')
-                .insert({
-                  bank_account_id: bankAccountId,
-                  transaction_type: 'income_deposit',
-                  amount: parseFloat(amount),
-                  description: description,
-                  date: incomeData.date,
-                  balance_after: newBalance,
-                  income_id: data.id,
-                  organization_id: context.organizationId,
-                  user_id: context.userId
-                });
-            } catch (transError) {
-              // Se tabela não existir, apenas logar (não falhar)
-              console.log('⚠️ Tabela bank_account_transactions não encontrada ou erro:', transError.message);
+                .from('bank_accounts')
+                .update({ current_balance: newBalance })
+                .eq('id', bankAccountId);
+              
+              console.log('✅ Saldo atualizado manualmente (fallback)');
             }
+          } else {
+            console.log('✅ Transação bancária criada e saldo atualizado via RPC:', transactionData);
           }
         } catch (accountError) {
           // Se erro na atualização de conta, apenas logar (não falhar o salvamento)
