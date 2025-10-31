@@ -1600,7 +1600,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
           },
           due_date: {
             type: 'string',
-            description: 'Data de vencimento no formato YYYY-MM-DD (OBRIGATÓRIO). Se usuário disser "dia 5", "5 de novembro", etc, calcular para o mês atual/próximo conforme o contexto.'
+            description: 'Data de vencimento (OBRIGATÓRIO). Pode ser: formato YYYY-MM-DD, apenas o dia (ex: "5", "dia 5"), ou formato relativo (ex: "5 de novembro"). Se informar apenas o dia (ex: "dia 5"), a função calculará automaticamente se é mês atual ou próximo baseado na data de hoje.'
           },
           category: {
             type: 'string',
@@ -2203,6 +2203,469 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       
       const errorMessages = [
         `Ops${namePart}! Tive um problema ao registrar a entrada. 😅`,
+        `Eita${namePart}, algo deu errado aqui. 😅`,
+        `Poxa${namePart}, tive um erro. 😅`
+      ];
+      
+      return {
+        success: false,
+        message: this.pickVariation(errorMessages, 'erro')
+      };
+    }
+  }
+
+  /**
+   * Parsear e calcular data de vencimento
+   * Aceita: YYYY-MM-DD, apenas dia (ex: "5"), ou formato relativo
+   */
+  parseDueDate(dateStr) {
+    if (!dateStr) return null;
+    
+    // Tentar parse direto como YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const parsed = new Date(dateStr + 'T00:00:00');
+      if (!isNaN(parsed.getTime())) {
+        return dateStr;
+      }
+    }
+    
+    // Tentar extrair apenas o dia (ex: "5", "dia 5", "5 de novembro")
+    const dayMatch = dateStr.match(/(\d{1,2})/);
+    if (dayMatch) {
+      const day = parseInt(dayMatch[1]);
+      if (day >= 1 && day <= 31) {
+        const today = new Date();
+        const currentDay = today.getDate();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        
+        // Se o dia já passou neste mês, usar próximo mês
+        // Senão, usar mês atual
+        let targetMonth = currentMonth;
+        let targetYear = currentYear;
+        
+        if (day < currentDay) {
+          // Dia já passou - usar próximo mês
+          targetMonth = currentMonth + 1;
+          if (targetMonth > 11) {
+            targetMonth = 0;
+            targetYear = currentYear + 1;
+          }
+        }
+        
+        // Garantir que o dia existe no mês (ex: 31 de fevereiro → 28/29)
+        const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const finalDay = Math.min(day, daysInMonth);
+        
+        const monthStr = String(targetMonth + 1).padStart(2, '0');
+        const dayStr = String(finalDay).padStart(2, '0');
+        
+        return `${targetYear}-${monthStr}-${dayStr}`;
+      }
+    }
+    
+    // Se não conseguiu parsear, tentar Date nativo
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) {
+      const year = parsed.getFullYear();
+      const month = String(parsed.getMonth() + 1).padStart(2, '0');
+      const day = String(parsed.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
+    return null;
+  }
+
+  /**
+   * Salvar conta a pagar (bill)
+   */
+  async saveBill(args, context) {
+    try {
+      console.log('💾 [BILL] Salvando conta a pagar com args:', args);
+      
+      const { amount, description, due_date, category, responsible, payment_method, card_name, is_recurring, recurrence_frequency } = args;
+      
+      // Validar campos obrigatórios
+      if (!amount || !description || !due_date) {
+        return {
+          success: false,
+          message: 'Ops! Preciso do valor, descrição e data de vencimento.'
+        };
+      }
+      
+      // Parsear e calcular data de vencimento
+      const parsedDueDate = this.parseDueDate(due_date);
+      if (!parsedDueDate) {
+        return {
+          success: false,
+          message: 'Não consegui entender a data de vencimento. Pode informar no formato "dia 5" ou "YYYY-MM-DD"?'
+        };
+      }
+      
+      // Validar data de vencimento
+      const dueDateObj = new Date(parsedDueDate + 'T00:00:00');
+      if (isNaN(dueDateObj.getTime())) {
+        return {
+          success: false,
+          message: 'A data de vencimento está inválida.'
+        };
+      }
+      
+      // Normalizar owner (mapear "eu" para nome do usuário)
+      let owner = responsible;
+      let costCenterId = null;
+      let isShared = false;
+      
+      if (responsible) {
+        let ownerNorm = this.normalizeText(owner);
+        if (ownerNorm === 'eu' || ownerNorm.includes('eu')) {
+          owner = context.userName || context.firstName || owner;
+          ownerNorm = this.normalizeText(owner);
+        }
+        
+        // Verificar se é compartilhado
+        isShared = ownerNorm.includes('compartilhado');
+        
+        if (!isShared && owner) {
+          const { data: centers } = await supabase
+            .from('cost_centers')
+            .select('id, name')
+            .eq('organization_id', context.organizationId);
+          
+          if (centers && centers.length) {
+            const byNorm = new Map();
+            for (const c of centers) byNorm.set(this.normalizeText(c.name), c);
+            
+            // Match exato normalizado
+            const exact = byNorm.get(ownerNorm);
+            if (exact) {
+              costCenterId = exact.id;
+              owner = exact.name;
+            } else {
+              // Match parcial (substring)
+              let matches = centers.filter(c => {
+                const n = this.normalizeText(c.name);
+                return n.includes(ownerNorm) || ownerNorm.includes(n);
+              });
+              
+              // Se usuário passou apenas o primeiro nome
+              if (!matches.length) {
+                const firstToken = ownerNorm.split(/\s+/)[0];
+                matches = centers.filter(c => {
+                  const tokens = this.normalizeText(c.name).split(/\s+/);
+                  return tokens[0] === firstToken;
+                });
+              }
+              
+              if (matches.length === 1) {
+                costCenterId = matches[0].id;
+                owner = matches[0].name;
+              } else if (matches.length > 1) {
+                // Desambiguação necessária
+                const options = matches.map(m => m.name).join(', ');
+                const firstName = this.getFirstName(context);
+                const namePart = firstName ? ` ${firstName}` : '';
+                
+                return {
+                  success: false,
+                  message: `Encontrei mais de um responsável com esse nome${namePart}. Qual deles? ${options}`
+                };
+              }
+            }
+          }
+        } else if (isShared) {
+          owner = context.organizationName || 'Compartilhado';
+        }
+      } else {
+        // Se não informou responsável, considerar compartilhado
+        isShared = true;
+        owner = context.organizationName || 'Compartilhado';
+      }
+      
+      // Buscar categoria
+      let categoryId = null;
+      let categoryName = null;
+      
+      if (category) {
+        const normalize = (s) => (s || '')
+          .toString()
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/\p{Diacritic}+/gu, '');
+        
+        const [{ data: orgCats }, { data: globalCats }] = await Promise.all([
+          supabase
+            .from('budget_categories')
+            .select('id, name')
+            .eq('organization_id', context.organizationId)
+            .or('type.eq.expense,type.eq.both'),
+          supabase
+            .from('budget_categories')
+            .select('id, name')
+            .is('organization_id', null)
+            .or('type.eq.expense,type.eq.both')
+        ]);
+        
+        const allCats = [...(orgCats || []), ...(globalCats || [])];
+        const byNorm = new Map();
+        for (const c of allCats) {
+          byNorm.set(normalize(c.name), c);
+        }
+        
+        const catNorm = normalize(category);
+        const found = byNorm.get(catNorm);
+        
+        if (found) {
+          categoryId = found.id;
+          categoryName = found.name;
+        } else {
+          // Tentar match parcial
+          const match = allCats.find(c => {
+            const n = normalize(c.name);
+            return n.includes(catNorm) || catNorm.includes(n);
+          });
+          
+          if (match) {
+            categoryId = match.id;
+            categoryName = match.name;
+          }
+        }
+      }
+      
+      // Inferir categoria se não informada
+      if (!categoryId && description) {
+        const descNorm = this.normalizeText(description);
+        const categoryHints = [
+          { keys: ['aluguel', 'condominio', 'condomínio', 'iptu', 'taxa'], target: 'Casa' },
+          { keys: ['luz', 'energia', 'eletrica', 'elétrica', 'internet', 'telefone', 'celular', 'agua', 'água', 'agua e esgoto'], target: 'Serviços' },
+          { keys: ['supermercado', 'mercado', 'padaria', 'açougue', 'feira'], target: 'Alimentação' },
+          { keys: ['gasolina', 'combustivel', 'combustível', 'uber', 'taxi', 'transporte'], target: 'Transporte' },
+          { keys: ['farmacia', 'farmácia', 'remedio', 'remédio', 'medicamento'], target: 'Saúde' },
+          { keys: ['academia', 'cinema', 'bar', 'restaurante', 'shopping'], target: 'Lazer' }
+        ];
+        
+        for (const hint of categoryHints) {
+          if (hint.keys.some(k => descNorm.includes(k))) {
+            // Buscar categoria correspondente
+            const normalize = (s) => (s || '')
+              .toString()
+              .trim()
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/\p{Diacritic}+/gu, '');
+            
+            const [{ data: orgCats }, { data: globalCats }] = await Promise.all([
+              supabase
+                .from('budget_categories')
+                .select('id, name')
+                .eq('organization_id', context.organizationId)
+                .or('type.eq.expense,type.eq.both'),
+              supabase
+                .from('budget_categories')
+                .select('id, name')
+                .is('organization_id', null)
+                .or('type.eq.expense,type.eq.both')
+            ]);
+            
+            const allCats = [...(orgCats || []), ...(globalCats || [])];
+            const byNorm = new Map();
+            for (const c of allCats) {
+              byNorm.set(normalize(c.name), c);
+            }
+            
+            const found = byNorm.get(normalize(hint.target));
+            if (found) {
+              categoryId = found.id;
+              categoryName = found.name;
+            }
+            break;
+          }
+        }
+      }
+      
+      // Normalizar método de pagamento
+      let finalPaymentMethod = null;
+      let cardId = null;
+      
+      if (payment_method) {
+        const pmNorm = this.normalizeText(payment_method);
+        if (pmNorm.includes('credito') || pmNorm.includes('crédito') || pmNorm.includes('cartao') || pmNorm.includes('cartão')) {
+          finalPaymentMethod = 'credit_card';
+          
+          // Se for crédito, buscar card_id
+          if (card_name) {
+            const { data: cards } = await supabase
+              .from('cards')
+              .select('id, name')
+              .eq('organization_id', context.organizationId)
+              .eq('is_active', true);
+            
+            if (cards && cards.length) {
+              const cardNorm = this.normalizeText(card_name);
+              const byNorm = new Map();
+              for (const c of cards) byNorm.set(this.normalizeText(c.name), c);
+              
+              const found = byNorm.get(cardNorm);
+              if (found) {
+                cardId = found.id;
+              } else {
+                // Tentar match parcial
+                const match = cards.find(c => {
+                  const n = this.normalizeText(c.name);
+                  return n.includes(cardNorm) || cardNorm.includes(n);
+                });
+                
+                if (match) {
+                  cardId = match.id;
+                } else {
+                  // Listar cartões disponíveis
+                  const cardsList = cards.map(c => c.name).join(', ');
+                  const firstName = this.getFirstName(context);
+                  const namePart = firstName ? ` ${firstName}` : '';
+                  
+                  return {
+                    success: false,
+                    message: `Não encontrei esse cartão${namePart}. Disponíveis: ${cardsList}. Qual cartão?`
+                  };
+                }
+              }
+            } else {
+              return {
+                success: false,
+                message: 'Não encontrei cartões cadastrados. Cadastre um cartão primeiro.'
+              };
+            }
+          }
+        } else if (pmNorm.includes('debito') || pmNorm.includes('débito')) {
+          finalPaymentMethod = 'debit_card';
+        } else if (pmNorm.includes('pix')) {
+          finalPaymentMethod = 'pix';
+        } else if (pmNorm.includes('boleto')) {
+          finalPaymentMethod = 'boleto';
+        } else if (pmNorm.includes('transfer') || pmNorm.includes('ted') || pmNorm.includes('doc')) {
+          finalPaymentMethod = 'bank_transfer';
+        } else if (pmNorm.includes('dinheir') || pmNorm.includes('cash') || pmNorm.includes('especie')) {
+          finalPaymentMethod = 'cash';
+        } else {
+          finalPaymentMethod = 'other';
+        }
+      }
+      
+      // Preparar dados da conta a pagar
+      const billData = {
+        description: description.trim(),
+        amount: parseFloat(amount),
+        due_date: parsedDueDate,
+        category_id: categoryId,
+        cost_center_id: costCenterId,
+        is_shared: isShared,
+        payment_method: finalPaymentMethod,
+        card_id: cardId,
+        is_recurring: is_recurring || false,
+        recurrence_frequency: (is_recurring && recurrence_frequency) ? recurrence_frequency : null,
+        organization_id: context.organizationId,
+        user_id: context.userId,
+        status: 'pending'
+      };
+      
+      console.log('💾 [BILL] Dados preparados:', billData);
+      
+      // Salvar conta a pagar
+      const { data, error } = await supabase
+        .from('bills')
+        .insert(billData)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('❌ Erro ao salvar conta a pagar:', error);
+        throw error;
+      }
+      
+      console.log('✅ Conta a pagar salva:', data.id);
+      
+      // Formatar resposta
+      const amountFormatted = Number(amount).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dueDateOnly = new Date(dueDateObj);
+      dueDateOnly.setHours(0, 0, 0, 0);
+      
+      const daysUntil = Math.ceil((dueDateOnly - today) / (1000 * 60 * 60 * 24));
+      let dateDisplay = dueDateObj.toLocaleDateString('pt-BR');
+      
+      if (daysUntil === 0) {
+        dateDisplay = 'Vence hoje';
+      } else if (daysUntil === 1) {
+        dateDisplay = 'Vence amanhã';
+      } else if (daysUntil < 0) {
+        dateDisplay = `Venceu há ${Math.abs(daysUntil)} ${Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}`;
+      } else {
+        dateDisplay = `Vence em ${daysUntil} ${daysUntil === 1 ? 'dia' : 'dias'}`;
+      }
+      
+      const greetings = [
+        'Conta registrada! ✅',
+        'Conta anotada! ✅',
+        'Pronto! ✅',
+        'Beleza, anotei! ✅',
+        'Anotado! ✅'
+      ];
+      
+      const greeting = this.pickVariation(greetings, description);
+      
+      const confirmationParts = [];
+      confirmationParts.push(`R$ ${amountFormatted} - ${description}`);
+      
+      if (categoryName) {
+        confirmationParts.push(categoryName);
+      }
+      
+      if (finalPaymentMethod) {
+        const paymentLabels = {
+          'credit_card': 'Cartão de Crédito',
+          'debit_card': 'Cartão de Débito',
+          'pix': 'PIX',
+          'boleto': 'Boleto',
+          'bank_transfer': 'Transferência',
+          'cash': 'Dinheiro',
+          'other': 'Outro'
+        };
+        confirmationParts.push(paymentLabels[finalPaymentMethod] || finalPaymentMethod);
+      }
+      
+      confirmationParts.push(owner);
+      confirmationParts.push(dateDisplay);
+      
+      if (is_recurring) {
+        const freqLabels = {
+          'monthly': 'Mensal',
+          'weekly': 'Semanal',
+          'yearly': 'Anual'
+        };
+        confirmationParts.push(`Recorrente: ${freqLabels[recurrence_frequency] || 'Mensal'}`);
+      }
+      
+      const response = `${greeting}\n${confirmationParts.join('\n')}`;
+      
+      return {
+        success: true,
+        message: response,
+        bill_id: data.id
+      };
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar conta a pagar:', error);
+      const firstName = this.getFirstName(context);
+      const namePart = firstName ? ` ${firstName}` : '';
+      
+      const errorMessages = [
+        `Ops${namePart}! Tive um problema ao registrar a conta. 😅`,
         `Eita${namePart}, algo deu errado aqui. 😅`,
         `Poxa${namePart}, tive um erro. 😅`
       ];
