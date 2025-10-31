@@ -2233,12 +2233,52 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         const parsedDateOnly = new Date(parsed);
         parsedDateOnly.setHours(0, 0, 0, 0);
         
-        // Se a data está mais de 2 anos no passado, provavelmente é erro
-        // Recalcular baseado apenas no dia
+        // Se a data está mais de 2 anos no passado, provavelmente é erro do GPT
+        // Extrair apenas o dia e recalcular com ano atual
         const diffDays = (today - parsedDateOnly) / (1000 * 60 * 60 * 24);
         if (diffDays > 730) {
-          console.warn('⚠️ [PARSE_DUE_DATE] Data muito no passado, recalculando...');
-          // Continuar para recalcular baseado no dia
+          console.warn('⚠️ [PARSE_DUE_DATE] Data muito no passado detectada:', dateStr);
+          console.warn('⚠️ [PARSE_DUE_DATE] Extraindo apenas o dia para recalcular...');
+          // Extrair dia e mês da data antiga e recalcular com ano atual
+          const parts = dateStr.split('-');
+          const oldYear = parseInt(parts[0]);
+          const oldMonth = parseInt(parts[1]);
+          const oldDay = parseInt(parts[2]);
+          
+          console.log(`📅 [PARSE_DUE_DATE] Extraído: dia=${oldDay}, mês=${oldMonth}, ano antigo=${oldYear}`);
+          
+          // Recalcular usando apenas dia e mês, mas com ano atual/próximo
+          const today = new Date();
+          const currentDay = today.getDate();
+          const currentMonth = today.getMonth();
+          const currentYear = today.getFullYear();
+          
+          // Usar o mês e dia que o GPT enviou (assumindo que estão corretos)
+          let targetMonth = oldMonth - 1; // JavaScript usa mês 0-11
+          let targetYear = currentYear;
+          
+          // Se o mês/dia já passou neste ano, usar próximo ano
+          // Comparar: se mês < mês atual OU (mês == mês atual E dia < dia atual)
+          const oldMonthIndex = oldMonth - 1; // Converter para índice 0-11
+          if (oldMonthIndex < currentMonth || (oldMonthIndex === currentMonth && oldDay < currentDay)) {
+            // Data já passou neste ano - usar próximo ano
+            targetYear = currentYear + 1;
+            console.log(`📅 [PARSE_DUE_DATE] Mês/dia já passou, usando próximo ano: ${oldDay}/${oldMonth}/${targetYear}`);
+          } else {
+            // Data ainda não passou neste ano
+            console.log(`📅 [PARSE_DUE_DATE] Mês/dia ainda não passou, usando ano atual: ${oldDay}/${oldMonth}/${targetYear}`);
+          }
+          
+          // Garantir que o dia existe no mês
+          const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+          const finalDay = Math.min(oldDay, daysInMonth);
+          
+          const monthStr = String(oldMonth).padStart(2, '0');
+          const dayStr = String(finalDay).padStart(2, '0');
+          
+          const result = `${targetYear}-${monthStr}-${dayStr}`;
+          console.log(`✅ [PARSE_DUE_DATE] Recalculado (corrigido): ${result}`);
+          return result;
         } else {
           console.log('✅ [PARSE_DUE_DATE] Data válida:', dateStr);
           return dateStr;
@@ -2598,6 +2638,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       }
       
       // Preparar dados da conta a pagar
+      // SEMPRE forçar status 'pending' (GPT não deve definir status)
       const billData = {
         description: description.trim(),
         amount: parseFloat(amount),
@@ -2611,8 +2652,10 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         recurrence_frequency: (is_recurring && recurrence_frequency) ? recurrence_frequency : null,
         organization_id: context.organizationId,
         user_id: context.userId,
-        status: 'pending'
+        status: 'pending' // ✅ SEMPRE 'pending' ao criar conta (nunca 'paid')
       };
+      
+      console.log('💾 [BILL] billData antes de salvar:', JSON.stringify(billData, null, 2));
       
       console.log('💾 [BILL] Dados preparados:', billData);
       
