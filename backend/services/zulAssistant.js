@@ -2233,10 +2233,21 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         const parsedDateOnly = new Date(parsed);
         parsedDateOnly.setHours(0, 0, 0, 0);
         
-        // Se a data está mais de 2 anos no passado, provavelmente é erro do GPT
+        // Se a data está no passado (qualquer data passada que não seja hoje/ontem é suspeita para conta a pagar)
+        // OU se está mais de 1 ano no passado, provavelmente é erro do GPT
         // Extrair apenas o dia e recalcular com ano atual
         const diffDays = (today - parsedDateOnly) / (1000 * 60 * 60 * 24);
-        if (diffDays > 730) {
+        
+        // Se a data está muito no passado (> 1 ano) OU se o ano é diferente do ano atual
+        const parsedYear = parsed.getFullYear();
+        const currentYear = today.getFullYear();
+        
+        console.log(`📅 [PARSE_DUE_DATE] Comparação: parsedYear=${parsedYear}, currentYear=${currentYear}, diffDays=${diffDays}`);
+        
+        // Se o ano é menor que o atual, SEMPRE recalcular
+        // Ou se está mais de 365 dias no passado
+        if (parsedYear < currentYear || diffDays > 365) {
+          console.warn(`⚠️ [PARSE_DUE_DATE] Ano incorreto detectado: ${parsedYear} < ${currentYear} ou diffDays=${diffDays} > 365`);
           console.warn('⚠️ [PARSE_DUE_DATE] Data muito no passado detectada:', dateStr);
           console.warn('⚠️ [PARSE_DUE_DATE] Extraindo apenas o dia para recalcular...');
           // Extrair dia e mês da data antiga e recalcular com ano atual
