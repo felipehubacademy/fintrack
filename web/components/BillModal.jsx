@@ -14,6 +14,9 @@ const PAYMENT_METHODS = [
   { value: 'other', label: 'Outro' }
 ];
 
+// Valores aceitos no banco conforme schema
+const VALID_PAYMENT_METHODS = ['credit_card', 'debit_card', 'pix', 'cash', 'other', 'boleto', 'bank_transfer'];
+
 const RECURRENCE_OPTIONS = [
   { value: 'monthly', label: 'Mensal' },
   { value: 'weekly', label: 'Semanal' },
@@ -98,6 +101,24 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
 
     setLoading(true);
     try {
+      // Validar payment_method se fornecido
+      let paymentMethod = formData.payment_method;
+      
+      // Se for string vazia, tratar como null
+      if (paymentMethod === '' || !paymentMethod) {
+        paymentMethod = null;
+      } else if (!VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+        console.warn('⚠️ Payment method inválido:', paymentMethod);
+        paymentMethod = null;
+      }
+      
+      // Se payment_method for credit_card mas não tiver card_id, limpar card_id
+      if (paymentMethod === 'credit_card' && !formData.card_id) {
+        console.warn('⚠️ Cartão de crédito selecionado sem cartão específico');
+      }
+      
+      console.log('🔍 [BILLMODAL] paymentMethod final:', paymentMethod);
+      
       const billData = {
         description: formData.description.trim(),
         amount: parseFloat(formData.amount),
@@ -106,17 +127,47 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         cost_center_id: formData.is_shared ? null : (formData.cost_center_id || null),
         is_shared: formData.is_shared,
         is_recurring: formData.is_recurring,
-        recurrence_frequency: formData.is_recurring ? formData.recurrence_frequency : null,
-        payment_method: formData.payment_method || 'other', // Default para 'other' se não selecionado
-        card_id: formData.card_id || null
+        recurrence_frequency: formData.is_recurring ? formData.recurrence_frequency : null
       };
+      
+      // Adicionar payment_method apenas se tiver valor válido (não incluir se for null)
+      if (paymentMethod && VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+        billData.payment_method = paymentMethod;
+        // Adicionar card_id apenas se for cartão de crédito
+        if (paymentMethod === 'credit_card' && formData.card_id) {
+          billData.card_id = formData.card_id;
+        }
+      } else if (paymentMethod) {
+        // Se paymentMethod foi fornecido mas não está na lista válida, logar erro
+        console.error('❌ [BILLMODAL] Payment method inválido não será incluído:', paymentMethod);
+        console.log('✅ [BILLMODAL] Métodos válidos:', VALID_PAYMENT_METHODS);
+      }
+      
+      console.log('🔍 [BILLMODAL] billData antes de enviar:', billData);
 
       await onSave(billData);
       resetForm();
       onClose();
     } catch (error) {
       console.error('Erro ao salvar conta:', error);
-      setErrors({ submit: 'Erro ao salvar conta. Tente novamente.' });
+      // Exibir mensagem de erro mais detalhada
+      let errorMessage = 'Erro desconhecido ao salvar conta.';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.details) {
+        errorMessage = error.details;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      // Limpar mensagens de erro internas que não devem ser exibidas ao usuário
+      if (errorMessage.includes('showError is not a function')) {
+        errorMessage = 'Erro ao salvar conta. Verifique os dados e tente novamente.';
+      }
+      
+      setErrors({ submit: `Erro ao salvar conta: ${errorMessage}` });
+      // Não fechar o modal em caso de erro para que o usuário possa tentar novamente
     } finally {
       setLoading(false);
     }
@@ -225,15 +276,24 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                     Categoria
                   </label>
                   <select
-                    value={formData.category_id}
-                    onChange={(e) => handleChange('category_id', e.target.value)}
+                    value={formData.category_id || ''}
+                    onChange={(e) => handleChange('category_id', e.target.value || null)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
                     <option value="">Selecione...</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
+                    {categories.length > 0 ? (
+                      categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))
+                    ) : (
+                      <option value="" disabled>Carregando categorias...</option>
+                    )}
                   </select>
+                  {categories.length === 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Nenhuma categoria encontrada. Verifique se há categorias cadastradas.
+                    </p>
+                  )}
                 </div>
 
                 <div>

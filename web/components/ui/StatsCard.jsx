@@ -19,7 +19,7 @@ export default function StatsCard({
         <CardTitle className="text-sm font-medium text-gray-600">
           {title}
         </CardTitle>
-        <div className={`p-2 rounded-lg ${bgColor}`}>
+        <div className={`p-2 rounded-lg ${bgColor === 'bg-gray-50' ? 'bg-gray-100' : bgColor}`}>
           <Icon className={`h-4 w-4 ${color}`} />
         </div>
       </CardHeader>
