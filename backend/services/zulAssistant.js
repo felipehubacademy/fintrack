@@ -1201,7 +1201,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
         const functionResult = await this.handleFunctionCall(functionName, functionArgs, context);
         
         // Se salvou despesa ou entrada, limpar histórico e retornar APENAS mensagem da função
-        if (functionName === 'save_expense' || functionName === 'save_income') {
+        if (functionName === 'save_expense' || functionName === 'save_income' || functionName === 'save_bill') {
           await this.clearConversationHistory(userPhone);
           
           // Retornar APENAS a mensagem da função (ignorar qualquer texto que o GPT escreveu)
@@ -1419,7 +1419,20 @@ Exemplos de INFERÊNCIA AUTOMÁTICA:
 - "salário de 5000 na nubank" → INFERE: amount=5000, description="salário", account_name="nubank" → Pergunta apenas: responsável (ou infere "eu" se contexto indicar)
 - "recebi bonus de 500, coloca na conta nubank" → INFERE: amount=500, description="bonus", account_name="nubank", responsible="eu" → Chama save_income direto (sem perguntar nada)` : ''}
 
-15. **RESUMOS E CONSULTAS**: Quando o usuário perguntar sobre gastos (ex: "quanto gastei?", "resumo de despesas", "quanto já gastei de alimentação esse mês?", "resumo esse mês", "quanto foi em transporte hoje?"), chame as funções apropriadas:
+${process.env.USE_INCOME_FEATURE === 'true' ? '15' : '14'}. **REGISTRAR CONTAS A PAGAR**: Quando o usuário mencionar valores a pagar futuramente (ex: "tenho que pagar aluguel de 1500 no dia 5", "conta de luz vence dia 10", "aluguel de 2000 no dia 1", "internet mensal de 150", "condomínio"), chame a função save_bill. INFIRA automaticamente quando possível:
+   - Valor: sempre extrair da mensagem se mencionado (ex: "1500 reais" → 1500)
+   - Descrição: extrair automaticamente da mensagem (ex: "aluguel", "conta de luz", "internet", "condomínio")
+   - Data de vencimento (OBRIGATÓRIO): calcular a data a partir de "dia X", "X de novembro", "próximo dia 5", etc. Se mencionar apenas o dia (ex: "dia 5"), assumir mês atual se ainda não passou, senão próximo mês
+   - Categoria: será inferida automaticamente da descrição quando possível (aluguel/condomínio → Casa, luz/internet → Serviços)
+   - Responsável: se não informado, será compartilhada. Se mencionar "eu pago", "minha", já INFERE responsável
+   - Método de pagamento e recorrência são opcionais
+
+Exemplos de INFERÊNCIA AUTOMÁTICA:
+- "tenho que pagar aluguel de 1500 no dia 5" → INFERE: amount=1500, description="aluguel", due_date (calcular dia 5), category="Casa" → Chama save_bill
+- "conta de luz vence dia 10, 300 reais" → INFERE: amount=300, description="conta de luz", due_date (calcular dia 10), category="Serviços" → Chama save_bill
+- "aluguel mensal de 2000 no dia 1" → INFERE: amount=2000, description="aluguel", due_date (calcular dia 1), is_recurring=true, recurrence_frequency="monthly" → Chama save_bill
+
+${process.env.USE_INCOME_FEATURE === 'true' ? '16' : '15'}. **RESUMOS E CONSULTAS**: Quando o usuário perguntar sobre gastos (ex: "quanto gastei?", "resumo de despesas", "quanto já gastei de alimentação esse mês?", "resumo esse mês", "quanto foi em transporte hoje?"), chame as funções apropriadas:
    - "quanto gastei?" / "resumo de despesas" / "resumo esse mês" / "quanto já gastei esse mês?" → get_expenses_summary (period: este_mes) - se não mencionar período, assume "este_mes"
    - "quanto gastei de X?" / "quanto já gastei de alimentação esse mês?" / "resumo de alimentação" → get_category_summary (category: X, period: este_mes)
    - "quanto gastei hoje?" → get_expenses_summary (period: hoje)
@@ -1428,7 +1441,7 @@ Exemplos de INFERÊNCIA AUTOMÁTICA:
    - Se mencionar período específico (hoje, semana, mês, mês passado), use o período correto
    - NÃO pergunte nada - INFIRA o período e categoria da mensagem do usuário e chame a função diretamente
 
-16. **CONSULTAR SALDO**: Quando o usuário perguntar sobre saldo (ex: "qual meu saldo?", "quanto tenho na conta?", "saldo da nubank", "quanto tem na conta X?", "meu saldo"), chame get_account_balance:
+${process.env.USE_INCOME_FEATURE === 'true' ? '17' : '16'}. **CONSULTAR SALDO**: Quando o usuário perguntar sobre saldo (ex: "qual meu saldo?", "quanto tenho na conta?", "saldo da nubank", "quanto tem na conta X?", "meu saldo"), chame get_account_balance:
    - "qual meu saldo?" / "quanto tenho?" / "meu saldo" → get_account_balance (sem account_name) - retorna todas as contas
    - "saldo da nubank" / "quanto tem na nubank?" / "saldo nubank" → get_account_balance (account_name: "Nubank")
    - INFIRA o nome da conta quando mencionado e chame a função diretamente
@@ -1439,6 +1452,7 @@ FUNÇÕES DISPONÍVEIS:
 - validate_responsible (opcional - função já valida internamente)
 - save_expense (chame quando tiver: valor, descrição, categoria, pagamento, responsável. Se for crédito: cartão e parcelas também)
 ${process.env.USE_INCOME_FEATURE === 'true' ? '- save_income (chame quando usuário mencionar valores recebidos: comissão, salário, freelance, venda, etc. Precisa: valor, descrição, responsável, conta bancária. Opcional: categoria)' : ''}
+- save_bill (chame quando usuário mencionar valores a pagar futuramente: "tenho que pagar aluguel de 1500 no dia 5", "conta de luz vence dia 10", etc. Precisa: valor, descrição, data de vencimento. Opcional: categoria, responsável, método de pagamento, recorrência)
 - get_expenses_summary (chame quando usuário perguntar sobre gastos totais: "quanto gastei?", "resumo de despesas", etc. Parâmetros: period (hoje, esta_semana, este_mes, mes_anterior), category (opcional))
 - get_category_summary (chame quando usuário perguntar sobre gastos por categoria: "quanto gastei de X?", etc. Parâmetros: category, period)
 - get_account_balance (chame quando usuário perguntar sobre saldo: "qual meu saldo?", "saldo da X", etc. Parâmetros: account_name (opcional))
@@ -1566,6 +1580,54 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
           }
         },
         required: ['period']
+      }
+    });
+
+    // ✅ NOVA FUNÇÃO: Registrar Conta a Pagar
+    functions.push({
+      name: 'save_bill',
+      description: 'Registrar conta a pagar quando o usuário mencionar valores a pagar futuramente (ex: "tenho que pagar aluguel de 1500 no dia 5", "conta de luz vence dia 10", "aluguel de 2000 no dia 1"). Precisa: valor, descrição, data de vencimento. Opcional: categoria, responsável, método de pagamento, recorrência.',
+      parameters: {
+        type: 'object',
+        properties: {
+          amount: {
+            type: 'number',
+            description: 'Valor numérico da conta a pagar'
+          },
+          description: {
+            type: 'string',
+            description: 'Descrição da conta (ex: "aluguel", "conta de luz", "internet", "telefone", "condomínio")'
+          },
+          due_date: {
+            type: 'string',
+            description: 'Data de vencimento no formato YYYY-MM-DD (OBRIGATÓRIO). Se usuário disser "dia 5", "5 de novembro", etc, calcular para o mês atual/próximo conforme o contexto.'
+          },
+          category: {
+            type: 'string',
+            description: 'Categoria da conta (opcional, será inferida automaticamente quando possível). Ex: "Casa", "Serviços", "Transporte"'
+          },
+          responsible: {
+            type: 'string',
+            description: 'Quem é responsável por pagar: nome exato (ex: "Felipe", "Letícia") ou "eu" (será mapeado automaticamente). Se não informado, será compartilhada.'
+          },
+          payment_method: {
+            type: 'string',
+            description: 'Método de pagamento previsto (opcional): "pix", "credit_card", "debit_card", "boleto", "bank_transfer", "cash", "other"'
+          },
+          card_name: {
+            type: 'string',
+            description: 'Nome do cartão (OBRIGATÓRIO se payment_method for credit_card)'
+          },
+          is_recurring: {
+            type: 'boolean',
+            description: 'Se a conta é recorrente (opcional, default: false). Ex: aluguel mensal, internet mensal'
+          },
+          recurrence_frequency: {
+            type: 'string',
+            description: 'Frequência da recorrência se is_recurring for true (opcional): "monthly" (mensal), "weekly" (semanal), "yearly" (anual). Default: "monthly"'
+          }
+        },
+        required: ['amount', 'description', 'due_date']
       }
     });
 
@@ -1783,6 +1845,9 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             } else {
                 output = { success: false, error: 'Feature save_income is disabled' };
             }
+        } else if (functionName === 'save_bill') {
+            // ✅ NOVA FUNÇÃO: Registrar Conta a Pagar
+            output = await this.saveBill(args, context);
         } else if (functionName === 'get_expenses_summary') {
             // ✅ NOVA FUNÇÃO: Resumo de Despesas
             output = await this.getExpensesSummary(args, context);
