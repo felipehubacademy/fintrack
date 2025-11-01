@@ -19,6 +19,16 @@ try {
 export { supabase };
 
 /**
+ * Capitalizar primeira letra da descrição
+ */
+function capitalizeDescription(text) {
+  if (!text || typeof text !== 'string') return '';
+  const t = text.trim();
+  if (t.length === 0) return '';
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+}
+
+/**
  * Salvar despesa no banco (Função chamada pelo ZulAssistant)
  */
 export async function saveExpense(args, userId, orgId) {
@@ -32,7 +42,7 @@ export async function saveExpense(args, userId, orgId) {
       .insert([
         {
           date: new Date().toISOString().split('T')[0], // Usar data atual como placeholder
-          description: args.description,
+          description: capitalizeDescription(args.description),
           amount: args.amount,
           owner: args.responsible,
           source: 'whatsapp',

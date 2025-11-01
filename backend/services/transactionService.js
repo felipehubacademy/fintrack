@@ -36,6 +36,14 @@ class TransactionService {
     }
   }
 
+  // Capitalizar primeira letra da descrição
+  capitalizeDescription(text) {
+    if (!text || typeof text !== 'string') return '';
+    const t = text.trim();
+    if (t.length === 0) return '';
+    return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+  }
+
   /**
    * Salva transação inicial com status pending
    */
@@ -46,7 +54,7 @@ class TransactionService {
         .insert({
           // pluggy_transaction_id removido
           date: transaction.date,
-          description: transaction.description,
+          description: this.capitalizeDescription(transaction.description),
           amount: Math.abs(transaction.amount),
           category: transaction.category,
           source: transaction.source || 'manual',

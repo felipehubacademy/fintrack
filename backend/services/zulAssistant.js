@@ -40,6 +40,14 @@ class ZulAssistant {
       .replace(/\p{Diacritic}+/gu, '');
   }
 
+  // Capitalizar primeira letra da descrição (sempre salvar com primeira letra maiúscula)
+  capitalizeDescription(text) {
+    if (!text || typeof text !== 'string') return '';
+    const t = text.trim();
+    if (t.length === 0) return '';
+    return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+  }
+
   // Extrair núcleo descritivo (remove apenas verbos/artigos/preposições comuns)
   // Permite números na descrição (ex: "2 televisões", "5kg de carne", "TV 50 polegadas")
   // Remove apenas quando claramente é valor monetário no início (ex: "150 mercado" -> "mercado")
@@ -955,7 +963,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
           
           const expenseData = {
             amount: installmentAmount, // Valor da parcela se parcelado, senão valor total
-            description: args.description,
+            description: this.capitalizeDescription(args.description),
             date: new Date().toISOString().split('T')[0],
             category: args.category, // Já validado - não pode ser null
             category_id: categoryId, // Já validado - não pode ser null
@@ -1008,7 +1016,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
               
               futureInstallments.push({
                 amount: installmentAmount,
-                description: args.description,
+                description: this.capitalizeDescription(args.description),
                 date: installmentDate.toISOString().split('T')[0],
                 category: args.category || null,
                 category_id: categoryId,
@@ -1254,7 +1262,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
     // Extrair descrição: usar núcleo descritivo da última mensagem
     const core = this.extractCoreDescription(conversationText);
     if (core) {
-      info.description = core;
+      info.description = this.capitalizeDescription(core);
     }
     
     // Extrair forma de pagamento
@@ -2644,7 +2652,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       // Preparar dados da conta a pagar
       // SEMPRE forçar status 'pending' (GPT não deve definir status)
       const billData = {
-        description: description.trim(),
+        description: this.capitalizeDescription(description),
         amount: parseFloat(amount),
         due_date: parsedDueDate,
         category_id: categoryId,
