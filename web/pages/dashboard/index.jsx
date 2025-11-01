@@ -686,6 +686,15 @@ export default function DashboardHome() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <h2 className="text-lg font-semibold text-gray-900">Painel Principal</h2>
               <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700 hidden sm:block">Mês:</label>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="h-10 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-sm"
+                  />
+                </div>
                 <Button 
                   onClick={handleRefresh}
                   disabled={isRefreshing}
@@ -1144,8 +1153,6 @@ export default function DashboardHome() {
           {/* Expenses Charts */}
           <MonthCharts 
             expenses={expensesForCharts} 
-            selectedMonth={selectedMonth} 
-            onMonthChange={setSelectedMonth} 
             costCenters={costCenters} 
             categories={budgetCategories}
             organization={organization}
@@ -1153,7 +1160,7 @@ export default function DashboardHome() {
           />
 
           {/* Income Charts */}
-          <IncomeCharts incomes={monthIncomes} expenses={expensesForCharts} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} costCenters={costCenters} incomeCategories={incomeCategories} />
+          <IncomeCharts incomes={monthIncomes} expenses={expensesForCharts} costCenters={costCenters} incomeCategories={incomeCategories} />
 
           {/* Monthly Comparison */}
           <MonthlyComparison monthlyData={monthlyData} />

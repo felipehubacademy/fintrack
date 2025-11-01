@@ -763,6 +763,15 @@ export default function TransactionsDashboard() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <h2 className="text-lg font-semibold text-gray-900">Gestão de Transações</h2>
               <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700 hidden sm:block">Mês:</label>
+                  <input
+                    type="month"
+                    value={filter.month}
+                    onChange={(e) => setFilter({ ...filter, month: e.target.value })}
+                    className="h-10 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-sm"
+                  />
+                </div>
                 <Button 
                   className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
                   onClick={() => setShowTransactionModal(true)}
@@ -1170,17 +1179,6 @@ export default function TransactionsDashboard() {
                 <option value="expense">Apenas Despesas</option>
                 <option value="income">Apenas Entradas</option>
               </select>
-            </div>
-
-            <div className="space-y-3 flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700">Mês</label>
-              <input
-                type="month"
-                value={filter.month}
-                onChange={(e) => setFilter({ ...filter, month: e.target.value })}
-                className="w-full h-12 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                style={{ height: '48px', boxSizing: 'border-box' }}
-              />
             </div>
 
             <div className="space-y-3 flex-1 min-w-[200px]">

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildIncomeCategoryColorMap, normalizeKey, resolveColor } from '../lib/colors';
 
-export default function IncomeCharts({ incomes, expenses, selectedMonth, onMonthChange, costCenters = [], incomeCategories = [] }) {
+export default function IncomeCharts({ incomes, expenses, costCenters = [], incomeCategories = [] }) {
   const [hoverCategory, setHoverCategory] = useState(null);
   
   const parseAmount = (raw) => {

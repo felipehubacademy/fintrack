@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildCategoryColorMap, paymentMethodColor, normalizeKey, resolveColor } from '../lib/colors';
 
-export default function MonthCharts({ expenses, selectedMonth, onMonthChange, costCenters = [], categories = [], organization = null, user = null }) {
+export default function MonthCharts({ expenses, costCenters = [], categories = [], organization = null, user = null }) {
   const [hoverCategory, setHoverCategory] = useState(null);
   // Sempre mostrar todos (não há mais filtro de privacidade)
   const viewMode = 'all';
@@ -316,15 +316,6 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
               <h2 className="text-xl font-bold text-gray-900">Análise do Mês</h2>
               <p className="text-sm text-gray-600 mt-1">Insights e tendências das suas transações</p>
             </div>
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-gray-700">Mês:</label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => onMonthChange(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white/50"
-              />
-            </div>
           </div>
         </div>
         <div className="p-12 text-center">
@@ -349,15 +340,6 @@ export default function MonthCharts({ expenses, selectedMonth, onMonthChange, co
             <div>
               <h2 className="text-xl font-bold text-gray-900">Análise do Mês</h2>
               <p className="text-sm text-gray-600 mt-1">Insights e tendências das suas transações</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-gray-700">Mês:</label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => onMonthChange(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white/50"
-              />
             </div>
           </div>
           
