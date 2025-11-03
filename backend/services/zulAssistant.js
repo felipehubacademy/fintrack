@@ -993,6 +993,23 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
             
             console.log('✅ [SAVE] Parcelas criadas com sucesso. Parent ID:', parentExpenseId);
             
+            // Atualizar metadados adicionais (source e whatsapp_message_id) em todas as parcelas
+            const metadataUpdate = {
+              source: 'whatsapp',
+              whatsapp_message_id: rpcParams.p_whatsapp_message_id
+            };
+            
+            const { error: metadataError } = await supabase
+              .from('expenses')
+              .update(metadataUpdate)
+              .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+            
+            if (metadataError) {
+              console.warn('⚠️ [SAVE] Erro ao atualizar metadados das parcelas:', metadataError);
+            } else {
+              console.log('✅ [SAVE] Metadados atualizados (source=whatsapp)');
+            }
+            
             // Atualizar owner para o nome correto se for compartilhado (a função já criou com "Compartilhado")
             if (isShared && ownerForRPC !== owner) {
               const { error: updateError } = await supabase
