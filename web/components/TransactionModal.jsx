@@ -484,8 +484,18 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         if (isCredit) {
           if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
           
-          // Para a RPC, enviar nome da família se for compartilhado (a função detecta isso)
-          const ownerForRPC = willBeShared ? (organization?.name || 'Família') : form.owner_name;
+          // Para a RPC, enviar "Compartilhado" se for compartilhado (a função detecta isso)
+          // Mas salvar o nome da org no owner depois
+          const ownerForRPC = willBeShared ? 'Compartilhado' : form.owner_name;
+          
+          console.log('💾 [TRANSACTION MODAL] Criando parcelas:', {
+            amount: form.amount,
+            installments: form.installments,
+            card_id: form.card_id,
+            ownerForRPC,
+            willBeShared,
+            cost_center_id: costCenter?.id || null
+          });
           
           const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
             p_amount: Number(form.amount),
@@ -495,12 +505,18 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             p_card_id: form.card_id,
             p_category_id: category?.id || null,
             p_cost_center_id: costCenter?.id || null,
-            p_owner: ownerForRPC, // Nome da família para despesa compartilhada
+            p_owner: ownerForRPC, // "Compartilhado" para despesa compartilhada
             p_organization_id: organization.id,
             p_user_id: orgUser.id,
             p_whatsapp_message_id: null
           });
-          if (error) throw error;
+          
+          if (error) {
+            console.error('❌ [TRANSACTION MODAL] Erro ao criar parcelas:', error);
+            throw error;
+          }
+          
+          console.log('✅ [TRANSACTION MODAL] Installments created, parent_expense_id:', parentExpenseId);
           
           // Atualizar o owner para o nome da organização após criar parcelas
           if (willBeShared && ownerForRPC !== form.owner_name) {
@@ -513,11 +529,12 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
               .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
             
             if (updateError) {
-              console.error('⚠️ Erro ao atualizar owner das parcelas:', updateError);
+              console.error('⚠️ [TRANSACTION MODAL] Erro ao atualizar owner das parcelas:', updateError);
+              // Não falhar por causa disso, já que is_shared já está correto
+            } else {
+              console.log('✅ [TRANSACTION MODAL] Owner atualizado para:', form.owner_name);
             }
           }
-          
-          console.log('✅ [TRANSACTION MODAL] Installments created, parent_expense_id:', parentExpenseId);
 
           // Atualizar available_limit do cartão (decrementar o valor total da compra)
           // IMPORTANTE: No crédito, mesmo parcelado, o valor total é descontado imediatamente
@@ -677,7 +694,9 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       success(transactionType === 'income' ? `Entrada ${action} com sucesso!` : `Despesa ${action} com sucesso!`);
       onSuccess?.();
     } catch (e) {
-      showError('Ops! Não consegui salvar. Tenta de novo?');
+      console.error('❌ [TRANSACTION MODAL] Erro ao salvar:', e);
+      const errorMessage = e?.message || e?.error?.message || 'Erro desconhecido';
+      showError(`Erro ao salvar: ${errorMessage}`);
     } finally {
       setSaving(false);
     }

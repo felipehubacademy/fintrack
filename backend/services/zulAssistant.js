@@ -961,98 +961,115 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
             };
           }
           
-          const expenseData = {
-            amount: installmentAmount, // Valor da parcela se parcelado, senão valor total
-            description: this.capitalizeDescription(args.description),
-            date: new Date().toISOString().split('T')[0],
-            category: args.category, // Já validado - não pode ser null
-            category_id: categoryId, // Já validado - não pode ser null
-            owner: owner,
-            cost_center_id: costCenterId,
-            payment_method: paymentMethod,
-            card_id: cardId,
-            organization_id: context.organizationId,
-            user_id: context.userId || userId,
-            status: 'confirmed',
-            is_shared: isShared || false,
-            confirmed_at: new Date().toISOString(),
-            confirmed_by: context.userId || userId,
-            source: 'whatsapp',
-            whatsapp_message_id: `msg_${Date.now()}`,
-            installment_info: installmentInfo,
-            parent_expense_id: null // Será atualizado se houver parcelas futuras
-          };
-          
-          console.log('💾 [SAVE] Salvando despesa com dados:', JSON.stringify(expenseData, null, 2));
-          
-          const { data, error } = await supabase
-            .from('expenses')
-            .insert(expenseData)
-            .select()
-            .single();
-          
-          if (error) {
-            console.error('❌ Erro ao salvar:', error);
-            throw error;
-          }
-          
-          console.log('✅ Despesa salva:', data.id);
-
-          // Se for parcelada (>1), atualizar parent_expense_id e criar parcelas futuras
-          if (paymentMethod === 'credit_card' && installments > 1 && data.id) {
-            // Atualizar parent_expense_id da primeira parcela para referenciar a si mesma
-            await supabase
-              .from('expenses')
-              .update({ parent_expense_id: data.id })
-              .eq('id', data.id);
+          // Se for cartão de crédito parcelado, usar função RPC create_installments
+          if (paymentMethod === 'credit_card' && installments > 1 && cardId) {
+            console.log('💳 [SAVE] Criando parcelas usando RPC create_installments');
             
-            // Criar parcelas futuras (2 até installments)
-            const baseDate = new Date(expenseData.date + 'T00:00:00');
-            const futureInstallments = [];
+            // Garantir que owner seja "Compartilhado" quando compartilhado
+            const ownerForRPC = isShared ? 'Compartilhado' : owner;
             
-            for (let i = 2; i <= installments; i++) {
-              const installmentDate = new Date(baseDate);
-              installmentDate.setMonth(installmentDate.getMonth() + (i - 1));
-              
-              futureInstallments.push({
-                amount: installmentAmount,
-                description: this.capitalizeDescription(args.description),
-                date: installmentDate.toISOString().split('T')[0],
-                category: args.category || null,
-                category_id: categoryId,
-                owner: owner,
-                cost_center_id: costCenterId,
-                payment_method: paymentMethod,
-                card_id: cardId,
-                organization_id: context.organizationId,
-                user_id: context.userId || userId,
-                status: 'pending',
-                is_shared: isShared || false,
-                source: 'whatsapp',
-                whatsapp_message_id: `msg_${Date.now()}_${i}`,
-                installment_info: {
-                  total_installments: installments,
-                  current_installment: i,
-                  installment_amount: installmentAmount,
-                  total_amount: amount
-                },
-                parent_expense_id: data.id
-              });
+            const rpcParams = {
+              p_amount: Number(amount),
+              p_installments: Number(installments),
+              p_description: this.capitalizeDescription(args.description),
+              p_date: new Date().toISOString().split('T')[0],
+              p_card_id: cardId,
+              p_category_id: categoryId,
+              p_cost_center_id: costCenterId, // null quando compartilhado
+              p_owner: ownerForRPC,
+              p_organization_id: context.organizationId,
+              p_user_id: context.userId || userId,
+              p_whatsapp_message_id: `msg_${Date.now()}`
+            };
+            
+            console.log('💾 [SAVE] Chamando RPC create_installments com:', rpcParams);
+            
+            const { data: parentExpenseId, error: rpcError } = await supabase.rpc('create_installments', rpcParams);
+            
+            if (rpcError) {
+              console.error('❌ [SAVE] Erro ao criar parcelas:', rpcError);
+              throw rpcError;
             }
             
-            // Inserir parcelas futuras em batch
-            if (futureInstallments.length > 0) {
-              const { error: installmentsError } = await supabase
+            console.log('✅ [SAVE] Parcelas criadas com sucesso. Parent ID:', parentExpenseId);
+            
+            // Atualizar owner para o nome correto se for compartilhado (a função já criou com "Compartilhado")
+            if (isShared && ownerForRPC !== owner) {
+              const { error: updateError } = await supabase
                 .from('expenses')
-                .insert(futureInstallments);
+                .update({ 
+                  owner: owner,
+                  is_shared: true 
+                })
+                .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
               
-              if (installmentsError) {
-                console.error('❌ Erro ao criar parcelas futuras:', installmentsError);
-                // Não falha o processo, apenas loga o erro
-              } else {
-                console.log(`✅ ${futureInstallments.length} parcelas futuras criadas`);
+              if (updateError) {
+                console.warn('⚠️ [SAVE] Erro ao atualizar owner das parcelas:', updateError);
               }
             }
+            
+            // Atualizar available_limit do cartão (decrementar o valor total da compra)
+            try {
+              const { data: card } = await supabase
+                .from('cards')
+                .select('available_limit, credit_limit')
+                .eq('id', cardId)
+                .single();
+              
+              if (card) {
+                const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
+                const newAvailable = Math.max(0, currentAvailable - Number(amount));
+                
+                await supabase
+                  .from('cards')
+                  .update({ available_limit: newAvailable })
+                  .eq('id', cardId);
+                
+                console.log('✅ [SAVE] Updated card available_limit:', newAvailable);
+              }
+            } catch (cardUpdateError) {
+              console.error('⚠️ [SAVE] Erro ao atualizar limite disponível do cartão:', cardUpdateError);
+            }
+            
+            // Usar parentExpenseId como data.id para continuar o fluxo
+            var data = { id: parentExpenseId };
+          } else {
+            // Despesa simples (não parcelada) ou não é cartão de crédito
+            const expenseData = {
+              amount: amount,
+              description: this.capitalizeDescription(args.description),
+              date: new Date().toISOString().split('T')[0],
+              category: args.category,
+              category_id: categoryId,
+              owner: owner,
+              cost_center_id: costCenterId,
+              payment_method: paymentMethod,
+              card_id: cardId || null,
+              organization_id: context.organizationId,
+              user_id: context.userId || userId,
+              status: 'confirmed',
+              is_shared: isShared || false,
+              confirmed_at: new Date().toISOString(),
+              confirmed_by: context.userId || userId,
+              source: 'whatsapp',
+              whatsapp_message_id: `msg_${Date.now()}`
+            };
+            
+            console.log('💾 [SAVE] Salvando despesa simples com dados:', JSON.stringify(expenseData, null, 2));
+            
+            const { data: expenseDataResult, error } = await supabase
+              .from('expenses')
+              .insert(expenseData)
+              .select()
+              .single();
+            
+            if (error) {
+              console.error('❌ Erro ao salvar:', error);
+              throw error;
+            }
+            
+            console.log('✅ Despesa salva:', expenseDataResult.id);
+            data = expenseDataResult;
           }
 
           const amountFormatted = Number(amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1072,8 +1089,8 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
             paymentDisplay = `${paymentDisplay} • ${cardName} ${installments}x`;
           }
 
-          // Data formatada (pt-BR). Usa a data salva na despesa (yyyy-mm-dd)
-          const savedDate = expenseData.date;
+          // Data formatada (pt-BR). Usa a data atual (hoje)
+          const savedDate = new Date().toISOString().split('T')[0];
           const dateObj = new Date(savedDate + 'T00:00:00');
           const isToday = (() => {
             const today = new Date();

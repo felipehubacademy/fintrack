@@ -815,6 +815,11 @@ Retorne APENAS JSON:`;
               if (cardId) {
                 const card = cards?.find(c => c.id === cardId);
                 
+                // Garantir que costCenter seja passado corretamente (null quando compartilhado)
+                const costCenter = isShared 
+                  ? { id: null, name: 'Compartilhado' }
+                  : { id: costCenterId, name: responsibleName };
+                
                 await this.createInstallments(
                   user,
                   {
@@ -827,7 +832,7 @@ Retorne APENAS JSON:`;
                     parcelas: expenseData.installments,
                     card_id: cardId
                   },
-                  { id: costCenterId, name: responsibleName },
+                  costCenter,
                   category?.id || null
                 );
                 
@@ -2004,69 +2009,97 @@ Retorne APENAS JSON com o campo atualizado:
     try {
       // Verificar se é compartilhado
       const isShared = this.normalizeName(analysis.responsavel) === 'compartilhado';
+      const ownerForRPC = this.getCanonicalName(analysis.responsavel);
       
       console.log('🔍 [INSTALLMENTS] Criando parcelas:', {
         amount: analysis.valor,
         installments: analysis.parcelas,
         cardId: analysis.card_id,
-        costCenterId: isShared ? null : costCenter.id,
+        costCenterId: isShared ? null : (costCenter?.id || null),
         isShared: isShared,
         categoryId: categoryId,
         organizationId: user.organization_id,
-        userId: user.id
+        userId: user.id,
+        responsavel: analysis.responsavel,
+        ownerForRPC: ownerForRPC
       });
 
       // Gerar um whatsapp_message_id único para correlacionar a série
       const whatsappMessageId = `msg_${Date.now()}`;
 
       // Chamar função do banco para criar parcelas
-      const { data, error } = await supabase.rpc('create_installments', {
-        p_amount: analysis.valor,
-        p_installments: analysis.parcelas,
+      const rpcParams = {
+        p_amount: Number(analysis.valor),
+        p_installments: Number(analysis.parcelas),
         p_description: analysis.descricao,
         p_date: this.parseDate(analysis.data).toISOString().split('T')[0],
         p_card_id: analysis.card_id,
         p_category_id: categoryId,
-        p_cost_center_id: isShared ? null : costCenter.id,
-        p_owner: this.getCanonicalName(analysis.responsavel),
+        p_cost_center_id: isShared ? null : (costCenter?.id || null),
+        p_owner: ownerForRPC, // "Compartilhado" para despesa compartilhada
         p_organization_id: user.organization_id,
         p_user_id: user.id,
         p_whatsapp_message_id: whatsappMessageId
-      });
+      };
+      
+      console.log('💾 [INSTALLMENTS] Chamando RPC create_installments com:', rpcParams);
+      
+      const { data, error } = await supabase.rpc('create_installments', rpcParams);
 
       if (error) {
-        console.error('❌ Erro ao criar parcelas:', error);
+        console.error('❌ [INSTALLMENTS] Erro ao criar parcelas:', error);
+        console.error('❌ [INSTALLMENTS] Detalhes do erro:', JSON.stringify(error, null, 2));
         throw error;
       }
 
-      console.log('✅ [INSTALLMENTS] Parcelas criadas com sucesso:', data);
+      console.log('✅ [INSTALLMENTS] Parcelas criadas com sucesso. Parent ID:', data);
 
-      // Confirmar imediatamente todas as parcelas (sem cron) e padronizar metadados
+      // A função SQL já cria todas as parcelas como 'confirmed', então não precisamos atualizar
+      // Mas vamos atualizar apenas os metadados adicionais (category, whatsapp_message_id)
       try {
-        const parentId = data; // função retorna UUID do parent
+        const parentId = data; // função retorna BIGINT (ID) do parent
         if (parentId) {
+          console.log('🔄 [INSTALLMENTS] Atualizando metadados das parcelas. Parent ID:', parentId);
+          
           const nowIso = this.getBrazilDateTime().toISOString();
-          const commonUpdate = {
-            status: 'confirmed',
-            confirmed_at: nowIso,
-            confirmed_by: user.id,
+          const metadataUpdate = {
             source: 'whatsapp',
-            category: analysis.categoria,
             whatsapp_message_id: whatsappMessageId,
           };
-          // Filhas
-          await supabase
+          
+          // Se a categoria foi fornecida, atualizar também
+          if (analysis.categoria) {
+            metadataUpdate.category = analysis.categoria;
+          }
+          
+          // Atualizar parcelas filhas (parent_expense_id = parentId)
+          const { error: childrenError } = await supabase
             .from('expenses')
-            .update(commonUpdate)
-            .eq('parent_expense_id', parentId);
-          // Pai
-          await supabase
+            .update(metadataUpdate)
+            .eq('parent_expense_id', parentId)
+            .neq('id', parentId); // Não atualizar o próprio parent
+          
+          if (childrenError) {
+            console.warn('⚠️ [INSTALLMENTS] Erro ao atualizar parcelas filhas:', childrenError);
+          }
+          
+          // Atualizar parcela pai
+          const { error: parentError } = await supabase
             .from('expenses')
-            .update(commonUpdate)
+            .update(metadataUpdate)
             .eq('id', parentId);
+          
+          if (parentError) {
+            console.warn('⚠️ [INSTALLMENTS] Erro ao atualizar parcela pai:', parentError);
+          } else {
+            console.log('✅ [INSTALLMENTS] Metadados atualizados com sucesso');
+          }
+        } else {
+          console.warn('⚠️ [INSTALLMENTS] Parent ID não retornado pela função RPC');
         }
       } catch (confirmErr) {
-        console.error('❌ Erro ao confirmar parcelas futuras:', confirmErr);
+        console.error('❌ [INSTALLMENTS] Erro ao atualizar metadados das parcelas:', confirmErr);
+        // Não falhar por causa disso, as parcelas já foram criadas
       }
 
     } catch (error) {
