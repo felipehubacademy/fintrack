@@ -114,6 +114,123 @@ class ZulAssistant {
   }
 
   /**
+   * Gerar mensagem contextual baseada na descrição/categoria
+   */
+  generateContextualMessage(description, category, paymentMethod) {
+    if (!description) return null;
+    
+    const descLower = description.toLowerCase();
+    const categoryLower = (category || '').toLowerCase();
+    
+    // Mensagens por palavra-chave na descrição
+    const messages = [];
+    
+    // Suplementos
+    if (descLower.includes('whey') || descLower.includes('creatina') || descLower.includes('proteína') || descLower.includes('proteina') || descLower.includes('multivitaminico') || descLower.includes('multivitamínico') || descLower.includes('bcaa') || descLower.includes('glutamina') || descLower.includes('pre treino') || descLower.includes('pré treino') || categoryLower.includes('suplementos')) {
+      const supplementMessages = [
+        'Agora é só aproveitar o Whey e cuidar da sua saúde 🏋️‍♀️',
+        'Boa escolha! Sua saúde agradece 💪',
+        'Invista em você! Continue cuidando da sua saúde 💪',
+        'Ótimo! Cuide bem da sua saúde 🏋️‍♀️',
+        'Aproveite os resultados! 💪',
+        'Suplementos de qualidade fazem toda a diferença! 💪'
+      ];
+      messages.push(this.pickVariation(supplementMessages, 'suplementos'));
+    }
+    
+    // Saúde (sem suplementos)
+    if (categoryLower.includes('saúde') && !categoryLower.includes('suplementos')) {
+      const healthMessages = [
+        'Cuide bem da sua saúde! 💊',
+        'Sua saúde em primeiro lugar! 💊',
+        'Tudo vai melhorar! 💊',
+        'Melhoras! 💊'
+      ];
+      messages.push(this.pickVariation(healthMessages, 'saude'));
+    }
+    
+    // Academia / Exercício
+    if (descLower.includes('academia') || descLower.includes('treino') || descLower.includes('personal')) {
+      const gymMessages = [
+        'Bora treinar! 💪',
+        'Hora de suar! Você consegue! 💪',
+        'Treino pago, hora de treinar! 💪',
+        'Invista no seu corpo! 💪'
+      ];
+      messages.push(this.pickVariation(gymMessages, 'academia'));
+    }
+    
+    // Alimentação
+    if (descLower.includes('mercado') || descLower.includes('supermercado') || descLower.includes('feira') || categoryLower.includes('alimentação')) {
+      const foodMessages = [
+        'Hora de cozinhar algo gostoso! 🍳',
+        'Boa compra! Comida em casa é tudo! 🍽️',
+        'Compras feitas! Agora é só aproveitar! 🛒',
+        'Comida fresquinha! Bom apetite! 🍽️'
+      ];
+      messages.push(this.pickVariation(foodMessages, 'mercado'));
+    }
+    
+    // Restaurante / Delivery
+    if (descLower.includes('restaurante') || descLower.includes('ifood') || descLower.includes('delivery') || descLower.includes('lanche')) {
+      const restaurantMessages = [
+        'Bom apetite! 🍽️',
+        'Aproveite a refeição! 🍽️',
+        'Hora de comer bem! 🍽️',
+        'Comida boa chegando! 🍽️'
+      ];
+      messages.push(this.pickVariation(restaurantMessages, 'restaurante'));
+    }
+    
+    // Transporte / Gasolina
+    if (descLower.includes('gasolina') || descLower.includes('posto') || descLower.includes('combustível') || descLower.includes('uber') || descLower.includes('taxi') || categoryLower.includes('transporte')) {
+      const transportMessages = [
+        'Boa viagem! 🚗',
+        'Tanque cheio! 🚗',
+        'Bom trajeto! 🚗',
+        'Dirija com cuidado! 🚗'
+      ];
+      messages.push(this.pickVariation(transportMessages, 'transporte'));
+    }
+    
+    // Lazer / Cinema / Show
+    if (descLower.includes('cinema') || descLower.includes('show') || descLower.includes('teatro') || descLower.includes('netflix') || descLower.includes('spotify') || categoryLower.includes('lazer')) {
+      const leisureMessages = [
+        'Aproveite o momento! 🎬',
+        'Bom entretenimento! 🎬',
+        'Hora de relaxar! 🎬',
+        'Curta bastante! 🎬'
+      ];
+      messages.push(this.pickVariation(leisureMessages, 'lazer'));
+    }
+    
+    // Educação / Curso
+    if (descLower.includes('curso') || descLower.includes('faculdade') || descLower.includes('escola') || descLower.includes('livro') || categoryLower.includes('educação')) {
+      const educationMessages = [
+        'Invista no seu futuro! 📚',
+        'Conhecimento é poder! 📚',
+        'Boa escolha! Aprender nunca é demais! 📚',
+        'Invista em você! 📚'
+      ];
+      messages.push(this.pickVariation(educationMessages, 'educacao'));
+    }
+    
+    // Farmácia / Remédios
+    if (descLower.includes('farmácia') || descLower.includes('farmacia') || descLower.includes('remédio') || descLower.includes('remedio') || descLower.includes('médico') || descLower.includes('medico')) {
+      const pharmacyMessages = [
+        'Melhoras! 💊',
+        'Cuide bem da sua saúde! 💊',
+        'Tudo vai melhorar! 💊',
+        'Sua saúde em primeiro lugar! 💊'
+      ];
+      messages.push(this.pickVariation(pharmacyMessages, 'farmacia'));
+    }
+    
+    // Retornar primeira mensagem encontrada (ou null se nenhuma)
+    return messages.length > 0 ? messages[0] : null;
+  }
+
+  /**
    * Obter o Assistant ZUL (usando ID fixo da env var)
    */
   async getOrCreateAssistant() {
@@ -691,8 +808,14 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
 
                 // Sinônimos → categoria canônica (dicionário expandido para cobertura máxima)
                 const synonyms = [
+                  // Suplementos (primeiro tentar "Suplementos", se não existir, fallback para "Saúde")
+                  { 
+                    keywords: ['whey', 'whey protein', 'creatina', 'proteína', 'proteina', 'proteina em po', 'proteína em pó', 'multivitaminico', 'multivitamínico', 'vitamina', 'vitaminas', 'suplemento', 'suplementos', 'suplemento alimentar', 'bcaa', 'glutamina', 'pre treino', 'pré treino', 'termogenico', 'termogênico', 'albumina', 'colageno', 'colágeno', 'omega 3', 'omega3'], 
+                    target: 'Suplementos',
+                    fallback: 'Saúde'
+                  },
                   // Saúde
-                  { keywords: ['farmacia', 'farmacia', 'remedio', 'remedios', 'remedio', 'medicamento', 'medicamentos', 'medico', 'medico', 'dentista', 'hospital', 'clinica', 'clinica', 'exame', 'consulta', 'laboratorio', 'laboratorio', 'optica', 'optica', 'oculos', 'oculos', 'academia', 'smartfit', 'gympass', 'suplemento', 'suplementos', 'fisioterapia', 'fonoaudiologia', 'psicologo', 'psicólogo', 'psiquiatra', 'remedio para', 'comprei remedio', 'fui na farmacia'], target: 'Saúde' },
+                  { keywords: ['farmacia', 'farmacia', 'remedio', 'remedios', 'remedio', 'medicamento', 'medicamentos', 'medico', 'medico', 'dentista', 'hospital', 'clinica', 'clinica', 'exame', 'consulta', 'laboratorio', 'laboratorio', 'optica', 'optica', 'oculos', 'oculos', 'academia', 'smartfit', 'gympass', 'fisioterapia', 'fonoaudiologia', 'psicologo', 'psicólogo', 'psiquiatra', 'remedio para', 'comprei remedio', 'fui na farmacia'], target: 'Saúde' },
                   // Alimentação (expandido MUITO para cobrir todas possibilidades)
                   { keywords: ['mercado', 'supermercado', 'super', 'hiper', 'padaria', 'padarias', 'lanche', 'lanches', 'restaurante', 'pizza', 'ifood', 'ubereats', 'rappi', 'iFood', 'sushi', 'açai', 'acai', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hamburguer', 'hot dog', 'mcdonalds', 'mcdonald', 'burger king', 'subway', 'dominos', 'dominos pizza', 'bobs', 'habibs', 'bebida', 'bebidas', 'refrigerante', 'suco', 'cerveja', 'cervejas', 'agua', 'água', 'coquinha', 'pepsi', 'guarana', 'antartica', 'antarctica', 'vitamina', 'smoothie', 'milk shake', 'milkshake', 'sorvete', 'sorvetes', 'doces', 'doce', 'bombom', 'chocolate', 'chocolates', 'salgado', 'salgados', 'coxinha', 'coxinhas', 'pastel', 'pasteis', 'empada', 'empadas', 'torta', 'tortas', 'bolo', 'bolos', 'pao', 'pão', 'paes', 'pães', 'baguete', 'baguetes', 'croissant', 'massa', 'massas', 'macarrao', 'macarrão', 'arroz', 'feijao', 'feijão', 'carne', 'carnes', 'frango', 'peixe', 'peixes', 'verdura', 'verduras', 'legume', 'legumes', 'fruta', 'frutas', 'acougue', 'açougue', 'peixaria', 'quitanda', 'hortifruti', 'frios', 'laticinios', 'laticínios', 'leite', 'queijo', 'queijos', 'iogurte', 'iogurtes', 'manteiga', 'margarina', 'pao de acucar', 'pao de açúcar', 'atacadao', 'atacadão', 'extra', 'carrefour', 'walmart', 'big', 'copacabana', 'assai', 'atacarejo', 'makro', 'savegnago', 'comper', 'prezunic', 'zona sul', 'st marche', 'emporio sao paulo', 'emporio são paulo', 'pao de acucar', 'pao de açúcar', 'drogasil', 'raia', 'pague menos', 'drograria', 'farmácia', 'drogaria', 'balcao', 'balcão', 'lanchonete', 'chopperia', 'pizzaria', 'churrascaria', 'rodizio', 'rodízio', 'self service', 'buffet', 'fast food', 'cafeteria', 'café', 'cafe', 'confeteira', 'confeitaria', 'doceria', 'sorveteria', 'sorvete', 'taco bell', 'kfc', 'popeyes', 'outback', 'texas', 'applebees', 'chilli', 'olive garden', 'red lobster', 'buffalo wild wings', 'pipoca', 'pipocas'], target: 'Alimentação' },
                   // Transporte
@@ -713,15 +836,15 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                   { keywords: ['petshop', 'pet shop', 'ração', 'racao', 'veterinario', 'veterinario', 'banho tosa', 'banho e tosa', 'pet', 'gato', 'cachorro', 'animal'], target: 'Pets' },
                   // Assinaturas/Streaming (já está em Lazer, mas reforça)
                   { keywords: ['netflix', 'spotify', 'prime', 'disney', 'hbo', 'globoplay', 'youtube premium', 'assinatura', 'streaming', 'disney+'], target: 'Lazer' },
-                  // Fitness (já está em Saúde)
-                  { keywords: ['academia', 'smartfit', 'gympass', 'suplemento', 'suplementos', 'treino', 'personal'], target: 'Saúde' },
+                  // Fitness (treino, academia - não suplementos, que já estão em Suplementos acima)
+                  { keywords: ['academia', 'smartfit', 'gympass', 'treino', 'personal', 'personal trainer'], target: 'Saúde' },
                   // Impostos e taxas (já está em Contas)
                   { keywords: ['iptu', 'ipva', 'ir', 'imposto', 'taxa', 'multas', 'detran', 'dar', 'licenciamento'], target: 'Contas' },
                   // Presentes/Doações
                   { keywords: ['presente', 'presentes', 'doacao', 'doação', 'vaquinha', 'aniversario', 'aniversário'], target: 'Outros' }
                 ];
 
-                // 3a) Tentar sinônimos pelo texto informado
+                // 3a) Tentar sinônimos pelo texto informado (com fallback para categorias que têm fallback)
                 let resolvedName = null;
                 for (const group of synonyms) {
                   if (group.keywords.some(k => inputCategory.includes(k))) {
@@ -730,6 +853,14 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                       resolvedName = byNormalizedName.get(targetNorm).name;
                       categoryId = byNormalizedName.get(targetNorm).id;
                       break;
+                    } else if (group.fallback) {
+                      // Tentar fallback se a categoria principal não existir
+                      const fallbackNorm = normalize(group.fallback);
+                      if (byNormalizedName.has(fallbackNorm)) {
+                        resolvedName = byNormalizedName.get(fallbackNorm).name;
+                        categoryId = byNormalizedName.get(fallbackNorm).id;
+                        break;
+                      }
                     }
                   }
                 }
@@ -1129,8 +1260,16 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
           const firstName = context.userName ? context.userName.split(' ')[0] : '';
           const greeting = greetings[Math.floor(Math.random() * greetings.length)];
           
+          // Gerar frase contextual baseada na categoria/descrição
+          const contextualMessage = this.generateContextualMessage(args.description, args.category, paymentMethod);
+          
           // Criar mensagem mais natural e legível (com quebras de linha)
-          const confirmationMsg = `${greeting}\nR$ ${amountFormatted} - ${args.description}\n${args.category || 'Sem categoria'}\n${paymentDisplay}\n${owner}\n${dateDisplay}`;
+          let confirmationMsg = `${greeting}\nR$ ${amountFormatted} - ${args.description}\n${args.category || 'Sem categoria'}\n${paymentDisplay}\n${owner}\n${dateDisplay}`;
+          
+          // Adicionar mensagem contextual se houver
+          if (contextualMessage) {
+            confirmationMsg += `\n\n${contextualMessage}`;
+          }
 
           return {
             success: true,
@@ -1438,8 +1577,9 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
 4.  **SEM EMOJIS NAS PERGUNTAS**: NUNCA use emojis nas perguntas. Emojis apenas na confirmação final (que vem automaticamente da função save_expense).
 5.  **MANUTENÇÃO DE CONTEXTO**: NUNCA repita perguntas já respondidas ou informações já fornecidas. Se o usuário já mencionou algo na mensagem inicial, NÃO pergunte novamente.
 6.  **INFERÊNCIA DE CATEGORIA**: INFIRA automaticamente quando tiver CERTEZA:
+   - **Suplementos** (preferencial, se existir na organização. Se não existir, usar "Saúde"): whey, whey protein, creatina, proteína, proteína em pó, multivitamínico, vitamina, suplemento, suplemento alimentar, bcaa, glutamina, pré treino, termogênico, albumina, colágeno, omega 3
    - Alimentação: padaria, restaurante, lanche, pizza, ifood, delivery, comida, bebida, cerveja, suco, açougue, peixaria, frutas, verduras, pipoca
-   - Saúde: remédio, farmácia, médico, dentista, hospital, consulta, exame, laboratório, óculos, academia, suplemento
+   - Saúde: remédio, farmácia, médico, dentista, hospital, consulta, exame, laboratório, óculos, academia, fisioterapia, psicólogo, psiquiatra
    - Transporte: posto, gasolina, combustível, uber, taxi, ônibus, metro, estacionamento, ipva, oficina, manutenção
    - Casa: mercado/supermercado (compras), eletrodomésticos, eletrônicos (tv, notebook, computador, tablet), móveis, decoração, limpeza
    - Contas: aluguel, condomínio, água, luz, energia, internet, telefone, iptu, imposto
