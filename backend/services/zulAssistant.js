@@ -116,7 +116,74 @@ class ZulAssistant {
   /**
    * Gerar mensagem contextual baseada na descrição/categoria
    */
-  generateContextualMessage(description, category, paymentMethod) {
+  /**
+   * Gerar mensagem contextual usando GPT (método principal)
+   */
+  async generateContextualMessage(description, category, paymentMethod) {
+    if (!description) return null;
+    
+    try {
+      // Usar GPT para gerar mensagem contextual única e natural
+      const prompt = `Você é o Zul, assistente financeiro do MeuAzulão. 
+
+Gere uma mensagem curta, motivacional e contextual (máximo 60 caracteres) para uma despesa registrada:
+- Descrição: "${description}"
+- Categoria: "${category || 'Não especificada'}"
+- Forma de pagamento: "${paymentMethod || 'Não especificada'}"
+
+REGRAS:
+- Seja natural, brasileiro e descontraído
+- Use emoji relevante (1 apenas)
+- Máximo 60 caracteres
+- Seja motivacional e positivo
+- Contextualize baseado na descrição/categoria específica
+- Varie completamente - não use frases repetitivas
+- Seja criativo e personalizado para o contexto
+
+Exemplos (NÃO copie, seja criativo):
+- "abastecimento" → "Tudo certo, agora é só dirigir por aí! 🚗"
+- "mercado" → "Compras feitas! Agora é só aproveitar! 🛒"
+- "whey" → "Agora é só aproveitar o Whey e cuidar da saúde 🏋️‍♀️"
+- "aluguel" → "Contas em dia! 💳"
+- "cinema" → "Aproveite o filme! 🎬"
+
+Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é o Zul, assistente financeiro brasileiro. Gere mensagens curtas, motivacionais e contextuais.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.9, // Mais criativo e variado
+        max_tokens: 80
+      });
+      
+      const generatedMessage = completion.choices[0].message.content.trim();
+      
+      // Remover aspas se houver
+      const cleanMessage = generatedMessage.replace(/^["']|["']$/g, '');
+      
+      console.log('✨ [GPT] Mensagem contextual gerada:', cleanMessage);
+      return cleanMessage;
+      
+    } catch (error) {
+      console.error('❌ [GPT] Erro ao gerar mensagem contextual:', error);
+      // Fallback para mensagem simples se GPT falhar
+      return null;
+    }
+  }
+  
+  /**
+   * Gerar mensagem contextual usando fallback (método antigo - mantido como backup)
+   */
+  generateContextualMessageFallback(description, category, paymentMethod) {
     if (!description) return null;
     
     const descLower = description.toLowerCase();
@@ -227,6 +294,85 @@ class ZulAssistant {
         'Sua saúde em primeiro lugar! 💊'
       ];
       messages.push(this.pickVariation(pharmacyMessages, 'farmacia'));
+    }
+    
+    // Casa / Eletrodomésticos / Decoração
+    if (descLower.includes('casa') || descLower.includes('eletrodoméstico') || descLower.includes('eletrodomestico') || descLower.includes('geladeira') || descLower.includes('tv') || descLower.includes('televisao') || descLower.includes('notebook') || descLower.includes('computador') || descLower.includes('decoração') || descLower.includes('decoracao') || descLower.includes('móvel') || descLower.includes('movel') || categoryLower.includes('casa')) {
+      const homeMessages = [
+        'Casa ficando cada vez mais confortável! 🏠',
+        'Boa aquisição para o lar! 🏠',
+        'Sua casa agradece! 🏠',
+        'Aproveite bem! 🏠',
+        'Casa ficando completa! 🏠'
+      ];
+      messages.push(this.pickVariation(homeMessages, 'casa'));
+    }
+    
+    // Contas / Contas Fixas
+    if (descLower.includes('aluguel') || descLower.includes('condomínio') || descLower.includes('condominio') || descLower.includes('água') || descLower.includes('agua') || descLower.includes('luz') || descLower.includes('energia') || descLower.includes('internet') || descLower.includes('telefone') || descLower.includes('iptu') || descLower.includes('imposto') || categoryLower.includes('contas')) {
+      const billsMessages = [
+        'Contas em dia! 💳',
+        'Tudo organizado! 💳',
+        'Contas pagas, vida tranquila! 💳',
+        'Mantendo tudo em ordem! 💳'
+      ];
+      messages.push(this.pickVariation(billsMessages, 'contas'));
+    }
+    
+    // Beleza / Cabelo / Estética
+    if (descLower.includes('cabelo') || descLower.includes('barbearia') || descLower.includes('manicure') || descLower.includes('pedicure') || descLower.includes('estética') || descLower.includes('estetica') || descLower.includes('cosmético') || descLower.includes('cosmetico') || descLower.includes('salão') || descLower.includes('salao') || descLower.includes('maquiagem') || categoryLower.includes('beleza')) {
+      const beautyMessages = [
+        'Cuidando de si mesmo! 💅',
+        'Você merece! 💅',
+        'Auto cuidado é tudo! 💅',
+        'Ficando ainda melhor! 💅'
+      ];
+      messages.push(this.pickVariation(beautyMessages, 'beleza'));
+    }
+    
+    // Vestuário / Roupas
+    if (descLower.includes('roupa') || descLower.includes('sapato') || descLower.includes('tênis') || descLower.includes('tenis') || descLower.includes('camisa') || descLower.includes('calça') || descLower.includes('calca') || descLower.includes('vestido') || categoryLower.includes('vestuário') || categoryLower.includes('vestuario')) {
+      const clothingMessages = [
+        'Estilo em dia! 👕',
+        'Ficando bem arrumado! 👕',
+        'Roupas novas, autoestima renovada! 👕',
+        'Boa escolha! 👕'
+      ];
+      messages.push(this.pickVariation(clothingMessages, 'vestuario'));
+    }
+    
+    // Pets / Animais
+    if (descLower.includes('petshop') || descLower.includes('pet shop') || descLower.includes('ração') || descLower.includes('racao') || descLower.includes('veterinário') || descLower.includes('veterinario') || descLower.includes('gato') || descLower.includes('cachorro') || descLower.includes('pet') || categoryLower.includes('pets')) {
+      const petMessages = [
+        'Seu pet agradece! 🐾',
+        'Cuidando bem do seu amigo! 🐾',
+        'Pets felizes, vida melhor! 🐾',
+        'Amor pelos animais! 🐾'
+      ];
+      messages.push(this.pickVariation(petMessages, 'pets'));
+    }
+    
+    // Investimentos
+    if (descLower.includes('investimento') || descLower.includes('dividendo') || descLower.includes('juros') || descLower.includes('renda fixa') || descLower.includes('ações') || descLower.includes('acoes') || categoryLower.includes('investimentos') || categoryLower.includes('investimento')) {
+      const investmentMessages = [
+        'Investindo no futuro! 📈',
+        'Construindo patrimônio! 📈',
+        'Boa escolha financeira! 📈',
+        'Investir é sempre bom! 📈',
+        'Crescendo financeiramente! 📈'
+      ];
+      messages.push(this.pickVariation(investmentMessages, 'investimentos'));
+    }
+    
+    // Outros (fallback genérico - só se não encontrou nenhuma mensagem específica)
+    if (messages.length === 0 && categoryLower.includes('outros')) {
+      const otherMessages = [
+        'Tudo anotado! ✅',
+        'Registrado com sucesso! ✅',
+        'Tudo certo! ✅',
+        'Anotado! ✅'
+      ];
+      messages.push(this.pickVariation(otherMessages, 'outros'));
     }
     
     // Retornar primeira mensagem encontrada (ou null se nenhuma)
@@ -1263,8 +1409,14 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
           const firstName = context.userName ? context.userName.split(' ')[0] : '';
           const greeting = greetings[Math.floor(Math.random() * greetings.length)];
           
-          // Gerar frase contextual baseada na categoria/descrição
-          const contextualMessage = this.generateContextualMessage(args.description, args.category, paymentMethod);
+          // Gerar frase contextual baseada na categoria/descrição usando GPT
+          let contextualMessage = null;
+          try {
+            contextualMessage = await this.generateContextualMessage(args.description, args.category, paymentMethod);
+          } catch (error) {
+            console.error('❌ Erro ao gerar mensagem contextual com GPT:', error);
+            // Fallback silencioso - simplesmente não adiciona mensagem contextual
+          }
           
           // Criar mensagem mais natural e legível (com quebras de linha)
           let confirmationMsg = `${greeting}\nR$ ${amountFormatted} - ${args.description}\n${args.category || 'Sem categoria'}\n${paymentDisplay}\n${owner}\n${dateDisplay}`;
