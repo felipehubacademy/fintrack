@@ -11,6 +11,56 @@ import { supabase } from '../lib/supabaseClient';
 import Image from 'next/image';
 import Avatar from './Avatar';
 
+// Função para formatar mensagens do Zul com markdown básico
+const formatZulMessage = (message, isUser = false) => {
+  if (!message) return '';
+  
+  let formatted = message;
+  
+  // Escapar HTML existente para segurança
+  formatted = formatted
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  
+  // Títulos (### Título -> <h3>Título</h3>)
+  formatted = formatted.replace(/^### (.+)$/gm, '<h3 class="font-semibold text-base mt-3 mb-2 first:mt-0">$1</h3>');
+  formatted = formatted.replace(/^## (.+)$/gm, '<h2 class="font-bold text-lg mt-4 mb-2 first:mt-0">$1</h2>');
+  formatted = formatted.replace(/^# (.+)$/gm, '<h1 class="font-bold text-xl mt-4 mb-2 first:mt-0">$1</h1>');
+  
+  // Negrito (**texto** -> <strong>texto</strong>)
+  formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
+  
+  // Itálico (*texto* -> <em>texto</em>)
+  formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  // Listas numeradas (1. item -> <ol><li>item</li></ol>)
+  formatted = formatted.replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 mb-1">$2</li>');
+  formatted = formatted.replace(/(<li.*<\/li>)/s, '<ol class="list-decimal list-inside space-y-1 my-2">$1</ol>');
+  
+  // Listas com bullets (- item ou • item -> <ul><li>item</li></ul>)
+  formatted = formatted.replace(/^[-•]\s+(.+)$/gm, '<li class="ml-4 mb-1">$1</li>');
+  formatted = formatted.replace(/(<li class="ml-4 mb-1">.*?<\/li>(?:\s*<li class="ml-4 mb-1">.*?<\/li>)*)/gs, (match) => {
+    if (!match.includes('</ol>')) {
+      return `<ul class="list-disc list-inside space-y-1 my-2">${match}</ul>`;
+    }
+    return match;
+  });
+  
+  // Parágrafos (quebras de linha duplas)
+  formatted = formatted.replace(/\n\n/g, '</p><p class="mb-2">');
+  formatted = '<p class="mb-2">' + formatted + '</p>';
+  
+  // Limpar parágrafos vazios
+  formatted = formatted.replace(/<p class="mb-2"><\/p>/g, '');
+  formatted = formatted.replace(/<p class="mb-2">\s*<\/p>/g, '');
+  
+  // Quebras de linha simples
+  formatted = formatted.replace(/\n/g, '<br />');
+  
+  return formatted;
+};
+
 export default function ZulFloatingButton() {
   const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
