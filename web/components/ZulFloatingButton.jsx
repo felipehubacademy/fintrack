@@ -1110,15 +1110,8 @@ export default function ZulFloatingButton() {
     setInputMessage('');
     setIsLoading(true);
 
-    // Criar mensagem vazia do Zul que será atualizada em tempo real
+    // ID da mensagem do Zul que será criada quando o primeiro chunk chegar
     const zulMessageId = Date.now() + 1;
-    const initialZulMessage = {
-      id: zulMessageId,
-      type: 'zul',
-      message: '',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, initialZulMessage]);
 
     try {
       // Coletar contexto financeiro completo
@@ -1198,18 +1191,27 @@ export default function ZulFloatingButton() {
               }
               
               if (data.content) {
-                // Se ainda não recebeu conteúdo, remover loading assim que receber o primeiro chunk
+                // Se ainda não recebeu conteúdo, criar mensagem do Zul e remover loading
                 if (!hasReceivedContent) {
                   hasReceivedContent = true;
                   setIsLoading(false);
+                  
+                  // Criar mensagem do Zul com o primeiro chunk
+                  const zulMessage = {
+                    id: zulMessageId,
+                    type: 'zul',
+                    message: data.content,
+                    timestamp: new Date()
+                  };
+                  setMessages(prev => [...prev, zulMessage]);
+                } else {
+                  // Atualizar mensagem do Zul em tempo real com chunks subsequentes
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === zulMessageId 
+                      ? { ...msg, message: msg.message + data.content }
+                      : msg
+                  ));
                 }
-                
-                // Atualizar mensagem do Zul em tempo real
-                setMessages(prev => prev.map(msg => 
-                  msg.id === zulMessageId 
-                    ? { ...msg, message: msg.message + data.content }
-                    : msg
-                ));
               }
             } catch (parseError) {
               console.error('Erro ao parsear SSE:', parseError);
