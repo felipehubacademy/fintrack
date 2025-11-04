@@ -182,13 +182,16 @@ class ZulAssistant {
       messages.push(this.pickVariation(restaurantMessages, 'restaurante'));
     }
     
-    // Transporte / Gasolina
-    if (descLower.includes('gasolina') || descLower.includes('posto') || descLower.includes('combustível') || descLower.includes('uber') || descLower.includes('taxi') || categoryLower.includes('transporte')) {
+    // Transporte / Gasolina / Abastecimento
+    if (descLower.includes('gasolina') || descLower.includes('posto') || descLower.includes('combustível') || descLower.includes('combustivel') || descLower.includes('abastecimento') || descLower.includes('abasteci') || descLower.includes('abastecer') || descLower.includes('uber') || descLower.includes('taxi') || categoryLower.includes('transporte')) {
       const transportMessages = [
+        'Tudo certo, agora é só dirigir por aí! 🚗',
         'Boa viagem! 🚗',
-        'Tanque cheio! 🚗',
+        'Dirigir com segurança! 🚗',
+        'Aproveite a estrada! 🚗',
         'Bom trajeto! 🚗',
-        'Dirija com cuidado! 🚗'
+        'Tudo certo! Agora é só aproveitar a estrada! 🚗',
+        'Boa! Dirigir com cuidado! 🚗'
       ];
       messages.push(this.pickVariation(transportMessages, 'transporte'));
     }
@@ -819,7 +822,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                   // Alimentação (expandido MUITO para cobrir todas possibilidades)
                   { keywords: ['mercado', 'supermercado', 'super', 'hiper', 'padaria', 'padarias', 'lanche', 'lanches', 'restaurante', 'pizza', 'ifood', 'ubereats', 'rappi', 'iFood', 'sushi', 'açai', 'acai', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hamburguer', 'hot dog', 'mcdonalds', 'mcdonald', 'burger king', 'subway', 'dominos', 'dominos pizza', 'bobs', 'habibs', 'bebida', 'bebidas', 'refrigerante', 'suco', 'cerveja', 'cervejas', 'agua', 'água', 'coquinha', 'pepsi', 'guarana', 'antartica', 'antarctica', 'vitamina', 'smoothie', 'milk shake', 'milkshake', 'sorvete', 'sorvetes', 'doces', 'doce', 'bombom', 'chocolate', 'chocolates', 'salgado', 'salgados', 'coxinha', 'coxinhas', 'pastel', 'pasteis', 'empada', 'empadas', 'torta', 'tortas', 'bolo', 'bolos', 'pao', 'pão', 'paes', 'pães', 'baguete', 'baguetes', 'croissant', 'massa', 'massas', 'macarrao', 'macarrão', 'arroz', 'feijao', 'feijão', 'carne', 'carnes', 'frango', 'peixe', 'peixes', 'verdura', 'verduras', 'legume', 'legumes', 'fruta', 'frutas', 'acougue', 'açougue', 'peixaria', 'quitanda', 'hortifruti', 'frios', 'laticinios', 'laticínios', 'leite', 'queijo', 'queijos', 'iogurte', 'iogurtes', 'manteiga', 'margarina', 'pao de acucar', 'pao de açúcar', 'atacadao', 'atacadão', 'extra', 'carrefour', 'walmart', 'big', 'copacabana', 'assai', 'atacarejo', 'makro', 'savegnago', 'comper', 'prezunic', 'zona sul', 'st marche', 'emporio sao paulo', 'emporio são paulo', 'pao de acucar', 'pao de açúcar', 'drogasil', 'raia', 'pague menos', 'drograria', 'farmácia', 'drogaria', 'balcao', 'balcão', 'lanchonete', 'chopperia', 'pizzaria', 'churrascaria', 'rodizio', 'rodízio', 'self service', 'buffet', 'fast food', 'cafeteria', 'café', 'cafe', 'confeteira', 'confeitaria', 'doceria', 'sorveteria', 'sorvete', 'taco bell', 'kfc', 'popeyes', 'outback', 'texas', 'applebees', 'chilli', 'olive garden', 'red lobster', 'buffalo wild wings', 'pipoca', 'pipocas'], target: 'Alimentação' },
                   // Transporte
-                  { keywords: ['gasolina', 'combustivel', 'combustivel', 'posto', 'etanol', 'diesel', 'uber', '99', 'taxi', 'taxi', 'onibus', 'onibus', 'metro', 'metro', 'estacionamento', 'ipva', 'rodizio', 'rodizio', 'manutencao', 'manutencao', 'manutencao carro', 'manutencao carro', 'lava rapido', 'lava-rapido', 'oficina', 'seguro carro', 'pedagio', 'pedagio', 'mecanico', 'mecânico', 'guincho', 'reboque', 'combustivel', 'abasteci', 'enchi o tanque'], target: 'Transporte' },
+                  { keywords: ['gasolina', 'combustivel', 'combustivel', 'posto', 'etanol', 'diesel', 'uber', '99', 'taxi', 'taxi', 'onibus', 'onibus', 'metro', 'metro', 'estacionamento', 'ipva', 'rodizio', 'rodizio', 'manutencao', 'manutencao', 'manutencao carro', 'manutencao carro', 'lava rapido', 'lava-rapido', 'oficina', 'seguro carro', 'pedagio', 'pedagio', 'mecanico', 'mecânico', 'guincho', 'reboque', 'combustivel', 'abasteci', 'abastecimento', 'abastecer', 'enchi o tanque', 'enche o tanque', 'abasteceu'], target: 'Transporte' },
                   // Contas (fixas)
                   { keywords: ['aluguel', 'condominio', 'condominio', 'agua', 'agua', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos', 'iptu', 'ipva', 'ir', 'imposto', 'taxa', 'multas', 'detran', 'dar', 'financiamento', 'prestacao', 'prestação', 'cartao', 'cartão', 'fatura'], target: 'Contas' },
                   // Casa
@@ -1580,7 +1583,7 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    - **Suplementos** (preferencial, se existir na organização. Se não existir, usar "Saúde"): whey, whey protein, creatina, proteína, proteína em pó, multivitamínico, vitamina, suplemento, suplemento alimentar, bcaa, glutamina, pré treino, termogênico, albumina, colágeno, omega 3
    - Alimentação: padaria, restaurante, lanche, pizza, ifood, delivery, comida, bebida, cerveja, suco, açougue, peixaria, frutas, verduras, pipoca
    - Saúde: remédio, farmácia, médico, dentista, hospital, consulta, exame, laboratório, óculos, academia, fisioterapia, psicólogo, psiquiatra
-   - Transporte: posto, gasolina, combustível, uber, taxi, ônibus, metro, estacionamento, ipva, oficina, manutenção
+   - Transporte: posto, gasolina, combustível, abastecimento, abasteci, abastecer, uber, taxi, ônibus, metro, estacionamento, ipva, oficina, manutenção
    - Casa: mercado/supermercado (compras), eletrodomésticos, eletrônicos (tv, notebook, computador, tablet), móveis, decoração, limpeza
    - Contas: aluguel, condomínio, água, luz, energia, internet, telefone, iptu, imposto
    - Lazer: cinema, teatro, show, balada, **bar**, parque, viagem, hotel, netflix, spotify, streaming
