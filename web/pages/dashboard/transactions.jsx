@@ -16,6 +16,8 @@ import { TrendingUp, TrendingDown, Bell, Settings, Search, LogOut, Calendar, Use
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
+import Tooltip from '../../components/ui/Tooltip';
 
 export default function TransactionsDashboard() {
   const router = useRouter();
@@ -1365,69 +1367,113 @@ export default function TransactionsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-visible">
-            <div className="overflow-x-auto overflow-y-visible">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('date')}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>Data</span>
-                      {getSortIcon('date')}
+            {/* Helper para renderizar owner com tooltip */}
+            {(() => {
+              const renderOwner = (transaction, isMobile = false) => {
+                const isIncome = transaction.type === 'income';
+                const owner = isIncome 
+                  ? (transaction.is_shared ? (organization?.name || 'Família') : transaction.cost_center?.name)
+                  : (transaction.cost_center?.name || transaction.owner || (transaction.is_shared ? (organization?.name || 'Família') : '-'));
+                
+                const isShared = transaction.is_shared || owner === (organization?.name || 'Família');
+                
+                let splitInfo = null;
+                if (isShared && !isIncome && transaction.expense_splits && transaction.expense_splits.length > 0) {
+                  splitInfo = transaction.expense_splits.map(split => {
+                    const cc = costCenters.find(c => c.id === split.cost_center_id);
+                    return {
+                      name: cc?.name || 'Desconhecido',
+                      percentage: parseFloat(split.percentage).toFixed(0),
+                      color: cc?.color || '#6B7280'
+                    };
+                  });
+                } else if (isShared && isIncome && transaction.income_splits && transaction.income_splits.length > 0) {
+                  splitInfo = transaction.income_splits.map(split => {
+                    const cc = costCenters.find(c => c.id === split.cost_center_id);
+                    return {
+                      name: cc?.name || 'Desconhecido',
+                      percentage: parseFloat(split.percentage).toFixed(0),
+                      color: cc?.color || '#6B7280'
+                    };
+                  });
+                } else if (isShared) {
+                  splitInfo = costCenters
+                    .filter(cc => cc.is_active !== false && cc.user_id)
+                    .map(cc => ({
+                      name: cc.name,
+                      percentage: parseFloat(cc.default_split_percentage || 0).toFixed(0),
+                      color: cc.color
+                    }));
+                }
+                
+                if (isShared && splitInfo && splitInfo.length > 0) {
+                  const tooltipContent = (
+                    <div>
+                      <div className="font-semibold mb-2 text-gray-700 text-xs">Divisão:</div>
+                      <div className="space-y-2">
+                        {splitInfo.map((split, idx) => (
+                          <div key={idx} className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div 
+                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: split.color }}
+                              />
+                              <span className="text-gray-700">{split.name}</span>
+                            </div>
+                            <span className="font-semibold text-gray-900 ml-3">{split.percentage}%</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('category')}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>Categoria</span>
-                      {getSortIcon('category')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('payment_method')}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>Forma</span>
-                      {getSortIcon('payment_method')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('owner')}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>Responsabilidade</span>
-                      {getSortIcon('owner')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                    onClick={() => handleSort('amount')}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>Valor</span>
-                      {getSortIcon('amount')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {sortTransactions(filterTransactions(transactions)).map((transaction) => {
-                  const isIncome = transaction.type === 'income';
+                  );
+                  
                   return (
-                  <tr key={transaction.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <Tooltip content={tooltipContent} position="top" wide>
+                      <span className="text-sm font-medium cursor-help text-gray-600">
+                        {owner || '-'}
+                      </span>
+                    </Tooltip>
+                  );
+                }
+                
+                return <span className="text-sm font-medium text-gray-600">{owner || '-'}</span>;
+              };
+              
+              // Definir colunas
+              const columns = [
+                {
+                  key: 'date',
+                  label: 'Data',
+                  sortable: true,
+                  render: (transaction) => (
+                    <span className="text-sm text-gray-900">
                       {transaction.date ? new Date(transaction.date + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
-                    </td>
-                    <td className={`px-6 py-4 text-sm ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
-                      <div className="max-w-xs truncate" title={transaction.description}>
+                    </span>
+                  )
+                },
+                {
+                  key: 'description',
+                  label: 'Descrição',
+                  sortable: false,
+                  render: (transaction) => {
+                    const isIncome = transaction.type === 'income';
+                    return (
+                      <div className={`text-sm ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
+                        <div className="max-w-xs truncate" title={transaction.description}>
+                          {transaction.description}
+                          {transaction.installment_info && (
+                            <span className="text-gray-500 ml-1">
+                              ({transaction.installment_info.current_installment}/{transaction.installment_info.total_installments})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  },
+                  mobileTextColor: (transaction) => transaction.type === 'income' ? 'text-flight-blue font-semibold' : 'text-gray-900',
+                  mobileRender: (transaction) => {
+                    return (
+                      <div>
                         {transaction.description}
                         {transaction.installment_info && (
                           <span className="text-gray-500 ml-1">
@@ -1435,173 +1481,136 @@ export default function TransactionsDashboard() {
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {isIncome 
-                        ? transaction.category 
-                        : (transaction.category?.name || '-')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {!isIncome && (
-                        <>
-                          {transaction.payment_method === 'cash' && 'Dinheiro'}
-                          {transaction.payment_method === 'debit_card' && (
-                            transaction.card_id ? (() => {
-                              const card = cards.find(c => c.id === transaction.card_id);
-                              return card ? `Débito - ${card.name}` : 'Débito';
-                            })() : 'Débito'
-                          )}
-                          {transaction.payment_method === 'pix' && 'PIX'}
-                          {transaction.payment_method === 'credit_card' && (
-                            transaction.card_id ? (() => {
-                              const card = cards.find(c => c.id === transaction.card_id);
-                              return card ? `Crédito - ${card.name}` : 'Crédito';
-                            })() : 'Crédito'
-                          )}
-                          {transaction.payment_method === 'bank_transfer' && 'Transferência'}
-                          {transaction.payment_method === 'boleto' && 'Boleto'}
-                          {transaction.payment_method === 'other' && 'Outros'}
-                        </>
-                      )}
-                      {isIncome && (
-                        <>
-                          {transaction.payment_method === 'cash' && 'Dinheiro'}
-                          {transaction.payment_method === 'pix' && 'PIX'}
-                          {transaction.payment_method === 'deposit' && 'Depósito'}
-                          {transaction.payment_method === 'bank_transfer' && 'Transferência'}
-                          {transaction.payment_method === 'boleto' && 'Boleto'}
-                          {transaction.payment_method === 'other' && 'Outros'}
-                          {!transaction.payment_method && '-'}
-                        </>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {(() => {
-                        // Determinar owner e se é compartilhado
-                        const owner = isIncome 
-                          ? (transaction.is_shared ? (organization?.name || 'Família') : transaction.cost_center?.name)
-                          : (transaction.cost_center?.name || transaction.owner || (transaction.is_shared ? (organization?.name || 'Família') : '-'));
-                        
-                        // Verificar se é compartilhado: owner é nome da família
-                        const isShared = transaction.is_shared || owner === (organization?.name || 'Família');
-                        
-                        // Calcular splits para tooltip
-                        let splitInfo = null;
-                        if (isShared && !isIncome && transaction.expense_splits && transaction.expense_splits.length > 0) {
-                          splitInfo = transaction.expense_splits.map(split => {
-                            const cc = costCenters.find(c => c.id === split.cost_center_id);
-                            return {
-                              name: cc?.name || 'Desconhecido',
-                              percentage: parseFloat(split.percentage).toFixed(0),
-                              color: cc?.color || '#6B7280'
-                            };
-                          });
-                        } else if (isShared && isIncome && transaction.income_splits && transaction.income_splits.length > 0) {
-                          splitInfo = transaction.income_splits.map(split => {
-                            const cc = costCenters.find(c => c.id === split.cost_center_id);
-                            return {
-                              name: cc?.name || 'Desconhecido',
-                              percentage: parseFloat(split.percentage).toFixed(0),
-                              color: cc?.color || '#6B7280'
-                            };
-                          });
-                        } else if (isShared) {
-                          // Usar fallback dos responsáveis
-                          splitInfo = costCenters
-                            .filter(cc => cc.is_active !== false && cc.user_id)
-                            .map(cc => ({
-                              name: cc.name,
-                              percentage: parseFloat(cc.default_split_percentage || 0).toFixed(0),
-                              color: cc.color
-                            }));
+                    );
+                  }
+                },
+                {
+                  key: 'category',
+                  label: 'Categoria',
+                  sortable: true,
+                  render: (transaction) => {
+                    const isIncome = transaction.type === 'income';
+                    return (
+                      <span className="text-sm text-gray-600">
+                        {isIncome ? transaction.category : (transaction.category?.name || '-')}
+                      </span>
+                    );
+                  }
+                },
+                {
+                  key: 'payment_method',
+                  label: 'Forma',
+                  sortable: true,
+                  render: (transaction) => {
+                    const isIncome = transaction.type === 'income';
+                    if (!isIncome) {
+                      if (transaction.payment_method === 'cash') return 'Dinheiro';
+                      if (transaction.payment_method === 'debit_card') {
+                        if (transaction.card_id) {
+                          const card = cards.find(c => c.id === transaction.card_id);
+                          return card ? `Débito - ${card.name}` : 'Débito';
                         }
-                        
-                        return (
-                          <div className="relative inline-block group">
-                            <span 
-                              className="text-sm font-medium cursor-help text-gray-600"
-                              onMouseEnter={(e) => {
-                                if (isShared && splitInfo) {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  const tooltip = e.currentTarget.nextElementSibling;
-                                  if (tooltip) {
-                                    tooltip.style.left = `${rect.left + rect.width / 2}px`;
-                                    tooltip.style.top = `${rect.bottom + 8}px`;
-                                  }
-                                }
-                              }}
-                            >
-                              {owner || '-'}
-                            </span>
-                            
-                            {/* Tooltip mostrando porcentagens */}
-                            {isShared && splitInfo && splitInfo.length > 0 && (
-                              <div className="fixed -translate-x-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-[9999]">
-                                <div className="bg-white border border-gray-200 text-gray-900 text-xs rounded-lg shadow-xl p-3 min-w-[160px]">
-                                  <div className="font-semibold mb-2 text-gray-700 text-xs">Divisão:</div>
-                                  <div className="space-y-2">
-                                    {splitInfo.map((split, idx) => (
-                                      <div key={idx} className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-2">
-                                          <div 
-                                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                            style={{ backgroundColor: split.color }}
-                                          />
-                                          <span className="text-gray-700">{split.name}</span>
-                                        </div>
-                                        <span className="font-semibold text-gray-900 ml-3">{split.percentage}%</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  {/* Seta do tooltip apontando para CIMA */}
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-px">
-                                    <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent border-b-white"></div>
-                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[1px] w-0 h-0 border-l-[7px] border-r-[7px] border-b-[7px] border-transparent border-b-gray-200"></div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
-                      {!isIncome && '- '}
-                      R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(transaction)}
-                          className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors"
-                          title={`Editar ${isIncome ? 'entrada' : 'despesa'}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(transaction)}
-                          className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
-                          title={`Excluir ${isIncome ? 'entrada' : 'despesa'}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {transactions.length === 0 && (
-            <div className="p-8 text-center">
-              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
-              <p className="text-gray-600">Nenhuma transação encontrada</p>
-            </div>
-          )}
+                        return 'Débito';
+                      }
+                      if (transaction.payment_method === 'pix') return 'PIX';
+                      if (transaction.payment_method === 'credit_card') {
+                        if (transaction.card_id) {
+                          const card = cards.find(c => c.id === transaction.card_id);
+                          return card ? `Crédito - ${card.name}` : 'Crédito';
+                        }
+                        return 'Crédito';
+                      }
+                      if (transaction.payment_method === 'bank_transfer') return 'Transferência';
+                      if (transaction.payment_method === 'boleto') return 'Boleto';
+                      if (transaction.payment_method === 'other') return 'Outros';
+                    } else {
+                      if (transaction.payment_method === 'cash') return 'Dinheiro';
+                      if (transaction.payment_method === 'pix') return 'PIX';
+                      if (transaction.payment_method === 'deposit') return 'Depósito';
+                      if (transaction.payment_method === 'bank_transfer') return 'Transferência';
+                      if (transaction.payment_method === 'boleto') return 'Boleto';
+                      if (transaction.payment_method === 'other') return 'Outros';
+                      if (!transaction.payment_method) return '-';
+                    }
+                    return '-';
+                  }
+                },
+                {
+                  key: 'owner',
+                  label: 'Responsabilidade',
+                  sortable: true,
+                  render: (transaction) => renderOwner(transaction, false),
+                  mobileRender: (transaction) => renderOwner(transaction, true)
+                },
+                {
+                  key: 'amount',
+                  label: 'Valor',
+                  sortable: true,
+                  render: (transaction) => {
+                    const isIncome = transaction.type === 'income';
+                    return (
+                      <span className={`text-sm font-medium ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
+                        {!isIncome && '- '}
+                        R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    );
+                  },
+                  mobileTextColor: (transaction) => transaction.type === 'income' ? 'text-flight-blue font-semibold' : 'text-gray-900',
+                  mobileRender: (transaction) => {
+                    const isIncome = transaction.type === 'income';
+                    return (
+                      <span>
+                        {!isIncome && '- '}
+                        R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    );
+                  }
+                }
+              ];
+              
+              // Renderizar ações
+              const renderActions = (transaction) => {
+                const isIncome = transaction.type === 'income';
+                return (
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleEdit(transaction)}
+                      className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      title={`Editar ${isIncome ? 'entrada' : 'despesa'}`}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(transaction)}
+                      className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      title={`Excluir ${isIncome ? 'entrada' : 'despesa'}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              };
+              
+              const sortedTransactions = sortTransactions(filterTransactions(transactions));
+              
+              return (
+                <ResponsiveTable
+                  columns={columns}
+                  data={sortedTransactions}
+                  renderRowActions={renderActions}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  renderEmptyState={() => (
+                    <div className="p-8 text-center">
+                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                      <p className="text-gray-600">Nenhuma transação encontrada</p>
+                    </div>
+                  )}
+                />
+              );
+            })()}
           </CardContent>
         </Card>
       </main>
