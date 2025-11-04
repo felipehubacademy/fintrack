@@ -7,6 +7,7 @@ import { useZulTips } from '../hooks/useZulTips';
 import { useTour } from '../hooks/useTour';
 import { getTourForRoute, getTourTypeFromRoute } from '../data/tourSteps';
 import { useOrganization } from '../hooks/useOrganization';
+import { supabase } from '../lib/supabaseClient';
 import Image from 'next/image';
 import Avatar from './Avatar';
 
@@ -26,6 +27,8 @@ export default function ZulFloatingButton() {
   const avatarColor = userCostCenter?.color || null;
   const previousPathRef = useRef(null);
   const highlightedElementsRef = useRef([]); // Track all highlighted elements
+  const chatModalRef = useRef(null); // Ref para o container do chat
+  const messagesEndRef = useRef(null); // Ref para scroll automático
   const { 
     isTourActive, 
     startTour, 
@@ -642,6 +645,13 @@ export default function ZulFloatingButton() {
     }
   }, [router.asPath, orgLoading, isTourCompleted, startTour, skipTour]);
 
+  // Scroll automático quando novas mensagens são adicionadas
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
   // Inicializar chat com mensagem de boas-vindas personalizada
   useEffect(() => {
     if (showChatModal && messages.length === 0) {
@@ -669,7 +679,370 @@ export default function ZulFloatingButton() {
     }
   }, [showChatModal, messages.length, user]);
 
+  // Fechar chat ao clicar fora (desktop e mobile)
+  useEffect(() => {
+    if (!showChatModal) return;
 
+    const handleClickOutside = (event) => {
+      // Não fechar se clicou no botão do Zul ou no próprio chat
+      if (
+        chatModalRef.current &&
+        !chatModalRef.current.contains(event.target) &&
+        !event.target.closest('#zul-button')
+      ) {
+        handleCloseChat();
+      }
+    };
+
+    // Adicionar listener com pequeno delay para evitar fechar imediatamente ao abrir
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showChatModal]);
+
+  // Coletar TODOS os dados financeiros da organização para o Zul
+  const getFinancialContext = async () => {
+    if (!organization || !user) return null;
+    
+    try {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const startOfMonth = `${currentMonth}-01`;
+      const [year, month] = currentMonth.split('-');
+      const lastDay = new Date(year, month, 0).getDate();
+      const endOfMonth = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+
+      // Buscar TODAS as despesas do mês (usando sintaxe correta do Supabase)
+      let expenses = [];
+      
+      // Usar query similar ao dashboard (sem relacionamentos complexos)
+      const expensesResult = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          expense_splits (
+            id,
+            cost_center_id,
+            percentage,
+            amount
+          )
+        `)
+        .eq('organization_id', organization.id)
+        .eq('status', 'confirmed')
+        .gte('date', startOfMonth)
+        .lte('date', endOfMonth)
+        .order('date', { ascending: false });
+
+      if (expensesResult.error) {
+        console.error('❌ [ZUL] Erro ao buscar despesas:', expensesResult.error);
+        // Tentar query mais simples
+        const expensesSimpleResult = await supabase
+          .from('expenses')
+          .select('*')
+          .eq('organization_id', organization.id)
+          .eq('status', 'confirmed')
+          .gte('date', startOfMonth)
+          .lte('date', endOfMonth)
+          .order('date', { ascending: false });
+        
+        if (expensesSimpleResult.error) {
+          console.error('❌ [ZUL] Erro ao buscar despesas (query simples):', expensesSimpleResult.error);
+        } else {
+          expenses = expensesSimpleResult.data || [];
+        }
+      } else {
+        expenses = expensesResult.data || [];
+      }
+
+      // Buscar TODAS as entradas do mês (usando sintaxe correta do Supabase)
+      let incomes = [];
+      
+      const incomesResult = await supabase
+        .from('incomes')
+        .select(`
+          *,
+          cost_center:cost_centers(name, color),
+          income_splits(
+            id,
+            cost_center_id,
+            percentage,
+            amount
+          )
+        `)
+        .eq('organization_id', organization.id)
+        .eq('status', 'confirmed')
+        .gte('date', startOfMonth)
+        .lte('date', endOfMonth)
+        .order('date', { ascending: false });
+
+      if (incomesResult.error) {
+        console.error('❌ [ZUL] Erro ao buscar entradas:', incomesResult.error);
+        // Tentar query mais simples
+        const incomesSimpleResult = await supabase
+          .from('incomes')
+          .select('*')
+          .eq('organization_id', organization.id)
+          .eq('status', 'confirmed')
+          .gte('date', startOfMonth)
+          .lte('date', endOfMonth)
+          .order('date', { ascending: false });
+        
+        if (incomesSimpleResult.error) {
+          console.error('❌ [ZUL] Erro ao buscar entradas (query simples):', incomesSimpleResult.error);
+        } else {
+          incomes = incomesSimpleResult.data || [];
+        }
+      } else {
+        incomes = incomesResult.data || [];
+      }
+
+      // Buscar TODOS os cartões
+      const { data: cards } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      // Calcular uso dos cartões
+      const cardsUsage = {};
+      if (cards && expenses) {
+        for (const card of cards) {
+          if (card.type === 'credit') {
+            const cardExpenses = expenses.filter(e => e.card_id === card.id && e.payment_method === 'credit_card');
+            const used = cardExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            cardsUsage[card.id] = {
+              used,
+              limit: card.credit_limit || 0,
+              available: (card.credit_limit || 0) - used
+            };
+          }
+        }
+      }
+
+      // Buscar contas bancárias
+      const { data: bankAccounts } = await supabase
+        .from('bank_accounts')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      // Calcular totais
+      const totalExpenses = expenses?.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0) || 0;
+      const totalIncomes = incomes?.reduce((sum, i) => sum + parseFloat(i.amount || 0), 0) || 0;
+      const balance = totalIncomes - totalExpenses;
+
+      // Despesas por forma de pagamento
+      const creditExpenses = expenses?.filter(e => e.payment_method === 'credit_card')
+        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0) || 0;
+      const cashExpenses = totalExpenses - creditExpenses;
+
+      // Buscar categorias e cost centers separadamente se necessário
+      let categoryMap = {};
+      let costCenterMap = {};
+      
+      // Se expenses não tem categoria expandida, buscar separadamente
+      if (expenses && expenses.length > 0) {
+        const categoryIds = [...new Set(expenses.map(e => e.category_id).filter(Boolean))];
+        if (categoryIds.length > 0) {
+          const { data: categoriesData } = await supabase
+            .from('budget_categories')
+            .select('id, name')
+            .in('id', categoryIds);
+          if (categoriesData) {
+            categoryMap = categoriesData.reduce((acc, cat) => {
+              acc[cat.id] = cat.name;
+              return acc;
+            }, {});
+          }
+        }
+        
+        // Buscar cost centers
+        const costCenterIds = [...new Set(expenses.map(e => e.cost_center_id).filter(Boolean))];
+        if (costCenterIds.length > 0) {
+          const { data: costCentersData } = await supabase
+            .from('cost_centers')
+            .select('id, name')
+            .in('id', costCenterIds);
+          if (costCentersData) {
+            costCenterMap = costCentersData.reduce((acc, cc) => {
+              acc[cc.id] = cc.name;
+              return acc;
+            }, {});
+          }
+        }
+      }
+
+      // Despesas por categoria
+      const categoryTotals = {};
+      expenses?.forEach(e => {
+        const catName = categoryMap[e.category_id] || 'Outros';
+        categoryTotals[catName] = (categoryTotals[catName] || 0) + parseFloat(e.amount || 0);
+      });
+      const topCategories = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, amount]) => ({ name, amount: Number(amount.toFixed(2)) }));
+
+      // Despesas por cost center/responsável
+      const ownerTotals = {};
+      expenses?.forEach(e => {
+        const ownerName = costCenterMap[e.cost_center_id] || 'Compartilhado';
+        ownerTotals[ownerName] = (ownerTotals[ownerName] || 0) + parseFloat(e.amount || 0);
+      });
+      const expensesByOwner = Object.entries(ownerTotals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, amount]) => ({ name, amount: Number(amount.toFixed(2)) }));
+
+      // Buscar dados dos últimos 6 meses para comparação
+      const monthlyData = [];
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const monthStr = date.toISOString().slice(0, 7);
+        const monthStart = `${monthStr}-01`;
+        const [y, m] = monthStr.split('-');
+        const lastDay = new Date(y, m, 0).getDate();
+        const monthEnd = `${y}-${m}-${lastDay.toString().padStart(2, '0')}`;
+
+        const { data: monthExpenses } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('organization_id', organization.id)
+          .eq('status', 'confirmed')
+          .gte('date', monthStart)
+          .lte('date', monthEnd);
+
+        const { data: monthIncomes } = await supabase
+          .from('incomes')
+          .select('amount')
+          .eq('organization_id', organization.id)
+          .eq('status', 'confirmed')
+          .gte('date', monthStart)
+          .lte('date', monthEnd);
+
+        const monthTotalExpenses = monthExpenses?.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0) || 0;
+        const monthTotalIncomes = monthIncomes?.reduce((sum, i) => sum + parseFloat(i.amount || 0), 0) || 0;
+
+        monthlyData.push({
+          month: monthStr,
+          expenses: monthTotalExpenses,
+          incomes: monthTotalIncomes,
+          balance: monthTotalIncomes - monthTotalExpenses
+        });
+      }
+
+      // Buscar orçamentos do mês atual
+      let budgets = [];
+      const budgetsResult = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .eq('month_year', startOfMonth)
+        .order('created_at', { ascending: false });
+
+      if (budgetsResult.error) {
+        console.error('❌ [ZUL] Erro ao buscar orçamentos:', budgetsResult.error);
+      } else {
+        budgets = budgetsResult.data || [];
+        
+        // Buscar nomes das categorias se houver budgets
+        if (budgets.length > 0) {
+          const categoryIds = [...new Set(budgets.map(b => b.category_id).filter(Boolean))];
+          if (categoryIds.length > 0) {
+            const { data: budgetCategories } = await supabase
+              .from('budget_categories')
+              .select('id, name')
+              .in('id', categoryIds);
+            
+            const budgetCategoryMap = (budgetCategories || []).reduce((acc, cat) => {
+              acc[cat.id] = cat.name;
+              return acc;
+            }, {});
+            
+            // Adicionar nome da categoria aos budgets
+            budgets = budgets.map(b => ({
+              ...b,
+              category_name: budgetCategoryMap[b.category_id] || 'Sem categoria'
+            }));
+          }
+        }
+      }
+
+      return {
+        month: currentMonth,
+        summary: {
+          totalIncomes: Number(totalIncomes.toFixed(2)),
+          totalExpenses: Number(totalExpenses.toFixed(2)),
+          balance: Number(balance.toFixed(2)),
+          creditExpenses: Number(creditExpenses.toFixed(2)),
+          cashExpenses: Number(cashExpenses.toFixed(2)),
+          creditPercentage: totalExpenses > 0 ? Number((creditExpenses / totalExpenses * 100).toFixed(1)) : 0,
+          cashPercentage: totalExpenses > 0 ? Number((cashExpenses / totalExpenses * 100).toFixed(1)) : 0
+        },
+        topCategories,
+        expensesByOwner,
+        cards: cards?.map(c => ({
+          id: c.id,
+          name: c.name,
+          type: c.type,
+          limit: c.credit_limit || 0,
+          used: cardsUsage[c.id]?.used || 0,
+          available: cardsUsage[c.id]?.available || 0,
+          usagePercentage: c.credit_limit > 0 ? Number((cardsUsage[c.id]?.used || 0) / c.credit_limit * 100).toFixed(1) : 0
+        })) || [],
+        bankAccounts: bankAccounts?.map(acc => ({
+          name: acc.name,
+          type: acc.type,
+          balance: Number((acc.current_balance || 0).toFixed(2))
+        })) || [],
+        monthlyTrend: monthlyData,
+        organization: {
+          name: organization.name,
+          memberCount: costCenters?.filter(cc => cc.is_active !== false).length || 0,
+          costCenters: costCenters?.filter(cc => cc.is_active !== false).map(cc => ({
+            name: cc.name,
+            color: cc.color
+          })) || []
+        },
+        budgets: budgets?.map(b => ({
+          name: b.category_name || 'Sem categoria',
+          category: b.category_name || 'Geral',
+          amount: Number((b.limit_amount || 0).toFixed(2)),
+          spent: Number((b.current_spent || 0).toFixed(2)) // Usar current_spent do banco se disponível
+        })) || [],
+        // Dados completos para análise detalhada
+        allExpenses: expenses?.map(e => ({
+          id: e.id,
+          description: e.description,
+          amount: Number((e.amount || 0).toFixed(2)),
+          date: e.date,
+          category: categoryMap[e.category_id] || 'Outros',
+          paymentMethod: e.payment_method,
+          owner: costCenterMap[e.cost_center_id] || 'Compartilhado',
+          isShared: e.is_shared || false
+        })) || [],
+        allIncomes: incomes?.map(i => ({
+          id: i.id,
+          description: i.description,
+          amount: Number((i.amount || 0).toFixed(2)),
+          date: i.date,
+          category: 'Outros', // Incomes não tem categoria no select atual
+          owner: i.cost_center?.name || 'Compartilhado',
+          isShared: i.is_shared || false
+        })) || []
+      };
+    } catch (error) {
+      console.error('Error fetching financial context:', error);
+      return null;
+    }
+  };
 
   // Enviar mensagem para o Zul
   const handleSendMessage = async () => {
@@ -687,16 +1060,39 @@ export default function ZulFloatingButton() {
     setIsLoading(true);
 
     try {
+      // Coletar contexto financeiro completo
+      const financialContext = await getFinancialContext();
+      
+      console.log('📊 [ZUL] Contexto financeiro coletado:', financialContext ? 'Sim' : 'Não');
+      if (financialContext) {
+        console.log('📊 [ZUL] Resumo:', financialContext.summary);
+        console.log('📊 [ZUL] Saldo:', financialContext.summary?.balance);
+        console.log('📊 [ZUL] Total de despesas:', financialContext.allExpenses?.length || 0);
+        console.log('📊 [ZUL] Mês:', financialContext.month);
+        console.log('📊 [ZUL] Context keys:', Object.keys(financialContext));
+      }
+      
+      const requestBody = {
+        message: inputMessage.trim(),
+        userId: user?.id || 'web-user',
+        userName: user?.name || 'Usuário Web',
+        organizationId: organization?.id,
+        context: financialContext || {} // TODOS os dados financeiros (ou objeto vazio se não houver)
+      };
+      
+      console.log('📤 [ZUL] Enviando requisição com contexto:', {
+        hasContext: !!requestBody.context,
+        hasSummary: !!requestBody.context?.summary,
+        summaryBalance: requestBody.context?.summary?.balance,
+        month: requestBody.context?.month
+      });
+      
       const response = await fetch('/api/zul-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: inputMessage.trim(),
-          userId: 'web-user',
-          userName: user?.name || 'Usuário Web'
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
@@ -740,7 +1136,7 @@ export default function ZulFloatingButton() {
   return (
     <>
       {/* Botão Flutuante */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50">
         {/* Logo do Zul */}
         <div 
           id="zul-button"
@@ -752,15 +1148,15 @@ export default function ZulFloatingButton() {
             alt="Zul Assistant"
             width={128}
             height={128}
-            className="scale-x-[-1]"
+            className="scale-x-[-1] w-20 h-20 md:w-32 md:h-32"
           />
         </div>
       </div>
 
 
-      {/* Card de dicas/tour - MESMA POSIÇÃO ORIGINAL */}
+      {/* Card de dicas/tour - Responsivo para mobile */}
       {((showTip && currentTip) || isTourActive) && (
-        <div className="fixed bottom-28 right-28 w-72 z-50 pointer-events-auto">
+        <div className="fixed bottom-28 right-4 md:bottom-28 md:right-28 w-[calc(100vw-32px)] md:w-72 max-w-sm z-50 pointer-events-auto">
           <Card className="shadow-lg border border-gray-200 bg-white animate-in slide-in-from-bottom-2 duration-300 relative">
             {/* X no canto superior direito para tour */}
             {isTourActive && (
@@ -843,10 +1239,20 @@ export default function ZulFloatingButton() {
         </div>
       )}
 
-      {/* Modal de Chat */}
+      {/* Modal de Chat - Responsivo para mobile */}
       {showChatModal && (
-        <div className="fixed bottom-28 right-28 w-[28rem] z-50 pointer-events-auto">
-          <div className="bg-blue-50 rounded-xl shadow-xl w-full h-[75vh] flex flex-col border border-blue-200">
+        <>
+          {/* Backdrop 100% transparente para fechar ao clicar fora */}
+          <div 
+            className="fixed inset-0 bg-transparent z-[45]"
+            onClick={handleCloseChat}
+          />
+          
+          <div 
+            ref={chatModalRef}
+            className="fixed bottom-4 right-4 md:bottom-28 md:right-28 w-[calc(100vw-32px)] md:w-[28rem] max-w-md z-50 pointer-events-auto"
+          >
+            <div className="bg-blue-50 rounded-xl shadow-xl w-full h-[calc(100vh-120px)] md:h-[75vh] max-h-[600px] flex flex-col border border-blue-200">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white rounded-t-xl">
               <div className="flex items-center space-x-3">
@@ -873,17 +1279,21 @@ export default function ZulFloatingButton() {
             <div className="flex-1 p-4 overflow-y-auto">
               <div className="space-y-3">
                 {messages.map((msg) => (
-                  <div key={msg.id} className={`flex items-end space-x-2 ${msg.type === 'user' ? 'justify-end flex-row-reverse space-x-reverse' : 'justify-start'}`}>
-                    {/* Avatar - apenas para mensagens do usuário */}
-                    {msg.type === 'user' && user && (
-                      <Avatar 
-                        src={user.avatar_url} 
-                        name={user.name} 
-                        size="sm"
-                        color={avatarColor}
-                      />
+                  <div key={msg.id} className={`flex items-end space-x-2 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {/* Mensagens do Zul: Avatar à esquerda, mensagem à direita */}
+                    {msg.type === 'zul' && (
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Image
+                          src="/images/logo_flat.svg"
+                          alt="Zul"
+                          width={32}
+                          height={32}
+                          className="scale-125"
+                        />
+                      </div>
                     )}
                     
+                    {/* Mensagem */}
                     <div className={`rounded-lg p-3 max-w-xs ${
                       msg.type === 'user' 
                         ? 'bg-blue-600 text-white rounded-tr-sm' 
@@ -899,17 +1309,14 @@ export default function ZulFloatingButton() {
                       />
                     </div>
                     
-                    {/* Avatar do Zul - apenas para mensagens do Zul */}
-                    {msg.type === 'zul' && (
-                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Image
-                          src="/images/logo_flat.svg"
-                          alt="Zul"
-                          width={20}
-                          height={20}
-                          className="scale-125"
-                        />
-                      </div>
+                    {/* Mensagens do usuário: Avatar à direita */}
+                    {msg.type === 'user' && user && (
+                      <Avatar 
+                        src={user.avatar_url} 
+                        name={user.name} 
+                        size="sm"
+                        color={avatarColor}
+                      />
                     )}
                   </div>
                 ))}
@@ -925,6 +1332,9 @@ export default function ZulFloatingButton() {
                     </div>
                   </div>
                 )}
+                
+                {/* Elemento para scroll automático */}
+                <div ref={messagesEndRef} />
               </div>
             </div>
 
@@ -951,7 +1361,8 @@ export default function ZulFloatingButton() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
     </>

@@ -326,13 +326,6 @@ export default function Header({
                 )}
               </div>
             )}
-            
-            {/* Mobile: botão simples de settings */}
-            <Link href={getDynamicUrl('/dashboard/config')} className="md:hidden">
-              <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px]">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </Link>
 
             {/* Mobile Menu Button */}
             <Button

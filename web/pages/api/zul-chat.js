@@ -4,25 +4,44 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, userId, userName, userPhone } = req.body;
+    const { message, userId, userName, userPhone, organizationId, context } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
+    console.log('📥 [API ZUL] Recebendo requisição:', {
+      message: message.substring(0, 50),
+      hasContext: !!context,
+      hasSummary: !!context?.summary,
+      summaryBalance: context?.summary?.balance,
+      month: context?.month,
+      contextKeys: Object.keys(context || {})
+    });
+
     // Fazer requisição para o backend
     const backendUrl = process.env.BACKEND_URL || 'https://fintrack-backend-theta.vercel.app';
+    const requestBody = {
+      message,
+      userId: userId || 'web-user',
+      userName: userName || 'Usuário Web',
+      userPhone: userPhone || null,
+      organizationId: organizationId || null,
+      context: context || {} // Passar contexto financeiro completo
+    };
+    
+    console.log('📤 [API ZUL] Enviando para backend:', {
+      hasContext: !!requestBody.context,
+      hasSummary: !!requestBody.context?.summary,
+      summaryBalance: requestBody.context?.summary?.balance
+    });
+    
     const response = await fetch(`${backendUrl}/api/zul-chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        message,
-        userId: userId || 'web-user',
-        userName: userName || 'Usuário Web',
-        userPhone: userPhone || null
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {

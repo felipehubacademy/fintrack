@@ -3521,10 +3521,31 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       // Se for do chat web (sem userPhone), usar versão web
       if (!userPhone) {
         console.log('💻 [ZUL] Chat web detectado - usando assistente financeiro geral');
+        console.log('💻 [ZUL] Context recebido para processMessage:', {
+          hasContext: !!context,
+          contextKeys: Object.keys(context || {}),
+          hasSummary: !!context?.summary,
+          summaryBalance: context?.summary?.balance,
+          month: context?.month
+        });
+        
+        // Passar contexto completo incluindo userName
+        const webChatContext = {
+          userName,
+          ...context // Espalhar TODOS os dados do contexto (summary, month, etc)
+        };
+        
+        console.log('💻 [ZUL] Context para webChat:', {
+          hasSummary: !!webChatContext.summary,
+          summaryBalance: webChatContext.summary?.balance,
+          month: webChatContext.month,
+          contextKeys: Object.keys(webChatContext)
+        });
+        
         const response = await this.sendWebChatMessage(
           userId, 
           message, 
-          { userName, ...context }
+          webChatContext
         );
         
         return {

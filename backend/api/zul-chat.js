@@ -8,7 +8,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, userId, userName, userPhone } = req.body;
+    // Log completo do body recebido
+    console.log('📥 [BACKEND API] Body completo recebido:', {
+      hasBody: !!req.body,
+      bodyKeys: Object.keys(req.body || {}),
+      contextKeys: Object.keys(req.body?.context || {}),
+      contextType: typeof req.body?.context,
+      contextIsArray: Array.isArray(req.body?.context),
+      contextValue: req.body?.context ? JSON.stringify(req.body.context).substring(0, 200) : 'null'
+    });
+    
+    const { message, userId, userName, userPhone, organizationId, context } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
@@ -21,13 +31,34 @@ export default async function handler(req, res) {
 
     console.log(`💬 Zul Chat - Usuário: ${userNameFinal} (${userIdFinal})`);
     console.log(`📝 Mensagem: ${message}`);
+    console.log(`📊 Contexto financeiro recebido:`, {
+      hasContext: !!context,
+      contextType: typeof context,
+      contextKeys: Object.keys(context || {}),
+      hasSummary: !!context?.summary,
+      summaryBalance: context?.summary?.balance,
+      month: context?.month
+    });
 
-    // Processar mensagem com o Zul
+    // Processar mensagem com o Zul, passando contexto completo
+    // Se context é um objeto vazio, usar objeto vazio. Se tem dados, espalhar
+    const contextToPass = context && Object.keys(context).length > 0 
+      ? { organizationId: organizationId || null, ...context }
+      : { organizationId: organizationId || null };
+    
+    console.log('📤 [BACKEND API] Contexto sendo passado para processMessage:', {
+      hasContext: Object.keys(contextToPass).length > 1,
+      contextKeys: Object.keys(contextToPass),
+      hasSummary: !!contextToPass.summary,
+      summaryBalance: contextToPass.summary?.balance
+    });
+    
     const response = await zul.processMessage(
       message,
       userIdFinal,
       userNameFinal,
-      userPhoneFinal
+      userPhoneFinal,
+      contextToPass
     );
 
     console.log(`🤖 Resposta do Zul: ${response.message}`);
