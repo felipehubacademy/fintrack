@@ -55,17 +55,38 @@ export default function DashboardHome() {
   const [bankAccounts, setBankAccounts] = useState([]);
   const [openTooltip, setOpenTooltip] = useState(null);
 
+  // Helper para toggle de tooltip - sempre fecha o anterior ao abrir um novo
+  const handleTooltipToggle = (tooltipId) => {
+    if (openTooltip === tooltipId) {
+      // Se clicar no mesmo, fecha
+      setOpenTooltip(null);
+    } else {
+      // Se clicar em outro, abre o novo (fecha automaticamente o anterior)
+      setOpenTooltip(tooltipId);
+    }
+  };
+
   // Fechar tooltip ao clicar fora em mobile
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (openTooltip && !event.target.closest('.relative.group')) {
+      // Não fechar se clicou no card ou no tooltip
+      if (openTooltip && 
+          !event.target.closest('.relative.group') && 
+          !event.target.closest('[class*="absolute z-50"]')) {
         setOpenTooltip(null);
       }
     };
     
     if (openTooltip) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      // Usar um pequeno delay para evitar conflito com o onClick do card
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside, true);
+      }, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('click', handleClickOutside, true);
+      };
     }
   }, [openTooltip]);
 
@@ -714,7 +735,10 @@ export default function DashboardHome() {
           <div className="relative group">
             <Card 
               className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
-              onClick={() => setOpenTooltip(openTooltip === 'entradas' ? null : 'entradas')}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTooltipToggle('entradas');
+              }}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
@@ -813,7 +837,10 @@ export default function DashboardHome() {
           <div className="relative group">
             <Card 
               className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
-              onClick={() => setOpenTooltip(openTooltip === 'despesas' ? null : 'despesas')}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTooltipToggle('despesas');
+              }}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
@@ -958,7 +985,10 @@ export default function DashboardHome() {
 
           {/* Novo Card 1: Total de Crédito Usado */}
           <div className="relative group">
-            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer" onClick={() => setOpenTooltip(openTooltip === 'credit-used' ? null : 'credit-used')}>
+            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer" onClick={(e) => {
+                e.stopPropagation();
+                handleTooltipToggle('credit-used');
+              }}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
                   Total de Crédito Usado
@@ -1017,7 +1047,10 @@ export default function DashboardHome() {
 
           {/* Novo Card 2: Total de Crédito Disponível */}
           <div className="relative group">
-            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer" onClick={() => setOpenTooltip(openTooltip === 'credit-available' ? null : 'credit-available')}>
+            <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer" onClick={(e) => {
+                e.stopPropagation();
+                handleTooltipToggle('credit-available');
+              }}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
                   Total de Crédito Disponível
@@ -1079,7 +1112,10 @@ export default function DashboardHome() {
               totalBankBalance < 0 
                 ? 'border-red-200 bg-red-50' 
                 : 'border-gray-200 bg-gray-50'
-            }`} onClick={() => setOpenTooltip(openTooltip === 'bank-balance' ? null : 'bank-balance')}>
+            }`} onClick={(e) => {
+                e.stopPropagation();
+                handleTooltipToggle('bank-balance');
+              }}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className={`text-sm font-medium ${
                   totalBankBalance < 0 ? 'text-red-700' : 'text-gray-600'

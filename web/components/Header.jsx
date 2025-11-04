@@ -361,16 +361,50 @@ export default function Header({
           {/* Drawer */}
           <div className="fixed inset-y-0 right-0 w-[280px] max-w-[85vw] bg-white shadow-2xl z-[70] md:hidden">
             <div className="flex flex-col h-full">
-              {/* Close Button */}
-              <div className="flex justify-end p-4 border-b border-gray-200">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="min-w-[44px] min-h-[44px]"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
+              {/* Header do Drawer */}
+              <div className="border-b border-gray-200">
+                {/* Close Button */}
+                <div className="flex justify-end p-4 pb-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="min-w-[44px] min-h-[44px]"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                {/* User Profile Section */}
+                {orgUser && (
+                  <div 
+                    className="px-4 pb-4 cursor-pointer"
+                    onClick={() => {
+                      setShowProfileModal(true);
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                      <Avatar
+                        src={orgUser.avatar_url}
+                        name={orgUser.name}
+                        size="md"
+                        color={avatarColor}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {orgUser.name}
+                        </p>
+                        {organization && (
+                          <p className="text-xs text-gray-500 truncate">
+                            {organization.name}
+                          </p>
+                        )}
+                      </div>
+                      <Settings className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Menu Items */}

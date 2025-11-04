@@ -232,8 +232,8 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
     const defaultDisplay = chartData.length > 0 ? chartData[0] : null; // Maior valor já vem ordenado
     const hovered = activeIndex != null ? chartData[activeIndex] : defaultDisplay;
     
-    const { innerRadius, outerRadius } = getDonutRadii(56, 120, 40, 90);
-    const chartHeight = getChartHeight(280, 240);
+    const { innerRadius, outerRadius } = getDonutRadii(56, 120, 50, 100);
+    const chartHeight = getChartHeight(280, 260);
     const fontSize = getFontSize('sm', 'xs');
 
     const renderActiveShape = (props) => {
@@ -308,10 +308,10 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
 
         {hovered && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
-            <div className="text-center">
-              <p className={`${isMobile ? 'text-[10px]' : 'text-[11px]'} font-semibold text-gray-900 max-w-[140px] mx-auto truncate`}>{hovered.name}</p>
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-bold text-gray-900`}>{`- R$ ${Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</p>
-              <p className={`${isMobile ? 'text-[9px]' : 'text-[10px]'} text-gray-500 font-medium`}>{total > 0 ? `${((hovered.value / total) * 100).toFixed(1)}% do total` : ''}</p>
+            <div className={`text-center px-2 ${isMobile ? 'max-w-[120px]' : 'max-w-[140px]'} mx-auto`}>
+              <p className={`text-[11px] font-semibold text-gray-900 truncate`}>{hovered.name}</p>
+              <p className={`text-sm font-bold text-gray-900`}>{`- R$ ${Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</p>
+              <p className={`text-[10px] text-gray-500 font-medium`}>{total > 0 ? `${((hovered.value / total) * 100).toFixed(1)}% do total` : ''}</p>
             </div>
           </div>
         )}

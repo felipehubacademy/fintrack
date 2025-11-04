@@ -34,7 +34,7 @@ export function useResponsiveChart() {
   };
 
   // Calcular raios do donut chart baseado no tamanho da tela
-  const getDonutRadii = (desktopInner = 56, desktopOuter = 120, mobileInner = 40, mobileOuter = 90) => {
+  const getDonutRadii = (desktopInner = 56, desktopOuter = 120, mobileInner = 50, mobileOuter = 100) => {
     return {
       innerRadius: dimensions.isMobile ? mobileInner : desktopInner,
       outerRadius: dimensions.isMobile ? mobileOuter : desktopOuter,
