@@ -82,6 +82,53 @@ async function sendWhatsAppMessage(to, message) {
   }
 }
 
+/**
+ * Obter URL de download da mídia do WhatsApp
+ */
+async function getMediaUrl(mediaId) {
+  try {
+    const axios = (await import('axios')).default;
+    const token = process.env.WHATSAPP_TOKEN;
+    
+    console.log('🎤 [AUDIO] Obtendo URL de download para media_id:', mediaId);
+    
+    const response = await axios.get(
+      `${WHATSAPP_API_URL}/${mediaId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    
+    const mediaUrl = response.data?.url;
+    if (!mediaUrl) {
+      throw new Error('URL de mídia não encontrada na resposta');
+    }
+    
+    console.log('✅ [AUDIO] URL de download obtida:', mediaUrl);
+    return mediaUrl;
+  } catch (error) {
+    console.error('❌ [AUDIO] Erro ao obter URL de mídia:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Função helper para escolher mensagem de erro variada
+ */
+function pickVariation(variations, seed = null) {
+  if (!variations || variations.length === 0) return '';
+  if (variations.length === 1) return variations[0];
+  
+  // Usar timestamp + seed para criar um índice mais variado
+  const timestamp = Date.now();
+  const seedValue = seed ? String(seed).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
+  const random = ((timestamp % 1000) + seedValue) % variations.length;
+  
+  return variations[random];
+}
+
 // Process webhook synchronously com logs detalhados
 async function processWebhook(body) {
   console.log('🔄 [B1][DEBUG] Starting processWebhook...');
@@ -185,6 +232,123 @@ async function processWebhook(body) {
               );
             } catch (sendError) {
               console.error('❌ Erro ao enviar mensagem de erro:', sendError);
+            }
+          }
+        } else if (message.type === 'audio' || message.type === 'voice') {
+          console.log(`🎤 [AUDIO] Recebida mensagem de áudio de ${message.from}`);
+          
+          try {
+            // Fast path para testes
+            if (message.id?.includes('test_') || process.env.WEBHOOK_DRY_RUN === '1') {
+              console.log('🧪 [AUDIO][DEBUG] Dry-run/test payload detected. Skipping audio processing.');
+              continue;
+            }
+
+            // Extrair media_id
+            const mediaId = message.audio?.id || message.voice?.id;
+            if (!mediaId) {
+              console.warn('⚠️ [AUDIO] Media ID não encontrado na mensagem');
+              continue;
+            }
+            
+            console.log('🎤 [AUDIO] Media ID:', mediaId);
+
+            // Obter URL de download
+            console.log('🎤 [AUDIO] Obtendo URL de download...');
+            const audioUrl = await getMediaUrl(mediaId);
+
+            // Transcrever com Whisper
+            console.log('🎤 [AUDIO] Transcrevendo com Whisper...');
+            const { default: OpenAIService } = await import('../services/openaiService.js');
+            const openaiService = new OpenAIService();
+            const transcription = await openaiService.transcribeAudio(audioUrl, process.env.WHATSAPP_TOKEN);
+            
+            if (!transcription || transcription.trim().length === 0) {
+              throw new Error('Transcrição vazia ou inválida');
+            }
+            
+            console.log('✅ [AUDIO] Transcrição:', `"${transcription}"`);
+
+            // Importar ZulAssistant
+            console.log('🔄 [AUDIO][DEBUG] Importing ZulAssistant...');
+            const { default: ZulAssistant } = await import('../services/zulAssistant.js');
+            console.log('🔄 [AUDIO][DEBUG] ZulAssistant imported successfully');
+
+            console.log('🔄 [AUDIO][DEBUG] Creating ZulAssistant instance...');
+            const zul = new ZulAssistant();
+            console.log('🔄 [AUDIO][DEBUG] ZulAssistant instance created');
+
+            // Buscar usuário por telefone
+            console.log('🔄 [AUDIO][DEBUG] Looking up user by phone...');
+            const user = await getUserByPhone(message.from);
+            
+            if (!user) {
+              console.log('❌ [AUDIO][DEBUG] User not found for phone:', message.from);
+              await sendWhatsAppMessage(message.from, 
+                'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
+              );
+              continue;
+            }
+            
+            console.log('✅ [AUDIO][DEBUG] User found:', user.name);
+
+            // Buscar cartões disponíveis
+            const { data: cards } = await supabase
+              .from('cards')
+              .select('name')
+              .eq('organization_id', user.organization_id)
+              .eq('is_active', true);
+            
+            console.log('🔄 [AUDIO][DEBUG] Found cards:', cards?.map(c => c.name));
+            
+            // Montar contexto
+            const context = {
+              userName: user.name,
+              userId: user.id,
+              organizationId: user.organization_id,
+              availableCards: cards?.map(c => c.name) || []
+            };
+
+            console.log('🔄 [AUDIO][DEBUG] Context montado:', JSON.stringify(context, null, 2));
+            
+            // Processar transcrição como mensagem de texto
+            console.log('🔄 [AUDIO][DEBUG] Processing transcription as text message...');
+            const result = await zul.processMessage(
+              transcription,
+              user.id,
+              user.name,
+              message.from,
+              context
+            );
+            
+            // Enviar resposta via WhatsApp
+            if (result && result.message) {
+              await sendWhatsAppMessage(message.from, result.message);
+            }
+            
+            console.log('🔄 [AUDIO][DEBUG] ProcessMessage completed');
+            console.log('💬 [AUDIO] Audio message processed successfully');
+
+          } catch (audioError) {
+            console.error('❌ [AUDIO][DEBUG] Error processing audio:', audioError);
+            console.error('❌ [AUDIO][DEBUG] Error stack:', audioError?.stack);
+            
+            // Enviar mensagem de erro variada
+            try {
+              const errorMessages = [
+                'Ops! Não consegui entender o áudio. 😅\n\nPode repetir ou enviar por texto?',
+                'Eita, não deu pra entender o áudio. 😅\n\nTenta de novo ou manda por texto?',
+                'Poxa, não consegui processar o áudio. 😅\n\nRepete ou manda por texto?',
+                'Hmm, não entendi o áudio. 😅\n\nPode repetir ou escrever?',
+                'Opa, não consegui entender o que você falou. 😅\n\nRepete ou manda por texto?',
+                'Eita, não consegui processar o áudio. 😅\n\nPode repetir ou enviar por texto?',
+                'Poxa, não deu certo com o áudio. 😅\n\nTenta de novo ou manda por texto?'
+              ];
+              
+              const errorMessage = pickVariation(errorMessages, message.from);
+              await sendWhatsAppMessage(message.from, errorMessage);
+            } catch (sendError) {
+              console.error('❌ [AUDIO] Erro ao enviar mensagem de erro:', sendError);
             }
           }
         }

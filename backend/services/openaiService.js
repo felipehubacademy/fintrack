@@ -102,38 +102,69 @@ Se não conseguir ler algo, use null.`;
    * 🎤 Transcrever áudio do WhatsApp (Whisper)
    */
   async transcribeAudio(audioUrl, whatsappToken) {
+    const startTime = Date.now();
     try {
-      console.log('🎤 Transcribing audio...');
+      console.log('🎤 [WHISPER] Iniciando transcrição de áudio...');
+      console.log('🎤 [WHISPER] URL do áudio:', audioUrl);
       
       // Download do áudio
+      console.log('🎤 [WHISPER] Fazendo download do áudio...');
+      const downloadStart = Date.now();
       const audioResponse = await axios.get(audioUrl, {
         headers: {
           'Authorization': `Bearer ${whatsappToken}`
         },
         responseType: 'arraybuffer'
       });
+      const downloadTime = Date.now() - downloadStart;
+      
+      const fileSize = audioResponse.data.byteLength;
+      const fileSizeKB = (fileSize / 1024).toFixed(2);
+      console.log(`✅ [WHISPER] Download concluído: ${fileSizeKB} KB (${downloadTime}ms)`);
       
       // Salvar temporariamente (Whisper precisa de File)
       const fs = await import('fs');
       const path = await import('path');
       const tmpPath = path.join('/tmp', `audio-${Date.now()}.ogg`);
       fs.writeFileSync(tmpPath, audioResponse.data);
+      console.log('💾 [WHISPER] Arquivo temporário salvo:', tmpPath);
       
       // Whisper API
+      console.log('🎤 [WHISPER] Enviando para Whisper API...');
+      const whisperStart = Date.now();
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream(tmpPath),
         model: 'whisper-1',
         language: 'pt',
       });
+      const whisperTime = Date.now() - whisperStart;
       
       // Limpar arquivo temp
       fs.unlinkSync(tmpPath);
+      console.log('🗑️ [WHISPER] Arquivo temporário removido');
       
-      console.log('✅ Transcription:', transcription.text);
+      const totalTime = Date.now() - startTime;
+      const transcriptionLength = transcription.text?.length || 0;
+      console.log(`✅ [WHISPER] Transcrição concluída (${whisperTime}ms, total: ${totalTime}ms)`);
+      console.log(`✅ [WHISPER] Texto transcrito (${transcriptionLength} caracteres): "${transcription.text}"`);
+      
       return transcription.text;
       
     } catch (error) {
-      console.error('❌ Error transcribing audio:', error.message);
+      const totalTime = Date.now() - startTime;
+      console.error('❌ [WHISPER] Erro na transcrição:', error.message);
+      console.error('❌ [WHISPER] Tempo decorrido:', `${totalTime}ms`);
+      console.error('❌ [WHISPER] Stack:', error.stack);
+      
+      // Melhorar mensagens de erro específicas
+      if (error.message?.includes('timeout') || error.message?.includes('timed out')) {
+        throw new Error('Timeout ao processar áudio. Tente novamente.');
+      } else if (error.message?.includes('format') || error.message?.includes('invalid')) {
+        throw new Error('Formato de áudio inválido ou não suportado.');
+      } else if (error.message?.includes('too short') || error.message?.includes('short')) {
+        throw new Error('Áudio muito curto para transcrever.');
+      }
+      
       throw error;
     }
   }
