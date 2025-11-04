@@ -164,19 +164,19 @@ export default function Tooltip({
         />
       )}
       
-      <div className="relative group inline-block" style={{ contain: 'layout' }}>
-        <div 
+    <div className="relative group inline-block" style={{ contain: 'layout' }}>
+      <div 
           ref={triggerRef}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          onFocus={() => autoOpen && handleToggle(true)}
+        onFocus={() => autoOpen && handleToggle(true)}
           onBlur={() => autoOpen && !isMobile && handleToggle(false)}
           onClick={handleClick}
           className="cursor-pointer md:cursor-default"
-        >
-          {children}
-        </div>
-        
+      >
+        {children}
+      </div>
+      
         {/* Tooltip */}
         <div 
           ref={tooltipRef}
@@ -198,11 +198,11 @@ export default function Tooltip({
             })
           }}
         >
-          <div className="text-sm text-gray-900 whitespace-normal">
-            {content}
-          </div>
+        <div className="text-sm text-gray-900 whitespace-normal">
+          {content}
         </div>
       </div>
+    </div>
     </>
   );
 }

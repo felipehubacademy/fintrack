@@ -1368,63 +1368,63 @@ export default function TransactionsDashboard() {
           </CardHeader>
           <CardContent className="overflow-visible">
             {/* Helper para renderizar owner com tooltip */}
-            {(() => {
+                      {(() => {
               const renderOwner = (transaction, isMobile = false) => {
                 const isIncome = transaction.type === 'income';
-                const owner = isIncome 
-                  ? (transaction.is_shared ? (organization?.name || 'Família') : transaction.cost_center?.name)
-                  : (transaction.cost_center?.name || transaction.owner || (transaction.is_shared ? (organization?.name || 'Família') : '-'));
-                
-                const isShared = transaction.is_shared || owner === (organization?.name || 'Família');
-                
-                let splitInfo = null;
-                if (isShared && !isIncome && transaction.expense_splits && transaction.expense_splits.length > 0) {
-                  splitInfo = transaction.expense_splits.map(split => {
-                    const cc = costCenters.find(c => c.id === split.cost_center_id);
-                    return {
-                      name: cc?.name || 'Desconhecido',
-                      percentage: parseFloat(split.percentage).toFixed(0),
-                      color: cc?.color || '#6B7280'
-                    };
-                  });
-                } else if (isShared && isIncome && transaction.income_splits && transaction.income_splits.length > 0) {
-                  splitInfo = transaction.income_splits.map(split => {
-                    const cc = costCenters.find(c => c.id === split.cost_center_id);
-                    return {
-                      name: cc?.name || 'Desconhecido',
-                      percentage: parseFloat(split.percentage).toFixed(0),
-                      color: cc?.color || '#6B7280'
-                    };
-                  });
-                } else if (isShared) {
-                  splitInfo = costCenters
-                    .filter(cc => cc.is_active !== false && cc.user_id)
-                    .map(cc => ({
-                      name: cc.name,
-                      percentage: parseFloat(cc.default_split_percentage || 0).toFixed(0),
-                      color: cc.color
-                    }));
-                }
-                
+                        const owner = isIncome 
+                          ? (transaction.is_shared ? (organization?.name || 'Família') : transaction.cost_center?.name)
+                          : (transaction.cost_center?.name || transaction.owner || (transaction.is_shared ? (organization?.name || 'Família') : '-'));
+                        
+                        const isShared = transaction.is_shared || owner === (organization?.name || 'Família');
+                        
+                        let splitInfo = null;
+                        if (isShared && !isIncome && transaction.expense_splits && transaction.expense_splits.length > 0) {
+                          splitInfo = transaction.expense_splits.map(split => {
+                            const cc = costCenters.find(c => c.id === split.cost_center_id);
+                            return {
+                              name: cc?.name || 'Desconhecido',
+                              percentage: parseFloat(split.percentage).toFixed(0),
+                              color: cc?.color || '#6B7280'
+                            };
+                          });
+                        } else if (isShared && isIncome && transaction.income_splits && transaction.income_splits.length > 0) {
+                          splitInfo = transaction.income_splits.map(split => {
+                            const cc = costCenters.find(c => c.id === split.cost_center_id);
+                            return {
+                              name: cc?.name || 'Desconhecido',
+                              percentage: parseFloat(split.percentage).toFixed(0),
+                              color: cc?.color || '#6B7280'
+                            };
+                          });
+                        } else if (isShared) {
+                          splitInfo = costCenters
+                            .filter(cc => cc.is_active !== false && cc.user_id)
+                            .map(cc => ({
+                              name: cc.name,
+                              percentage: parseFloat(cc.default_split_percentage || 0).toFixed(0),
+                              color: cc.color
+                            }));
+                        }
+                        
                 if (isShared && splitInfo && splitInfo.length > 0) {
                   const tooltipContent = (
                     <div>
-                      <div className="font-semibold mb-2 text-gray-700 text-xs">Divisão:</div>
-                      <div className="space-y-2">
-                        {splitInfo.map((split, idx) => (
-                          <div key={idx} className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <div 
-                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: split.color }}
-                              />
-                              <span className="text-gray-700">{split.name}</span>
-                            </div>
-                            <span className="font-semibold text-gray-900 ml-3">{split.percentage}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                                  <div className="font-semibold mb-2 text-gray-700 text-xs">Divisão:</div>
+                                  <div className="space-y-2">
+                                    {splitInfo.map((split, idx) => (
+                                      <div key={idx} className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-2">
+                                          <div 
+                                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                            style={{ backgroundColor: split.color }}
+                                          />
+                                          <span className="text-gray-700">{split.name}</span>
+                                        </div>
+                                        <span className="font-semibold text-gray-900 ml-3">{split.percentage}%</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  </div>
                   );
                   
                   return (
@@ -1466,8 +1466,8 @@ export default function TransactionsDashboard() {
                               ({transaction.installment_info.current_installment}/{transaction.installment_info.total_installments})
                             </span>
                           )}
-                        </div>
-                      </div>
+                                </div>
+                              </div>
                     );
                   },
                   mobileTextColor: (transaction) => transaction.type === 'income' ? 'text-flight-blue font-semibold' : 'text-gray-900',
@@ -1479,9 +1479,9 @@ export default function TransactionsDashboard() {
                           <span className="text-gray-500 ml-1">
                             ({transaction.installment_info.current_installment}/{transaction.installment_info.total_installments})
                           </span>
-                        )}
-                      </div>
-                    );
+                            )}
+                          </div>
+                        );
                   }
                 },
                 {
@@ -1550,8 +1550,8 @@ export default function TransactionsDashboard() {
                     const isIncome = transaction.type === 'income';
                     return (
                       <span className={`text-sm font-medium ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
-                        {!isIncome && '- '}
-                        R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {!isIncome && '- '}
+                      R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </span>
                     );
                   },
@@ -1572,23 +1572,23 @@ export default function TransactionsDashboard() {
               const renderActions = (transaction) => {
                 const isIncome = transaction.type === 'income';
                 return (
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleEdit(transaction)}
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(transaction)}
                       className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      title={`Editar ${isIncome ? 'entrada' : 'despesa'}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(transaction)}
+                          title={`Editar ${isIncome ? 'entrada' : 'despesa'}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(transaction)}
                       className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      title={`Excluir ${isIncome ? 'entrada' : 'despesa'}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                );
+                          title={`Excluir ${isIncome ? 'entrada' : 'despesa'}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                  );
               };
               
               const sortedTransactions = sortTransactions(filterTransactions(transactions));
@@ -1601,13 +1601,13 @@ export default function TransactionsDashboard() {
                   sortConfig={sortConfig}
                   onSort={handleSort}
                   renderEmptyState={() => (
-                    <div className="p-8 text-center">
-                      <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                      </svg>
-                      <p className="text-gray-600">Nenhuma transação encontrada</p>
-                    </div>
-                  )}
+            <div className="p-8 text-center">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+              <p className="text-gray-600">Nenhuma transação encontrada</p>
+            </div>
+          )}
                 />
               );
             })()}

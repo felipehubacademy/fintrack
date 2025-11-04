@@ -1007,19 +1007,19 @@ export default function BillsDashboard() {
             <CardContent className="p-4 md:p-0">
               {(() => {
                 // Helper para formatação da forma de pagamento
-                const getPaymentMethodLabel = (method) => {
-                  const methods = {
-                    'pix': 'PIX',
-                    'credit_card': 'Cartão de Crédito',
-                    'debit_card': 'Cartão de Débito',
-                    'cash': 'Dinheiro',
-                    'bank_transfer': 'Transferência',
-                    'boleto': 'Boleto',
-                    'other': 'Outro'
-                  };
-                  return methods[method] || method || '—';
-                };
-                
+                      const getPaymentMethodLabel = (method) => {
+                        const methods = {
+                          'pix': 'PIX',
+                          'credit_card': 'Cartão de Crédito',
+                          'debit_card': 'Cartão de Débito',
+                          'cash': 'Dinheiro',
+                          'bank_transfer': 'Transferência',
+                          'boleto': 'Boleto',
+                          'other': 'Outro'
+                        };
+                        return methods[method] || method || '—';
+                      };
+                      
                 // Definir colunas
                 const columns = [
                   {
@@ -1030,23 +1030,23 @@ export default function BillsDashboard() {
                       const daysUntil = getDaysUntilDue(bill.due_date);
                       return (
                         <div>
-                          <div className="text-sm text-gray-900">
-                            {new Date(bill.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
-                          </div>
-                          {bill.status === 'pending' && daysUntil >= 0 && (
-                            <div className={`text-xs mt-1 font-medium ${
-                              daysUntil <= 3 ? 'text-red-600' : 
-                              daysUntil <= 7 ? 'text-yellow-600' : 
-                              'text-gray-500'
-                            }`}>
-                              {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`}
+                            <div className="text-sm text-gray-900">
+                              {new Date(bill.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
                             </div>
-                          )}
-                          {bill.status === 'overdue' && (
-                            <div className="text-xs mt-1 font-medium text-red-600">
-                              Vencido há {Math.abs(daysUntil)} {Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}
-                            </div>
-                          )}
+                            {bill.status === 'pending' && daysUntil >= 0 && (
+                              <div className={`text-xs mt-1 font-medium ${
+                                daysUntil <= 3 ? 'text-red-600' : 
+                                daysUntil <= 7 ? 'text-yellow-600' : 
+                                'text-gray-500'
+                              }`}>
+                                {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`}
+                              </div>
+                            )}
+                            {bill.status === 'overdue' && (
+                              <div className="text-xs mt-1 font-medium text-red-600">
+                                Vencido há {Math.abs(daysUntil)} {Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}
+                              </div>
+                            )}
                         </div>
                       );
                     }
@@ -1056,14 +1056,14 @@ export default function BillsDashboard() {
                     label: 'Descrição',
                     sortable: false,
                     render: (bill) => (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-900">{bill.description}</span>
-                        {bill.is_recurring && (
-                          <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs">
-                            Recorrente
-                          </Badge>
-                        )}
-                      </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-gray-900">{bill.description}</span>
+                              {bill.is_recurring && (
+                                <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs">
+                                  Recorrente
+                                </Badge>
+                              )}
+                            </div>
                     ),
                     mobileRender: (bill) => (
                       <div>
@@ -1081,9 +1081,9 @@ export default function BillsDashboard() {
                     label: 'Categoria',
                     sortable: false,
                     render: (bill) => (
-                      <span className="text-sm text-gray-600">
-                        {bill.category ? bill.category.name : '—'}
-                      </span>
+                            <span className="text-sm text-gray-600">
+                              {bill.category ? bill.category.name : '—'}
+                            </span>
                     )
                   },
                   {
@@ -1092,14 +1092,14 @@ export default function BillsDashboard() {
                     sortable: false,
                     render: (bill) => (
                       <div>
-                        <span className="text-sm text-gray-600">
-                          {bill.payment_method ? getPaymentMethodLabel(bill.payment_method) : '—'}
-                        </span>
-                        {bill.payment_method === 'credit_card' && bill.card && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {bill.card.name}
-                          </div>
-                        )}
+                            <span className="text-sm text-gray-600">
+                              {bill.payment_method ? getPaymentMethodLabel(bill.payment_method) : '—'}
+                            </span>
+                            {bill.payment_method === 'credit_card' && bill.card && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {bill.card.name}
+                              </div>
+                            )}
                       </div>
                     ),
                     mobileRender: (bill) => (
@@ -1121,13 +1121,13 @@ export default function BillsDashboard() {
                     sortable: false,
                     render: (bill) => (
                       <span className="text-sm text-gray-600">
-                        {bill.is_shared ? (
+                            {bill.is_shared ? (
                           <span className="font-medium">{organization?.name || 'Família'}</span>
-                        ) : bill.cost_center ? (
+                            ) : bill.cost_center ? (
                           bill.cost_center.name
-                        ) : (
+                            ) : (
                           <span className="text-gray-400">—</span>
-                        )}
+                            )}
                       </span>
                     )
                   },
@@ -1136,9 +1136,9 @@ export default function BillsDashboard() {
                     label: 'Valor',
                     sortable: true,
                     render: (bill) => (
-                      <div className="text-sm font-semibold text-gray-900">
-                        R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
+                            <div className="text-sm font-semibold text-gray-900">
+                              R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
                     )
                   },
                   {
@@ -1148,9 +1148,9 @@ export default function BillsDashboard() {
                     render: (bill) => {
                       const statusBadge = getStatusBadge(bill.status);
                       return (
-                        <Badge className={statusBadge.className}>
-                          {statusBadge.label}
-                        </Badge>
+                            <Badge className={statusBadge.className}>
+                              {statusBadge.label}
+                            </Badge>
                       );
                     }
                   }
@@ -1163,32 +1163,32 @@ export default function BillsDashboard() {
                   
                   return (
                     <div className="flex items-center space-x-2">
-                      {(bill.status === 'pending' || bill.status === 'overdue') && (
-                        <button
-                          onClick={() => handleMarkAsPaid(bill)}
+                              {(bill.status === 'pending' || bill.status === 'overdue') && (
+                                <button
+                                  onClick={() => handleMarkAsPaid(bill)}
                           className="text-green-600 hover:text-green-800 p-2 rounded hover:bg-green-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                          title="Marcar como Paga"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => openEditModal(bill)}
+                                  title="Marcar como Paga"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </button>
+                              )}
+                              
+                              <button
+                                onClick={() => openEditModal(bill)}
                         className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                        title="Editar"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBill(bill.id)}
+                                title="Editar"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBill(bill.id)}
                         className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  );
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                      );
                 };
                 
                 return (
@@ -1199,11 +1199,11 @@ export default function BillsDashboard() {
                     sortConfig={sortConfig}
                     onSort={handleSort}
                     renderEmptyState={() => (
-                      <div className="p-8 text-center">
-                        <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600">Nenhuma conta a pagar encontrada</p>
-                      </div>
-                    )}
+                <div className="p-8 text-center">
+                  <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">Nenhuma conta a pagar encontrada</p>
+                </div>
+              )}
                   />
                 );
               })()}

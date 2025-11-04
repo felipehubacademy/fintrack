@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       contextValue: req.body?.context ? JSON.stringify(req.body.context).substring(0, 200) : 'null'
     });
     
-    const { message, userId, userName, userPhone, organizationId, context } = req.body;
+    const { message, userId, userName, userPhone, organizationId, context, conversationHistory } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
@@ -46,11 +46,17 @@ export default async function handler(req, res) {
       ? { organizationId: organizationId || null, ...context }
       : { organizationId: organizationId || null };
     
+    // Adicionar histórico de conversa ao contexto
+    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      contextToPass.conversationHistory = conversationHistory;
+    }
+    
     console.log('📤 [BACKEND API] Contexto sendo passado para processMessage:', {
       hasContext: Object.keys(contextToPass).length > 1,
       contextKeys: Object.keys(contextToPass),
       hasSummary: !!contextToPass.summary,
-      summaryBalance: contextToPass.summary?.balance
+      summaryBalance: contextToPass.summary?.balance,
+      historyLength: contextToPass.conversationHistory?.length || 0
     });
     
     const response = await zul.processMessage(

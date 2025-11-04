@@ -356,16 +356,16 @@ export default function Header({
             <div className="flex flex-col h-full">
               {/* Header do Drawer */}
               <div className="border-b border-gray-200">
-                {/* Close Button */}
+              {/* Close Button */}
                 <div className="flex justify-end p-4 pb-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setMobileMenuOpen(false)}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setMobileMenuOpen(false)}
                     className="min-w-[44px] min-h-[44px]"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
+                >
+                  <X className="h-5 w-5" />
+                </Button>
                 </div>
 
                 {/* User Profile Section */}

@@ -117,6 +117,8 @@ REGRAS CRÍTICAS (OBRIGATÓRIAS):
 8. Sugira ações concretas baseadas nos dados
 9. Seja específico: "R$ 1.200 em Restaurantes" é melhor que "muito gasto em restaurantes"
 10. Se os dados financeiros estiverem nas instruções do sistema, você DEVE usá-los - não há exceções!
+11. Se você sugeriu algo e o usuário responde "Sim", "Sim por favor", "Pode ser", etc, CONTINUE com a análise prometida usando os dados financeiros disponíveis
+12. Mantenha contexto da conversa anterior - se você mencionou algo, continue a partir daí
 
 EXEMPLO DE RESPOSTA CORRETA:
 Se o usuário perguntar "qual meu saldo do mês?" e os dados mostrarem:
@@ -281,12 +283,20 @@ ${firstName ? `\nUsuário: ${firstName}` : ''}`;
         {
           role: 'system',
           content: systemMessage
-        },
-        {
-          role: 'user',
-          content: userMessage
         }
       ];
+      
+      // Adicionar histórico de conversa se disponível
+      if (context.conversationHistory && Array.isArray(context.conversationHistory)) {
+        console.log(`📜 [WEB CHAT] Adicionando ${context.conversationHistory.length} mensagens do histórico`);
+        messages.push(...context.conversationHistory);
+      }
+      
+      // Adicionar mensagem atual do usuário
+      messages.push({
+        role: 'user',
+        content: userMessage
+      });
       
       // Verificar se temos dados financeiros antes de chamar GPT
       const hasFinancialData = context?.summary && context?.month;

@@ -1072,19 +1072,27 @@ export default function ZulFloatingButton() {
         console.log('📊 [ZUL] Context keys:', Object.keys(financialContext));
       }
       
+      // Preparar histórico de conversa (últimas 5 mensagens para contexto)
+      const conversationHistory = messages.slice(-5).map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.message
+      }));
+      
       const requestBody = {
         message: inputMessage.trim(),
         userId: user?.id || 'web-user',
         userName: user?.name || 'Usuário Web',
         organizationId: organization?.id,
-        context: financialContext || {} // TODOS os dados financeiros (ou objeto vazio se não houver)
+        context: financialContext || {}, // TODOS os dados financeiros (ou objeto vazio se não houver)
+        conversationHistory: conversationHistory // Histórico de conversa para contexto
       };
       
       console.log('📤 [ZUL] Enviando requisição com contexto:', {
         hasContext: !!requestBody.context,
         hasSummary: !!requestBody.context?.summary,
         summaryBalance: requestBody.context?.summary?.balance,
-        month: requestBody.context?.month
+        month: requestBody.context?.month,
+        historyLength: conversationHistory.length
       });
       
       const response = await fetch('/api/zul-chat', {
@@ -1361,7 +1369,7 @@ export default function ZulFloatingButton() {
               </div>
             </div>
           </div>
-          </div>
+        </div>
         </>
       )}
 

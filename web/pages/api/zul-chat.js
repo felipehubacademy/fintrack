@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, userId, userName, userPhone, organizationId, context } = req.body;
+    const { message, userId, userName, userPhone, organizationId, context, conversationHistory } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
@@ -16,7 +16,8 @@ export default async function handler(req, res) {
       hasSummary: !!context?.summary,
       summaryBalance: context?.summary?.balance,
       month: context?.month,
-      contextKeys: Object.keys(context || {})
+      contextKeys: Object.keys(context || {}),
+      historyLength: conversationHistory?.length || 0
     });
 
     // Fazer requisição para o backend
@@ -27,13 +28,15 @@ export default async function handler(req, res) {
       userName: userName || 'Usuário Web',
       userPhone: userPhone || null,
       organizationId: organizationId || null,
-      context: context || {} // Passar contexto financeiro completo
+      context: context || {}, // Passar contexto financeiro completo
+      conversationHistory: conversationHistory || [] // Passar histórico de conversa
     };
     
     console.log('📤 [API ZUL] Enviando para backend:', {
       hasContext: !!requestBody.context,
       hasSummary: !!requestBody.context?.summary,
-      summaryBalance: requestBody.context?.summary?.balance
+      summaryBalance: requestBody.context?.summary?.balance,
+      historyLength: requestBody.conversationHistory?.length || 0
     });
     
     const response = await fetch(`${backendUrl}/api/zul-chat`, {
