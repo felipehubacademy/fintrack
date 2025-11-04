@@ -679,7 +679,7 @@ export default function DashboardHome() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-4 md:py-8 space-y-4 md:space-y-8">
         {/* Header Actions */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
@@ -708,8 +708,8 @@ export default function DashboardHome() {
           </CardHeader>
         </Card>
 
-        {/* Stats Cards - Grid 2x3 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* Stats Cards - Grid Responsivo */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* Card 1: Total de Entradas */}
           <div className="relative group">
             <Card 
@@ -1149,7 +1149,7 @@ export default function DashboardHome() {
         <QuickActions />
 
         {/* Charts Section */}
-        <div className="space-y-12">
+        <div className="space-y-6 md:space-y-12">
           {/* Expenses Charts */}
           <MonthCharts 
             expenses={expensesForCharts} 

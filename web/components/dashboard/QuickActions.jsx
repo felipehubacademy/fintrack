@@ -57,18 +57,18 @@ export default function QuickActions() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {visibleActions.map((action, index) => (
             action.href ? (
               <Link key={index} href={action.href}>
                 <Button
                   variant="outline"
-                  className={`w-full h-auto p-4 flex flex-col items-center space-y-2 ${action.color} ${action.textColor} hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md`}
+                  className={`w-full h-auto p-3 md:p-4 flex flex-col items-center space-y-2 ${action.color} ${action.textColor} hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md min-h-[100px] md:min-h-0`}
                 >
                   <action.icon className="h-5 w-5" />
                   <div className="text-center">
-                    <div className="font-medium text-sm">{action.title}</div>
-                    <div className="text-xs opacity-80 mt-1">{action.description}</div>
+                    <div className="font-medium text-xs md:text-sm">{action.title}</div>
+                    <div className="text-[10px] md:text-xs opacity-80 mt-1">{action.description}</div>
                   </div>
                 </Button>
               </Link>
@@ -77,12 +77,12 @@ export default function QuickActions() {
                 key={index}
                 variant="outline"
                 onClick={() => setShowTransactionModal(true)}
-                className={`w-full h-auto p-4 flex flex-col items-center space-y-2 ${action.color} ${action.textColor} hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md`}
+                className={`w-full h-auto p-3 md:p-4 flex flex-col items-center space-y-2 ${action.color} ${action.textColor} hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md min-h-[100px] md:min-h-0`}
               >
                 <action.icon className="h-5 w-5" />
                 <div className="text-center">
-                  <div className="font-medium text-sm">{action.title}</div>
-                  <div className="text-xs opacity-80 mt-1">{action.description}</div>
+                  <div className="font-medium text-xs md:text-sm">{action.title}</div>
+                  <div className="text-[10px] md:text-xs opacity-80 mt-1">{action.description}</div>
                 </div>
               </Button>
             )

@@ -97,13 +97,13 @@ export default function Header({
           <div className="flex items-center space-x-8">
             {/* Logo e Nome */}
             <div className="flex items-center -ml-3">
-              <Logo className="h-24 w-24 -my-2" />
+              <Logo className="h-16 w-16 md:h-24 md:w-24 -my-2" />
               <div className="-ml-3">
-                <h1 className="text-xl font-bold text-deep-sky">
+                <h1 className="text-base md:text-xl font-bold text-deep-sky">
                   {organization?.name || 'MeuAzulão'}
                 </h1>
                 {orgUser && (
-                  <p className="text-xs text-gray-600">{orgUser.name}</p>
+                  <p className="text-[10px] md:text-xs text-gray-600">{orgUser.name}</p>
                 )}
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function Header({
                 </button>
                 
                 {financeDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 max-w-[calc(100vw-32px)]">
                     <Link 
                       href={getDynamicUrl('/dashboard/transactions')}
                       onClick={() => setFinanceDropdownOpen(false)}
@@ -203,7 +203,7 @@ export default function Header({
                 </button>
                 
                 {planningDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 max-w-[calc(100vw-32px)]">
                     <Link 
                       href={getDynamicUrl('/dashboard/budgets')}
                       onClick={() => setPlanningDropdownOpen(false)}
@@ -270,7 +270,7 @@ export default function Header({
                 </button>
                 
                 {settingsDropdownOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 max-w-[calc(100vw-32px)]">
                     <div className="px-4 py-2 border-b border-gray-200">
                       <div className="flex items-center space-x-3">
                         <Avatar 
@@ -329,7 +329,7 @@ export default function Header({
             
             {/* Mobile: botão simples de settings */}
             <Link href={getDynamicUrl('/dashboard/config')} className="md:hidden">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px]">
                 <Settings className="h-4 w-4" />
               </Button>
             </Link>
@@ -337,9 +337,9 @@ export default function Header({
             {/* Mobile Menu Button */}
             <Button
               variant="ghost"
+              className="md:hidden min-w-[44px] min-h-[44px]"
               size="icon"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden"
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -367,6 +367,7 @@ export default function Header({
                   variant="ghost"
                   size="icon"
                   onClick={() => setMobileMenuOpen(false)}
+                  className="min-w-[44px] min-h-[44px]"
                 >
                   <X className="h-5 w-5" />
                 </Button>
@@ -389,7 +390,7 @@ export default function Header({
                 <div className="border-t border-gray-200 mt-2">
                   <button
                     onClick={() => setMobileFinanceOpen(!mobileFinanceOpen)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap min-h-[44px]"
                   >
                     <span className="font-medium">Financeiro</span>
                     <ChevronDown className={`h-4 w-4 transition-transform flex-shrink-0 ${mobileFinanceOpen ? 'rotate-180' : ''}`} />
@@ -445,7 +446,7 @@ export default function Header({
                 <div className="border-t border-gray-200">
                   <button
                     onClick={() => setMobilePlanningOpen(!mobilePlanningOpen)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                    className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap min-h-[44px]"
                   >
                     <span className="font-medium">Planejamento</span>
                     <ChevronDown className={`h-4 w-4 transition-transform flex-shrink-0 ${mobilePlanningOpen ? 'rotate-180' : ''}`} />
