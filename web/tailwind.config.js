@@ -6,6 +6,14 @@ module.exports = {
   ],
   theme: {
     extend: {
+      screens: {
+        // Breakpoints padronizados para mobile-first
+        'sm': '640px',   // Mobile large
+        'md': '768px',   // Tablet portrait
+        'lg': '1024px',  // Tablet landscape / Desktop small
+        'xl': '1280px',  // Desktop medium
+        '2xl': '1536px', // Desktop large
+      },
       colors: {
         'flight-blue': '#207DFF',
         'deep-sky': '#0D2C66',

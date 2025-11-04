@@ -441,22 +441,22 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] border border-flight-blue/20 flex flex-col mx-4">
         {/* Header fixo */}
-        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-lg">Nova Despesa</h2>
+        <div className="flex flex-row items-center justify-between p-4 md:p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-base md:text-lg">Nova Despesa</h2>
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onClose}
-            className="text-gray-700 hover:bg-gray-100"
+            className="text-gray-700 hover:bg-gray-100 min-w-[44px] min-h-[44px]"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
         
         {/* Conteúdo com scroll */}
-        <div className="flex-1 overflow-y-auto p-6 pt-0">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
@@ -646,19 +646,19 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         </div>
         
         {/* Footer fixo */}
-        <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+        <div className="flex flex-col md:flex-row justify-end space-y-2 md:space-y-0 md:space-x-3 p-4 md:p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={saving}
-            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="w-full md:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
             Cancelar
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+            className="w-full md:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
             {saving ? 'Salvando...' : 'Salvar'}
           </Button>

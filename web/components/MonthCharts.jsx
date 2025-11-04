@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildCategoryColorMap, paymentMethodColor, normalizeKey, resolveColor } from '../lib/colors';
+import { useResponsiveChart } from '../hooks/useResponsiveChart';
 
 export default function MonthCharts({ expenses, costCenters = [], categories = [], organization = null, user = null }) {
   const [hoverCategory, setHoverCategory] = useState(null);
@@ -223,12 +224,17 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
   // Componente de gráfico pizza profissional (donut + centro dinâmico em hover)
   const ProfessionalPieChart = ({ data, title }) => {
     const [activeIndex, setActiveIndex] = useState(null);
+    const { isMobile, getChartHeight, getDonutRadii, getFontSize } = useResponsiveChart();
     const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
     const chartData = data.map(d => ({ ...d, total }));
 
     // Sempre mostrar o maior valor quando não houver hover
     const defaultDisplay = chartData.length > 0 ? chartData[0] : null; // Maior valor já vem ordenado
     const hovered = activeIndex != null ? chartData[activeIndex] : defaultDisplay;
+    
+    const { innerRadius, outerRadius } = getDonutRadii(56, 120, 40, 90);
+    const chartHeight = getChartHeight(280, 240);
+    const fontSize = getFontSize('sm', 'xs');
 
     const renderActiveShape = (props) => {
       const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, midAngle } = props;
@@ -252,18 +258,25 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
       );
     };
 
+    // Handler para interação touch-friendly
+    const handleCellClick = (index) => {
+      if (isMobile) {
+        setActiveIndex(activeIndex === index ? null : index);
+      }
+    };
+
     return (
-    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">{title}</h3>
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-4 md:p-6">
+      <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6 text-center">{title}</h3>
       <div className="relative">
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <PieChart>
             <Pie
               data={chartData}
               cx="50%"
               cy="50%"
-              innerRadius={56}
-              outerRadius={120}
+              innerRadius={innerRadius}
+              outerRadius={outerRadius}
               paddingAngle={0}
               dataKey="value"
               stroke="#fff"
@@ -272,8 +285,9 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
               style={{ strokeLinejoin: 'round' }}
               activeIndex={activeIndex}
               activeShape={renderActiveShape}
-              onMouseEnter={(_, index) => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex(null)}
+              onMouseEnter={!isMobile ? (_, index) => setActiveIndex(index) : undefined}
+              onMouseLeave={!isMobile ? () => setActiveIndex(null) : undefined}
+              onClick={isMobile ? (_, index) => handleCellClick(index) : undefined}
             >
               {chartData.map((entry, index) => (
                 <Cell 
@@ -284,7 +298,7 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
                       ? paymentMethodColor(entry.key || entry.name)
                       : resolveColor(entry.name, categoryColorMap)
                   }
-                  style={{ opacity: 1 }}
+                  style={{ opacity: 1, cursor: isMobile ? 'pointer' : 'default' }}
                 />
               ))}
             </Pie>
@@ -295,9 +309,9 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
         {hovered && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
             <div className="text-center">
-              <p className="text-[11px] font-semibold text-gray-900 max-w-[140px] mx-auto truncate">{hovered.name}</p>
-              <p className="text-sm font-bold text-gray-900">{`- R$ ${Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</p>
-              <p className="text-[10px] text-gray-500 font-medium">{total > 0 ? `${((hovered.value / total) * 100).toFixed(1)}% do total` : ''}</p>
+              <p className={`${isMobile ? 'text-[10px]' : 'text-[11px]'} font-semibold text-gray-900 max-w-[140px] mx-auto truncate`}>{hovered.name}</p>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-bold text-gray-900`}>{`- R$ ${Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</p>
+              <p className={`${isMobile ? 'text-[9px]' : 'text-[10px]'} text-gray-500 font-medium`}>{total > 0 ? `${((hovered.value / total) * 100).toFixed(1)}% do total` : ''}</p>
             </div>
           </div>
         )}
@@ -347,7 +361,7 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
       </div>
       
           {/* Grid dos 3 gráficos pizza */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Pizza 1: Por Categorias */}
         <ProfessionalPieChart data={categoryChartData} title="Despesas por Categorias" />
         

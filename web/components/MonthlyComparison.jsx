@@ -1,8 +1,10 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Area, AreaChart } from 'recharts';
 import { useState } from 'react';
+import { useResponsiveChart } from '../hooks/useResponsiveChart';
 
 export default function MonthlyComparison({ monthlyData = [] }) {
   const [selectedPeriod, setSelectedPeriod] = useState('12');
+  const { isMobile, getChartHeight } = useResponsiveChart();
   // Debug logs
   console.log('🔍 [MONTHLYCOMPARISON DEBUG] monthlyData:', monthlyData);
   
@@ -19,6 +21,7 @@ export default function MonthlyComparison({ monthlyData = [] }) {
 
   // Tooltip customizado moderno
   const CustomTooltip = ({ active, payload, label }) => {
+    
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const cartoes = data.cartoes || 0;
@@ -27,34 +30,37 @@ export default function MonthlyComparison({ monthlyData = [] }) {
       const totalDespesas = cartoes + despesas;
       
       return (
-        <div className="bg-white/95 backdrop-blur-sm p-4 border border-gray-200/50 rounded-xl shadow-2xl">
+        <div 
+          className={`bg-white/95 backdrop-blur-sm ${isMobile ? 'p-3' : 'p-4'} border border-gray-200/50 rounded-xl shadow-2xl max-w-[calc(100vw-32px)]`}
+          style={{ maxWidth: isMobile ? 'calc(100vw - 32px)' : 'auto' }}
+        >
           <div className="mb-3">
-            <p className="font-semibold text-gray-900 text-sm mb-2">{label}</p>
+            <p className={`font-semibold text-gray-900 ${isMobile ? 'text-xs' : 'text-sm'} mb-2`}>{label}</p>
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#9CA3AF' }}></div>
-                  <span className="text-xs text-gray-600">Crédito</span>
+                  <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: '#9CA3AF' }}></div>
+                  <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-600`}>Crédito</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900 ml-4">
+                <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 ml-4`}>
                   - R$ {cartoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#6B7280' }}></div>
-                  <span className="text-xs text-gray-600">À Vista</span>
+                  <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: '#6B7280' }}></div>
+                  <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-600`}>À Vista</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900 ml-4">
+                <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 ml-4`}>
                   - R$ {despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-flight-blue"></div>
-                  <span className="text-xs text-gray-600">Entradas</span>
+                  <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-flight-blue`}></div>
+                  <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-600`}>Entradas</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900 ml-4">
+                <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 ml-4`}>
                   R$ {entradas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -114,28 +120,41 @@ export default function MonthlyComparison({ monthlyData = [] }) {
       
       {/* Gráfico */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
-        <div className="p-6">
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <div className="p-4 md:p-6">
+        <ResponsiveContainer width="100%" height={getChartHeight(400, 300)}>
+          <BarChart 
+            data={chartData} 
+            margin={isMobile ? { top: 10, right: 10, left: 10, bottom: 40 } : { top: 20, right: 30, left: 20, bottom: 5 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis 
               dataKey="month" 
-              tick={{ fontSize: 11, fill: '#64748b' }}
+              tick={{ fontSize: isMobile ? 9 : 11, fill: '#64748b' }}
               axisLine={false}
               tickLine={false}
+              angle={isMobile ? -45 : 0}
+              textAnchor={isMobile ? 'end' : 'middle'}
+              height={isMobile ? 60 : 30}
             />
             <YAxis 
-              tick={{ fontSize: 11, fill: '#64748b' }}
+              tick={{ fontSize: isMobile ? 9 : 11, fill: '#64748b' }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+              width={isMobile ? 50 : 60}
+              tickFormatter={(value) => {
+                if (isMobile && value >= 1000000) {
+                  return `R$ ${(value / 1000000).toFixed(1)}M`;
+                }
+                return `R$ ${(value / 1000).toFixed(0)}k`;
+              }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend 
               verticalAlign="top" 
-              height={50}
+              height={isMobile ? 40 : 50}
+              wrapperStyle={{ fontSize: isMobile ? '10px' : '12px' }}
               formatter={(value) => (
-                <span className="text-sm text-gray-600 font-medium">{value}</span>
+                <span className={`${isMobile ? 'text-[10px]' : 'text-sm'} text-gray-600 font-medium`}>{value}</span>
               )}
             />
             <Bar 

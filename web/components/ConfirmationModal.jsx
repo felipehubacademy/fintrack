@@ -40,41 +40,41 @@ export default function ConfirmationModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            {getIcon()}
-            <h2 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
+            <div className="flex-shrink-0">{getIcon()}</div>
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900 truncate">
               {title}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 ml-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          <p className="text-gray-600 mb-6">
+        {/* Content - Scrollable */}
+        <div className="p-4 md:p-6 overflow-y-auto flex-1">
+          <p className="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">
             {message}
           </p>
 
           {/* Actions */}
-          <div className="flex space-x-3 justify-end">
+          <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-3 justify-end mt-4 md:mt-0">
             <Button
               variant="outline"
               onClick={onClose}
-              className="px-6 py-2"
+              className="w-full md:w-auto px-6 py-2 min-h-[44px]"
             >
               {cancelText}
             </Button>
             <Button
               onClick={onConfirm}
-              className={`px-6 py-2 ${getButtonStyles()}`}
+              className={`w-full md:w-auto px-6 py-2 min-h-[44px] ${getButtonStyles()}`}
             >
               {confirmText}
             </Button>
