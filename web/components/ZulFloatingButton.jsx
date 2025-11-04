@@ -1173,6 +1173,7 @@ export default function ZulFloatingButton() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let hasReceivedContent = false; // Flag para saber se já recebeu conteúdo
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1197,6 +1198,12 @@ export default function ZulFloatingButton() {
               }
               
               if (data.content) {
+                // Se ainda não recebeu conteúdo, remover loading assim que receber o primeiro chunk
+                if (!hasReceivedContent) {
+                  hasReceivedContent = true;
+                  setIsLoading(false);
+                }
+                
                 // Atualizar mensagem do Zul em tempo real
                 setMessages(prev => prev.map(msg => 
                   msg.id === zulMessageId 
