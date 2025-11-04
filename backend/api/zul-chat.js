@@ -8,15 +8,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Log completo do body recebido
-    console.log('📥 [BACKEND API] Body completo recebido:', {
-      hasBody: !!req.body,
-      bodyKeys: Object.keys(req.body || {}),
-      contextKeys: Object.keys(req.body?.context || {}),
-      contextType: typeof req.body?.context,
-      contextIsArray: Array.isArray(req.body?.context),
-      contextValue: req.body?.context ? JSON.stringify(req.body.context).substring(0, 200) : 'null'
-    });
+    // Verificar se é streaming request
+    const useStream = req.query.stream === 'true' || req.headers['accept']?.includes('text/event-stream');
     
     const { message, userId, userName, userPhone, organizationId, context, conversationHistory } = req.body;
 
@@ -41,7 +34,6 @@ export default async function handler(req, res) {
     });
 
     // Processar mensagem com o Zul, passando contexto completo
-    // Se context é um objeto vazio, usar objeto vazio. Se tem dados, espalhar
     const contextToPass = context && Object.keys(context).length > 0 
       ? { organizationId: organizationId || null, ...context }
       : { organizationId: organizationId || null };
@@ -51,6 +43,41 @@ export default async function handler(req, res) {
       contextToPass.conversationHistory = conversationHistory;
     }
     
+    // Se streaming, retornar SSE
+    if (useStream && !userPhoneFinal) {
+      // Configurar headers para SSE
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no'); // Desabilitar buffering no nginx
+      
+      try {
+        // Usar streaming do webChat
+        const stream = zul.sendWebChatMessageStream(
+          userIdFinal,
+          message,
+          { userName: userNameFinal, ...contextToPass }
+        );
+        
+        // Enviar chunks via SSE
+        for await (const chunk of stream) {
+          res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+        }
+        
+        // Enviar evento de fim
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        res.end();
+        
+      } catch (streamError) {
+        console.error('❌ Erro no streaming:', streamError);
+        res.write(`data: ${JSON.stringify({ error: 'Erro no streaming' })}\n\n`);
+        res.end();
+      }
+      
+      return;
+    }
+
+    // Modo não-streaming (fallback)
     console.log('📤 [BACKEND API] Contexto sendo passado para processMessage:', {
       hasContext: Object.keys(contextToPass).length > 1,
       contextKeys: Object.keys(contextToPass),

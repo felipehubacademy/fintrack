@@ -1044,7 +1044,7 @@ export default function ZulFloatingButton() {
     }
   };
 
-  // Enviar mensagem para o Zul
+  // Enviar mensagem para o Zul com streaming
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -1056,8 +1056,19 @@ export default function ZulFloatingButton() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const userInput = inputMessage.trim();
     setInputMessage('');
     setIsLoading(true);
+
+    // Criar mensagem vazia do Zul que será atualizada em tempo real
+    const zulMessageId = Date.now() + 1;
+    const initialZulMessage = {
+      id: zulMessageId,
+      type: 'zul',
+      message: '',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, initialZulMessage]);
 
     try {
       // Coletar contexto financeiro completo
@@ -1079,7 +1090,7 @@ export default function ZulFloatingButton() {
       }));
       
       const requestBody = {
-        message: inputMessage.trim(),
+        message: userInput,
         userId: user?.id || 'web-user',
         userName: user?.name || 'Usuário Web',
         organizationId: organization?.id,
@@ -1087,7 +1098,7 @@ export default function ZulFloatingButton() {
         conversationHistory: conversationHistory // Histórico de conversa para contexto
       };
       
-      console.log('📤 [ZUL] Enviando requisição com contexto:', {
+      console.log('📤 [ZUL] Enviando requisição com streaming:', {
         hasContext: !!requestBody.context,
         hasSummary: !!requestBody.context?.summary,
         summaryBalance: requestBody.context?.summary?.balance,
@@ -1095,7 +1106,8 @@ export default function ZulFloatingButton() {
         historyLength: conversationHistory.length
       });
       
-      const response = await fetch('/api/zul-chat', {
+      // Fazer requisição com streaming
+      const response = await fetch('/api/zul-chat?stream=true', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1103,21 +1115,60 @@ export default function ZulFloatingButton() {
         body: JSON.stringify(requestBody)
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        const zulMessage = {
-          id: Date.now() + 1,
-          type: 'zul',
-          message: data.message,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, zulMessage]);
-      } else {
-        throw new Error(data.error || 'Erro desconhecido');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      // Ler stream SSE
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Manter última linha incompleta no buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.error) {
+                throw new Error(data.error);
+              }
+              
+              if (data.done) {
+                setIsLoading(false);
+                continue;
+              }
+              
+              if (data.content) {
+                // Atualizar mensagem do Zul em tempo real
+                setMessages(prev => prev.map(msg => 
+                  msg.id === zulMessageId 
+                    ? { ...msg, message: msg.message + data.content }
+                    : msg
+                ));
+              }
+            } catch (parseError) {
+              console.error('Erro ao parsear SSE:', parseError);
+            }
+          }
+        }
+      }
+
+      setIsLoading(false);
+
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
+      
+      // Remover mensagem vazia e adicionar mensagem de erro
+      setMessages(prev => prev.filter(msg => msg.id !== zulMessageId));
+      
       const errorMessage = {
         id: Date.now() + 1,
         type: 'zul',
@@ -1125,7 +1176,6 @@ export default function ZulFloatingButton() {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -1302,17 +1352,17 @@ export default function ZulFloatingButton() {
                     )}
                     
                     {/* Mensagem */}
-                    <div className={`rounded-lg p-3 max-w-xs ${
+                    <div className={`rounded-lg p-3 ${
                       msg.type === 'user' 
-                        ? 'bg-blue-600 text-white rounded-tr-sm' 
-                        : 'bg-white border border-gray-200 rounded-tl-sm'
+                        ? 'bg-blue-600 text-white rounded-tr-sm max-w-xs' 
+                        : 'bg-white border border-gray-200 rounded-tl-sm max-w-[85%] md:max-w-md'
                     }`}>
-                      <p 
-                        className="text-sm whitespace-pre-wrap"
+                      <div 
+                        className={`text-sm whitespace-pre-wrap ${
+                          msg.type === 'user' ? 'text-white' : 'text-gray-900'
+                        }`}
                         dangerouslySetInnerHTML={{ 
-                          __html: msg.message
-                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                          __html: formatZulMessage(msg.message, msg.type === 'user')
                         }}
                       />
                     </div>

@@ -56,6 +56,22 @@ class ZulWebChat {
     if (summary && month) {
       instructions += `Você é Zul, assessor financeiro experto do MeuAzulão.
 
+PERSONALIDADE DO ZUL:
+- Sábio jovem: calmo, claro, curioso e inspirador
+- Tom brasileiro: próximo, pessoal e respeitoso (muito brasileiro!)
+- Assessor experto: usa dados reais para insights precisos
+- Proativo: aponta problemas, sugere melhorias, alerta sobre riscos
+- Natural e acessível: fala como um amigo que sabe muito sobre finanças
+- Entusiasta mas equilibrado: animado para ajudar, mas sério quando necessário
+
+FORMATO DE RESPOSTAS:
+- Use parágrafos curtos e claros
+- Use listas numeradas ou com bullets quando apropriado
+- Use títulos (###) para organizar seções longas
+- Use negrito (**texto**) para destacar números e informações importantes
+- Seja direto mas amigável
+- Evite jargões financeiros complexos - explique quando necessário
+
 ═══════════════════════════════════════════════════════════════════════════════
 DADOS FINANCEIROS DO USUÁRIO (${month}) - USE ESTES DADOS PARA RESPONDER!
 ═══════════════════════════════════════════════════════════════════════════════
@@ -69,7 +85,7 @@ TOTAL DE DESPESAS: R$ ${summary.totalExpenses.toLocaleString('pt-BR', { minimumF
 ═══════════════════════════════════════════════════════════════════════════════
 
 REGRAS ABSOLUTAS:
-1. Quando perguntarem "qual meu saldo?" ou "meu saldo do mês", responda: "Seu saldo do mês está ${summary.balance >= 0 ? 'POSITIVO' : 'NEGATIVO'} em R$ ${summary.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Você teve entradas de R$ ${summary.totalIncomes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} e despesas de R$ ${summary.totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}."
+1. Quando perguntarem "qual meu saldo?" ou "meu saldo do mês", responda: "Seu saldo do mês está ${summary.balance >= 0 ? 'POSITIVO' : 'NEGATIVO'} em **R$ ${summary.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}**! Você teve entradas de **R$ ${summary.totalIncomes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}** e despesas de **R$ ${summary.totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}**."
 2. NUNCA diga "não consigo acessar" ou "não tenho acesso" - você TEM os dados acima!
 3. SEMPRE use os números exatos acima nas suas respostas
 4. Seja proativo: aponte problemas e oportunidades baseado nos dados reais
@@ -266,7 +282,73 @@ ${firstName ? `\nUsuário: ${firstName}` : ''}`;
   }
 
   /**
-   * Enviar mensagem para chat web (assistente financeiro geral)
+   * Enviar mensagem para chat web (assistente financeiro geral) - COM STREAMING
+   */
+  async *sendWebChatMessageStream(userId, userMessage, context = {}) {
+    try {
+      console.log('💬 [WEB CHAT] Iniciando conversa com streaming...');
+      console.log('📊 [WEB CHAT] Context recebido:', JSON.stringify(context, null, 2));
+      
+      // Instruções específicas para chat web
+      const systemMessage = this.getWebChatInstructions(context);
+      console.log('📝 [WEB CHAT] System message length:', systemMessage.length);
+      
+      // Preparar mensagens para GPT-4
+      const messages = [
+        {
+          role: 'system',
+          content: systemMessage
+        }
+      ];
+      
+      // Adicionar histórico de conversa se disponível
+      if (context.conversationHistory && Array.isArray(context.conversationHistory)) {
+        console.log(`📜 [WEB CHAT] Adicionando ${context.conversationHistory.length} mensagens do histórico`);
+        messages.push(...context.conversationHistory);
+      }
+      
+      // Adicionar mensagem atual do usuário
+      messages.push({
+        role: 'user',
+        content: userMessage
+      });
+      
+      // Verificar se temos dados financeiros antes de chamar GPT
+      const hasFinancialData = context?.summary && context?.month;
+      if (hasFinancialData) {
+        console.log('✅ [WEB CHAT] Chamando GPT com dados financeiros disponíveis');
+      } else {
+        console.log('⚠️ [WEB CHAT] Chamando GPT SEM dados financeiros');
+      }
+      
+      // Chamar GPT-4 com streaming
+      const stream = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: messages,
+        temperature: 0.3,
+        top_p: 0.9,
+        frequency_penalty: 0.3,
+        presence_penalty: 0.2,
+        max_tokens: 800,
+        stream: true // Habilitar streaming
+      });
+      
+      // Yield cada chunk da resposta
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          yield content;
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ [WEB CHAT] Erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Enviar mensagem para chat web (assistente financeiro geral) - SEM STREAMING (fallback)
    */
   async sendWebChatMessage(userId, userMessage, context = {}) {
     try {

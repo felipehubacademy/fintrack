@@ -3580,6 +3580,11 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
   async sendWebChatMessage(userId, userMessage, context = {}) {
     return await this.webChat.sendWebChatMessage(userId, userMessage, context);
   }
+
+  async *sendWebChatMessageStream(userId, userMessage, context = {}) {
+    // Passar streaming direto do webChat
+    yield* this.webChat.sendWebChatMessageStream(userId, userMessage, context);
+  }
 }
 
 

@@ -5,6 +5,7 @@ export default async function handler(req, res) {
 
   try {
     const { message, userId, userName, userPhone, organizationId, context, conversationHistory } = req.body;
+    const useStream = req.query.stream === 'true';
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
@@ -17,7 +18,8 @@ export default async function handler(req, res) {
       summaryBalance: context?.summary?.balance,
       month: context?.month,
       contextKeys: Object.keys(context || {}),
-      historyLength: conversationHistory?.length || 0
+      historyLength: conversationHistory?.length || 0,
+      useStream
     });
 
     // Fazer requisição para o backend
@@ -32,6 +34,50 @@ export default async function handler(req, res) {
       conversationHistory: conversationHistory || [] // Passar histórico de conversa
     };
     
+    // Se streaming, repassar SSE
+    if (useStream) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      
+      try {
+        const response = await fetch(`${backendUrl}/api/zul-chat?stream=true`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Backend error: ${response.status}`);
+        }
+
+        // Repassar stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          res.write(chunk);
+        }
+        
+        res.end();
+        return;
+        
+      } catch (streamError) {
+        console.error('Erro no streaming:', streamError);
+        res.write(`data: ${JSON.stringify({ error: 'Erro no streaming' })}\n\n`);
+        res.end();
+        return;
+      }
+    }
+    
+    // Modo não-streaming (fallback)
     console.log('📤 [API ZUL] Enviando para backend:', {
       hasContext: !!requestBody.context,
       hasSummary: !!requestBody.context?.summary,
