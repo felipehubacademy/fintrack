@@ -129,13 +129,20 @@ Se não conseguir ler algo, use null.`;
       fs.writeFileSync(tmpPath, audioResponse.data);
       console.log('💾 [WHISPER] Arquivo temporário salvo:', tmpPath);
       
-      // Whisper API
+      // Whisper API com prompt contextual para melhor precisão
       console.log('🎤 [WHISPER] Enviando para Whisper API...');
       const whisperStart = Date.now();
+      
+      // Prompt contextual para melhorar precisão em português brasileiro
+      // Inclui termos comuns do sistema e contexto financeiro
+      const contextualPrompt = `Zul, assistente financeiro, gastos, despesas, despesa, mercado, supermercado, restaurante, lanche, pizza, ifood, delivery, padaria, açougue, peixaria, farmácia, remédio, médico, dentista, hospital, posto, gasolina, combustível, uber, taxi, ônibus, metro, estacionamento, IPVA, oficina, manutenção, aluguel, condomínio, água, luz, energia, internet, telefone, IPTU, imposto, cinema, teatro, show, balada, bar, parque, viagem, hotel, Netflix, Spotify, streaming, cabelo, barbearia, manicure, pedicure, salão, cosmético, roupa, sapato, tênis, camisa, curso, faculdade, escola, livro, petshop, ração, veterinário, paguei, pagamos, gastei, gastamos, comprei, compramos, investi, investimos, paguei, pagamos, fui, fomos, anotei, anotamos, registrei, registramos, lancei, lançamos, pix, dinheiro, dinheiro, débito, débitos, crédito, créditos, cartão, cartões, Nubank, C6, Latam, Roxinho, parcelado, parcelas, vezes, x, responsável, compartilhado, compartilhada, família, individual, eu, eu mesmo, fui eu, R$, reais, centavos, centavo, primeiro, segundo, terceiro, quarta, quinta, sexta, sétima, oitava, nona, décima, hoje, ontem, amanhã, semana, mês, ano, janeiro, fevereiro, março, abril, maio, junho, julho, agosto, setembro, outubro, novembro, dezembro, domingo, segunda, terça, quarta, quinta, sexta, sábado`;
+      
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream(tmpPath),
         model: 'whisper-1',
         language: 'pt',
+        prompt: contextualPrompt,
+        temperature: 0.2, // Reduzir temperatura para ser mais determinístico e preciso
       });
       const whisperTime = Date.now() - whisperStart;
       
@@ -144,11 +151,17 @@ Se não conseguir ler algo, use null.`;
       console.log('🗑️ [WHISPER] Arquivo temporário removido');
       
       const totalTime = Date.now() - startTime;
-      const transcriptionLength = transcription.text?.length || 0;
-      console.log(`✅ [WHISPER] Transcrição concluída (${whisperTime}ms, total: ${totalTime}ms)`);
-      console.log(`✅ [WHISPER] Texto transcrito (${transcriptionLength} caracteres): "${transcription.text}"`);
+      let finalText = transcription.text;
       
-      return transcription.text;
+      // Pós-processamento para corrigir erros comuns de transcrição em português brasileiro
+      finalText = this.postProcessTranscription(finalText);
+      
+      const transcriptionLength = finalText?.length || 0;
+      console.log(`✅ [WHISPER] Transcrição concluída (${whisperTime}ms, total: ${totalTime}ms)`);
+      console.log(`✅ [WHISPER] Texto original: "${transcription.text}"`);
+      console.log(`✅ [WHISPER] Texto pós-processado (${transcriptionLength} caracteres): "${finalText}"`);
+      
+      return finalText;
       
     } catch (error) {
       const totalTime = Date.now() - startTime;
@@ -169,6 +182,31 @@ Se não conseguir ler algo, use null.`;
     }
   }
   
+  /**
+   * 🔧 Pós-processar transcrição para corrigir erros comuns
+   */
+  postProcessTranscription(text) {
+    if (!text) return text;
+    
+    let processed = text;
+    
+    // Correções comuns de nomes e termos do sistema
+    // "Zuga" -> "Zul" (erro comum do Whisper)
+    processed = processed.replace(/\bZuga\b/gi, 'Zul');
+    processed = processed.replace(/\bZulu\b/gi, 'Zul');
+    processed = processed.replace(/\bZulh\b/gi, 'Zul');
+    
+    // Correções de números comuns que podem ser confundidos
+    // Isso é mais conservador - apenas corrigir padrões muito específicos
+    // "650" quando o contexto sugere "150" é difícil de detectar automaticamente
+    // Então vamos deixar isso para a confirmação do usuário (já implementada)
+    
+    // Normalizar espaçamento
+    processed = processed.replace(/\s+/g, ' ').trim();
+    
+    return processed;
+  }
+
   /**
    * 🤖 Interpretar mensagem de despesa usando GPT-4 Mini
    */
