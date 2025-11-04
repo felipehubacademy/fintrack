@@ -14,6 +14,7 @@ import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import NotificationModal from '../../components/NotificationModal';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 import { 
   Calendar, 
   Plus, 
@@ -1003,200 +1004,209 @@ export default function BillsDashboard() {
           </Card>
         ) : (
           <Card className="border border-gray-200 bg-white shadow-sm">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th 
-                        scope="col" 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() => handleSort('due_date')}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <span>Vencimento</span>
-                          {getSortIcon('due_date')}
-                        </div>
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Descrição
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Categoria
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Forma
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Responsável
-                      </th>
-                      <th 
-                        scope="col" 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() => handleSort('amount')}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <span>Valor</span>
-                          {getSortIcon('amount')}
-                        </div>
-                      </th>
-                      <th 
-                        scope="col" 
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() => handleSort('status')}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <span>Status</span>
-                          {getSortIcon('status')}
-                        </div>
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ações
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredBills.map((bill) => {
+            <CardContent className="p-4 md:p-0">
+              {(() => {
+                // Helper para formatação da forma de pagamento
+                const getPaymentMethodLabel = (method) => {
+                  const methods = {
+                    'pix': 'PIX',
+                    'credit_card': 'Cartão de Crédito',
+                    'debit_card': 'Cartão de Débito',
+                    'cash': 'Dinheiro',
+                    'bank_transfer': 'Transferência',
+                    'boleto': 'Boleto',
+                    'other': 'Outro'
+                  };
+                  return methods[method] || method || '—';
+                };
+                
+                // Definir colunas
+                const columns = [
+                  {
+                    key: 'due_date',
+                    label: 'Vencimento',
+                    sortable: true,
+                    render: (bill) => {
                       const daysUntil = getDaysUntilDue(bill.due_date);
-                      const statusBadge = getStatusBadge(bill.status);
-                      
-                      // Formatação da forma de pagamento
-                      const getPaymentMethodLabel = (method) => {
-                        const methods = {
-                          'pix': 'PIX',
-                          'credit_card': 'Cartão de Crédito',
-                          'debit_card': 'Cartão de Débito',
-                          'cash': 'Dinheiro',
-                          'bank_transfer': 'Transferência',
-                          'boleto': 'Boleto',
-                          'other': 'Outro'
-                        };
-                        return methods[method] || method || '—';
-                      };
-                      
                       return (
-                        <tr key={bill.id} className="hover:bg-gray-50 transition-colors">
-                          {/* Vencimento */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {new Date(bill.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        <div>
+                          <div className="text-sm text-gray-900">
+                            {new Date(bill.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                          </div>
+                          {bill.status === 'pending' && daysUntil >= 0 && (
+                            <div className={`text-xs mt-1 font-medium ${
+                              daysUntil <= 3 ? 'text-red-600' : 
+                              daysUntil <= 7 ? 'text-yellow-600' : 
+                              'text-gray-500'
+                            }`}>
+                              {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`}
                             </div>
-                            {bill.status === 'pending' && daysUntil >= 0 && (
-                              <div className={`text-xs mt-1 font-medium ${
-                                daysUntil <= 3 ? 'text-red-600' : 
-                                daysUntil <= 7 ? 'text-yellow-600' : 
-                                'text-gray-500'
-                              }`}>
-                                {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`}
-                              </div>
-                            )}
-                            {bill.status === 'overdue' && (
-                              <div className="text-xs mt-1 font-medium text-red-600">
-                                Vencido há {Math.abs(daysUntil)} {Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}
-                              </div>
-                            )}
-                          </td>
-                          
-                          {/* Descrição */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium text-gray-900">{bill.description}</span>
-                              {bill.is_recurring && (
-                                <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs">
-                                  Recorrente
-                                </Badge>
-                              )}
+                          )}
+                          {bill.status === 'overdue' && (
+                            <div className="text-xs mt-1 font-medium text-red-600">
+                              Vencido há {Math.abs(daysUntil)} {Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}
                             </div>
-                          </td>
-                          
-                          {/* Categoria */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-600">
-                              {bill.category ? bill.category.name : '—'}
-                            </span>
-                          </td>
-                          
-                          {/* Forma de Pagamento */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-600">
-                              {bill.payment_method ? getPaymentMethodLabel(bill.payment_method) : '—'}
-                            </span>
-                            {bill.payment_method === 'credit_card' && bill.card && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                {bill.card.name}
-                              </div>
-                            )}
-                          </td>
-                          
-                          {/* Responsável */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {bill.is_shared ? (
-                              <span className="text-sm text-gray-600 font-medium">
-                                {organization?.name || 'Família'}
-                              </span>
-                            ) : bill.cost_center ? (
-                              <span className="text-sm text-gray-600">{bill.cost_center.name}</span>
-                            ) : (
-                              <span className="text-sm text-gray-400">—</span>
-                            )}
-                          </td>
-                          
-                          {/* Valor */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-semibold text-gray-900">
-                              R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </div>
-                          </td>
-                          
-                          {/* Status */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge className={statusBadge.className}>
-                              {statusBadge.label}
-                            </Badge>
-                          </td>
-                          
-                          {/* Ações */}
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center justify-end space-x-2">
-                              {(bill.status === 'pending' || bill.status === 'overdue') && (
-                                <button
-                                  onClick={() => handleMarkAsPaid(bill)}
-                                  className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50 transition-colors"
-                                  title="Marcar como Paga"
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </button>
-                              )}
-                              
-                              <button
-                                onClick={() => openEditModal(bill)}
-                                className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors"
-                                title="Editar"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteBill(bill.id)}
-                                className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                          )}
+                        </div>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              
-              {filteredBills.length === 0 && (
-                <div className="p-8 text-center">
-                  <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Nenhuma conta a pagar encontrada</p>
-                </div>
-              )}
+                    }
+                  },
+                  {
+                    key: 'description',
+                    label: 'Descrição',
+                    sortable: false,
+                    render: (bill) => (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-900">{bill.description}</span>
+                        {bill.is_recurring && (
+                          <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs">
+                            Recorrente
+                          </Badge>
+                        )}
+                      </div>
+                    ),
+                    mobileRender: (bill) => (
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">{bill.description}</span>
+                        {bill.is_recurring && (
+                          <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs ml-2">
+                            Recorrente
+                          </Badge>
+                        )}
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'category',
+                    label: 'Categoria',
+                    sortable: false,
+                    render: (bill) => (
+                      <span className="text-sm text-gray-600">
+                        {bill.category ? bill.category.name : '—'}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'payment_method',
+                    label: 'Forma',
+                    sortable: false,
+                    render: (bill) => (
+                      <div>
+                        <span className="text-sm text-gray-600">
+                          {bill.payment_method ? getPaymentMethodLabel(bill.payment_method) : '—'}
+                        </span>
+                        {bill.payment_method === 'credit_card' && bill.card && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {bill.card.name}
+                          </div>
+                        )}
+                      </div>
+                    ),
+                    mobileRender: (bill) => (
+                      <div>
+                        <div className="text-sm text-gray-600">
+                          {bill.payment_method ? getPaymentMethodLabel(bill.payment_method) : '—'}
+                        </div>
+                        {bill.payment_method === 'credit_card' && bill.card && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {bill.card.name}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'owner',
+                    label: 'Responsável',
+                    sortable: false,
+                    render: (bill) => (
+                      <span className="text-sm text-gray-600">
+                        {bill.is_shared ? (
+                          <span className="font-medium">{organization?.name || 'Família'}</span>
+                        ) : bill.cost_center ? (
+                          bill.cost_center.name
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'amount',
+                    label: 'Valor',
+                    sortable: true,
+                    render: (bill) => (
+                      <div className="text-sm font-semibold text-gray-900">
+                        R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'status',
+                    label: 'Status',
+                    sortable: true,
+                    render: (bill) => {
+                      const statusBadge = getStatusBadge(bill.status);
+                      return (
+                        <Badge className={statusBadge.className}>
+                          {statusBadge.label}
+                        </Badge>
+                      );
+                    }
+                  }
+                ];
+                
+                // Renderizar ações
+                const renderActions = (bill) => {
+                  const daysUntil = getDaysUntilDue(bill.due_date);
+                  const statusBadge = getStatusBadge(bill.status);
+                  
+                  return (
+                    <div className="flex items-center space-x-2">
+                      {(bill.status === 'pending' || bill.status === 'overdue') && (
+                        <button
+                          onClick={() => handleMarkAsPaid(bill)}
+                          className="text-green-600 hover:text-green-800 p-2 rounded hover:bg-green-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                          title="Marcar como Paga"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => openEditModal(bill)}
+                        className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        title="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBill(bill.id)}
+                        className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                };
+                
+                return (
+                  <ResponsiveTable
+                    columns={columns}
+                    data={filteredBills}
+                    renderRowActions={renderActions}
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                    renderEmptyState={() => (
+                      <div className="p-8 text-center">
+                        <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600">Nenhuma conta a pagar encontrada</p>
+                      </div>
+                    )}
+                  />
+                );
+              })()}
             </CardContent>
           </Card>
         )}
