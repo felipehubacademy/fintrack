@@ -84,7 +84,7 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
       });
     } else if (income.is_shared) {
       individualCenters.forEach(cc => {
-        const percentage = parseFloat(cc.split_percentage || 0);
+        const percentage = parseFloat(cc.default_split_percentage || 0);
         const share = (amount * percentage) / 100;
         const ccKey = canon(cc.name);
         

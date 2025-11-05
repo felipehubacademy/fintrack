@@ -865,7 +865,7 @@ export default function TransactionsDashboard() {
       expenses.forEach(e => {
         if (e.status !== 'confirmed') return;
         
-        if (e.split && (e.owner === 'Compartilhado' || e.owner === (organization?.name || 'Família'))) {
+        if (e.is_shared || (e.owner === 'Compartilhado' || e.owner === (organization?.name || 'Família'))) {
           // Despesa compartilhada: buscar o split deste responsável
           if (e.expense_splits && e.expense_splits.length > 0) {
             // Usar splits personalizados
@@ -877,10 +877,10 @@ export default function TransactionsDashboard() {
               }
             }
           } else {
-            // Usar fallback (split_percentage do cost_center)
+            // Usar fallback (default_split_percentage do cost_center)
             const ownerCostCenter = costCenters.find(cc => isSameName(cc.name, owner));
             if (ownerCostCenter) {
-              const percentage = parseFloat(ownerCostCenter.split_percentage || 0);
+              const percentage = parseFloat(ownerCostCenter.default_split_percentage || 0);
               const amount = parseFloat(e.amount || 0);
               total += (amount * percentage) / 100;
             }
@@ -1223,12 +1223,24 @@ export default function TransactionsDashboard() {
               .filter(e => e.status === 'confirmed' && !e.is_shared && e.cost_center_id === cc.id)
               .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
             
-            // Parte deste responsável nas despesas compartilhadas (via expense_splits)
-            const sharedExpenses = expenses
+            // Parte deste responsável nas despesas compartilhadas
+            let sharedExpenses = 0;
+            expenses
               .filter(e => e.status === 'confirmed' && (e.is_shared || e.expense_splits?.length > 0))
-              .flatMap(e => e.expense_splits || [])
-              .filter(s => s.cost_center_id === cc.id)
-              .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+              .forEach(e => {
+                if (e.expense_splits && e.expense_splits.length > 0) {
+                  // Usar splits personalizados
+                  const split = e.expense_splits.find(s => s.cost_center_id === cc.id);
+                  if (split) {
+                    sharedExpenses += parseFloat(split.amount || 0);
+                  }
+                } else if (e.is_shared) {
+                  // Usar fallback (split_percentage do cost_center)
+                  const percentage = parseFloat(cc.default_split_percentage || 0);
+                  const amount = parseFloat(e.amount || 0);
+                  sharedExpenses += (amount * percentage) / 100;
+                }
+              });
             
             const totalExpenses = individualExpenses + sharedExpenses;
             

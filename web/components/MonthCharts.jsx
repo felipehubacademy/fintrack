@@ -192,9 +192,9 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
           if (!displayNameByCanon[ccKey]) displayNameByCanon[ccKey] = ccName;
         });
       } else {
-        // Usar fallback (cost_centers.split_percentage)
+        // Usar fallback (cost_centers.default_split_percentage)
         individualCenters.forEach(cc => {
-          const percentage = parseFloat(cc.split_percentage || 0);
+          const percentage = parseFloat(cc.default_split_percentage || 0);
           const share = (amount * percentage) / 100;
           const ccKey = canon(cc.name);
           

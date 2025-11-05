@@ -415,11 +415,23 @@ export default function MonthlyClosing() {
                       .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
                     
                     // Parte deste responsável nas entradas compartilhadas
-                    const sharedTotal = data.incomes
+                    let sharedTotal = 0;
+                    data.incomes
                       .filter(i => i.is_shared && i.status === 'confirmed')
-                      .flatMap(i => i.income_splits || [])
-                      .filter(s => s.cost_center_id === cc.id)
-                      .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+                      .forEach(i => {
+                        if (i.income_splits && i.income_splits.length > 0) {
+                          // Usar splits personalizados
+                          const split = i.income_splits.find(s => s.cost_center_id === cc.id);
+                          if (split) {
+                            sharedTotal += parseFloat(split.amount || 0);
+                          }
+                        } else {
+                          // Usar fallback (default_split_percentage do cost_center)
+                          const percentage = parseFloat(cc.default_split_percentage || 0);
+                          const amount = parseFloat(i.amount || 0);
+                          sharedTotal += (amount * percentage) / 100;
+                        }
+                      });
                     
                     const total = individualTotal + sharedTotal;
                     const percentage = data.totalIncome > 0 ? ((total / data.totalIncome) * 100).toFixed(1) : 0;
