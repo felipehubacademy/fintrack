@@ -23,7 +23,7 @@ export default function TransactionsDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError, user: orgUser, isSoloUser } = useOrganization();
-  const { success, showError } = useNotificationContext();
+  const { success, error: showError } = useNotificationContext();
   const [openTooltip, setOpenTooltip] = useState(null);
   
   
@@ -56,6 +56,8 @@ export default function TransactionsDashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState(null);
+  const [selectedTransactions, setSelectedTransactions] = useState([]);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   // Fechar tooltip ao clicar fora em mobile
   useEffect(() => {
@@ -109,6 +111,11 @@ export default function TransactionsDashboard() {
       fetchCategories();
     }
   }, [user, filter, isV2Ready, orgLoading, organization, costCenters]);
+
+  // Limpar seleção quando filtros mudarem
+  useEffect(() => {
+    setSelectedTransactions([]);
+  }, [filter]);
 
   // Combinar expenses e incomes após ambos estarem carregados
   useEffect(() => {
@@ -461,6 +468,179 @@ export default function TransactionsDashboard() {
     } finally {
       setDeleting(false);
       setTransactionToDelete(null);
+    }
+  };
+
+  // Handlers para seleção em massa
+  const handleSelectionChange = (transactionId, checked) => {
+    if (checked) {
+      setSelectedTransactions(prev => [...prev, transactionId]);
+    } else {
+      setSelectedTransactions(prev => prev.filter(id => id !== transactionId));
+    }
+  };
+
+  const handleSelectAll = (checked) => {
+    const sortedFiltered = sortTransactions(filterTransactions(transactions));
+    if (checked) {
+      setSelectedTransactions(sortedFiltered.map(t => t.id || t));
+    } else {
+      setSelectedTransactions([]);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedTransactions.length === 0) return;
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedTransactions.length === 0) return;
+
+    setDeleting(true);
+    setShowBulkDeleteConfirm(false);
+
+    try {
+      const sortedFiltered = sortTransactions(filterTransactions(transactions));
+      const transactionsToDelete = sortedFiltered.filter(t => 
+        selectedTransactions.includes(t.id || t)
+      );
+
+      // Separar incomes e expenses
+      const incomesToDelete = transactionsToDelete.filter(t => t.type === 'income');
+      const expensesToDelete = transactionsToDelete.filter(t => t.type === 'expense');
+
+      let deletedCount = 0;
+      let errors = [];
+      const deletedExpenseIds = new Set();
+
+      // Excluir incomes
+      if (incomesToDelete.length > 0) {
+        const incomeIds = incomesToDelete.map(t => t.id);
+        const { error } = await supabase
+          .from('incomes')
+          .delete()
+          .in('id', incomeIds);
+        
+        if (error) {
+          errors.push('Erro ao excluir entradas: ' + error.message);
+        } else {
+          deletedCount += incomeIds.length;
+        }
+      }
+
+      // Excluir expenses (considerar parcelas e bills)
+      if (expensesToDelete.length > 0) {
+        // Buscar expenses completos do estado para verificar parcelas
+        const expensesToDeleteWithDetails = expensesToDelete.map(t => {
+          const fullExpense = expenses.find(e => e.id === t.id);
+          return fullExpense || t;
+        });
+
+        // Coletar todos os IDs de expenses que serão excluídos (incluindo parcelas)
+        const allExpenseIdsToDelete = new Set(expensesToDelete.map(t => t.id));
+
+        // Identificar expenses com parcelas (parent_expense_id ou installment_info)
+        const expensesWithInstallments = expensesToDeleteWithDetails.filter(e => {
+          // Se é uma parcela (tem parent_expense_id), precisa excluir todas as parcelas
+          if (e.parent_expense_id) {
+            return true;
+          }
+          // Se é a transação principal e tem parcelas
+          if (e.installment_info && e.installment_info.total_installments > 1) {
+            return true;
+          }
+          return false;
+        });
+
+        // Excluir todas as parcelas relacionadas
+        for (const expense of expensesWithInstallments) {
+          const parentId = expense.parent_expense_id || expense.id;
+          
+          // Buscar todas as parcelas relacionadas
+          const { data: allInstallments, error: fetchError } = await supabase
+            .from('expenses')
+            .select('id')
+            .or(`id.eq.${parentId},parent_expense_id.eq.${parentId}`);
+          
+          if (fetchError) {
+            errors.push(`Erro ao buscar parcelas de ${expense.description}: ${fetchError.message}`);
+            continue;
+          }
+
+          if (allInstallments && allInstallments.length > 0) {
+            const installmentIds = allInstallments.map(i => i.id);
+            // Adicionar todas as parcelas à lista de IDs a excluir
+            installmentIds.forEach(id => allExpenseIdsToDelete.add(id));
+          }
+        }
+
+        // ANTES de excluir expenses, remover referências em bills
+        const expenseIdsArray = Array.from(allExpenseIdsToDelete);
+        
+        if (expenseIdsArray.length > 0) {
+          // Buscar todas as bills que referenciam essas expenses
+          const { data: billsToUpdate, error: billsFetchError } = await supabase
+            .from('bills')
+            .select('id, expense_id')
+            .in('expense_id', expenseIdsArray);
+          
+          if (billsFetchError) {
+            errors.push(`Erro ao buscar contas relacionadas: ${billsFetchError.message}`);
+          } else if (billsToUpdate && billsToUpdate.length > 0) {
+            // Remover referências expense_id das bills
+            const billIdsToUpdate = billsToUpdate.map(b => b.id);
+            const { error: updateBillsError } = await supabase
+              .from('bills')
+              .update({ expense_id: null })
+              .in('id', billIdsToUpdate);
+            
+            if (updateBillsError) {
+              errors.push(`Erro ao remover referências de contas: ${updateBillsError.message}`);
+            }
+          }
+
+          // Excluir expense_splits relacionados
+          const { error: splitsError } = await supabase
+            .from('expense_splits')
+            .delete()
+            .in('expense_id', expenseIdsArray);
+          
+          if (splitsError) {
+            console.warn('⚠️ Erro ao excluir splits (pode não existir):', splitsError);
+          }
+
+          // Agora excluir as expenses
+          const { error: deleteError } = await supabase
+            .from('expenses')
+            .delete()
+            .in('id', expenseIdsArray);
+          
+          if (deleteError) {
+            errors.push('Erro ao excluir despesas: ' + deleteError.message);
+          } else {
+            deletedCount += expenseIdsArray.length;
+          }
+        }
+      }
+
+      // Recarregar dados
+      await Promise.all([fetchExpenses(), fetchIncomes()]);
+
+      // Limpar seleção
+      setSelectedTransactions([]);
+
+      // Mostrar mensagem de sucesso ou erro
+      if (errors.length > 0) {
+        showError('Alguns itens não puderam ser excluídos: ' + errors.join(', '));
+      } else {
+        success(`${deletedCount} transação(ões) excluída(s) com sucesso!`);
+      }
+    } catch (error) {
+      console.error('Erro ao excluir em massa:', error);
+      showError('Erro ao excluir transações: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -1359,12 +1539,28 @@ export default function TransactionsDashboard() {
         {/* Expense Table */}
         <Card className="border-0 bg-white overflow-visible" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <div className="p-2 bg-flight-blue/5 rounded-lg">
-                <TrendingUp className="h-4 w-4 text-flight-blue" />
-              </div>
-              <span>Transações Gerais</span>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center space-x-2">
+                <div className="p-2 bg-flight-blue/5 rounded-lg">
+                  <TrendingUp className="h-4 w-4 text-flight-blue" />
+                </div>
+                <span>Transações Gerais</span>
+              </CardTitle>
+              {selectedTransactions.length > 0 && (
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-600">
+                    {selectedTransactions.length} selecionada(s)
+                  </span>
+                  <Button
+                    onClick={handleBulkDelete}
+                    className="bg-red-600 hover:bg-red-700 text-white border-2 border-red-600 shadow-sm hover:shadow-md transition-all duration-200"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir Selecionadas
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="overflow-visible">
             {/* Helper para renderizar owner com tooltip */}
@@ -1592,6 +1788,8 @@ export default function TransactionsDashboard() {
               };
               
               const sortedTransactions = sortTransactions(filterTransactions(transactions));
+              const allSelected = sortedTransactions.length > 0 && 
+                sortedTransactions.every(t => selectedTransactions.includes(t.id || t));
               
               return (
                 <ResponsiveTable
@@ -1600,6 +1798,11 @@ export default function TransactionsDashboard() {
                   renderRowActions={renderActions}
                   sortConfig={sortConfig}
                   onSort={handleSort}
+                  enableSelection={true}
+                  selectedItems={selectedTransactions}
+                  onSelectionChange={handleSelectionChange}
+                  onSelectAll={handleSelectAll}
+                  allSelected={allSelected}
                   renderEmptyState={() => (
             <div className="p-8 text-center">
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1662,6 +1865,20 @@ export default function TransactionsDashboard() {
             ? "Tem certeza que deseja excluir esta entrada? Esta ação não pode ser desfeita."
             : "Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita."
         }
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showBulkDeleteConfirm}
+        onClose={() => {
+          setShowBulkDeleteConfirm(false);
+        }}
+        onConfirm={confirmBulkDelete}
+        title="Confirmar exclusão em massa"
+        message={`Tem certeza que deseja excluir ${selectedTransactions.length} transação(ões) selecionada(s)? Esta ação não pode ser desfeita.`}
         confirmText="Excluir"
         cancelText="Cancelar"
         type="danger"

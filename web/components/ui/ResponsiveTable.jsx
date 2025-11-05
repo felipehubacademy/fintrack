@@ -13,6 +13,11 @@ import Tooltip from './Tooltip';
  * @param {Object} sortConfig - { key, direction } - Estado de ordenação
  * @param {Function} onSort - Callback quando coluna é clicada para ordenar
  * @param {Function} renderEmptyState - Função opcional para renderizar estado vazio
+ * @param {Boolean} enableSelection - Habilitar seleção múltipla
+ * @param {Array} selectedItems - Array de IDs selecionados
+ * @param {Function} onSelectionChange - Callback quando seleção muda (recebe itemId, checked)
+ * @param {Function} onSelectAll - Callback para selecionar/desselecionar todos
+ * @param {Boolean} allSelected - Se todos os itens estão selecionados
  */
 export default function ResponsiveTable({
   columns = [],
@@ -22,6 +27,11 @@ export default function ResponsiveTable({
   onSort = null,
   renderEmptyState = null,
   className = '',
+  enableSelection = false,
+  selectedItems = [],
+  onSelectionChange = null,
+  onSelectAll = null,
+  allSelected = false,
 }) {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -67,6 +77,16 @@ export default function ResponsiveTable({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              {enableSelection && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                  <input
+                    type="checkbox"
+                    checked={allSelected && data.length > 0}
+                    onChange={(e) => onSelectAll && onSelectAll(e.target.checked)}
+                    className="h-4 w-4 text-flight-blue focus:ring-flight-blue border-gray-300 rounded cursor-pointer"
+                  />
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -95,20 +115,38 @@ export default function ResponsiveTable({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {data.map((item, index) => (
-              <tr key={item.id || index} className="hover:bg-gray-50 transition">
-                {columns.map((column) => (
-                  <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {column.render ? column.render(item, index) : item[column.key]}
-                  </td>
-                ))}
-                {renderRowActions && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {renderRowActions(item, index)}
-                  </td>
-                )}
-              </tr>
-            ))}
+            {data.map((item, index) => {
+              const itemId = item.id || index;
+              const isSelected = selectedItems.includes(itemId);
+              
+              return (
+                <tr 
+                  key={itemId} 
+                  className={`hover:bg-gray-50 transition ${isSelected ? 'bg-blue-50' : ''}`}
+                >
+                  {enableSelection && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => onSelectionChange && onSelectionChange(itemId, e.target.checked)}
+                        className="h-4 w-4 text-flight-blue focus:ring-flight-blue border-gray-300 rounded cursor-pointer"
+                      />
+                    </td>
+                  )}
+                  {columns.map((column) => (
+                    <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {column.render ? column.render(item, index) : item[column.key]}
+                    </td>
+                  ))}
+                  {renderRowActions && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {renderRowActions(item, index)}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -118,47 +156,77 @@ export default function ResponsiveTable({
   // Renderização Mobile (Cards)
   return (
     <div className={`space-y-4 ${className}`}>
-      {data.map((item, index) => (
-        <Card key={item.id || index} className="border border-gray-200 shadow-sm">
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              {columns.map((column) => {
-                const label = column.mobileLabel || column.label;
-                const value = column.render ? column.render(item, index) : item[column.key];
-                
-                // Não mostrar colunas vazias em mobile (opcional)
-                if (!value && column.hideIfEmpty) return null;
-                
-                // Se a coluna tem mobileRender, usar ela
-                const displayValue = column.mobileRender ? column.mobileRender(item, index) : value;
-                
-                // Obter cor do texto mobile (pode ser função ou string)
-                const mobileColor = typeof column.mobileTextColor === 'function' 
-                  ? column.mobileTextColor(item, index)
-                  : (column.mobileTextColor || 'text-gray-900');
-                
-                return (
-                  <div key={column.key} className="flex flex-col space-y-1">
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {label}
-                    </div>
-                    <div className={`text-sm ${mobileColor} break-words`}>
-                      {displayValue || '-'}
-                    </div>
+      {enableSelection && onSelectAll && data.length > 0 && (
+        <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={(e) => onSelectAll(e.target.checked)}
+            className="h-4 w-4 text-flight-blue focus:ring-flight-blue border-gray-300 rounded cursor-pointer"
+          />
+          <span className="text-sm font-medium text-gray-700">Selecionar todos</span>
+        </div>
+      )}
+      {data.map((item, index) => {
+        const itemId = item.id || index;
+        const isSelected = selectedItems.includes(itemId);
+        
+        return (
+          <Card 
+            key={itemId} 
+            className={`border shadow-sm ${isSelected ? 'border-flight-blue bg-blue-50' : 'border-gray-200'}`}
+          >
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                {enableSelection && (
+                  <div className="flex items-center space-x-2 pb-2 border-b border-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => onSelectionChange && onSelectionChange(itemId, e.target.checked)}
+                      className="h-4 w-4 text-flight-blue focus:ring-flight-blue border-gray-300 rounded cursor-pointer"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Selecionar</span>
                   </div>
-                );
-              })}
-              
-              {/* Ações no mobile */}
-              {renderRowActions && (
-                <div className="pt-3 border-t border-gray-200 flex items-center justify-end space-x-2 min-h-[44px]">
-                  {renderRowActions(item, index)}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                )}
+                {columns.map((column) => {
+                  const label = column.mobileLabel || column.label;
+                  const value = column.render ? column.render(item, index) : item[column.key];
+                  
+                  // Não mostrar colunas vazias em mobile (opcional)
+                  if (!value && column.hideIfEmpty) return null;
+                  
+                  // Se a coluna tem mobileRender, usar ela
+                  const displayValue = column.mobileRender ? column.mobileRender(item, index) : value;
+                  
+                  // Obter cor do texto mobile (pode ser função ou string)
+                  const mobileColor = typeof column.mobileTextColor === 'function' 
+                    ? column.mobileTextColor(item, index)
+                    : (column.mobileTextColor || 'text-gray-900');
+                  
+                  return (
+                    <div key={column.key} className="flex flex-col space-y-1">
+                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {label}
+                      </div>
+                      <div className={`text-sm ${mobileColor} break-words`}>
+                        {displayValue || '-'}
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Ações no mobile */}
+                {renderRowActions && (
+                  <div className="pt-3 border-t border-gray-200 flex items-center justify-end space-x-2 min-h-[44px]">
+                    {renderRowActions(item, index)}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
