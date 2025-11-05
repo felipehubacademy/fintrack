@@ -196,6 +196,7 @@ Se não conseguir ler algo, use null.`;
     processed = processed.replace(/\bZulu\b/gi, 'Zul');
     processed = processed.replace(/\bZulh\b/gi, 'Zul');
     processed = processed.replace(/\bZews\b/gi, 'Zul'); // Outro erro comum
+    processed = processed.replace(/\bZewo\b/gi, 'Zul'); // Outro erro comum
     
     // Correções de números comuns que podem ser confundidos
     // Isso é mais conservador - apenas corrigir padrões muito específicos
