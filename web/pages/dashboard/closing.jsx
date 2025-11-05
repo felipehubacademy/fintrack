@@ -27,7 +27,7 @@ import {
 
 export default function MonthlyClosing() {
   const router = useRouter();
-  const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
+  const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
   const { warning } = useNotificationContext();
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -403,10 +403,10 @@ export default function MonthlyClosing() {
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'entradas' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-2">Divisão por Responsável</p>
-              <p className="text-xs text-gray-500 mb-3">Divisão completa da família por responsável</p>
+              <p className="text-sm font-semibold text-gray-900 mb-2">{isSoloUser ? 'Entradas Individuais' : 'Divisão por Responsável'}</p>
+              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? 'Suas entradas do mês' : 'Divisão completa da família por responsável'}</p>
               <div className="space-y-2">
-                {costCenters
+                {!isSoloUser && costCenters
                   .filter(cc => cc && cc.is_active !== false && !cc.is_shared)
                   .map((cc) => {
                     // Entradas individuais deste responsável
@@ -451,7 +451,10 @@ export default function MonthlyClosing() {
                       )}
                     </div>
                   ))}
-                {costCenters.filter(cc => cc && cc.is_active !== false && !cc.is_shared).length === 0 && (
+                {isSoloUser && (
+                  <p className="text-sm text-gray-500">Conta individual - apenas suas entradas</p>
+                )}
+                {!isSoloUser && costCenters.filter(cc => cc && cc.is_active !== false && !cc.is_shared).length === 0 && (
                   <p className="text-sm text-gray-500">Nenhum dado disponível</p>
                 )}
               </div>
@@ -488,7 +491,7 @@ export default function MonthlyClosing() {
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'saidas' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-2">Divisão por Forma de Pagamento</p>
-              <p className="text-xs text-gray-500 mb-3">Divisão completa da família</p>
+              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? 'Suas despesas do mês' : 'Divisão completa da família'}</p>
               <div className="space-y-3">
                 {(() => {
                   const confirmedExpenses = data.expenses.filter(e => e.status === 'confirmed');
@@ -684,9 +687,9 @@ export default function MonthlyClosing() {
                 <Building2 className="h-5 w-5 text-gray-600" />
               </div>
               <div>
-                <span>Fechamento Mensal - {organization?.name || 'Família'}</span>
+                <span>Fechamento Mensal - {organization?.name || (isSoloUser ? 'Conta Individual' : 'Família')}</span>
                 <p className="text-xs text-gray-500 font-normal mt-1">
-                  Resumo completo de entradas e saídas da família
+                  {isSoloUser ? 'Resumo completo de suas entradas e saídas' : 'Resumo completo de entradas e saídas da família'}
                 </p>
               </div>
             </CardTitle>

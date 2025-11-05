@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildCategoryColorMap, paymentMethodColor, normalizeKey, resolveColor } from '../lib/colors';
 import { useResponsiveChart } from '../hooks/useResponsiveChart';
 
-export default function MonthCharts({ expenses, costCenters = [], categories = [], organization = null, user = null }) {
+export default function MonthCharts({ expenses, costCenters = [], categories = [], organization = null, user = null, isSoloUser = false }) {
   const [hoverCategory, setHoverCategory] = useState(null);
   // Sempre mostrar todos (não há mais filtro de privacidade)
   const viewMode = 'all';
@@ -29,7 +29,7 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
   // Encontrar cost center do usuário
   const userCostCenter = costCenters.find(cc => cc.user_id === user?.id);
 
-  // Pizza 1: Divisão por Categorias (com breakdown Individual vs Org)
+  // Pizza 1: Divisão por Categorias (com breakdown Individual vs Org apenas para Family)
   const categoryData = (expenses || []).reduce((acc, expense) => {
     if (!expense) return acc;
     const category = expense.category || 'Outros';
@@ -40,19 +40,25 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
     
     const amount = parseAmount(expense.amount);
     
-    // Verificar se é compartilhado/org
-    if (expense.split || expense.is_shared) {
-      // Para compartilhado, pegar apenas parte do usuário nos splits
-      const userSplit = expense.expense_splits?.find(s => s.cost_center_id === userCostCenter?.id);
-      if (userSplit) {
-        acc[category].org += parseAmount(userSplit.amount);
-      }
-    } else {
-      // Individual
+    // Para Solo, sempre individual (não há breakdown)
+    if (isSoloUser) {
       acc[category].individual += amount;
+      acc[category].total = amount;
+    } else {
+      // Verificar se é compartilhado/org (apenas para Family)
+      if (expense.split || expense.is_shared) {
+        // Para compartilhado, pegar apenas parte do usuário nos splits
+        const userSplit = expense.expense_splits?.find(s => s.cost_center_id === userCostCenter?.id);
+        if (userSplit) {
+          acc[category].org += parseAmount(userSplit.amount);
+        }
+      } else {
+        // Individual
+        acc[category].individual += amount;
+      }
+      
+      acc[category].total = acc[category].individual + acc[category].org;
     }
-    
-    acc[category].total = acc[category].individual + acc[category].org;
     return acc;
   }, {});
 
@@ -72,7 +78,7 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Pizza 2: Divisão por Formas de Pagamento (com breakdown Individual vs Org)
+  // Pizza 2: Divisão por Formas de Pagamento (com breakdown Individual vs Org apenas para Family)
   const paymentMethodData = (expenses || []).reduce((acc, expense) => {
     if (!expense) return acc;
     const method = expense.payment_method || 'other';
@@ -80,19 +86,25 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
     
     const amount = parseAmount(expense.amount);
     
-    // Verificar se é compartilhado/org
-    if (expense.split || expense.is_shared) {
-      // Para compartilhado, pegar apenas parte do usuário nos splits
-      const userSplit = expense.expense_splits?.find(s => s.cost_center_id === userCostCenter?.id);
-      if (userSplit) {
-        acc[method].org += parseAmount(userSplit.amount);
-      }
-    } else {
-      // Individual
+    // Para Solo, sempre individual (não há breakdown)
+    if (isSoloUser) {
       acc[method].individual += amount;
+      acc[method].total = amount;
+    } else {
+      // Verificar se é compartilhado/org (apenas para Family)
+      if (expense.split || expense.is_shared) {
+        // Para compartilhado, pegar apenas parte do usuário nos splits
+        const userSplit = expense.expense_splits?.find(s => s.cost_center_id === userCostCenter?.id);
+        if (userSplit) {
+          acc[method].org += parseAmount(userSplit.amount);
+        }
+      } else {
+        // Individual
+        acc[method].individual += amount;
+      }
+      
+      acc[method].total = acc[method].individual + acc[method].org;
     }
-    
-    acc[method].total = acc[method].individual + acc[method].org;
     return acc;
   }, {});
 
@@ -124,12 +136,8 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Pizza 3: Divisão por Responsável (com breakdown Individual vs Org)
-  // Nova Estratégia:
-  // 1) Despesas individuais: somar direto por owner
-  // 2) Despesas compartilhadas COM splits: usar os splits personalizados
-  // 3) Despesas compartilhadas SEM splits: usar fallback (cost_centers.split_percentage)
-  
+  // Pizza 3: Divisão por Responsável (com breakdown Individual vs Org apenas para Family)
+  // Para Solo: apenas mostrar despesas individuais do usuário
   const ownerDataByMode = {
     individual: {},
     org: {},
@@ -151,6 +159,16 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
   (expenses || []).forEach(expense => {
     if (!expense) return;
     const amount = parseAmount(expense.amount);
+    
+    // Para Solo, processar apenas despesas individuais (não há compartilhadas)
+    if (isSoloUser) {
+      const ownerRaw = expense.owner || 'Outros';
+      const ownerKey = canon(ownerRaw);
+      if (!ownerDataByMode.all[ownerKey]) ownerDataByMode.all[ownerKey] = 0;
+      ownerDataByMode.all[ownerKey] += amount;
+      if (!displayNameByCanon[ownerKey]) displayNameByCanon[ownerKey] = ownerRaw;
+      return;
+    }
     
     const isCompartilhado = expense.split || expense.is_shared;
     

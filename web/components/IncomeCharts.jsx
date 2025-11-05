@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildIncomeCategoryColorMap, normalizeKey, resolveColor } from '../lib/colors';
 import { useResponsiveChart } from '../hooks/useResponsiveChart';
 
-export default function IncomeCharts({ incomes, expenses, costCenters = [], incomeCategories = [] }) {
+export default function IncomeCharts({ incomes, expenses, costCenters = [], incomeCategories = [], isSoloUser = false }) {
   const [hoverCategory, setHoverCategory] = useState(null);
   
   const parseAmount = (raw) => {
@@ -38,10 +38,12 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Pizza 2: Tipo de Entrada (Individual vs Compartilhada)
+  // Pizza 2: Tipo de Entrada (Individual vs Compartilhada) - apenas para Family
+  // Para Solo, não mostrar este gráfico (tudo é individual)
   const typeData = (incomes || []).reduce((acc, income) => {
     if (!income) return acc;
-    const type = income.is_shared ? 'Compartilhada' : 'Individual';
+    // Para Solo, sempre individual
+    const type = isSoloUser ? 'Individual' : (income.is_shared ? 'Compartilhada' : 'Individual');
     if (!acc[type]) acc[type] = 0;
     acc[type] += parseAmount(income.amount);
     return acc;
@@ -51,6 +53,9 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
     .map(([name, value]) => ({ name, value }))
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
+  
+  // Para Solo, não mostrar gráfico de tipo (sempre individual)
+  const shouldShowTypeChart = !isSoloUser && typeChartData.length > 0;
 
   // Pizza 3: Entradas por Responsável
   const ownerTotals = {};
@@ -314,15 +319,20 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
 
   return (
     <div className="space-y-6">
-      {/* Grid dos 3 gráficos pizza */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Grid dos gráficos pizza - ajustar colunas baseado em quantos gráficos mostrar */}
+      <div className={`grid grid-cols-1 ${shouldShowTypeChart ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
         {/* Pizza 1: Por Categorias */}
         <ProfessionalPieChart data={categoryChartData} title="Entradas por Categorias" />
         
-        {/* Pizza 2: Por Responsável */}
+        {/* Pizza 2: Tipo de Entrada (Individual vs Compartilhada) - apenas para Family */}
+        {shouldShowTypeChart && (
+          <ProfessionalPieChart data={typeChartData} title="Tipo de Entrada" />
+        )}
+        
+        {/* Pizza 3: Por Responsável */}
         <ProfessionalPieChart data={ownerData} title="Entradas por Responsável" />
         
-        {/* Pizza 3: Balanço do Mês */}
+        {/* Pizza 4: Balanço do Mês */}
         {balanceChartData.length > 0 && <BalancePieChart />}
       </div>
     </div>

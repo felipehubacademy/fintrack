@@ -32,7 +32,7 @@ import Footer from '../../components/Footer';
 
 export default function BudgetsDashboard() {
   const router = useRouter();
-  const { organization, user: orgUser, costCenters, budgetCategories, loading: orgLoading, error: orgError } = useOrganization();
+  const { organization, user: orgUser, costCenters, budgetCategories, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
   const { success, showError, warning } = useNotificationContext();
   const [budgets, setBudgets] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -527,7 +527,7 @@ export default function BudgetsDashboard() {
                       {getStatusIcon(status)}
                       <div>
                         <CardTitle className="text-lg">{budget.category}</CardTitle>
-                        <p className="text-sm text-gray-600">Orçamento da família</p>
+                        <p className="text-sm text-gray-600">{isSoloUser ? 'Seu orçamento' : 'Orçamento da família'}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">

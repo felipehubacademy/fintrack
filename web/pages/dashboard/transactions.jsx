@@ -734,7 +734,7 @@ export default function TransactionsDashboard() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma família.</p>
+          <p className="text-gray-600 mb-4">Você precisa criar uma conta ou ser convidado para uma organização.</p>
           <button
             onClick={() => router.push('/')}
             className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
@@ -1036,7 +1036,7 @@ export default function TransactionsDashboard() {
             </div>
           )}
 
-          {/* StatsCards por Responsável - Apenas para contas família - DENTRO DO MESMO GRID */}
+          {/* StatsCards por Responsável - Apenas para contas familiares - DENTRO DO MESMO GRID */}
           {!isSoloUser && costCenters && costCenters.filter(cc => cc && cc.is_active !== false && !cc.is_shared).map((cc) => {
             // Despesas individuais deste responsável
             const individualExpenses = expenses

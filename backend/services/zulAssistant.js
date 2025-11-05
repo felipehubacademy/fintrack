@@ -789,7 +789,32 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
           
           // Buscar cost_center_id se owner não for "Compartilhado"  
           let costCenterId = null;
-          const isShared = ownerNorm.includes('compartilhado');
+          let isShared = ownerNorm.includes('compartilhado');
+          
+          // BLOQUEAR despesas compartilhadas para usuários Solo
+          if (context.isSoloUser && isShared) {
+            const firstName = this.getFirstName(context);
+            const namePart = firstName ? ` ${firstName}` : '';
+            
+            const soloMessages = [
+              `Opa${namePart}! Em contas individuais não dá pra registrar despesas compartilhadas. Essa despesa foi sua?`,
+              `Contas individuais não têm despesas compartilhadas${namePart}. Foi você que pagou?`,
+              `Em conta solo não tem como registrar como compartilhado${namePart}. Quem pagou?`,
+              `Essa foi sua despesa${namePart}? Em contas individuais não tem compartilhado.`
+            ];
+            
+            return {
+              success: false,
+              message: this.pickVariation(soloMessages, 'solo')
+            };
+          }
+          
+          // Se for Solo, forçar owner para o nome do usuário
+          if (context.isSoloUser && !owner) {
+            owner = context.userName || context.firstName || 'Eu';
+            ownerNorm = this.normalizeText(owner);
+            isShared = false;
+          }
 
           if (!isShared && owner) {
             // Matching normalizado (case/acento) com suporte a primeiro nome e desambiguação
@@ -850,8 +875,26 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
             }
           }
 
+          // Se for Solo e não encontrou cost center, buscar o cost center do próprio usuário
+          if (context.isSoloUser && !costCenterId) {
+            const { data: userCostCenter } = await supabase
+              .from('cost_centers')
+              .select('id, name')
+              .eq('organization_id', context.organizationId)
+              .eq('user_id', context.userId || userId)
+              .eq('is_active', true)
+              .maybeSingle();
+            
+            if (userCostCenter) {
+              costCenterId = userCostCenter.id;
+              owner = userCostCenter.name;
+              isShared = false;
+            }
+          }
+          
           // Se não foi possível determinar responsável/centro, pedir explicitamente
-          if (!isShared && (!owner || !costCenterId)) {
+          // (mas não para Solo, pois já tentamos buscar o cost center do usuário acima)
+          if (!context.isSoloUser && !isShared && (!owner || !costCenterId)) {
             const firstName = this.getFirstName(context);
             const namePart = firstName ? ` ${firstName}` : '';
             

@@ -33,7 +33,7 @@ import Footer from '../../components/Footer';
 
 export default function DashboardHome() {
   const router = useRouter();
-  const { organization, user: orgUser, costCenters, budgetCategories, incomeCategories, loading: orgLoading, error: orgError } = useOrganization();
+  const { organization, user: orgUser, costCenters, budgetCategories, incomeCategories, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   // Raw expenses for the selected month (used by MonthCharts)
   const [monthExpenses, setMonthExpenses] = useState([]);
@@ -676,7 +676,7 @@ export default function DashboardHome() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma família.</p>
+          <p className="text-gray-600 mb-4">Você precisa criar uma conta ou ser convidado para uma organização.</p>
           <button
             onClick={() => router.push('/')}
             className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"
@@ -778,8 +778,8 @@ export default function DashboardHome() {
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'entradas' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-2">Divisão por Responsável</p>
-              <p className="text-xs text-gray-500 mb-3">Divisão completa da família por responsável</p>
+              <p className="text-sm font-semibold text-gray-900 mb-2">{isSoloUser ? 'Suas Entradas' : 'Divisão por Responsável'}</p>
+              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? 'Suas entradas do mês' : 'Divisão completa da família por responsável'}</p>
               <div className="space-y-2">
                 {costCenters
                   .filter(cc => cc && cc.is_active !== false && !cc.is_shared)
@@ -881,7 +881,7 @@ export default function DashboardHome() {
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'despesas' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-2">Divisão por Forma de Pagamento</p>
-              <p className="text-xs text-gray-500 mb-3">Divisão completa da família</p>
+              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? 'Suas despesas do mês' : 'Divisão completa da família'}</p>
               <div className="space-y-3">
                 {(() => {
                   // Calcular total à vista (total da organização)
@@ -1193,10 +1193,11 @@ export default function DashboardHome() {
             categories={budgetCategories}
             organization={organization}
             user={orgUser}
+            isSoloUser={isSoloUser}
           />
 
           {/* Income Charts */}
-          <IncomeCharts incomes={monthIncomes} expenses={expensesForCharts} costCenters={costCenters} incomeCategories={incomeCategories} />
+          <IncomeCharts incomes={monthIncomes} expenses={expensesForCharts} costCenters={costCenters} incomeCategories={incomeCategories} isSoloUser={isSoloUser} />
 
           {/* Monthly Comparison */}
           <MonthlyComparison monthlyData={monthlyData} />

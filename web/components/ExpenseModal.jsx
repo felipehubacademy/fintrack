@@ -510,7 +510,9 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                   <div className="flex items-center gap-2 mb-2">
                     <label className="block text-sm font-medium text-gray-700">Responsável *</label>
                     <HelpTooltip 
-                      content={`Individual: só você vê. ${organization?.name || 'Organização'}: todos da família veem`}
+                      content={isSoloUser 
+                        ? `Sua despesa individual` 
+                        : `Individual: só você vê. ${organization?.name || 'Organização'}: todos da família veem`}
                       autoOpen={true}
                     />
                   </div>

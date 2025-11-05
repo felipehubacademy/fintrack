@@ -194,12 +194,17 @@ async function processWebhook(body) {
             
             console.log('🔄 [B2][DEBUG] Found cards:', cards?.map(c => c.name));
             
+            // Buscar tipo da organização (solo vs family)
+            const orgType = user.organization?.type || 'family';
+            
             // Nota: A lógica completa de saveExpense está em zulAssistant.js (context.saveExpense)
             // Aqui apenas garantimos que o contexto tem os dados necessários
             const context = {
               userName: user.name,
               userId: user.id,
               organizationId: user.organization_id,
+              organizationType: orgType,
+              isSoloUser: orgType === 'solo',
               availableCards: cards?.map(c => c.name) || []
             };
 
@@ -301,11 +306,16 @@ async function processWebhook(body) {
             
             console.log('🔄 [AUDIO][DEBUG] Found cards:', cards?.map(c => c.name));
             
+            // Buscar tipo da organização (solo vs family)
+            const orgType = user.organization?.type || 'family';
+            
             // Montar contexto
             const context = {
               userName: user.name,
               userId: user.id,
               organizationId: user.organization_id,
+              organizationType: orgType,
+              isSoloUser: orgType === 'solo',
               availableCards: cards?.map(c => c.name) || []
             };
 
