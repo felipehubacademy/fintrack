@@ -7,13 +7,14 @@ import {
   Sparkles,
   TrendingUp,
   Shield,
-  Zap
+  Zap,
+  Mic,
+  Play
 } from 'lucide-react';
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [showDemoModal, setShowDemoModal] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -96,7 +97,7 @@ export default function LandingPage() {
             {/* Mobile Menu */}
             <div className="md:hidden flex items-center space-x-3">
               <Link 
-                href="/account-type"
+                href="/login"
                 className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
               >
                 Entrar
@@ -128,9 +129,9 @@ export default function LandingPage() {
             </h1>
 
             {/* Subheadline */}
-            <p className="max-w-2xl mx-auto text-xl md:text-2xl text-gray-600 leading-relaxed font-light">
-              Registre despesas conversando naturalmente pelo WhatsApp. 
-              Visualize tudo em tempo real no dashboard mais moderno do mercado.
+            <p className="max-w-3xl mx-auto text-2xl md:text-3xl text-gray-600 leading-relaxed font-light">
+              Registre suas despesas, recebimentos e muito mais naturalmente pelo WhatsApp. 
+              Visualize tudo em tempo real, receba resumos inteligentes e avisos sobre suas finanças no dashboard mais moderno do mercado.
             </p>
 
             {/* CTA Buttons */}
@@ -142,13 +143,6 @@ export default function LandingPage() {
                 <span>Começar Agora</span>
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              
-              <button 
-                onClick={() => setShowDemoModal(true)}
-                className="inline-flex items-center px-8 py-4 bg-white border-2 border-gray-300 text-gray-700 rounded-2xl text-lg font-semibold hover:border-gray-400 transition-all duration-300 hover:scale-105"
-              >
-                Ver Demo
-              </button>
             </div>
 
             {/* Social Proof */}
@@ -316,9 +310,9 @@ export default function LandingPage() {
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
                   WhatsApp Nativo
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-gray-600 leading-relaxed text-lg">
                   Converse naturalmente com o Zul. Sem apps extras, sem complicação. 
-                  Registre despesas como se estivesse falando com um amigo.
+                  Registre transações como se estivesse falando com um amigo.
                 </p>
               </div>
             </div>
@@ -333,9 +327,9 @@ export default function LandingPage() {
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
                   Dashboard Inteligente
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Visualize seus gastos em tempo real com gráficos interativos, 
-                  análises automáticas e insights personalizados.
+                <p className="text-gray-600 leading-relaxed text-lg">
+                  Visualize seus gastos e receitas em tempo real com gráficos interativos, 
+                  resumos automáticos, avisos sobre vencimentos e análises personalizadas.
                 </p>
               </div>
             </div>
@@ -350,9 +344,9 @@ export default function LandingPage() {
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
                   100% Seguro
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-gray-600 leading-relaxed text-lg">
                   Seus dados protegidos com criptografia de ponta. 
-                  Login sem senha via magic link. Privacidade garantida.
+                  Segurança e privacidade garantidas em todas as transações.
                 </p>
               </div>
             </div>
@@ -377,7 +371,7 @@ export default function LandingPage() {
               
               <p className="text-xl text-gray-600 leading-relaxed">
                 Seu assistente financeiro pessoal que entende você. 
-                Registre despesas conversando naturalmente, como se estivesse falando com um amigo.
+                Registre transações conversando naturalmente, como se estivesse falando com um amigo.
               </p>
 
               <div className="space-y-4 pt-4">
@@ -417,70 +411,71 @@ export default function LandingPage() {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-blue-500 rounded-3xl blur-3xl opacity-20 animate-pulse-glow" />
               
-              <div className="relative bg-white rounded-3xl shadow-2xl border border-gray-200 p-6 max-w-sm mx-auto">
+              <div className="relative bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden max-w-sm mx-auto">
                 {/* WhatsApp Header */}
-                <div className="flex items-center space-x-3 pb-4 border-b border-gray-200 mb-6">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] rounded-full flex items-center justify-center p-2">
-                      <img 
-                        src="/images/logo_flat.svg" 
-                        alt="Zul" 
-                        className="w-full h-full"
-                      />
-                    </div>
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                <div className="bg-gradient-to-r from-[#25D366] to-[#128C7E] px-4 py-3 flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg">
+                    <img 
+                      src="/images/logo_flat.svg" 
+                      alt="Zul" 
+                      className="w-12 h-12"
+                    />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Zul</h4>
-                    <p className="text-xs text-green-600">online</p>
+                    <h3 className="text-white font-bold text-base">Zul - MeuAzulão</h3>
+                    <p className="text-green-100 text-xs">online</p>
                   </div>
                 </div>
 
-                {/* Messages */}
-                <div className="space-y-4">
-                  {/* User Message */}
+                {/* Chat Messages */}
+                <div className="p-4 space-y-3 bg-[#ECE5DD] min-h-[400px]">
+                  {/* User Message - Audio */}
                   <div className="flex justify-end">
-                    <div className="bg-blue-500 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]">
-                      <p className="text-sm">Gastei 150 no mercado</p>
-                      <p className="text-xs text-blue-100 mt-1">14:32</p>
-                    </div>
-                  </div>
-
-                  {/* Zul Response */}
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]">
-                      <p className="text-sm text-gray-900">Como você pagou?</p>
-                      <p className="text-xs text-gray-500 mt-1">14:32</p>
-                    </div>
-                  </div>
-
-                  {/* User Message */}
-                  <div className="flex justify-end">
-                    <div className="bg-blue-500 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%]">
-                      <p className="text-sm">PIX</p>
-                      <p className="text-xs text-blue-100 mt-1">14:33</p>
+                    <div className="max-w-[85%] px-4 py-3 rounded-2xl shadow-md bg-gradient-to-br from-[#DCF8C6] to-[#D1F4CC] flex items-center space-x-3 rounded-br-none">
+                      <div className="w-8 h-8 bg-[#25D366] rounded-full flex items-center justify-center flex-shrink-0">
+                        <Play className="w-4 h-4 text-white ml-0.5" fill="white" />
+                      </div>
+                      <div className="flex-1 flex items-center space-x-2">
+                        {/* Audio Waveform */}
+                        <div className="flex items-end space-x-0.5 h-5">
+                          <div className="w-0.5 h-2 bg-[#128C7E] rounded-full"></div>
+                          <div className="w-0.5 h-3 bg-[#128C7E] rounded-full"></div>
+                          <div className="w-0.5 h-4 bg-[#128C7E] rounded-full"></div>
+                          <div className="w-0.5 h-3 bg-[#128C7E] rounded-full"></div>
+                          <div className="w-0.5 h-2 bg-[#128C7E] rounded-full"></div>
+                          <div className="w-0.5 h-3 bg-[#128C7E] rounded-full"></div>
+                          <div className="w-0.5 h-4 bg-[#128C7E] rounded-full"></div>
+                          <div className="w-0.5 h-2 bg-[#128C7E] rounded-full"></div>
+                        </div>
+                        <span className="text-xs text-[#128C7E] font-medium whitespace-nowrap">0:03</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Zul Confirmation */}
                   <div className="flex justify-start">
-                    <div className="bg-green-100 border border-green-200 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[80%]">
-                      <p className="text-sm text-gray-900 font-medium">✅ Pronto!</p>
-                      <p className="text-sm text-gray-900 mt-1">
-                        R$ 150,00 em <span className="font-semibold">Alimentação</span> via PIX
-                      </p>
-                      <p className="text-xs text-gray-500 mt-2">14:33</p>
+                    <div className="max-w-[85%] px-3 py-2 rounded-2xl text-sm shadow-md bg-white text-gray-800 rounded-bl-none">
+                      Anotado! ✅<br/>
+                      <strong>R$ 156,58</strong> em <strong>Açougue</strong><br/>
+                      Crédito • Roxinho
                     </div>
                   </div>
-                </div>
 
-                {/* Typing Indicator */}
-                <div className="flex justify-start mt-4">
-                  <div className="bg-gray-100 rounded-2xl px-4 py-3">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                  {/* User Message - Text follow-up */}
+                  <div className="flex justify-end">
+                    <div className="max-w-[85%] px-3 py-2 rounded-2xl text-sm shadow-md bg-gradient-to-br from-[#DCF8C6] to-[#D1F4CC] text-gray-800 rounded-br-none">
+                      Valeu, Zul! 👏
+                    </div>
+                  </div>
+
+                  {/* Typing Indicator */}
+                  <div className="flex justify-start">
+                    <div className="bg-white rounded-2xl px-4 py-3 shadow-md">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -544,9 +539,10 @@ export default function LandingPage() {
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
                   Registre e visualize
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  Envie suas despesas pelo WhatsApp e veja tudo 
-                  organizado no dashboard em tempo real.
+                <p className="text-gray-600 leading-relaxed text-lg">
+                  Envie despesas, recebimentos e consultas pelo WhatsApp. 
+                  Receba resumos inteligentes, avisos sobre vencimentos e análises completas 
+                  no dashboard em tempo real.
                 </p>
               </div>
             </div>
@@ -567,7 +563,9 @@ export default function LandingPage() {
             Pronto para começar?
           </h2>
           <p className="text-xl md:text-2xl text-white/90 mb-12 font-light">
-            Transforme a forma como você gerencia suas finanças familiares
+            Transforme a forma como você gerencia suas finanças individuais ou familiares. 
+            Registre despesas e recebimentos, receba resumos inteligentes e avisos automáticos 
+            sobre suas finanças, tudo pelo WhatsApp e visualizado no dashboard.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -589,48 +587,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Demo Modal */}
-      {showDemoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setShowDemoModal(false)}>
-          <div className="relative max-w-5xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
-              <button
-              onClick={() => setShowDemoModal(false)}
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 text-sm font-medium"
-            >
-              Fechar ✕
-              </button>
-            <div className="bg-white rounded-3xl overflow-hidden shadow-2xl">
-              {/* Video/Animation Container */}
-              <div className="aspect-video bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
-                <div className="text-center space-y-6 p-12">
-                  <div className="w-24 h-24 mx-auto bg-gradient-to-r from-[#207DFF] to-[#0D2C66] rounded-3xl flex items-center justify-center animate-pulse-glow">
-                    <TrendingUp className="w-12 h-12 text-white" />
-                  </div>
-                  <h3 className="text-3xl font-bold text-white">Demo em Vídeo</h3>
-                  <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-                    Veja como o MeuAzulão funciona na prática. Controle total das suas finanças em poucos cliques.
-                  </p>
-                  <div className="pt-4">
-                    <div className="inline-flex items-center space-x-2 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white text-sm">
-                      <Sparkles className="w-4 h-4" />
-                      <span>Vídeo disponível em breve</span>
-                    </div>
-                  </div>
-                  {/* Placeholder for actual video */}
-                  {/* <iframe 
-                    className="w-full aspect-video"
-                    src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
-                    title="MeuAzulão Demo"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe> */}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-400 py-16">
@@ -659,7 +615,7 @@ export default function LandingPage() {
               <ul className="space-y-3">
                 <li><a href="#features" className="hover:text-white transition-colors">Funcionalidades</a></li>
                 <li><a href="#how-it-works" className="hover:text-white transition-colors">Como Funciona</a></li>
-                <li><Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
+                <li><Link href="/login" className="hover:text-white transition-colors">Dashboard</Link></li>
               </ul>
             </div>
             
