@@ -1371,7 +1371,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
 
           const amountFormatted = Number(amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
           const paymentDisplayMap = {
-            'credit_card': 'Cartão de Crédito',
+            'credit_card': 'Crédito',
             'debit_card': 'Débito',
             'pix': 'Pix',
             'cash': 'Dinheiro',
@@ -1379,11 +1379,15 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
             'boleto': 'Boleto',
             'other': 'Outro'
           };
-          // Adicionar informações de parcelas ao paymentDisplay se for parcelada
+          // Adicionar informações de cartão e parcelas ao paymentDisplay se for crédito
           let paymentDisplay = paymentDisplayMap[paymentMethod] || paymentMethod;
-          if (paymentMethod === 'credit_card' && installments > 1) {
-            const cardName = args.card_name || 'Cartão';
-            paymentDisplay = `${paymentDisplay} • ${cardName} ${installments}x`;
+          if (paymentMethod === 'credit_card' && args.card_name) {
+            const cardName = args.card_name;
+            if (installments > 1) {
+              paymentDisplay = `${paymentDisplay} • ${cardName} ${installments}x`;
+            } else {
+              paymentDisplay = `${paymentDisplay} • ${cardName}`;
+            }
           }
 
           // Data formatada (pt-BR). Usa a data atual (hoje)
@@ -1536,12 +1540,20 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
         
         const functionResult = await this.handleFunctionCall(functionName, functionArgs, context);
         
-        // Se salvou despesa ou entrada, limpar histórico e retornar APENAS mensagem da função
-        if (functionName === 'save_expense' || functionName === 'save_income' || functionName === 'save_bill') {
+        // Se salvou despesa ou entrada COM SUCESSO, limpar histórico e retornar APENAS mensagem da função
+        if ((functionName === 'save_expense' || functionName === 'save_income' || functionName === 'save_bill') && functionResult.success) {
           await this.clearConversationHistory(userPhone);
           
           // Retornar APENAS a mensagem da função (ignorar qualquer texto que o GPT escreveu)
           return functionResult.message || (functionName === 'save_income' ? 'Entrada registrada! ✅' : 'Anotado! ✅');
+        }
+        
+        // Se a função retornou erro (success: false), salvar a mensagem de erro no histórico para manter contexto
+        if ((functionName === 'save_expense' || functionName === 'save_income' || functionName === 'save_bill') && !functionResult.success) {
+          const errorMessage = functionResult.message || 'Ops! Preciso de mais informações.';
+          console.log('💾 [GPT-4] Salvando mensagem de erro no histórico para manter contexto:', errorMessage);
+          await this.saveToHistory(userPhone, userMessage, errorMessage);
+          return errorMessage;
         }
         
         // Funções de resumo/consulta: retornar mensagem sem limpar histórico (permite continuar conversa)
@@ -1730,7 +1742,16 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    **SINÔNIMOS DE DESPESA/GASTO** (para identificar save_expense):
    - paguei, pagamos, comprei, compramos, gastei, gastamos, investi, investimos, doei, doamos, emprestei, emprestamos, peguei, pegamos, fiz, fizemos, adquiri, adquirimos, contratei, contratamos, assinei, assinamos, me inscrevi, nos inscrevemos, me matriculei, nos matriculamos, fui em, fomos em, fui ao, fomos ao, fui na, fomos na, fui no, fomos no, fui à, fomos à, anotei, anotamos, registrei, registramos, lancei, lançamos, adicionei, adicionamos, coloquei, colocamos, botei, botamos, inseri, inserimos, incluí, incluímos, despesa, despesas, gasto, gastos, pagamento, pagamentos, compra, compras, conta, contas, débito, débitos, saída, saídas, saque, saques, retirada, retiradas
 4.  **SEM EMOJIS NAS PERGUNTAS**: NUNCA use emojis nas perguntas. Emojis apenas na confirmação final (que vem automaticamente da função save_expense).
-5.  **MANUTENÇÃO DE CONTEXTO**: NUNCA repita perguntas já respondidas ou informações já fornecidas. Se o usuário já mencionou algo na mensagem inicial, NÃO pergunte novamente.
+5.  **MANUTENÇÃO DE CONTEXTO E RESPOSTAS CURTAS**: 
+   - NUNCA repita perguntas já respondidas ou informações já fornecidas. Se o usuário já mencionou algo na mensagem inicial, NÃO pergunte novamente.
+   - **CRÍTICO**: Quando o usuário responder com respostas curtas (ex: "1", "3x", "3", "crédito", "débito", "pix", "dinheiro", "Roxinho", "Latam", "Felipe", "eu", "compartilhado"), SEMPRE interprete essas respostas como continuação da conversa anterior. Olhe o histórico de mensagens para entender o contexto:
+     * Se você perguntou "quantas parcelas?" e o usuário respondeu "1" ou "3" ou "3x" → INFIRA que é o número de parcelas
+     * Se você perguntou "qual cartão?" e o usuário respondeu "Roxinho" ou "Latam" → INFIRA que é o nome do cartão
+     * Se você perguntou "pagou como?" e o usuário respondeu "crédito", "débito", "pix", "dinheiro" → INFIRA o método de pagamento
+     * Se você perguntou "quem pagou?" e o usuário respondeu "eu", "Felipe", "compartilhado" → INFIRA o responsável
+   - **NUNCA trate respostas curtas como nova conversa** - sempre use o histórico para entender o contexto
+   - **SEMPRE combine informações do histórico com a resposta atual** antes de chamar save_expense
+   - Se você fez uma pergunta e o usuário respondeu com uma resposta curta, use essa resposta para completar a informação faltante e chame save_expense imediatamente
 6.  **INFERÊNCIA DE CATEGORIA**: INFIRA automaticamente quando tiver CERTEZA:
    - **Suplementos** (preferencial, se existir na organização. Se não existir, usar "Saúde"): whey, whey protein, creatina, proteína, proteína em pó, multivitamínico, vitamina, suplemento, suplemento alimentar, bcaa, glutamina, pré treino, termogênico, albumina, colágeno, omega 3
    - Alimentação: padaria, restaurante, lanche, pizza, ifood, delivery, comida, bebida, cerveja, suco, açougue, peixaria, frutas, verduras, pipoca
