@@ -80,6 +80,9 @@ export default function LandingPage() {
               <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium">
                 Como Funciona
               </a>
+              <Link href="/help" className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium">
+                Ajuda
+              </Link>
               <Link 
                 href="/login"
                 className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium"
@@ -622,9 +625,16 @@ export default function LandingPage() {
             <div>
               <h3 className="text-white font-semibold mb-4">Suporte</h3>
               <ul className="space-y-3">
-                <li><a href="#" className="hover:text-white transition-colors">Central de Ajuda</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contato</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacidade</a></li>
+                <li><Link href="/help" className="hover:text-white transition-colors">Central de Ajuda</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors">Contato</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-white font-semibold mb-4">Legal</h3>
+              <ul className="space-y-3">
+                <li><Link href="/privacy" className="hover:text-white transition-colors">Privacidade</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition-colors">Termos de Serviço</Link></li>
               </ul>
             </div>
           </div>
