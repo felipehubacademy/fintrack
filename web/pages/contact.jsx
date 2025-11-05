@@ -8,6 +8,8 @@ import {
   Send,
   CheckCircle
 } from 'lucide-react';
+import LandingHeader from '../components/LandingHeader';
+import LandingFooter from '../components/LandingFooter';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -50,47 +52,7 @@ export default function ContactPage() {
       </Head>
 
       {/* Navigation */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/80 backdrop-blur-md shadow-sm`}>
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <Link href="/" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                <img src="/images/logo_flat.svg" alt="MeuAzulão" className="w-8 h-8" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-[#207DFF] to-[#0D2C66] bg-clip-text text-transparent">
-                MeuAzulão
-              </span>
-            </Link>
-
-            <div className="hidden md:flex items-center space-x-8">
-              <Link href="/" className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium">
-                Início
-              </Link>
-              <Link href="/help" className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium">
-                Ajuda
-              </Link>
-              <Link href="/contact" className="text-[#207DFF] font-semibold text-sm">
-                Contato
-              </Link>
-              <Link 
-                href="/login"
-                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
-              >
-                Entrar
-              </Link>
-            </div>
-
-            <div className="md:hidden flex items-center space-x-3">
-              <Link 
-                href="/login"
-                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
-              >
-                Entrar
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <LandingHeader currentPage="contact" />
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-16 bg-gradient-to-br from-gray-50 via-white to-blue-50">
@@ -261,47 +223,7 @@ export default function ContactPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-12 mb-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center space-x-4 mb-6 group">
-                <img 
-                  src="/images/logo_flat.svg" 
-                  alt="MeuAzulão" 
-                  className="w-10 h-10"
-                />
-                <span className="text-xl font-bold text-white">MeuAzulão</span>
-              </div>
-              <p className="text-gray-400 mb-4 max-w-md">
-                Controle financeiro inteligente via WhatsApp. 
-                Registre transações, visualize resumos e gerencie suas finanças de forma simples.
-              </p>
-            </div>
-            
-            <div>
-              <h3 className="text-white font-semibold mb-4">Legal</h3>
-              <ul className="space-y-3">
-                <li><Link href="/privacy" className="hover:text-white transition-colors">Privacidade</Link></li>
-                <li><Link href="/terms" className="hover:text-white transition-colors">Termos de Serviço</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-white font-semibold mb-4">Suporte</h3>
-              <ul className="space-y-3">
-                <li><Link href="/help" className="hover:text-white transition-colors">Central de Ajuda</Link></li>
-                <li><Link href="/contact" className="hover:text-white transition-colors">Contato</Link></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} MeuAzulão. Todos os direitos reservados.</p>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </>
   );
 }
-

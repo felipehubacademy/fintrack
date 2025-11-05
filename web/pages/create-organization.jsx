@@ -548,13 +548,13 @@ export default function CreateOrganization() {
             <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
                 Ao continuar, você concorda com nossos{' '}
-                <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+                <Link href="/terms" className="text-blue-600 hover:text-blue-700 font-medium">
                   Termos de Serviço
-                </a>
+                </Link>
                 {' '}e{' '}
-                <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+                <Link href="/privacy" className="text-blue-600 hover:text-blue-700 font-medium">
                   Política de Privacidade
-                </a>
+                </Link>
               </p>
             </div>
           </div>

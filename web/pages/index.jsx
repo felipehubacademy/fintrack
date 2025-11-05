@@ -11,6 +11,8 @@ import {
   Mic,
   Play
 } from 'lucide-react';
+import LandingHeader from '../components/LandingHeader';
+import LandingFooter from '../components/LandingFooter';
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -54,61 +56,7 @@ export default function LandingPage() {
       />
 
       {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-40 transition-all duration-500 ${
-        isScrolled 
-          ? 'bg-white/80 backdrop-blur-2xl border-b border-gray-200/50 shadow-sm' 
-          : 'bg-transparent'
-      }`}>
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <Link href="/" className="flex items-center space-x-3 group">
-              <img 
-                src="/images/logo_flat.svg" 
-                alt="MeuAzulão" 
-                className="h-20 w-20 transition-transform group-hover:scale-110 group-hover:rotate-3"
-              />
-              <span className="text-2xl font-bold bg-gradient-to-r from-[#0D2C66] to-[#207DFF] bg-clip-text text-transparent">
-                MeuAzulão
-              </span>
-            </Link>
-            
-            {/* Desktop Menu */}
-            <div className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium">
-                Funcionalidades
-              </a>
-              <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium">
-                Como Funciona
-              </a>
-              <Link href="/help" className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium">
-                Ajuda
-              </Link>
-              <Link 
-                href="/login"
-                className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium"
-              >
-                Entrar
-              </Link>
-              <Link 
-                href="/account-type"
-                className="relative inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105"
-              >
-                Começar Agora
-              </Link>
-            </div>
-
-            {/* Mobile Menu */}
-            <div className="md:hidden flex items-center space-x-3">
-              <Link 
-                href="/login"
-                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
-              >
-                Entrar
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <LandingHeader currentPage="home" />
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 via-white to-blue-50">
@@ -592,58 +540,7 @@ export default function LandingPage() {
 
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-12 mb-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center space-x-4 mb-6 group">
-                <img 
-                  src="/images/logo_flat.svg" 
-                  alt="MeuAzulão" 
-                  className="h-20 w-20 group-hover:scale-110 transition-transform"
-                />
-                <div>
-                  <span className="text-2xl font-bold text-white block">MeuAzulão</span>
-                  <span className="text-sm text-gray-400">Controle Financeiro Inteligente</span>
-                </div>
-              </div>
-              <p className="text-gray-400 leading-relaxed mb-6 max-w-md">
-                Transforme a forma como você gerencia suas finanças. 
-                Converse naturalmente com o Zul pelo WhatsApp e tenha controle total em tempo real.
-          </p>
-        </div>
-            
-            <div>
-              <h3 className="text-white font-semibold mb-4">Produto</h3>
-              <ul className="space-y-3">
-                <li><a href="#features" className="hover:text-white transition-colors">Funcionalidades</a></li>
-                <li><a href="#how-it-works" className="hover:text-white transition-colors">Como Funciona</a></li>
-                <li><Link href="/login" className="hover:text-white transition-colors">Dashboard</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-white font-semibold mb-4">Suporte</h3>
-              <ul className="space-y-3">
-                <li><Link href="/help" className="hover:text-white transition-colors">Central de Ajuda</Link></li>
-                <li><Link href="/contact" className="hover:text-white transition-colors">Contato</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-white font-semibold mb-4">Legal</h3>
-              <ul className="space-y-3">
-                <li><Link href="/privacy" className="hover:text-white transition-colors">Privacidade</Link></li>
-                <li><Link href="/terms" className="hover:text-white transition-colors">Termos de Serviço</Link></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>© 2025 MeuAzulão - Gestão Financeira Familiar. Todos os direitos reservados.</p>
-      </div>
-    </div>
-      </footer>
+      <LandingFooter />
 
       <style jsx>{`
         @keyframes gradient {

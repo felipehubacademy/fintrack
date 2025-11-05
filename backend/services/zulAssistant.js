@@ -114,6 +114,28 @@ class ZulAssistant {
   }
 
   /**
+   * Obter data atual no timezone do Brasil (America/Sao_Paulo)
+   * Retorna no formato YYYY-MM-DD
+   */
+  getBrazilDate() {
+    const now = new Date();
+    const brazilTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+    const year = brazilTime.getFullYear();
+    const month = String(brazilTime.getMonth() + 1).padStart(2, '0');
+    const day = String(brazilTime.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Obter data/hora atual no timezone do Brasil (America/Sao_Paulo)
+   * Retorna um objeto Date
+   */
+  getBrazilDateTime() {
+    const now = new Date();
+    return new Date(now.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+  }
+
+  /**
    * Gerar mensagem contextual baseada na descrição/categoria
    */
   /**
@@ -1252,7 +1274,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
               p_amount: Number(amount),
               p_installments: Number(installments),
               p_description: this.capitalizeDescription(args.description),
-              p_date: new Date().toISOString().split('T')[0],
+              p_date: this.getBrazilDate(),
               p_card_id: cardId,
               p_category_id: categoryId,
               p_cost_center_id: costCenterId, // null quando compartilhado
@@ -1335,7 +1357,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
             const expenseData = {
               amount: amount,
               description: this.capitalizeDescription(args.description),
-              date: new Date().toISOString().split('T')[0],
+              date: this.getBrazilDate(),
               category: args.category,
               category_id: categoryId,
               owner: owner,
@@ -1346,7 +1368,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
               user_id: context.userId || userId,
               status: 'confirmed',
               is_shared: isShared || false,
-              confirmed_at: new Date().toISOString(),
+              confirmed_at: this.getBrazilDateTime().toISOString(),
               confirmed_by: context.userId || userId,
               source: 'whatsapp',
               whatsapp_message_id: `msg_${Date.now()}`
@@ -1391,10 +1413,12 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
           }
 
           // Data formatada (pt-BR). Usa a data atual (hoje)
-          const savedDate = new Date().toISOString().split('T')[0];
+          const savedDate = this.getBrazilDate();
           const dateObj = new Date(savedDate + 'T00:00:00');
           const isToday = (() => {
-            const today = new Date();
+            const today = this.getBrazilDateTime();
+            today.setHours(0, 0, 0, 0);
+            dateObj.setHours(0, 0, 0, 0);
             return dateObj.toDateString() === today.toDateString();
           })();
           const dateDisplay = isToday ? 'Hoje' : dateObj.toLocaleDateString('pt-BR');
@@ -2502,7 +2526,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       const incomeData = {
         amount: parseFloat(amount),
         description: description,
-        date: date || new Date().toISOString().split('T')[0],
+        date: date || this.getBrazilDate(),
         category: finalCategory || null,
         cost_center_id: costCenterId,
         bank_account_id: bankAccountId, // ✅ OBRIGATÓRIO
@@ -2584,7 +2608,12 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       });
       
       const dateObj = new Date(incomeData.date + 'T00:00:00');
-      const isToday = dateObj.toDateString() === new Date().toDateString();
+      const isToday = (() => {
+        const today = this.getBrazilDateTime();
+        today.setHours(0, 0, 0, 0);
+        dateObj.setHours(0, 0, 0, 0);
+        return dateObj.toDateString() === today.toDateString();
+      })();
       const dateDisplay = isToday ? 'Hoje' : dateObj.toLocaleDateString('pt-BR');
       
       const greetings = [
@@ -3203,8 +3232,8 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         };
       }
       
-      // Calcular datas baseado no período
-      const today = new Date();
+      // Calcular datas baseado no período (usando timezone do Brasil)
+      const today = this.getBrazilDateTime();
       let startDate, endDate;
       
       switch (period) {
@@ -3583,6 +3612,64 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         { userName, organizationId: context.organizationId, ...context }, 
         userPhone
       );
+      
+      return {
+        message: response,
+        threadId: null // GPT-4 não usa threads
+      };
+      
+    } catch (error) {
+      console.error('❌ [ZUL] Erro ao processar mensagem:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Enviar mensagem para chat web (assistente financeiro geral)
+   */
+  async sendWebChatMessage(userId, userMessage, context = {}) {
+    return await this.webChat.sendWebChatMessage(userId, userMessage, context);
+  }
+
+  async *sendWebChatMessageStream(userId, userMessage, context = {}) {
+    // Passar streaming direto do webChat
+    yield* this.webChat.sendWebChatMessageStream(userId, userMessage, context);
+  }
+}
+
+
+export default ZulAssistant;
+
+
+      
+      return {
+        message: response,
+        threadId: null // GPT-4 não usa threads
+      };
+      
+    } catch (error) {
+      console.error('❌ [ZUL] Erro ao processar mensagem:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Enviar mensagem para chat web (assistente financeiro geral)
+   */
+  async sendWebChatMessage(userId, userMessage, context = {}) {
+    return await this.webChat.sendWebChatMessage(userId, userMessage, context);
+  }
+
+  async *sendWebChatMessageStream(userId, userMessage, context = {}) {
+    // Passar streaming direto do webChat
+    yield* this.webChat.sendWebChatMessageStream(userId, userMessage, context);
+  }
+}
+
+
+export default ZulAssistant;
+
+
       
       return {
         message: response,
