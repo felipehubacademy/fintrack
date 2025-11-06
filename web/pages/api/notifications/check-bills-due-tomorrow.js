@@ -19,6 +19,7 @@ const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
  * Enviar template de lembrete de contas via WhatsApp Business API
  */
 async function sendBillReminderTemplate(to, userName, billsCount, dueDate, billsList, totalAmount) {
+  // userName não é mais usado no template minimalista, mas mantido para compatibilidade
   const phoneId = process.env.PHONE_ID;
   const token = process.env.WHATSAPP_TOKEN;
 
@@ -264,8 +265,7 @@ export default async function handler(req, res) {
         continue;
       }
 
-      // Preparar dados para o template
-      const firstName = getFirstName(user.name);
+      // Preparar dados para o template (Versão 2 - Múltiplas Contas)
       const billsCount = userBills.length;
       const dueDate = formatDate(tomorrowStr);
       const billsList = formatBillsList(userBills);
@@ -279,15 +279,15 @@ export default async function handler(req, res) {
 
       // Enviar template via WhatsApp
       console.log(`📱 Enviando template de lembrete para ${user.phone}...`);
-      console.log(`   - Nome: ${firstName}`);
       console.log(`   - Contas: ${billsCount}`);
       console.log(`   - Data: ${dueDate}`);
       console.log(`   - Lista de contas (com \\n): ${billsList.replace(/\n/g, '\\n')}`);
       console.log(`   - Total: R$ ${totalAmountFormatted}`);
 
+      // Template Versão 2: {{1}}=dueDate, {{2}}=billsCount, {{3}}=billsList, {{4}}=totalAmount
       const sent = await sendBillReminderTemplate(
         user.phone,
-        firstName,
+        null, // userName não é mais usado no template minimalista
         billsCount,
         dueDate,
         billsList,
