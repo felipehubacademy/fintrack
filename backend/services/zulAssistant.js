@@ -1904,12 +1904,22 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
 3.  **INFERÊNCIA ATIVA E EXTRAÇÃO COMPLETA**: Se o usuário fornecer informações na primeira mensagem, EXTRAIA TODAS as informações disponíveis antes de perguntar qualquer coisa. Exemplos:
    - "1500 em 5x no credito Latam" → EXTRAIA: valor=1500, parcelas=5, pagamento=crédito, cartão=Latam → Pergunte APENAS: descrição e responsável
    - "comprei uma televisao por 1500 reais em 5x no credito Latam" → EXTRAIA: valor=1500, descrição=televisao, parcelas=5, pagamento=crédito, cartão=Latam, responsável=eu (verbo "comprei" indica individual) → Chame save_expense DIRETO
-   - "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" → EXTRAIA: valor=3299, descrição=máquina de lavar louça, parcelas=10, pagamento=crédito, cartão=MercadoPago, responsável=compartilhado (verbo "compramos" indica compartilhado) → Chame save_expense DIRETO (NÃO perguntar "quem pagou?")
+   - "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" → EXTRAIA: valor=3299, descrição=máquina de lavar louça, parcelas=10, pagamento=crédito (inferido pelo cartão "Mercado Pago"), cartão=MercadoPago, responsável=compartilhado (verbo "compramos" indica compartilhado) → Chame save_expense DIRETO (NÃO perguntar "quem pagou?" nem "pagou como?")
    - "pagamos 100 no mercado" → EXTRAIA: valor=100, descrição=mercado, responsável=compartilhado (verbo "pagamos" indica compartilhado) → Pergunte APENAS: método de pagamento
    - "paguei 106,17 impostos, foi no crédito uma vez no Roxinho" → EXTRAIA: valor=106.17, descrição=impostos, pagamento=crédito, cartão=Roxinho, parcelas=1, responsável=eu (verbo "paguei" indica individual) → Chame save_expense DIRETO (NÃO perguntar "quem pagou?")
    - "100 no mercado, débito" → EXTRAIA: valor=100, descrição=mercado, pagamento=débito → Pergunte APENAS: responsável
    - "50 na farmácia, pix, Felipe" → EXTRAIA TUDO → Chame save_expense DIRETO (não pergunte nada)
    **REGRA CRÍTICA**: Se a mensagem mencionar "crédito", "crédito X", "no crédito", "cartão X", "X em Yx" (parcelas), EXTRAIA essas informações automaticamente. NÃO pergunte novamente informações que já estão na mensagem.
+   
+   **🚨 DETECÇÃO AUTOMÁTICA DE PAGAMENTO POR NOME DE CARTÃO - REGRA OBRIGATÓRIA 🚨**:
+   **SE A MENSAGEM MENCIONAR O NOME DE UM CARTÃO QUE ESTÁ NA LISTA DE CARTÕES DISPONÍVEIS (${cardsList}), INFIRA AUTOMATICAMENTE QUE É PAGAMENTO NO CRÉDITO (payment_method="credit_card").**
+   - Se mencionar "MercadoPago", "Mercado Pago", "Latam", "Roxinho", "Neon", "Nubank", "C6", ou qualquer outro cartão da lista disponível → INFIRA automaticamente payment_method="credit_card"
+   - Exemplos:
+     * "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" → payment_method="credit_card", card_name="MercadoPago", installments=10
+     * "1500 no Latam em 5x" → payment_method="credit_card", card_name="Latam", installments=5
+     * "100 no Roxinho" → payment_method="credit_card", card_name="Roxinho", installments=1 (default)
+     * "paguei 200 no Neon" → payment_method="credit_card", card_name="Neon", installments=1 (default)
+   - **NUNCA PERGUNTE "PAGOU COMO?" SE A MENSAGEM MENCIONAR UM CARTÃO DA LISTA** - isso é uma violação grave das regras
    
    **🚨 DETECÇÃO AUTOMÁTICA DE RESPONSÁVEL PELOS VERBOS - REGRA OBRIGATÓRIA 🚨**:
    **VOCÊ DEVE SEMPRE ANALISAR OS VERBOS NA MENSAGEM DO USUÁRIO PARA DETERMINAR O RESPONSÁVEL ANTES DE PERGUNTAR QUALQUER COISA.**
@@ -2078,7 +2088,9 @@ FLUXO DE EXEMPLO (ênfase na fluidez e variação):
 | Mensagem do Usuário | Extração Automática | Pergunta do ZUL |
 | :--- | :--- | :--- |
 | "comprei uma televisao por 1500 reais em 5x no credito Latam" | valor=1500, descrição=televisao, parcelas=5, pagamento=crédito, cartão=Latam, responsável=eu (verbo "comprei") | [save_expense] DIRETO |
-| "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" | valor=3299, descrição=máquina de lavar louça, parcelas=10, pagamento=crédito, cartão=MercadoPago, responsável=compartilhado (verbo "compramos") | [save_expense] DIRETO - NÃO perguntar "quem pagou?" |
+| "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" | valor=3299, descrição=máquina de lavar louça, parcelas=10, pagamento=crédito (inferido pelo cartão "Mercado Pago"), cartão=MercadoPago, responsável=compartilhado (verbo "compramos") | [save_expense] DIRETO - NÃO perguntar "quem pagou?" nem "pagou como?" |
+| "1500 no Latam em 5x" | valor=1500, parcelas=5, pagamento=crédito (inferido pelo cartão "Latam"), cartão=Latam | "O que foi?" e "Quem pagou?" |
+| "paguei 200 no Neon" | valor=200, pagamento=crédito (inferido pelo cartão "Neon"), cartão=Neon, parcelas=1 (default), responsável=eu (verbo "paguei") | [save_expense] DIRETO - NÃO perguntar "pagou como?" nem "quem pagou?" |
 | "pagamos 100 no mercado" | valor=100, descrição=mercado, responsável=compartilhado (verbo "pagamos") | "Pagou como?" |
 | "gastei 50 na farmácia no pix" | valor=50, descrição=farmácia, pagamento=pix, responsável=eu (verbo "gastei") | [save_expense] DIRETO |
 | "paguei 106,17 impostos, foi no crédito uma vez no Roxinho" | valor=106.17, descrição=impostos, pagamento=crédito, cartão=Roxinho, parcelas=1, responsável=eu (verbo "paguei") | [save_expense] DIRETO - NÃO perguntar "quem pagou?" |
@@ -2105,7 +2117,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
     const functions = [
       {
         name: 'save_expense',
-        description: 'Salvar despesa quando tiver TODAS as informações (valor, descrição, pagamento, responsável). Validação acontece automaticamente dentro da função. IMPORTANTE: EXTRAIA TODAS as informações disponíveis da mensagem do usuário ANTES de chamar esta função. Se a mensagem mencionar "crédito", "crédito X", "no crédito", "cartão X", "X em Yx" (parcelas), EXTRAIA essas informações automaticamente e inclua nos parâmetros. CRÍTICO: Se a forma de pagamento NÃO foi mencionada na mensagem, NÃO chame esta função - pergunte primeiro ao usuário. NUNCA assuma valores padrão como "cash".',
+        description: 'Salvar despesa quando tiver TODAS as informações (valor, descrição, pagamento, responsável). Validação acontece automaticamente dentro da função. IMPORTANTE: EXTRAIA TODAS as informações disponíveis da mensagem do usuário ANTES de chamar esta função. Se a mensagem mencionar "crédito", "crédito X", "no crédito", "cartão X", "X em Yx" (parcelas), EXTRAIA essas informações automaticamente e inclua nos parâmetros. **CRÍTICO**: Se a mensagem mencionar o nome de um cartão que está na lista de cartões disponíveis (ex: "MercadoPago", "Latam", "Roxinho", "Neon"), INFIRA automaticamente payment_method="credit_card" mesmo que não tenha mencionado explicitamente "crédito". Se a forma de pagamento NÃO foi mencionada na mensagem E não há nome de cartão mencionado, NÃO chame esta função - pergunte primeiro ao usuário. NUNCA assuma valores padrão como "cash".',
         parameters: {
           type: 'object',
           properties: {
@@ -2119,7 +2131,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             },
             payment_method: { 
               type: 'string',
-              description: 'Forma de pagamento que o usuário mencionou explicitamente OU que respondeu quando você perguntou. EXTRAIA automaticamente quando mencionado: "crédito"/"crédito X"/"no crédito"/"cartão de crédito" → credit_card, "débito"/"no débito"/"cartão de débito" → debit_card, "pix"/"PIX" → pix, "dinheiro"/"cash"/"em espécie" → cash. Se a mensagem mencionar "crédito", "cartão X", "X em Yx", EXTRAIA automaticamente. IMPORTANTE: Se a forma de pagamento NÃO foi mencionada na mensagem original do usuário, você DEVE perguntar primeiro antes de chamar esta função. NUNCA assuma valores padrão como "cash" ou "dinheiro".'
+              description: 'Forma de pagamento que o usuário mencionou explicitamente OU que respondeu quando você perguntou OU que pode ser inferida pelo nome do cartão. EXTRAIA automaticamente quando mencionado: "crédito"/"crédito X"/"no crédito"/"cartão de crédito" → credit_card, "débito"/"no débito"/"cartão de débito" → debit_card, "pix"/"PIX" → pix, "dinheiro"/"cash"/"em espécie" → cash. **CRÍTICO**: Se a mensagem mencionar o nome de um cartão que está na lista de cartões disponíveis (ex: "MercadoPago", "Latam", "Roxinho", "Neon"), INFIRA automaticamente payment_method="credit_card" mesmo que não tenha mencionado explicitamente "crédito". Se a mensagem mencionar "crédito", "cartão X", "X em Yx", EXTRAIA automaticamente. IMPORTANTE: Se a forma de pagamento NÃO foi mencionada na mensagem original do usuário E não há nome de cartão mencionado, você DEVE perguntar primeiro antes de chamar esta função. NUNCA assuma valores padrão como "cash" ou "dinheiro".'
             },
             responsible: { 
               type: 'string',
