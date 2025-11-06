@@ -818,7 +818,19 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
 
           // Se for compartilhado, usar o nome da organização ao invés de "compartilhado"
           if (isShared) {
-            owner = context.organizationName || 'Compartilhado';
+            // Buscar nome da organização
+            if (context.organizationName) {
+              owner = context.organizationName;
+            } else if (context.organizationId) {
+              const { data: org } = await supabase
+                .from('organizations')
+                .select('name')
+                .eq('id', context.organizationId)
+                .single();
+              owner = org?.name || 'Compartilhado';
+            } else {
+              owner = 'Compartilhado';
+            }
             ownerNorm = this.normalizeText(owner);
           }
 
@@ -3057,12 +3069,38 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             }
           }
         } else if (isShared) {
-          owner = context.organizationName || 'Compartilhado';
+          // Se compartilhado, buscar nome da organização
+          if (context.organizationName) {
+            owner = context.organizationName;
+          } else if (context.organizationId) {
+            // Buscar nome da organização no banco se não estiver no contexto
+            const { data: org } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', context.organizationId)
+              .single();
+            owner = org?.name || 'Compartilhado';
+          } else {
+            owner = 'Compartilhado';
+          }
         }
       } else {
         // Se não informou responsável, considerar compartilhado
         isShared = true;
-        owner = context.organizationName || 'Compartilhado';
+        // Buscar nome da organização
+        if (context.organizationName) {
+          owner = context.organizationName;
+        } else if (context.organizationId) {
+          // Buscar nome da organização no banco se não estiver no contexto
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', context.organizationId)
+            .single();
+          owner = org?.name || 'Compartilhado';
+        } else {
+          owner = 'Compartilhado';
+        }
       }
       
       // ✅ SEMPRE usar categoria "Contas" para contas a pagar (fixo)
