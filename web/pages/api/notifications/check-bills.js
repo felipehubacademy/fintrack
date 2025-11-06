@@ -143,8 +143,8 @@ export default async function handler(req, res) {
       message += `${process.env.NEXT_PUBLIC_APP_URL || 'https://meuazulao.com.br'}/dashboard/bills`;
 
       // Enviar WhatsApp usando a API oficial da Meta
-      console.log(`📱 Enviando notificação para ${user.whatsapp_phone}:`);
-      const sent = await sendWhatsAppMessage(user.whatsapp_phone, message);
+      console.log(`📱 Enviando notificação para ${user.phone}:`);
+      const sent = await sendWhatsAppMessage(user.phone, message);
 
       // Atualizar notified_at
       const billIds = userBills.map(b => b.id);
@@ -157,7 +157,7 @@ export default async function handler(req, res) {
         user_id: userId,
         user_name: user.name,
         bills_count: userBills.length,
-        phone: user.whatsapp_phone,
+        phone: user.phone,
         sent: sent
       });
     }
