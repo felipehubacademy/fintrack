@@ -26,7 +26,7 @@ jobs:
           # Verificar APP_URL
           if [ -z "${{ secrets.APP_URL }}" ]; then
             echo "⚠️ APP_URL não configurado"
-            echo "   Usando fallback: https://fintrack-web.vercel.app"
+            echo "   Usando fallback: https://www.meuazulao.com.br"
           else
             echo "✅ APP_URL configurado"
           fi
