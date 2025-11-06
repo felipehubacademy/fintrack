@@ -1074,8 +1074,8 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                     target: 'Veículos',
                     fallback: 'Transporte'
                   },
-                  // Contas (fixas)
-                  { keywords: ['aluguel', 'condominio', 'condominio', 'agua', 'agua', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos', 'iptu', 'ipva', 'ir', 'imposto', 'taxa', 'multas', 'detran', 'dar', 'financiamento', 'prestacao', 'prestação', 'cartao', 'cartão', 'fatura'], target: 'Contas' },
+                  // Contas (fixas - sem impostos, que agora estão em "Impostos")
+                  { keywords: ['aluguel', 'condominio', 'condominio', 'agua', 'agua', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos', 'financiamento', 'prestacao', 'prestação', 'cartao', 'cartão', 'fatura'], target: 'Contas' },
                   // Casa
                   { keywords: ['casa', 'lar', 'mercadolivre', 'magalu', 'casas bahia', 'tokstok', 'tok&stok', 'leroy', 'ferramenta', 'decoracao', 'decoração', 'limpeza', 'material limpeza', 'ventilador', 'ar condicionado', 'microondas', 'geladeira', 'tv', 'televisao', 'notebook', 'tablet', 'computador', 'computadores', 'pc', 'desktop', 'laptop'], target: 'Casa' },
                   // Educação
@@ -1100,8 +1100,12 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                   { keywords: ['roupa', 'roupas', 'sapato', 'sapatos', 'tenis', 'tenis', 'camisa', 'camiseta', 'calca', 'calça', 'vestido', 'renner', 'riachuelo', 'cea', 'c&a', 'zara', 'h&m', 'nike', 'adidas', 'puma', 'shopping', 'loja'], target: 'Vestuário' },
                   // Pets
                   { keywords: ['petshop', 'pet shop', 'ração', 'racao', 'veterinario', 'veterinario', 'banho tosa', 'banho e tosa', 'pet', 'gato', 'cachorro', 'animal'], target: 'Pets' },
-                  // Impostos e taxas (já está em Contas)
-                  { keywords: ['iptu', 'ipva', 'ir', 'imposto', 'taxa', 'multas', 'detran', 'dar', 'licenciamento'], target: 'Contas' },
+                  // Impostos (primeiro tentar "Impostos", se não existir, fallback para "Casa")
+                  { 
+                    keywords: ['imposto', 'impostos', 'receita federal', 'receita', 'irpf', 'ir', 'imposto de renda', 'imposto sobre renda', 'declaracao', 'declaração', 'declaracao de imposto', 'declaração de imposto', 'dar', 'dar imposto', 'taxa', 'taxas', 'taxa de', 'multa', 'multas', 'multa de transito', 'multa de trânsito', 'detran', 'ipva', 'iptu', 'iss', 'icms', 'ipi', 'cofins', 'pis', 'csll', 'irpj', 'simples nacional', 'mei', 'darf', 'guia de recolhimento', 'guia de imposto', 'recolhimento de imposto', 'pagamento de imposto', 'paguei imposto', 'paguei impostos', 'pagamos imposto', 'pagamos impostos', 'imposto pago', 'impostos pagos', 'declaracao anual', 'declaração anual', 'imposto anual', 'impostos anuais', 'receita federal do brasil', 'rf', 'fazenda', 'fazenda publica', 'fazenda pública', 'secretaria da fazenda', 'sefaz', 'prefeitura', 'prefeitura municipal', 'municipio', 'município', 'governo', 'governo federal', 'governo estadual', 'governo municipal', 'tributo', 'tributos', 'contribuicao', 'contribuição', 'contribuicao social', 'contribuição social'], 
+                    target: 'Impostos',
+                    fallback: 'Casa'
+                  },
                   // Presentes/Doações
                   { keywords: ['presente', 'presentes', 'doacao', 'doação', 'vaquinha', 'aniversario', 'aniversário'], target: 'Outros' }
                 ];
@@ -1835,11 +1839,23 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    - "50 na farmácia, pix, Felipe" → EXTRAIA TUDO → Chame save_expense DIRETO (não pergunte nada)
    **REGRA CRÍTICA**: Se a mensagem mencionar "crédito", "crédito X", "no crédito", "cartão X", "X em Yx" (parcelas), EXTRAIA essas informações automaticamente. NÃO pergunte novamente informações que já estão na mensagem.
    
-   **DETECÇÃO AUTOMÁTICA DE RESPONSÁVEL PELOS VERBOS**:
-   - **VERBOS INDIVIDUAIS** (responsável = usuário/eu): paguei, comprei, gastei, investi, doei, emprestei, peguei, peguei emprestado, fiz, adquiri, contratei, assinei, me inscrevi, me matriculei, fui em, fui ao, fui na, fui no, fui à, fui no, comprei para mim, gastei comigo, paguei minha, paguei meu, comprei minha, comprei meu, anotei, registrei, lancei, adicionei, coloquei, botei, inseri, incluí, adicionei minha, adicionei meu
-   - **VERBOS COMPARTILHADOS** (responsável = compartilhado): pagamos, compramos, gastamos, investimos, fizemos, adquirimos, contratamos, assinamos, nos inscrevemos, nos matriculamos, fomos em, fomos ao, fomos na, fomos no, fomos à, fomos no, compramos para, gastamos com, pagamos nossa, pagamos nosso, compramos nossa, compramos nosso, anotamos, registramos, lançamos, adicionamos, colocamos, botamos, inserimos, incluímos, adicionamos nossa, adicionamos nosso
-   - Se o verbo for individual, INFIRA automaticamente responsável="eu" (será mapeado para o nome do usuário)
-   - Se o verbo for compartilhado, INFIRA automaticamente responsável="compartilhado"
+   **🚨 DETECÇÃO AUTOMÁTICA DE RESPONSÁVEL PELOS VERBOS - REGRA OBRIGATÓRIA 🚨**:
+   **VOCÊ DEVE SEMPRE ANALISAR OS VERBOS NA MENSAGEM DO USUÁRIO PARA DETERMINAR O RESPONSÁVEL ANTES DE PERGUNTAR QUALQUER COISA.**
+   
+   - **VERBOS INDIVIDUAIS** (responsável = "eu" - será mapeado automaticamente para o nome do usuário): 
+     * paguei, comprei, gastei, investi, doei, emprestei, peguei, peguei emprestado, fiz, adquiri, contratei, assinei, me inscrevi, me matriculei, fui em, fui ao, fui na, fui no, fui à, comprei para mim, gastei comigo, paguei minha, paguei meu, comprei minha, comprei meu, anotei, registrei, lancei, adicionei, coloquei, botei, inseri, incluí, adicionei minha, adicionei meu, comprei sozinho, paguei sozinho, gastei sozinho, foi minha, foi meu, minha despesa, meu gasto, eu paguei, eu comprei, eu gastei, eu fiz, eu adquiri, eu contratei, eu assinei, eu me inscrevi, eu me matriculei, eu fui, eu anotei, eu registrei, eu lancei, eu adicionei, eu coloquei, eu botei, eu inseri, eu incluí, eu comprei para mim, eu gastei comigo, eu paguei minha, eu paguei meu, eu comprei minha, eu comprei meu, eu adicionei minha, eu adicionei meu
+   
+   - **VERBOS COMPARTILHADOS** (responsável = "compartilhado" - será mapeado automaticamente para o nome da organização): 
+     * pagamos, compramos, gastamos, investimos, fizemos, adquirimos, contratamos, assinamos, nos inscrevemos, nos matriculamos, fomos em, fomos ao, fomos na, fomos no, fomos à, compramos para, gastamos com, pagamos nossa, pagamos nosso, compramos nossa, compramos nosso, anotamos, registramos, lançamos, adicionamos, colocamos, botamos, inserimos, incluímos, adicionamos nossa, adicionamos nosso, compramos juntos, pagamos juntos, gastamos juntos, fizemos juntos, foi nossa, foi nosso, nossa despesa, nosso gasto, nós pagamos, nós compramos, nós gastamos, nós fizemos, nós adquirimos, nós contratamos, nós assinamos, nós nos inscrevemos, nós nos matriculamos, nós fomos, nós anotamos, nós registramos, nós lançamos, nós adicionamos, nós colocamos, nós botamos, nós inserimos, nós incluímos, nós compramos para, nós gastamos com, nós pagamos nossa, nós pagamos nosso, nós compramos nossa, nós compramos nosso, nós adicionamos nossa, nós adicionamos nosso
+   
+   **REGRA DE APLICAÇÃO**:
+   - Se a mensagem contiver QUALQUER verbo individual listado acima, INFIRA automaticamente responsável="eu" e NÃO pergunte "quem pagou?" ou "qual foi o responsável?"
+   - Se a mensagem contiver QUALQUER verbo compartilhado listado acima, INFIRA automaticamente responsável="compartilhado" e NÃO pergunte "quem pagou?" ou "qual foi o responsável?"
+   - **EXEMPLOS PRÁTICOS**:
+     * "comprei um monitor" → responsável="eu" (verbo "comprei" é individual)
+     * "paguei 106,17 impostos" → responsável="eu" (verbo "paguei" é individual)
+     * "compramos mercado" → responsável="compartilhado" (verbo "compramos" é compartilhado)
+     * "pagamos aluguel" → responsável="compartilhado" (verbo "pagamos" é compartilhado)
    
    **SINÔNIMOS DE DESPESA/GASTO** (para identificar save_expense):
    - paguei, pagamos, comprei, compramos, gastei, gastamos, investi, investimos, doei, doamos, emprestei, emprestamos, peguei, pegamos, fiz, fizemos, adquiri, adquirimos, contratei, contratamos, assinei, assinamos, me inscrevi, nos inscrevemos, me matriculei, nos matriculamos, fui em, fomos em, fui ao, fomos ao, fui na, fomos na, fui no, fomos no, fui à, fomos à, anotei, anotamos, registrei, registramos, lancei, lançamos, adicionei, adicionamos, coloquei, colocamos, botei, botamos, inseri, inserimos, incluí, incluímos, despesa, despesas, gasto, gastos, pagamento, pagamentos, compra, compras, conta, contas, débito, débitos, saída, saídas, saque, saques, retirada, retiradas
@@ -1870,7 +1886,8 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    - **Lazer** (categoria geral - cinema, teatro, shows, etc.): cinema, teatro, show, balada, **bar**, parque, ingresso, festa, aniversário, etc.
    - **Beleza** (expandido - tudo fica em Beleza): cabelo, cabeleireiro, corte de cabelo, pintar cabelo, barbearia, barbeiro, barba, corte de barba, manicure, pedicure, unha, estética, maquiagem, cosmético, salão, spa, massagem, depilação, etc.
    - **Casa**: eletrodomésticos, eletrônicos (tv, notebook, computador, tablet), móveis, decoração, limpeza
-   - **Contas**: aluguel, condomínio, água, luz, energia, internet, telefone, iptu, imposto
+   - **Contas**: aluguel, condomínio, água, luz, energia, internet, telefone
+   - **Impostos** (primeiro tentar "Impostos", se não existir, fallback para "Casa"): imposto, impostos, receita federal, receita, irpf, ir, imposto de renda, declaracao, declaração, dar, taxa, taxas, multa, multas, detran, ipva, iptu, iss, icms, ipi, cofins, pis, csll, irpj, simples nacional, mei, darf, guia de recolhimento, fazenda, sefaz, prefeitura, governo, tributo, tributos, contribuição, contribuição social
    - **Vestuário**: roupa, sapato, tênis, camisa
    - **Educação**: curso, faculdade, escola, livro
    - **Pets**: petshop, ração, veterinário
@@ -2030,7 +2047,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             },
             responsible: { 
               type: 'string',
-              description: 'Quem pagou: nome exato (ex: "Felipe", "Letícia") ou "eu" (será mapeado automaticamente)'
+              description: 'Quem pagou: nome exato (ex: "Felipe", "Letícia") ou "eu" (será mapeado automaticamente para o nome do usuário) ou "compartilhado" (será mapeado automaticamente para o nome da organização). **CRÍTICO**: Se a mensagem do usuário contiver verbos individuais (comprei, paguei, gastei, fiz, etc.), INFIRA automaticamente responsável="eu". Se contiver verbos compartilhados (compramos, pagamos, gastamos, fizemos, etc.), INFIRA automaticamente responsável="compartilhado". NÃO pergunte "quem pagou?" se conseguir inferir pelo verbo.'
             },
             card_name: { 
               type: 'string',
