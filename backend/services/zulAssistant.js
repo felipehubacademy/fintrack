@@ -139,6 +139,64 @@ class ZulAssistant {
    * Gerar mensagem contextual baseada na descrição/categoria
    */
   /**
+   * Gerar mensagem personalizada sobre lembrete de conta a pagar
+   */
+  async generateBillReminderMessage(description, dueDate, daysUntil, userName) {
+    try {
+      const prompt = `Você é o Zul, assistente financeiro do MeuAzulão.
+
+Gere uma mensagem curta, natural e amigável (máximo 80 caracteres) sobre o lembrete de conta a pagar:
+- Descrição: "${description}"
+- Data de vencimento: ${dueDate}
+- Dias até vencer: ${daysUntil}
+- Nome do usuário: "${userName || 'usuário'}"
+
+REGRAS:
+- Seja natural, brasileiro e descontraído
+- Use 1 emoji relevante
+- Máximo 80 caracteres
+- Mencione que você vai avisar um dia antes (ou similar)
+- Varie completamente - não use frases repetitivas
+- Seja criativo e personalizado
+
+Exemplos (NÃO copie, seja criativo):
+- "Pode deixar que te aviso um dia antes! 🔔"
+- "Vou te lembrar um dia antes do vencimento! ⏰"
+- "Relaxa, te aviso quando estiver chegando perto! 📅"
+- "Deixa comigo, te aviso antes de vencer! ✅"
+
+Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é o Zul, assistente financeiro brasileiro. Gere mensagens curtas, amigáveis e naturais sobre lembretes de contas.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.9,
+        max_tokens: 100
+      });
+      
+      const generatedMessage = completion.choices[0].message.content.trim();
+      const cleanMessage = generatedMessage.replace(/^["']|["']$/g, '');
+      
+      console.log('✨ [GPT] Mensagem de lembrete gerada:', cleanMessage);
+      return cleanMessage;
+      
+    } catch (error) {
+      console.error('❌ [GPT] Erro ao gerar mensagem de lembrete:', error);
+      // Fallback caso GPT falhe
+      return 'Pode deixar que te aviso um dia antes! 🔔';
+    }
+  }
+
+  /**
    * Gerar mensagem contextual usando GPT (método principal)
    */
   async generateContextualMessage(description, category, paymentMethod) {
