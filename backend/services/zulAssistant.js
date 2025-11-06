@@ -1904,7 +1904,9 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
 3.  **INFERÊNCIA ATIVA E EXTRAÇÃO COMPLETA**: Se o usuário fornecer informações na primeira mensagem, EXTRAIA TODAS as informações disponíveis antes de perguntar qualquer coisa. Exemplos:
    - "1500 em 5x no credito Latam" → EXTRAIA: valor=1500, parcelas=5, pagamento=crédito, cartão=Latam → Pergunte APENAS: descrição e responsável
    - "comprei uma televisao por 1500 reais em 5x no credito Latam" → EXTRAIA: valor=1500, descrição=televisao, parcelas=5, pagamento=crédito, cartão=Latam, responsável=eu (verbo "comprei" indica individual) → Chame save_expense DIRETO
+   - "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" → EXTRAIA: valor=3299, descrição=máquina de lavar louça, parcelas=10, pagamento=crédito, cartão=MercadoPago, responsável=compartilhado (verbo "compramos" indica compartilhado) → Chame save_expense DIRETO (NÃO perguntar "quem pagou?")
    - "pagamos 100 no mercado" → EXTRAIA: valor=100, descrição=mercado, responsável=compartilhado (verbo "pagamos" indica compartilhado) → Pergunte APENAS: método de pagamento
+   - "paguei 106,17 impostos, foi no crédito uma vez no Roxinho" → EXTRAIA: valor=106.17, descrição=impostos, pagamento=crédito, cartão=Roxinho, parcelas=1, responsável=eu (verbo "paguei" indica individual) → Chame save_expense DIRETO (NÃO perguntar "quem pagou?")
    - "100 no mercado, débito" → EXTRAIA: valor=100, descrição=mercado, pagamento=débito → Pergunte APENAS: responsável
    - "50 na farmácia, pix, Felipe" → EXTRAIA TUDO → Chame save_expense DIRETO (não pergunte nada)
    **REGRA CRÍTICA**: Se a mensagem mencionar "crédito", "crédito X", "no crédito", "cartão X", "X em Yx" (parcelas), EXTRAIA essas informações automaticamente. NÃO pergunte novamente informações que já estão na mensagem.
@@ -1918,14 +1920,16 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    - **VERBOS COMPARTILHADOS** (responsável = "compartilhado" - será mapeado automaticamente para o nome da organização): 
      * pagamos, compramos, gastamos, investimos, fizemos, adquirimos, contratamos, assinamos, nos inscrevemos, nos matriculamos, fomos em, fomos ao, fomos na, fomos no, fomos à, compramos para, gastamos com, pagamos nossa, pagamos nosso, compramos nossa, compramos nosso, anotamos, registramos, lançamos, adicionamos, colocamos, botamos, inserimos, incluímos, adicionamos nossa, adicionamos nosso, compramos juntos, pagamos juntos, gastamos juntos, fizemos juntos, foi nossa, foi nosso, nossa despesa, nosso gasto, nós pagamos, nós compramos, nós gastamos, nós fizemos, nós adquirimos, nós contratamos, nós assinamos, nós nos inscrevemos, nós nos matriculamos, nós fomos, nós anotamos, nós registramos, nós lançamos, nós adicionamos, nós colocamos, nós botamos, nós inserimos, nós incluímos, nós compramos para, nós gastamos com, nós pagamos nossa, nós pagamos nosso, nós compramos nossa, nós compramos nosso, nós adicionamos nossa, nós adicionamos nosso
    
-   **REGRA DE APLICAÇÃO**:
-   - Se a mensagem contiver QUALQUER verbo individual listado acima, INFIRA automaticamente responsável="eu" e NÃO pergunte "quem pagou?" ou "qual foi o responsável?"
-   - Se a mensagem contiver QUALQUER verbo compartilhado listado acima, INFIRA automaticamente responsável="compartilhado" e NÃO pergunte "quem pagou?" ou "qual foi o responsável?"
-   - **EXEMPLOS PRÁTICOS**:
-     * "comprei um monitor" → responsável="eu" (verbo "comprei" é individual)
-     * "paguei 106,17 impostos" → responsável="eu" (verbo "paguei" é individual)
-     * "compramos mercado" → responsável="compartilhado" (verbo "compramos" é compartilhado)
-     * "pagamos aluguel" → responsável="compartilhado" (verbo "pagamos" é compartilhado)
+   **REGRA DE APLICAÇÃO - CRÍTICA E OBRIGATÓRIA**:
+   - Se a mensagem contiver QUALQUER verbo individual listado acima, INFIRA automaticamente responsável="eu" e NÃO pergunte "quem pagou?" ou "qual foi o responsável?" - CHAME save_expense DIRETO com responsável="eu"
+   - Se a mensagem contiver QUALQUER verbo compartilhado listado acima, INFIRA automaticamente responsável="compartilhado" e NÃO pergunte "quem pagou?" ou "qual foi o responsável?" - CHAME save_expense DIRETO com responsável="compartilhado"
+   - **NUNCA PERGUNTE "QUEM PAGOU?" SE CONSEGUIR INFERIR PELO VERBO** - isso é uma violação grave das regras
+   - **EXEMPLOS PRÁTICOS OBRIGATÓRIOS**:
+     * "comprei um monitor" → responsável="eu" (verbo "comprei" é individual) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
+     * "paguei 106,17 impostos" → responsável="eu" (verbo "paguei" é individual) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
+     * "compramos uma máquina de lavar louça" → responsável="compartilhado" (verbo "compramos" é compartilhado) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
+     * "compramos mercado" → responsável="compartilhado" (verbo "compramos" é compartilhado) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
+     * "pagamos aluguel" → responsável="compartilhado" (verbo "pagamos" é compartilhado) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
    
    **SINÔNIMOS DE DESPESA/GASTO** (para identificar save_expense):
    - paguei, pagamos, comprei, compramos, gastei, gastamos, investi, investimos, doei, doamos, emprestei, emprestamos, peguei, pegamos, fiz, fizemos, adquiri, adquirimos, contratei, contratamos, assinei, assinamos, me inscrevi, nos inscrevemos, me matriculei, nos matriculamos, fui em, fomos em, fui ao, fomos ao, fui na, fomos na, fui no, fomos no, fui à, fomos à, anotei, anotamos, registrei, registramos, lancei, lançamos, adicionei, adicionamos, coloquei, colocamos, botei, botamos, inseri, inserimos, incluí, incluímos, despesa, despesas, gasto, gastos, pagamento, pagamentos, compra, compras, conta, contas, débito, débitos, saída, saídas, saque, saques, retirada, retiradas
@@ -2074,8 +2078,10 @@ FLUXO DE EXEMPLO (ênfase na fluidez e variação):
 | Mensagem do Usuário | Extração Automática | Pergunta do ZUL |
 | :--- | :--- | :--- |
 | "comprei uma televisao por 1500 reais em 5x no credito Latam" | valor=1500, descrição=televisao, parcelas=5, pagamento=crédito, cartão=Latam, responsável=eu (verbo "comprei") | [save_expense] DIRETO |
+| "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" | valor=3299, descrição=máquina de lavar louça, parcelas=10, pagamento=crédito, cartão=MercadoPago, responsável=compartilhado (verbo "compramos") | [save_expense] DIRETO - NÃO perguntar "quem pagou?" |
 | "pagamos 100 no mercado" | valor=100, descrição=mercado, responsável=compartilhado (verbo "pagamos") | "Pagou como?" |
 | "gastei 50 na farmácia no pix" | valor=50, descrição=farmácia, pagamento=pix, responsável=eu (verbo "gastei") | [save_expense] DIRETO |
+| "paguei 106,17 impostos, foi no crédito uma vez no Roxinho" | valor=106.17, descrição=impostos, pagamento=crédito, cartão=Roxinho, parcelas=1, responsável=eu (verbo "paguei") | [save_expense] DIRETO - NÃO perguntar "quem pagou?" |
 | "1500 em 5x no credito Latam" | valor=1500, parcelas=5, pagamento=crédito, cartão=Latam | "O que foi?" e "Quem pagou?" |
 | "100 no mercado, débito" | valor=100, descrição=mercado, pagamento=débito | "Quem pagou?" |
 | "50 na farmácia, pix, Felipe" | valor=50, descrição=farmácia, pagamento=pix, responsável=Felipe | [save_expense] DIRETO |
