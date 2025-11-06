@@ -158,7 +158,7 @@ Se o template já foi aprovado como MARKETING:
 
 ## 🎯 Recomendação Final
 
-**Use a Opção 1** (remover CTA promocional e adicionar contexto transacional):
+**Use versão minimalista com assinatura do Zul**:
 
 ```
 Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
@@ -167,15 +167,27 @@ Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
 Total: R$ {{5}}
 
-Esta é uma notificação automática da sua conta.
+— Zul
+```
+
+**Ou com frase relevante**:
+```
+Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
+
+{{4}}
+
+Total: R$ {{5}}
+
+Qualquer coisa, é só chamar! — Zul
 ```
 
 **Justificativa**:
 - ✅ Remove elemento promocional (CTA)
-- ✅ Adiciona contexto transacional claro
-- ✅ Mantém informação essencial
-- ✅ Maior chance de aprovação como UTILITY
-- ✅ Ainda informa o usuário sobre a natureza da mensagem
+- ✅ Remove palavras como "automático" que podem ser interpretadas como marketing
+- ✅ Mantém informação essencial (lembrete de pagamento)
+- ✅ Assinatura do Zul adiciona personalização sem ser promocional
+- ✅ Máxima chance de aprovação como UTILITY
+- ✅ Mais limpo e direto
 
 ## ⚠️ Importante
 

@@ -21,10 +21,14 @@ Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
 Total: R$ {{5}}
 
-Esta é uma notificação automática da sua conta.
+— Zul
 ```
 
-**⚠️ IMPORTANTE**: A versão anterior com "Acesse o MeuAzulão para ver detalhes" foi reclassificada para MARKETING. A versão revisada remove o CTA promocional e adiciona contexto transacional para garantir aprovação como UTILITY.
+**⚠️ IMPORTANTE**: 
+- A versão anterior com "Acesse o MeuAzulão para ver detalhes" foi reclassificada para MARKETING
+- Esta versão revisada remove o CTA promocional e palavras como "automático"
+- Adiciona apenas assinatura do Zul (personalização, não promocional)
+- Máxima chance de aprovação como UTILITY
 
 ### Variáveis
 
@@ -55,7 +59,7 @@ Conta de Luz
 
 Total: R$ 450,00
 
-Esta é uma notificação automática da sua conta.
+— Zul
 ```
 
 ---
@@ -96,10 +100,25 @@ Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
 Total: R$ {{5}}
 
-Esta é uma notificação automática da sua conta.
+— Zul
 ```
 
-**⚠️ NOTA**: Esta versão foi revisada para garantir aprovação como UTILITY. A frase "Acesse o MeuAzulão para ver detalhes" foi removida pois pode ser interpretada como CTA promocional.
+**⚠️ NOTA**: 
+- Esta versão foi revisada para garantir aprovação como UTILITY
+- Remove "Acesse o MeuAzulão para ver detalhes" (CTA promocional)
+- Remove palavras como "automático" que podem ser interpretadas como marketing
+- Adiciona apenas assinatura do Zul (personalização, não promocional)
+
+**Alternativa com frase relevante** (opcional):
+```
+Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
+
+{{4}}
+
+Total: R$ {{5}}
+
+Qualquer coisa, é só chamar! — Zul
+```
 
 ### Passo 4: Configurar Variáveis
 
