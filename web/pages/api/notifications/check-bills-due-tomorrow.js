@@ -139,13 +139,24 @@ function getFirstName(fullName) {
  * Chamado 2x por dia pelo GitHub Actions (cron job) - 8h e 20h BRT
  */
 export default async function handler(req, res) {
+  // Permitir CORS para requisições do GitHub Actions
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Permitir preflight requests (CORS)
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Log para debug
   console.log('📥 [check-bills-due-tomorrow] Recebendo requisição:', {
     method: req.method,
     url: req.url,
     headers: {
       authorization: req.headers.authorization ? 'Bearer ***' : 'missing',
-      'content-type': req.headers['content-type']
+      'content-type': req.headers['content-type'],
+      'user-agent': req.headers['user-agent']
     }
   });
 
