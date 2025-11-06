@@ -23,17 +23,24 @@ jobs:
         run: |
           echo "🔔 Verificando contas vencendo amanhã (preventivo)..."
           
-          if [ -z "${{ secrets.APP_URL }}" ]; then
-            echo "❌ APP_URL não configurado"
-            exit 1
+          # Tentar usar APP_URL do secret, ou fallback para URL conhecida
+          APP_URL="${APP_URL:-${{ secrets.APP_URL }}}"
+          
+          if [ -z "$APP_URL" ]; then
+            # Fallback para URL conhecida do Vercel
+            APP_URL="https://fintrack-web.vercel.app"
+            echo "⚠️ APP_URL não configurado no secret, usando fallback: $APP_URL"
+          else
+            echo "✅ APP_URL: $APP_URL"
           fi
           
           if [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "❌ CRON_SECRET não configurado"
+            echo "❌ CRON_SECRET não configurado no GitHub Secrets"
+            echo "💡 Configure em: Settings > Secrets and variables > Actions > CRON_SECRET"
             exit 1
           fi
           
-          url="${{ secrets.APP_URL }}/api/notifications/check-bills-due-tomorrow"
+          url="$APP_URL/api/notifications/check-bills-due-tomorrow"
           echo "📡 Fazendo requisição para o endpoint..."
           
           set +e
