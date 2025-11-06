@@ -47,9 +47,8 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
-  phone VARCHAR(20),
+  phone VARCHAR(20), -- Telefone/WhatsApp do usuário (usar esta coluna, não whatsapp_phone)
   phone_verified BOOLEAN DEFAULT false,
-  whatsapp_phone VARCHAR(20),
   organization_id UUID REFERENCES organizations(id),
   role VARCHAR(50) DEFAULT 'member' CHECK (role IN ('admin', 'member', 'viewer')),
   is_active BOOLEAN DEFAULT true,
@@ -68,9 +67,9 @@ BEGIN
     ALTER TABLE users ADD COLUMN phone_verified BOOLEAN DEFAULT false;
   END IF;
   
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'whatsapp_phone') THEN
-    ALTER TABLE users ADD COLUMN whatsapp_phone VARCHAR(20);
-  END IF;
+  -- NOTA: A coluna whatsapp_phone foi removida. Use apenas 'phone' para telefone/WhatsApp.
+  -- Se a coluna whatsapp_phone existir, remova-a:
+  -- ALTER TABLE users DROP COLUMN IF EXISTS whatsapp_phone;
 END $$;
 
 -- ============================================================================

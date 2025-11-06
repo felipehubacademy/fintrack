@@ -70,15 +70,9 @@ END $$;
 -- 1.3. Adicionar colunas em users se não existirem
 DO $$ 
 BEGIN
-  -- whatsapp_phone
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'users' AND column_name = 'whatsapp_phone'
-  ) THEN
-    ALTER TABLE users 
-    ADD COLUMN whatsapp_phone VARCHAR(20);
-    RAISE NOTICE '✅ Adicionada coluna whatsapp_phone em users';
-  END IF;
+  -- NOTA: A coluna whatsapp_phone foi removida. Use apenas 'phone' para telefone/WhatsApp.
+  -- A coluna 'phone' já deve existir. Se não existir, adicione:
+  -- ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
   
   -- Atualizar constraint de role para incluir 'viewer' (simplificado)
   -- Remover constraint antiga se existir e adicionar nova

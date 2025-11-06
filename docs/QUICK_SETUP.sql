@@ -20,9 +20,8 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
-  phone VARCHAR(20),
+  phone VARCHAR(20), -- Telefone/WhatsApp do usuário (usar esta coluna, não whatsapp_phone)
   phone_verified BOOLEAN DEFAULT false,
-  whatsapp_phone VARCHAR(20),
   organization_id UUID REFERENCES organizations(id),
   role VARCHAR(50) DEFAULT 'member' CHECK (role IN ('admin', 'member', 'viewer')),
   is_active BOOLEAN DEFAULT true,

@@ -50,5 +50,5 @@ Após configurar:
 Para testar se o endpoint funciona, você precisa ter contas no banco com:
 - `status = 'pending'`
 - `due_date = amanhã (formato YYYY-MM-DD)`
-- `user.whatsapp_phone` configurado
+- `user.phone` configurado (coluna `phone` na tabela `users`)
 

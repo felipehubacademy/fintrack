@@ -214,7 +214,7 @@ curl -X POST https://sua-url.vercel.app/api/notifications/check-bills \
 
 **Mensagem não chega:**
 - Verifique se `WHATSAPP_TOKEN` está correto
-- Confirme que o usuário tem `whatsapp_phone` cadastrado
+- Confirme que o usuário tem `phone` cadastrado (coluna `phone` na tabela `users`)
 - Veja se o número está no formato correto (sem +)
 - Consulte os logs para ver erros da API
 

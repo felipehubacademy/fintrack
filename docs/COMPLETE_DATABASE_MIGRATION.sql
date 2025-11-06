@@ -76,9 +76,9 @@ BEGIN
     ALTER TABLE users ADD COLUMN phone_verified BOOLEAN DEFAULT false;
   END IF;
   
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'whatsapp_phone') THEN
-    ALTER TABLE users ADD COLUMN whatsapp_phone VARCHAR(20);
-  END IF;
+  -- NOTA: A coluna whatsapp_phone foi removida. Use apenas 'phone' para telefone/WhatsApp.
+  -- Se a coluna whatsapp_phone existir, remova-a:
+  -- ALTER TABLE users DROP COLUMN IF EXISTS whatsapp_phone;
   
   IF EXISTS (SELECT 1 FROM information_schema.check_constraints WHERE constraint_name LIKE '%role%' AND table_name = 'users') THEN
     ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
