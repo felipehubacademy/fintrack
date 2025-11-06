@@ -13,7 +13,7 @@ Este documento descreve os templates do WhatsApp Business API utilizados no MeuA
 
 ### Estrutura do Template
 
-**Corpo do template**:
+**Corpo do template** (VERSÃO REVISADA - UTILITY):
 ```
 Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
@@ -21,8 +21,10 @@ Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
 Total: R$ {{5}}
 
-Acesse o MeuAzulão para ver detalhes.
+Esta é uma notificação automática da sua conta.
 ```
+
+**⚠️ IMPORTANTE**: A versão anterior com "Acesse o MeuAzulão para ver detalhes" foi reclassificada para MARKETING. A versão revisada remove o CTA promocional e adiciona contexto transacional para garantir aprovação como UTILITY.
 
 ### Variáveis
 
@@ -53,7 +55,7 @@ Conta de Luz
 
 Total: R$ 450,00
 
-Acesse o MeuAzulão para ver detalhes.
+Esta é uma notificação automática da sua conta.
 ```
 
 ---
@@ -86,7 +88,7 @@ bill_reminder_amanha
 - Português (Brasil) - `pt_BR`
 
 **Conteúdo do Template**:
-Cole exatamente este texto:
+Cole exatamente este texto (VERSÃO REVISADA):
 ```
 Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
@@ -94,8 +96,10 @@ Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
 Total: R$ {{5}}
 
-Acesse o MeuAzulão para ver detalhes.
+Esta é uma notificação automática da sua conta.
 ```
+
+**⚠️ NOTA**: Esta versão foi revisada para garantir aprovação como UTILITY. A frase "Acesse o MeuAzulão para ver detalhes" foi removida pois pode ser interpretada como CTA promocional.
 
 ### Passo 4: Configurar Variáveis
 
