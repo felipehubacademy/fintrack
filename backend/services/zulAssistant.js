@@ -3404,7 +3404,27 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         confirmationParts.push(`Recorrente: ${freqLabels[recurrence_frequency] || 'Mensal'}`);
       }
       
-      const response = `${greeting}\n${confirmationParts.join('\n')}`;
+      // Gerar mensagem personalizada sobre o lembrete usando GPT
+      let reminderMessage = '';
+      try {
+        const firstName = this.getFirstName(context);
+        reminderMessage = await this.generateBillReminderMessage(
+          description,
+          dateFormatted,
+          daysUntil,
+          firstName
+        );
+      } catch (error) {
+        console.error('❌ Erro ao gerar mensagem de lembrete:', error);
+        // Fallback caso falhe
+        reminderMessage = 'Pode deixar que te aviso um dia antes! 🔔';
+      }
+      
+      // Montar resposta final
+      let response = `${greeting}\n${confirmationParts.join('\n')}`;
+      if (reminderMessage) {
+        response += `\n\n${reminderMessage}`;
+      }
       
       return {
         success: true,
