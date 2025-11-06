@@ -41,10 +41,11 @@ jobs:
           fi
           
           url="$APP_URL/api/notifications/check-bills-due-tomorrow"
+          echo "📡 URL completa: $url"
           echo "📡 Fazendo requisição para o endpoint..."
           
           set +e
-          response=$(curl -s -w "\n%{http_code}" -X POST \
+          response=$(curl -v -s -w "\n%{http_code}" -X POST \
             "$url" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
@@ -52,27 +53,57 @@ jobs:
           curl_exit=$?
           set -e
           
-          if [ $curl_exit -ne 0 ]; then
+          # Extrair HTTP code (última linha que contém apenas números)
+          http_code=$(echo "$response" | grep -E '^[0-9]{3}$' | tail -n1)
+          
+          # Se não encontrou código, tentar extrair do verbose
+          if [ -z "$http_code" ]; then
+            http_code=$(echo "$response" | grep -iE '< HTTP/[0-9]' | tail -n1 | grep -oE '[0-9]{3}' | tail -n1)
+          fi
+          
+          # Extrair body (tudo exceto linhas de verbose e código HTTP)
+          body=$(echo "$response" | grep -v -E '^(< |> |\* |\{|%|^[0-9]{3}$|HTTP|Connection|Host)')
+          
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Status HTTP: ${http_code:-'N/A'}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          if [ -n "$body" ]; then
+            echo "Resposta:"
+            echo "$body" | head -20
+          fi
+          
+          if [ $curl_exit -ne 0 ] && [ -z "$http_code" ]; then
+            echo ""
             echo "❌ Erro ao fazer requisição (curl exit code: $curl_exit)"
             echo "💡 Possíveis causas:"
             echo "  - Endpoint ainda não foi deployado no Vercel"
-            echo "  - APP_URL incorreto ou endpoint não existe: ${url%/*}/..."
+            echo "  - APP_URL incorreto ou endpoint não existe"
             echo "  - Problema de conexão/rede"
             echo ""
             echo "🔍 Para verificar:"
             echo "  1. Confirme que o push foi feito e o Vercel fez deploy"
-            echo "  2. Acesse: ${url%/*}/... no navegador para ver se o endpoint existe"
+            echo "  2. Verifique se o endpoint aparece em: https://vercel.com/.../fintrack-web"
             exit 1
           fi
           
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | head -n-1)
-          
-          echo "Status HTTP: $http_code"
-          echo "Resposta: $body"
-          
-          if [ -z "$http_code" ] || [ "$http_code" != "200" ]; then
-            echo "❌ Erro ao verificar contas vencendo amanhã: HTTP $http_code"
+          if [ "$http_code" = "200" ]; then
+            echo ""
+            echo "✅ Sucesso! Notificações enviadas."
+          elif [ "$http_code" = "401" ]; then
+            echo ""
+            echo "⚠️ Erro de autenticação (HTTP 401). Verifique o CRON_SECRET."
+            exit 1
+          elif [ "$http_code" = "404" ] || [ "$http_code" = "405" ]; then
+            echo ""
+            echo "⚠️ Endpoint não encontrado ou método não permitido (HTTP $http_code)"
+            echo "💡 Isso pode indicar que o endpoint ainda não foi deployado ou há problema de build."
+            echo "💡 Aguarde alguns minutos e tente novamente após o deploy completar."
+            exit 1
+          elif [ -n "$http_code" ] && [ "$http_code" != "200" ]; then
+            echo ""
+            echo "❌ Erro: HTTP $http_code"
             exit 1
           fi
           
