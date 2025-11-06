@@ -122,7 +122,7 @@ export default async function handler(req, res) {
     for (const userId in billsByUser) {
       const { user, organization, bills: userBills } = billsByUser[userId];
 
-      if (!user.whatsapp_phone) {
+      if (!user.phone) {
         console.log(`⚠️ Usuário ${user.name} não tem WhatsApp cadastrado`);
         continue;
       }
