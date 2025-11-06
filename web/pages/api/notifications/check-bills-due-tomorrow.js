@@ -1,9 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 
+// Criar cliente Supabase com service role para API routes
 const supabase = createClient(
   process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 );
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
