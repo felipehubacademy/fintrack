@@ -156,10 +156,8 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         recurrence_frequency: formData.is_recurring ? formData.recurrence_frequency : null
       };
 
-      // Incluir status apenas ao editar
-      if (editingBill) {
-        billData.status = formData.status;
-      }
+      // Não incluir status aqui - deixar handleUpdateBill determinar baseado na due_date
+      // Isso garante que o status seja sempre atualizado corretamente quando a data muda
       
       // Adicionar payment_method apenas se tiver valor válido (não incluir se for null)
       if (paymentMethod && VALID_PAYMENT_METHODS.includes(paymentMethod)) {
@@ -185,16 +183,8 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         // Não precisamos definir isso aqui, será feito no handleUpdateBill
       }
 
-      // Se status for "pending", deixar o sistema determinar se é "overdue" baseado na due_date
-      if (editingBill && billData.status === 'pending') {
-        const dueDate = new Date(billData.due_date + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        dueDate.setHours(0, 0, 0, 0);
-        if (dueDate < today) {
-          billData.status = 'overdue';
-        }
-      }
+      // Não definir status aqui - deixar handleUpdateBill determinar baseado na due_date
+      // Isso garante que o status seja sempre atualizado corretamente quando a data muda
 
       await onSave(billData);
       resetForm();

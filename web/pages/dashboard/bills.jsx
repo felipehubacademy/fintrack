@@ -71,6 +71,18 @@ export default function BillsDashboard() {
     setSelectedBills([]);
   }, [filter, filterCategory, filterOwner, searchQuery, selectedMonth]);
 
+  // Helper para criar data local a partir de string "YYYY-MM-DD"
+  const createLocalDate = (dateString) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day); // month é 0-indexed
+  };
+
+  // Helper para obter data de hoje no timezone local
+  const getTodayLocal = () => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  };
+
   const fetchBills = async () => {
     setIsDataLoaded(false);
     try {
@@ -106,23 +118,43 @@ export default function BillsDashboard() {
       if (error) throw error;
 
       // Atualizar status overdue automaticamente
-      const today = new Date();
-      const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const todayLocal = getTodayLocal();
       
+      const billsToUpdate = [];
       const updatedBills = data.map(bill => {
-        // Só atualizar para overdue se realmente estiver vencida (due_date < hoje)
-        if (bill.status === 'pending') {
-          // Criar data de vencimento no timezone local
-          const [year, month, day] = bill.due_date.split('-').map(Number);
-          const dueDateLocal = new Date(year, month - 1, day); // month é 0-indexed
-          
-          // Se a data de vencimento é anterior a hoje, marcar como overdue
-          if (dueDateLocal < todayLocal) {
-            return { ...bill, status: 'overdue' };
-          }
+        // Criar data de vencimento no timezone local
+        const dueDateLocal = createLocalDate(bill.due_date);
+        
+        // Se a conta está pending e venceu, marcar como overdue
+        if (bill.status === 'pending' && dueDateLocal < todayLocal) {
+          billsToUpdate.push({ id: bill.id, status: 'overdue' });
+          return { ...bill, status: 'overdue' };
         }
+        
+        // Se a conta está overdue mas ainda não venceu, reverter para pending
+        if (bill.status === 'overdue' && dueDateLocal >= todayLocal) {
+          billsToUpdate.push({ id: bill.id, status: 'pending' });
+          return { ...bill, status: 'pending' };
+        }
+        
         return bill;
       });
+
+      // Atualizar no banco se necessário
+      if (billsToUpdate.length > 0) {
+        // Atualizar em lote
+        const updates = billsToUpdate.map(bill => 
+          supabase
+            .from('bills')
+            .update({ status: bill.status })
+            .eq('id', bill.id)
+        );
+        
+        // Executar todas as atualizações em paralelo (não esperar para não bloquear a UI)
+        Promise.all(updates).catch(error => {
+          console.error('Erro ao atualizar status de contas no banco:', error);
+        });
+      }
 
       setBills(updatedBills);
       setIsDataLoaded(true);
@@ -287,12 +319,11 @@ export default function BillsDashboard() {
         console.log('✅ [BILLS] Expense excluída com sucesso');
         
         // 3. Determinar novo status baseado na due_date
-        const dueDate = new Date(billData.due_date || editingBill.due_date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        dueDate.setHours(0, 0, 0, 0);
+        const dueDateStr = billData.due_date || editingBill.due_date;
+        const dueDateLocal = createLocalDate(dueDateStr);
+        const todayLocal = getTodayLocal();
         
-        const newStatus = dueDate < today ? 'overdue' : 'pending';
+        const newStatus = dueDateLocal < todayLocal ? 'overdue' : 'pending';
         
         // 4. Preparar dados de atualização removendo campos relacionados ao pagamento
         const { revert_to_pending, expense_id, ...dataToUpdate } = billData;
@@ -327,14 +358,17 @@ export default function BillsDashboard() {
       const { revert_to_pending, expense_id, ...normalUpdateData } = billData;
       let updateData = { ...normalUpdateData };
       
-      // Se status for "pending", verificar se deve ser "overdue" baseado na due_date
-      if (updateData.status === 'pending') {
-        const dueDate = new Date(updateData.due_date || editingBill.due_date + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        dueDate.setHours(0, 0, 0, 0);
-        if (dueDate < today) {
+      // Sempre verificar e atualizar status baseado na due_date (se não for paid ou cancelled)
+      if (updateData.status !== 'paid' && updateData.status !== 'cancelled') {
+        const dueDateStr = updateData.due_date || editingBill.due_date;
+        const dueDateLocal = createLocalDate(dueDateStr);
+        const todayLocal = getTodayLocal();
+        
+        // Se a data é passada, deve ser overdue; se é futura ou hoje, deve ser pending
+        if (dueDateLocal < todayLocal) {
           updateData.status = 'overdue';
+        } else {
+          updateData.status = 'pending';
         }
       }
       
@@ -895,13 +929,10 @@ export default function BillsDashboard() {
 
   const getDaysUntilDue = (dueDate) => {
     // Criar data de hoje no timezone local
-    const today = new Date();
-    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayLocal = getTodayLocal();
     
     // Criar data de vencimento no timezone local
-    // dueDate vem no formato "YYYY-MM-DD"
-    const [year, month, day] = dueDate.split('-').map(Number);
-    const dueLocal = new Date(year, month - 1, day); // month é 0-indexed
+    const dueLocal = createLocalDate(dueDate);
     
     // Calcular diferença em dias
     const diffTime = dueLocal - todayLocal;
@@ -1233,7 +1264,7 @@ export default function BillsDashboard() {
                             <div className="text-sm text-gray-900">
                               {new Date(bill.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
                             </div>
-                            {bill.status === 'pending' && daysUntil >= 0 && (
+                            {daysUntil >= 0 && (
                               <div className={`text-xs mt-1 font-medium ${
                                 daysUntil <= 3 ? 'text-red-600' : 
                                 daysUntil <= 7 ? 'text-yellow-600' : 
@@ -1242,7 +1273,7 @@ export default function BillsDashboard() {
                                 {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`}
                               </div>
                             )}
-                            {(bill.status === 'overdue' || daysUntil < 0) && (
+                            {daysUntil < 0 && (
                               <div className="text-xs mt-1 font-medium text-red-600">
                                 Vencido há {Math.abs(daysUntil)} {Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}
                               </div>
