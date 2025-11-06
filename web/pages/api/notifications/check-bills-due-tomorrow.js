@@ -41,7 +41,7 @@ async function sendBillReminderTemplate(to, userName, billsCount, dueDate, bills
     to: normalizedTo,
     type: 'template',
     template: {
-      name: 'bill_reminder_utility', // Nome do novo template criado via API
+      name: 'bill_reminder_utility_v2', // Template UTILITY criado via API
       language: {
         code: 'pt_BR'
       },

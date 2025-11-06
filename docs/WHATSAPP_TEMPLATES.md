@@ -6,29 +6,59 @@ Este documento descreve os templates do WhatsApp Business API utilizados no MeuA
 
 ### Informações do Template
 
-- **Nome**: `bill_reminder_amanha`
+- **Nome**: `bill_reminder_amanha` (NOVO - criar novo template)
 - **Categoria**: UTILITY (SERVIÇO)
 - **Idioma**: Português (Brasil) - `pt_BR`
 - **Tipo**: Template de Serviço (pode ser enviado a qualquer momento, sem janela de 24h)
 
+**⚠️ IMPORTANTE**: 
+- O template anterior foi reclassificado para MARKETING
+- **Recomendação**: Criar um NOVO template com este nome (não editar o antigo)
+- Isso garante aprovação correta como UTILITY desde o início
+
 ### Estrutura do Template
 
-**Corpo do template** (VERSÃO REVISADA - UTILITY):
+**Corpo do template** (VERSÃO UTILITY APROVADA - Baseada em pesquisa):
+
+**⚠️ PROBLEMA IDENTIFICADO**: 
+- Versões anteriores foram reclassificadas para MARKETING
+- **Causa principal**: Variável no início ("Olá {{1}}") + linguagem genérica ("você tem")
+- **Solução**: Template que começa com texto fixo e usa linguagem transacional
+
+**Template UTILITY Aprovado (Versão 1 - ULTRA MINIMALISTA - RECOMENDADA)**:
 ```
-Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
+Conta a pagar vencendo
 
-{{4}}
+Conta: {{1}}
+Vencimento: {{2}}
+Valor: R$ {{3}}
 
-Total: R$ {{5}}
-
-Qualquer coisa, é só chamar! — Zul
+Notificação automática.
 ```
 
-**⚠️ IMPORTANTE**: 
-- A versão anterior com "Acesse o MeuAzulão para ver detalhes" foi reclassificada para MARKETING
-- Esta versão revisada remove o CTA promocional e palavras como "automático"
-- Adiciona assinatura amigável do Zul (personalização, não promocional)
-- Máxima chance de aprovação como UTILITY
+**Template UTILITY Aprovado (Versão 2 - Múltiplas Contas)**:
+```
+Contas a pagar vencendo
+
+Vencimento: {{1}}
+Quantidade: {{2}} conta(s)
+
+{{3}}
+
+Valor total: R$ {{4}}
+
+Notificação automática.
+```
+
+**Por que funciona**:
+- ✅ **Não começa com variável** (regra crítica do WhatsApp)
+- ✅ **Formato tipo extrato bancário** (máximo transacional)
+- ✅ **Remove TUDO que pode ser marketing**: "Olá", "você tem", "você possui", "cadastrada(s)"
+- ✅ **Sem personalização** (não menciona nome, sem assinatura)
+- ✅ **Apenas informação transacional essencial** (conta, vencimento, valor)
+- ✅ **Zero chance de ser interpretado como marketing**
+
+**📄 Veja documentação completa**: `docs/TEMPLATE_UTILITY_APROVADO.md`
 
 ### Variáveis
 
@@ -38,6 +68,9 @@ Qualquer coisa, é só chamar! — Zul
 | `{{2}}` | Texto | Quantidade de contas | `"3"` |
 | `{{3}}` | Texto | Data de vencimento (DD/MM/YYYY) | `"15/01/2025"` |
 | `{{4}}` | Texto | Lista de contas (separadas por `\n`) | `"Aluguel\nConta de Água\nConta de Luz"` |
+| | | **IMPORTANTE**: Use `\n` (barra invertida + n) para quebras de linha | |
+| | | No exemplo do WhatsApp, pode usar `\n` ou quebras reais (Enter) | |
+| | | Quando enviado via API, `\n` será interpretado como quebra de linha | |
 | `{{5}}` | Texto | Valor total formatado | `"450,00"` |
 
 ### Exemplo de Uso
@@ -77,6 +110,12 @@ Qualquer coisa, é só chamar! — Zul
 1. No menu lateral, clique em **"Templates de Mensagem"**
 2. Clique em **"Criar Template"**
 3. Escolha **"Criar do zero"**
+
+**💡 Por que criar novo?**
+- O template antigo já foi aprovado como MARKETING
+- Criar novo garante aprovação correta como UTILITY desde o início
+- Evita problemas de reclassificação
+- Permite manter o antigo como backup (se necessário)
 
 ### Passo 3: Configurar Template
 
