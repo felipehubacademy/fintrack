@@ -361,7 +361,7 @@ class EngagementAnalyzer {
       // Buscar todos os usuários ativos da organização
       const { data: users, error } = await supabase
         .from('users')
-        .select('id, name, whatsapp_phone')
+        .select('id, name, phone')
         .eq('organization_id', organizationId)
         .eq('is_active', true);
 

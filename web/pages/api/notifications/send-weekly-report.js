@@ -151,10 +151,10 @@ export default async function handler(req, res) {
         // Buscar usuários da organização que devem receber relatório
         const { data: users, error: usersError } = await supabase
           .from('users')
-          .select('id, name, whatsapp_phone')
+          .select('id, name, phone')
           .eq('organization_id', organization.id)
           .eq('is_active', true)
-          .not('whatsapp_phone', 'is', null);
+          .not('phone', 'is', null);
 
         if (usersError) {
           console.error('Erro ao buscar usuários:', usersError);
@@ -192,7 +192,7 @@ export default async function handler(req, res) {
 
             // Enviar WhatsApp
             console.log(`📱 Enviando relatório semanal para ${user.name}`);
-            const sent = await sendWhatsAppMessage(user.whatsapp_phone, message);
+            const sent = await sendWhatsAppMessage(user.phone, message);
 
             if (sent) {
               // Criar notificação in-app

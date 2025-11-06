@@ -88,7 +88,7 @@ export default async function handler(req, res) {
         }
 
         // Verificar se usuário tem WhatsApp cadastrado
-        if (!user.whatsapp_phone) {
+        if (!user.phone) {
           console.log(`⚠️ Usuário ${user.name} não tem WhatsApp cadastrado`);
           continue;
         }
@@ -106,8 +106,8 @@ export default async function handler(req, res) {
         const message = engagementAnalyzer.generateReEngagementMessage(user.name, engagement);
 
         // Enviar WhatsApp
-        console.log(`📱 Enviando lembrete para ${user.name} (${user.whatsapp_phone})`);
-        const sent = await sendWhatsAppMessage(user.whatsapp_phone, message);
+        console.log(`📱 Enviando lembrete para ${user.name} (${user.phone})`);
+        const sent = await sendWhatsAppMessage(user.phone, message);
 
         // Registrar notificação
         if (sent) {
@@ -150,7 +150,7 @@ export default async function handler(req, res) {
           notifications.push({
             user_id: user.id,
             user_name: user.name,
-            phone: user.whatsapp_phone,
+            phone: user.phone,
             engagement_level: engagement.level,
             streak: engagement.streak,
             sent: true
@@ -163,7 +163,7 @@ export default async function handler(req, res) {
           notifications.push({
             user_id: user.id,
             user_name: user.name,
-            phone: user.whatsapp_phone,
+            phone: user.phone,
             engagement_level: engagement.level,
             streak: engagement.streak,
             sent: false

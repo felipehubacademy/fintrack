@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       .select(`
         *,
         organization:organizations(id, name),
-        user:users(id, name, email, whatsapp_phone)
+        user:users(id, name, email, phone)
       `)
       .eq('is_active', true)
       .or(`last_notified_at.is.null,last_notified_at.lt.${todayISO}`);
@@ -164,7 +164,7 @@ export default async function handler(req, res) {
     for (const userId in goalsByUser) {
       const { user, organization, goals: userGoals } = goalsByUser[userId];
 
-      if (!user.whatsapp_phone) {
+      if (!user.phone) {
         console.log(`⚠️ Usuário ${user.name} não tem WhatsApp cadastrado`);
         continue;
       }
@@ -193,8 +193,8 @@ export default async function handler(req, res) {
       message += `${process.env.NEXT_PUBLIC_APP_URL || 'https://meuazulao.com.br'}/dashboard/investments`;
 
       // Enviar WhatsApp usando a API oficial da Meta
-      console.log(`📱 Enviando notificação para ${user.whatsapp_phone}:`);
-      const sent = await sendWhatsAppMessage(user.whatsapp_phone, message);
+      console.log(`📱 Enviando notificação para ${user.phone}:`);
+      const sent = await sendWhatsAppMessage(user.phone, message);
 
       // Atualizar last_notified_at
       const goalIds = userGoals.map(g => g.id);
@@ -207,7 +207,7 @@ export default async function handler(req, res) {
         user_id: userId,
         user_name: user.name,
         goals_count: userGoals.length,
-        phone: user.whatsapp_phone,
+        phone: user.phone,
         sent: sent
       });
     }
