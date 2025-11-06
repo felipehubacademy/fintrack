@@ -106,10 +106,20 @@ export default function BillsDashboard() {
       if (error) throw error;
 
       // Atualizar status overdue automaticamente
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      
       const updatedBills = data.map(bill => {
-        if (bill.status === 'pending' && bill.due_date < today) {
-          return { ...bill, status: 'overdue' };
+        // Só atualizar para overdue se realmente estiver vencida (due_date < hoje)
+        if (bill.status === 'pending') {
+          // Criar data de vencimento no timezone local
+          const [year, month, day] = bill.due_date.split('-').map(Number);
+          const dueDateLocal = new Date(year, month - 1, day); // month é 0-indexed
+          
+          // Se a data de vencimento é anterior a hoje, marcar como overdue
+          if (dueDateLocal < todayLocal) {
+            return { ...bill, status: 'overdue' };
+          }
         }
         return bill;
       });
@@ -884,14 +894,19 @@ export default function BillsDashboard() {
   };
 
   const getDaysUntilDue = (dueDate) => {
+    // Criar data de hoje no timezone local
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset para início do dia
+    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     
-    const due = new Date(dueDate + 'T00:00:00');
-    due.setHours(0, 0, 0, 0); // Reset para início do dia
+    // Criar data de vencimento no timezone local
+    // dueDate vem no formato "YYYY-MM-DD"
+    const [year, month, day] = dueDate.split('-').map(Number);
+    const dueLocal = new Date(year, month - 1, day); // month é 0-indexed
     
-    const diffTime = due - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // Calcular diferença em dias
+    const diffTime = dueLocal - todayLocal;
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
     return diffDays;
   };
 
@@ -1227,7 +1242,7 @@ export default function BillsDashboard() {
                                 {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`}
                               </div>
                             )}
-                            {bill.status === 'overdue' && (
+                            {(bill.status === 'overdue' || daysUntil < 0) && (
                               <div className="text-xs mt-1 font-medium text-red-600">
                                 Vencido há {Math.abs(daysUntil)} {Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}
                               </div>
