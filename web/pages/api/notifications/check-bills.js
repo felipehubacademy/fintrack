@@ -81,7 +81,7 @@ export default async function handler(req, res) {
       .select(`
         *,
         organization:organizations(id, name),
-        user:users(id, name, email, whatsapp_phone)
+        user:users(id, name, email, phone)
       `)
       .eq('status', 'pending')
       .eq('due_date', today)
