@@ -30,12 +30,17 @@ async function sendBillReminderTemplate(to, userName, billsCount, dueDate, bills
   // Normalizar telefone (remover caracteres não numéricos)
   const normalizedTo = String(to || '').replace(/\D/g, '');
 
+  // Template UTILITY minimalista (Versão 2 - Múltiplas Contas):
+  // {{1}} - Data de vencimento
+  // {{2}} - Quantidade de contas
+  // {{3}} - Lista de contas (com \n)
+  // {{4}} - Valor total
   const message = {
     messaging_product: 'whatsapp',
     to: normalizedTo,
     type: 'template',
     template: {
-      name: 'bill_reminder_amanha',
+      name: 'bill_reminder_utility', // Nome do novo template criado via API
       language: {
         code: 'pt_BR'
       },
@@ -45,23 +50,19 @@ async function sendBillReminderTemplate(to, userName, billsCount, dueDate, bills
           parameters: [
             {
               type: 'text',
-              text: userName // {{1}}
+              text: dueDate // {{1}} - Data de vencimento
             },
             {
               type: 'text',
-              text: String(billsCount) // {{2}}
+              text: String(billsCount) // {{2}} - Quantidade de contas
             },
             {
               type: 'text',
-              text: dueDate // {{3}}
+              text: billsList // {{3}} - Lista de contas (com \n)
             },
             {
               type: 'text',
-              text: billsList // {{4}} - lista de contas com \n
-            },
-            {
-              type: 'text',
-              text: totalAmount // {{5}}
+              text: totalAmount // {{4}} - Valor total
             }
           ]
         }
