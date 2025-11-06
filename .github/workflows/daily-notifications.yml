@@ -56,7 +56,7 @@ jobs:
           CRON_SECRET="${{ secrets.CRON_SECRET }}"
           
           if [ -z "$APP_URL" ]; then
-            APP_URL="https://fintrack-web.vercel.app"
+            APP_URL="https://www.meuazulao.com.br"
             echo "⚠️ APP_URL não configurado, usando: $APP_URL"
           fi
           
