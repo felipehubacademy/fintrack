@@ -197,9 +197,9 @@ export default async function handler(req, res) {
 
     console.log(`📅 Buscando contas vencendo amanhã (${tomorrowStr})...`);
 
-    // Buscar contas vencendo amanhã que ainda não foram notificadas hoje
-    // Lógica: notified_at deve ser null ou anterior a hoje (para permitir notificação diária)
-    const { data: bills, error: billsError } = await supabase
+    // Buscar contas vencendo amanhã
+    // Depois filtramos para garantir que não notificamos 2x no mesmo dia
+    const { data: allBills, error: billsError } = await supabase
       .from('bills')
       .select(`
         *,
@@ -207,15 +207,28 @@ export default async function handler(req, res) {
         user:users(id, name, email, phone)
       `)
       .in('status', ['pending', 'overdue'])
-      .eq('due_date', tomorrowStr)
-      .or(`notified_at.is.null,notified_at.lt.${todayStr}`);
+      .eq('due_date', tomorrowStr);
 
     if (billsError) {
       console.error('❌ Erro ao buscar contas:', billsError);
       throw billsError;
     }
 
-    console.log(`📋 Encontradas ${bills?.length || 0} contas vencendo amanhã`);
+    // Filtrar contas que ainda não foram notificadas hoje
+    // Lógica: notified_at deve ser null OU a data (sem hora) deve ser anterior a hoje
+    // Isso garante que se notificado às 8h, não notifica novamente às 20h no mesmo dia
+    const bills = (allBills || []).filter(bill => {
+      if (!bill.notified_at) {
+        return true; // Nunca notificado, pode notificar
+      }
+      // Extrair apenas a data (sem hora) do notified_at
+      const notifiedDate = new Date(bill.notified_at).toISOString().split('T')[0];
+      // Se a data de notificação for anterior a hoje, pode notificar novamente
+      return notifiedDate < todayStr;
+    });
+
+    console.log(`📋 Encontradas ${allBills?.length || 0} contas vencendo amanhã`);
+    console.log(`📋 Após filtrar (não notificadas hoje): ${bills?.length || 0} contas`);
 
     if (!bills || bills.length === 0) {
       return res.status(200).json({
