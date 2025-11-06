@@ -22,18 +22,49 @@ jobs:
         # Executa nas 2x por dia (8h e 20h BRT) e em execuções manuais
         run: |
           echo "🔔 Verificando contas vencendo amanhã (preventivo)..."
+          
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "❌ APP_URL não configurado"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ CRON_SECRET não configurado"
+            exit 1
+          fi
+          
+          url="${{ secrets.APP_URL }}/api/notifications/check-bills-due-tomorrow"
+          echo "📡 Fazendo requisição para o endpoint..."
+          
+          set +e
           response=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.APP_URL }}/api/notifications/check-bills-due-tomorrow" \
+            "$url" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json")
+            -H "Content-Type: application/json" \
+            --max-time 30 2>&1)
+          curl_exit=$?
+          set -e
+          
+          if [ $curl_exit -ne 0 ]; then
+            echo "❌ Erro ao fazer requisição (curl exit code: $curl_exit)"
+            echo "💡 Possíveis causas:"
+            echo "  - Endpoint ainda não foi deployado no Vercel"
+            echo "  - APP_URL incorreto ou endpoint não existe: ${url%/*}/..."
+            echo "  - Problema de conexão/rede"
+            echo ""
+            echo "🔍 Para verificar:"
+            echo "  1. Confirme que o push foi feito e o Vercel fez deploy"
+            echo "  2. Acesse: ${url%/*}/... no navegador para ver se o endpoint existe"
+            exit 1
+          fi
           
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | head -n-1)
           
-          echo "Status: $http_code"
-          echo "Response: $body"
+          echo "Status HTTP: $http_code"
+          echo "Resposta: $body"
           
-          if [ "$http_code" != "200" ]; then
+          if [ -z "$http_code" ] || [ "$http_code" != "200" ]; then
             echo "❌ Erro ao verificar contas vencendo amanhã: HTTP $http_code"
             exit 1
           fi
