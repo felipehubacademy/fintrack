@@ -204,7 +204,7 @@ export default async function handler(req, res) {
       .select(`
         *,
         organization:organizations(id, name),
-        user:users(id, name, email, whatsapp_phone)
+        user:users(id, name, email, phone)
       `)
       .in('status', ['pending', 'overdue'])
       .eq('due_date', tomorrowStr)
@@ -245,7 +245,7 @@ export default async function handler(req, res) {
     for (const userId in billsByUser) {
       const { user, organization, bills: userBills } = billsByUser[userId];
 
-      if (!user.whatsapp_phone) {
+      if (!user.phone) {
         console.log(`⚠️ Usuário ${user.name} não tem WhatsApp cadastrado`);
         continue;
       }
@@ -264,7 +264,7 @@ export default async function handler(req, res) {
       });
 
       // Enviar template via WhatsApp
-      console.log(`📱 Enviando template de lembrete para ${user.whatsapp_phone}...`);
+      console.log(`📱 Enviando template de lembrete para ${user.phone}...`);
       console.log(`   - Nome: ${firstName}`);
       console.log(`   - Contas: ${billsCount}`);
       console.log(`   - Data: ${dueDate}`);
@@ -272,7 +272,7 @@ export default async function handler(req, res) {
       console.log(`   - Total: R$ ${totalAmountFormatted}`);
 
       const sent = await sendBillReminderTemplate(
-        user.whatsapp_phone,
+        user.phone,
         firstName,
         billsCount,
         dueDate,
@@ -297,7 +297,7 @@ export default async function handler(req, res) {
         user_id: userId,
         user_name: user.name,
         bills_count: billsCount,
-        phone: user.whatsapp_phone,
+        phone: user.phone,
         total_amount: totalAmount,
         sent: sent
       });
