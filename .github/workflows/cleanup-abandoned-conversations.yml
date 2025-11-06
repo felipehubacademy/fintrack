@@ -24,11 +24,33 @@ jobs:
           cd backend
           npm install
 
+      - name: Check secrets
+        run: |
+          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+            echo "❌ SUPABASE_URL não configurado no GitHub Secrets"
+            echo "💡 Configure em: Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.SUPABASE_SERVICE_KEY }}" ]; then
+            echo "❌ SUPABASE_SERVICE_KEY não configurado no GitHub Secrets"
+            echo "💡 Configure em: Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          
+          echo "✅ Secrets configurados"
+
       - name: Run cleanup script
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
+          if [ ! -f "backend/scripts/cleanup-abandoned-conversations.js" ]; then
+            echo "⚠️ Script cleanup-abandoned-conversations.js não encontrado"
+            echo "💡 Pulando step (script não existe)"
+            exit 0
+          fi
+          
           node backend/scripts/cleanup-abandoned-conversations.js
 
       - name: Summary

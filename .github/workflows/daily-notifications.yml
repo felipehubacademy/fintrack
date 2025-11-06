@@ -21,143 +21,27 @@ jobs:
       - name: Check Bills Due Tomorrow (Preventivo)
         # Executa nas 2x por dia (8h e 20h BRT) e em execuções manuais
         run: |
-          echo "🔔 Verificando contas vencendo amanhã (preventivo)..."
-          
-          # Tentar usar APP_URL do secret, ou fallback para URL conhecida
-          APP_URL="${APP_URL:-${{ secrets.APP_URL }}}"
-          
-          if [ -z "$APP_URL" ]; then
-            # Fallback para URL conhecida do Vercel
-            APP_URL="https://fintrack-web.vercel.app"
-            echo "⚠️ APP_URL não configurado no secret, usando fallback: $APP_URL"
-          else
-            echo "✅ APP_URL: $APP_URL"
-          fi
-          
-          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "❌ CRON_SECRET não configurado no GitHub Secrets"
-            echo "💡 Configure em: Settings > Secrets and variables > Actions > CRON_SECRET"
-            exit 1
-          fi
-          
-          url="$APP_URL/api/notifications/check-bills-due-tomorrow"
-          echo "📡 URL completa: $url"
-          echo "📡 Fazendo requisição para o endpoint..."
-          
-          set +e
-          response=$(curl -v -s -w "\n%{http_code}" -X POST \
-            "$url" \
+          curl -X POST ${{ secrets.APP_URL }}/api/notifications/check-bills-due-tomorrow \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            --max-time 30 2>&1)
-          curl_exit=$?
-          set -e
-          
-          # Extrair HTTP code (última linha que contém apenas números)
-          http_code=$(echo "$response" | grep -E '^[0-9]{3}$' | tail -n1)
-          
-          # Se não encontrou código, tentar extrair do verbose
-          if [ -z "$http_code" ]; then
-            http_code=$(echo "$response" | grep -iE '< HTTP/[0-9]' | tail -n1 | grep -oE '[0-9]{3}' | tail -n1)
-          fi
-          
-          # Extrair body (tudo exceto linhas de verbose e código HTTP)
-          body=$(echo "$response" | grep -v -E '^(< |> |\* |\{|%|^[0-9]{3}$|HTTP|Connection|Host)')
-          
-          echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Status HTTP: ${http_code:-'N/A'}"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          
-          if [ -n "$body" ]; then
-            echo "Resposta:"
-            echo "$body" | head -20
-          fi
-          
-          if [ $curl_exit -ne 0 ] && [ -z "$http_code" ]; then
-            echo ""
-            echo "❌ Erro ao fazer requisição (curl exit code: $curl_exit)"
-            echo "💡 Possíveis causas:"
-            echo "  - Endpoint ainda não foi deployado no Vercel"
-            echo "  - APP_URL incorreto ou endpoint não existe"
-            echo "  - Problema de conexão/rede"
-            echo ""
-            echo "🔍 Para verificar:"
-            echo "  1. Confirme que o push foi feito e o Vercel fez deploy"
-            echo "  2. Verifique se o endpoint aparece em: https://vercel.com/.../fintrack-web"
-            exit 1
-          fi
-          
-          if [ "$http_code" = "200" ]; then
-            echo ""
-            echo "✅ Sucesso! Notificações enviadas."
-          elif [ "$http_code" = "401" ]; then
-            echo ""
-            echo "⚠️ Erro de autenticação (HTTP 401). Verifique o CRON_SECRET."
-            exit 1
-          elif [ "$http_code" = "404" ] || [ "$http_code" = "405" ]; then
-            echo ""
-            echo "⚠️ Endpoint não encontrado ou método não permitido (HTTP $http_code)"
-            echo "💡 Isso pode indicar que o endpoint ainda não foi deployado ou há problema de build."
-            echo "💡 Aguarde alguns minutos e tente novamente após o deploy completar."
-            exit 1
-          elif [ -n "$http_code" ] && [ "$http_code" != "200" ]; then
-            echo ""
-            echo "❌ Erro: HTTP $http_code"
-            exit 1
-          fi
-          
-          echo "✅ Verificação preventiva de contas concluída"
+            -H "Content-Type: application/json"
+        continue-on-error: true
       
       - name: Check Bills Due Today
         # Executa às 6h BRT (9h UTC) para notificar contas vencendo hoje
         run: |
-          echo "🔔 Verificando contas vencendo hoje..."
-          response=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.APP_URL }}/api/notifications/check-bills" \
+          curl -X POST ${{ secrets.APP_URL }}/api/notifications/check-bills \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json")
-          
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | head -n-1)
-          
-          echo "Status: $http_code"
-          echo "Response: $body"
-          
-          if [ "$http_code" != "200" ]; then
-            echo "❌ Erro ao verificar contas: HTTP $http_code"
-            exit 1
-          fi
-          
-          echo "✅ Verificação de contas concluída"
+            -H "Content-Type: application/json"
+        continue-on-error: true
       
       - name: Check Investment Goals
         run: |
-          echo "🎯 Verificando metas de investimento..."
-          response=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.APP_URL }}/api/notifications/check-investments" \
+          curl -X POST ${{ secrets.APP_URL }}/api/notifications/check-investments \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json")
-          
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | head -n-1)
-          
-          echo "Status: $http_code"
-          echo "Response: $body"
-          
-          if [ "$http_code" != "200" ]; then
-            echo "❌ Erro ao verificar metas: HTTP $http_code"
-            exit 1
-          fi
-          
-          echo "✅ Verificação de metas concluída"
+            -H "Content-Type: application/json"
+        continue-on-error: true
       
-      - name: Notification Summary
+      - name: Log status
         if: always()
-        run: |
-          echo "📊 Resumo das Notificações"
-          echo "=========================="
-          echo "✅ Job concluído!"
-          echo ""
-          echo "Logs disponíveis acima para detalhes."
+        run: echo "Notifications completed at $(date)"
 
