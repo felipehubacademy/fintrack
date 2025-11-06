@@ -3286,16 +3286,22 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       dueDateOnly.setHours(0, 0, 0, 0);
       
       const daysUntil = Math.ceil((dueDateOnly - today) / (1000 * 60 * 60 * 24));
-      let dateDisplay = dueDateObj.toLocaleDateString('pt-BR');
+      const dateFormatted = dueDateObj.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
       
+      let dateDisplay;
       if (daysUntil === 0) {
-        dateDisplay = 'Vence hoje';
+        dateDisplay = `Vence hoje (${dateFormatted})`;
       } else if (daysUntil === 1) {
-        dateDisplay = 'Vence amanhã';
+        dateDisplay = `Vence amanhã (${dateFormatted})`;
       } else if (daysUntil < 0) {
-        dateDisplay = `Venceu há ${Math.abs(daysUntil)} ${Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}`;
+        dateDisplay = `Venceu há ${Math.abs(daysUntil)} ${Math.abs(daysUntil) === 1 ? 'dia' : 'dias'} (${dateFormatted})`;
       } else {
-        dateDisplay = `Vence em ${daysUntil} ${daysUntil === 1 ? 'dia' : 'dias'}`;
+        // Mostrar data diretamente (mais claro e preciso)
+        dateDisplay = `Vence em ${dateFormatted}`;
       }
       
       const greetings = [
