@@ -2,7 +2,12 @@ name: Daily Notifications
 
 on:
   schedule:
-    # Executa diariamente às 9h UTC (6h BRT) - Ajuste conforme necessário
+    # Executa 2x por dia:
+    # - 8h BRT (11h UTC) - Manhã
+    # - 20h BRT (23h UTC) - Noite
+    - cron: '0 11 * * *'  # 8h BRT
+    - cron: '0 23 * * *'  # 20h BRT
+    # Executa diariamente às 9h UTC (6h BRT) - Notificação do dia do vencimento
     - cron: '0 9 * * *'
   
   # Permite execução manual para testes
@@ -13,9 +18,32 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Check Bills Due Today
+      - name: Check Bills Due Tomorrow (Preventivo)
+        # Executa nas 2x por dia (8h e 20h BRT) e em execuções manuais
         run: |
-          echo "🔔 Verificando contas a pagar..."
+          echo "🔔 Verificando contas vencendo amanhã (preventivo)..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.APP_URL }}/api/notifications/check-bills-due-tomorrow" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Erro ao verificar contas vencendo amanhã: HTTP $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Verificação preventiva de contas concluída"
+      
+      - name: Check Bills Due Today
+        # Executa às 6h BRT (9h UTC) para notificar contas vencendo hoje
+        run: |
+          echo "🔔 Verificando contas vencendo hoje..."
           response=$(curl -s -w "\n%{http_code}" -X POST \
             "${{ secrets.APP_URL }}/api/notifications/check-bills" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
