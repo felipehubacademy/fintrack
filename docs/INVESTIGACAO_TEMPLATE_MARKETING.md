@@ -34,7 +34,7 @@ Com base na documentação oficial do WhatsApp Business API, templates são recl
 
 ## ✅ Soluções Recomendadas
 
-### Opção 1: Remover CTA e Tornar Mais Transacional (RECOMENDADO)
+### Opção 1: Minimalista com Assinatura do Zul (RECOMENDADO)
 
 **Template Revisado**:
 ```
@@ -44,12 +44,24 @@ Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
 Total: R$ {{5}}
 
-Esta é uma notificação automática da sua conta.
+— Zul
+```
+
+**Ou com frase relevante**:
+```
+Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
+
+{{4}}
+
+Total: R$ {{5}}
+
+Qualquer coisa, é só chamar! — Zul
 ```
 
 **Mudanças**:
 - ✅ Remove "Acesse o MeuAzulão para ver detalhes" (CTA promocional)
-- ✅ Adiciona "Esta é uma notificação automática da sua conta" (contexto transacional)
+- ✅ Remove palavras como "automático", "auto", "notificação automática" (podem ser interpretadas como marketing)
+- ✅ Adiciona assinatura simples do Zul (personalização, não promocional)
 - ✅ Foca apenas na informação essencial (lembrete de pagamento)
 
 ### Opção 2: Tornar CTA Mais Transacional
