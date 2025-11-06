@@ -139,21 +139,43 @@ function getFirstName(fullName) {
  * Chamado 2x por dia pelo GitHub Actions (cron job) - 8h e 20h BRT
  */
 export default async function handler(req, res) {
+  // Log para debug
+  console.log('📥 [check-bills-due-tomorrow] Recebendo requisição:', {
+    method: req.method,
+    url: req.url,
+    headers: {
+      authorization: req.headers.authorization ? 'Bearer ***' : 'missing',
+      'content-type': req.headers['content-type']
+    }
+  });
+
   // Verificar método
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    console.log('❌ [check-bills-due-tomorrow] Method not allowed:', req.method);
+    return res.status(405).json({ error: 'Method not allowed', method: req.method });
   }
 
   // Verificar autenticação via secret
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('❌ [check-bills-due-tomorrow] Unauthorized: missing or invalid auth header');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const token = authHeader.split(' ')[1];
-  if (token !== process.env.CRON_SECRET) {
+  const expectedSecret = process.env.CRON_SECRET;
+  
+  if (!expectedSecret) {
+    console.error('❌ [check-bills-due-tomorrow] CRON_SECRET não configurado no Vercel');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
+  if (token !== expectedSecret) {
+    console.log('❌ [check-bills-due-tomorrow] Invalid token');
     return res.status(401).json({ error: 'Invalid token' });
   }
+
+  console.log('✅ [check-bills-due-tomorrow] Autenticação OK, processando...');
 
   try {
     // Calcular data de amanhã
