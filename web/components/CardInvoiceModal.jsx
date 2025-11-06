@@ -466,9 +466,17 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                 const closingDate = new Date(invoice.endDate + 'T00:00:00');
                 closingDate.setDate(closingDate.getDate() + 1); // Dia de fechamento = end_date + 1
                 
-                // Calcular data de vencimento: billing_day no mês do fechamento
-                // Exemplo: período 07/11-06/12 fecha em 07/12, vence em 11/12 → "Fatura de Dezembro"
-                const dueDate = new Date(closingDate.getFullYear(), closingDate.getMonth(), card.billing_day || 15);
+                // Calcular data de vencimento: billing_day pode ser no mês de fechamento ou no mês seguinte
+                // Se o billing_day é menor que o dia de fechamento, o vencimento é no mês seguinte
+                // Exemplo: fecha em 26/11, billing_day = 3 → vence em 03/12 (mês seguinte)
+                // Exemplo: fecha em 07/12, billing_day = 11 → vence em 11/12 (mesmo mês)
+                const billingDay = card.billing_day || 15;
+                let dueDate = new Date(closingDate.getFullYear(), closingDate.getMonth(), billingDay);
+                
+                // Se o billing_day é menor que o dia de fechamento, o vencimento é no mês seguinte
+                if (billingDay < closingDate.getDate()) {
+                  dueDate = new Date(closingDate.getFullYear(), closingDate.getMonth() + 1, billingDay);
+                }
                 
                 // Verificar se a fatura já fechou (data de fechamento <= hoje)
                 const today = new Date();
@@ -488,8 +496,9 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                 if (isCurrentCycle) {
                   statusLabel = 'Fatura Atual';
                 } else {
-                  // Para faturas não atuais, usar o mês de VENCIMENTO
-                  // Exemplo: período 07/11 - 06/12, fecha 07/12, vence 11/12 → "Fatura de Dezembro"
+                  // Para faturas não atuais, usar o mês de VENCIMENTO (não o mês de fechamento)
+                  // Exemplo: período 26/10 - 25/11, fecha 26/11, vence 03/12 → "Fatura de Dezembro"
+                  // Exemplo: período 26/11 - 25/12, fecha 26/12, vence 03/01 → "Fatura de Janeiro"
                   const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
                   const monthName = monthNames[dueDate.getMonth()];
