@@ -22,8 +22,22 @@ jobs:
         # Executa nas 2x por dia (8h e 20h BRT) e em execuções manuais
         run: |
           echo "🔔 Verificando contas vencendo amanhã..."
-          curl -v -X POST ${{ secrets.APP_URL }}/api/notifications/check-bills-due-tomorrow \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          APP_URL="${{ secrets.APP_URL }}"
+          CRON_SECRET="${{ secrets.CRON_SECRET }}"
+          
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://fintrack-web.vercel.app"
+            echo "⚠️ APP_URL não configurado, usando: $APP_URL"
+          fi
+          
+          if [ -z "$CRON_SECRET" ]; then
+            echo "❌ CRON_SECRET não configurado no GitHub Secrets"
+            echo "💡 Configure em: Settings > Secrets and variables > Actions"
+            exit 0
+          fi
+          
+          curl -v -X POST $APP_URL/api/notifications/check-bills-due-tomorrow \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             -w "\nHTTP Status: %{http_code}\n"
         continue-on-error: true
@@ -32,8 +46,20 @@ jobs:
         # Executa às 6h BRT (9h UTC) para notificar contas vencendo hoje
         run: |
           echo "🔔 Verificando contas vencendo hoje..."
-          curl -v -X POST ${{ secrets.APP_URL }}/api/notifications/check-bills \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          APP_URL="${{ secrets.APP_URL }}"
+          CRON_SECRET="${{ secrets.CRON_SECRET }}"
+          
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://fintrack-web.vercel.app"
+          fi
+          
+          if [ -z "$CRON_SECRET" ]; then
+            echo "⚠️ CRON_SECRET não configurado, pulando..."
+            exit 0
+          fi
+          
+          curl -v -X POST $APP_URL/api/notifications/check-bills \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             -w "\nHTTP Status: %{http_code}\n"
         continue-on-error: true
@@ -41,8 +67,20 @@ jobs:
       - name: Check Investment Goals
         run: |
           echo "🎯 Verificando metas de investimento..."
-          curl -v -X POST ${{ secrets.APP_URL }}/api/notifications/check-investments \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          APP_URL="${{ secrets.APP_URL }}"
+          CRON_SECRET="${{ secrets.CRON_SECRET }}"
+          
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://fintrack-web.vercel.app"
+          fi
+          
+          if [ -z "$CRON_SECRET" ]; then
+            echo "⚠️ CRON_SECRET não configurado, pulando..."
+            exit 0
+          fi
+          
+          curl -v -X POST $APP_URL/api/notifications/check-investments \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             -w "\nHTTP Status: %{http_code}\n"
         continue-on-error: true
