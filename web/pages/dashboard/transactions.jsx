@@ -1552,12 +1552,12 @@ export default function TransactionsDashboard() {
         <Card className="border-0 bg-white overflow-visible" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <div className="p-2 bg-flight-blue/5 rounded-lg">
-                  <TrendingUp className="h-4 w-4 text-flight-blue" />
-                </div>
-                <span>Transações Gerais</span>
-              </CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <div className="p-2 bg-flight-blue/5 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-flight-blue" />
+              </div>
+              <span>Transações Gerais</span>
+            </CardTitle>
               {selectedTransactions.length > 0 && (
                 <div className="flex items-center space-x-3">
                   <span className="text-sm text-gray-600">

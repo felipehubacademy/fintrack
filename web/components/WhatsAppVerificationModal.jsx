@@ -74,7 +74,8 @@ export default function WhatsAppVerificationModal({
       setError(null);
       setWarning(null);
       setCountdown(0);
-      setStep(user?.phone_verified ? 3 : 1);
+      // Sempre começar no step 1 para permitir alteração
+      setStep(1);
     }
   }, [isOpen, user]);
 
@@ -153,18 +154,22 @@ export default function WhatsAppVerificationModal({
       // Normalizar telefone (apenas números)
       const normalizedPhone = phone.replace(/\D/g, '');
       
-      // Garantir que comece com 55 (código do Brasil)
-      const phoneWithCountryCode = normalizedPhone.startsWith('55') 
+      // Normalizar número (garantir que comece com 55)
+      const normalizedNew = normalizedPhone.startsWith('55') 
         ? normalizedPhone 
-        : normalizedPhone;
+        : `55${normalizedPhone}`;
       
       // Se o número é diferente do cadastrado, atualizar no banco primeiro
-      if (registeredPhone && normalizedPhone !== registeredPhone.replace(/\D/g, '')) {
+      const normalizedRegistered = registeredPhone ? registeredPhone.replace(/\D/g, '') : '';
+      
+      if (!registeredPhone || normalizedNew !== normalizedRegistered) {
+        // Atualizar telefone e resetar verificação
         const { error: updateError } = await supabase
           .from('users')
           .update({ 
-            phone: phoneWithCountryCode, // Salvar com código do país: 5511999999999
-            phone_verified: false // Reset verification status
+            phone: normalizedNew, // Salvar com código do país: 5511999999999
+            phone_verified: false, // Reset verification status
+            phone_verified_at: null // Limpar data de verificação
           })
           .eq('id', user?.id);
 
@@ -172,8 +177,9 @@ export default function WhatsAppVerificationModal({
           throw new Error('Erro ao atualizar telefone');
         }
         
-        // Atualizar o número registrado no estado local
-        setRegisteredPhone(phoneWithCountryCode);
+        // Atualizar estados locais
+        setRegisteredPhone(normalizedNew);
+        setIsVerified(false);
       }
 
       const response = await fetch('/api/send-verification-code', {
@@ -181,7 +187,7 @@ export default function WhatsAppVerificationModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           userId: user?.id,
-          userPhone: phoneWithCountryCode
+          userPhone: normalizedNew
         })
       });
 
@@ -257,12 +263,14 @@ export default function WhatsAppVerificationModal({
               </div>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              {step === 1 && 'Verificar WhatsApp'}
+              {step === 1 && (isVerified && registeredPhone ? 'Alterar WhatsApp' : 'Verificar WhatsApp')}
               {step === 2 && 'Digite o Código'}
               {step === 3 && 'Tudo Pronto!'}
             </h2>
             <p className="text-gray-600">
-              {step === 1 && 'Informe seu número para conversar com o Zul'}
+              {step === 1 && (isVerified && registeredPhone 
+                ? 'Digite um novo número para alterar sua verificação'
+                : 'Informe seu número para conversar com o Zul')}
               {step === 2 && 'Enviamos um código de 6 dígitos no WhatsApp'}
               {step === 3 && 'Seu WhatsApp está verificado e pronto para uso'}
             </p>
@@ -396,12 +404,28 @@ export default function WhatsAppVerificationModal({
           ) : (
             /* Phone Input State */
             <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
+              {/* Mostrar info se já está verificado */}
+              {isVerified && registeredPhone && (
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <p className="text-green-900 font-semibold text-sm">Número Atual Verificado</p>
+                  </div>
+                  <p className="text-green-700 text-sm">
+                    Número atual: <span className="font-mono font-semibold">{formatPhone(registeredPhone)}</span>
+                  </p>
+                  <p className="text-green-600 text-xs mt-2">
+                    Digite um novo número abaixo para alterar
+                  </p>
+                </div>
+              )}
+
               {/* Phone Input */}
               <div>
                 <label className="block text-gray-700 text-sm font-semibold mb-2">
                   <div className="flex items-center space-x-2">
                     <Smartphone className="w-4 h-4 text-gray-500" />
-                    <span>Número do WhatsApp</span>
+                    <span>{isVerified ? 'Novo Número do WhatsApp' : 'Número do WhatsApp'}</span>
                   </div>
                 </label>
                 <div className="relative">

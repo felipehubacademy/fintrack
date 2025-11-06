@@ -169,7 +169,7 @@ export default function Header({
                       }`}
                     >
                       <CreditCard className="h-4 w-4" />
-                      <span>Cartões</span>
+                      <span>Cartões de Crédito</span>
                     </Link>
                     <Link 
                       href={getDynamicUrl('/dashboard/bills')}
@@ -453,7 +453,7 @@ export default function Header({
                         }`}
                       >
                         <CreditCard className="h-4 w-4 flex-shrink-0" />
-                        <span>Cartões</span>
+                        <span>Cartões de Crédito</span>
                       </Link>
                       <Link
                         href={getDynamicUrl('/dashboard/bills')}

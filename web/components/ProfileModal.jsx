@@ -3,9 +3,10 @@ import { supabase } from '../lib/supabaseClient';
 import { useOrganization } from '../hooks/useOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import { X, Upload, Camera, User } from 'lucide-react';
+import { X, Upload, Camera, User, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import Avatar from './Avatar';
+import WhatsAppVerificationModal from './WhatsAppVerificationModal';
 
 const AVATAR_BUCKET = 'avatar';
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
@@ -16,6 +17,7 @@ export default function ProfileModal({ isOpen, onClose }) {
   const { success, error: showError } = useNotificationContext();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -400,6 +402,44 @@ export default function ProfileModal({ isOpen, onClose }) {
                   </p>
                 </div>
               )}
+
+              {/* WhatsApp Section */}
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <MessageCircle className={`h-5 w-5 ${orgUser?.phone_verified ? 'text-green-600' : 'text-gray-400'}`} />
+                    <label className="block text-sm font-medium text-gray-700">
+                      WhatsApp
+                      {orgUser?.phone_verified && (
+                        <span className="ml-2 text-xs text-green-600 font-normal flex items-center">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Verificado
+                        </span>
+                      )}
+                    </label>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => setShowWhatsAppModal(true)}
+                    size="sm"
+                    className={orgUser?.phone_verified 
+                      ? 'bg-green-600 hover:bg-green-700 text-white' 
+                      : 'bg-flight-blue hover:bg-flight-blue/90 text-white'
+                    }
+                  >
+                    {orgUser?.phone_verified ? 'Alterar' : 'Verificar'}
+                  </Button>
+                </div>
+                {orgUser?.phone_verified && orgUser?.phone ? (
+                  <p className="text-sm text-gray-600">
+                    Número verificado: {orgUser.phone.replace('55', '')}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    Configure seu número para usar o Zul
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -423,6 +463,17 @@ export default function ProfileModal({ isOpen, onClose }) {
           </Button>
         </div>
       </div>
+
+      {/* WhatsApp Verification Modal */}
+      <WhatsAppVerificationModal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        user={orgUser}
+        onVerified={() => {
+          if (refreshData) refreshData();
+          setShowWhatsAppModal(false);
+        }}
+      />
     </div>
   );
 }

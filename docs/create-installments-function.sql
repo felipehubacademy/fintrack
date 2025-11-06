@@ -30,6 +30,7 @@ DECLARE
     card_closing_day INTEGER;
     purchase_year INTEGER;
     purchase_month INTEGER;
+    purchase_day INTEGER;
     target_year INTEGER;
     target_month INTEGER;
 BEGIN
@@ -52,9 +53,10 @@ BEGIN
         card_closing_day := 10;
     END IF;
     
-    -- Extrair ano e mês da data de compra
+    -- Extrair ano, mês e dia da data de compra
     purchase_year := EXTRACT(YEAR FROM p_date);
     purchase_month := EXTRACT(MONTH FROM p_date);
+    purchase_day := EXTRACT(DAY FROM p_date);
     
     -- Criar despesa "pai" (primeira parcela)
     -- REGRA: No cartão de crédito, TODAS as parcelas (inclusive futuras) são confirmadas imediatamente
@@ -111,7 +113,7 @@ BEGIN
     
     -- Se for mais de 1 parcela, criar as parcelas futuras
     -- IMPORTANTE: Todas as parcelas são confirmadas porque o valor total já descontou do limite
-    -- IMPORTANTE: As datas das parcelas devem corresponder ao closing_day de cada fatura
+    -- IMPORTANTE: Todas as parcelas mantêm o mesmo dia da compra (mesmo dia do mês)
     IF p_installments > 1 THEN
         FOR i IN 2..p_installments LOOP
             -- Calcular qual mês essa parcela deve aparecer na fatura
@@ -125,10 +127,10 @@ BEGIN
                 target_year := target_year + 1;
             END LOOP;
             
-            -- Data da parcela = closing_day do mês da fatura correspondente
-            -- Se o closing_day não existir no mês (ex: dia 31 em fevereiro), usar o último dia do mês
+            -- Data da parcela = mesmo dia do mês (purchase_day)
+            -- Se o dia não existir no mês (ex: dia 31 em fevereiro), usar o último dia do mês
             BEGIN
-                installment_date := MAKE_DATE(target_year, target_month, card_closing_day);
+                installment_date := MAKE_DATE(target_year, target_month, purchase_day);
             EXCEPTION WHEN OTHERS THEN
                 -- Se o dia não existe no mês (ex: 31 em fevereiro), usar o último dia do mês
                 installment_date := (DATE_TRUNC('month', MAKE_DATE(target_year, target_month, 1)) + INTERVAL '1 month - 1 day')::DATE;

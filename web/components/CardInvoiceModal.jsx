@@ -143,10 +143,26 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
             console.log(`  📦 É parcela ${expense.installment_info.current_installment}/${expense.installment_info.total_installments} (data: ${parcelDate})`);
             
             // Calcular qual é o ciclo dessa data
+            // IMPORTANTE: Se a data é o dia de fechamento, ela pertence ao ciclo que FECHA neste dia
+            // Exemplo: parcela em 07/12 deve estar no ciclo 07/11-06/12 (que fecha em 07/12), não 07/12-06/01
             try {
+              const closingDay = card.closing_day || card.billing_day;
+              const parcelDateObj = new Date(parcelDate + 'T00:00:00');
+              let referenceDate = parcelDate;
+              
+              // Se a data é exatamente o dia de fechamento, usar o último dia do ciclo anterior
+              // Isso garante que a função retorne o ciclo que fecha neste dia
+              if (closingDay && parcelDateObj.getDate() === closingDay) {
+                // Usar o último dia do ciclo anterior (end_date) como referência
+                // Exemplo: se fecha em 07/12, usar 06/12 como referência para pegar o ciclo 07/11-06/12
+                const prevDate = new Date(parcelDateObj);
+                prevDate.setDate(prevDate.getDate() - 1);
+                referenceDate = prevDate.toISOString().split('T')[0];
+              }
+              
               const { data: parcelCycle, error: cycleError } = await supabase.rpc('get_billing_cycle', {
                 card_uuid: card.id,
-                reference_date: parcelDate
+                reference_date: referenceDate
               });
               
               if (cycleError) {
@@ -417,7 +433,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
           <div>
             <h2 className="text-gray-900 font-semibold text-lg">Faturas - {card.name}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Fecha no dia {card.billing_day} • Total: {formatCurrency(card.credit_limit || 0)}
+              Vence no dia {card.billing_day}
             </p>
           </div>
           <Button 
@@ -450,6 +466,10 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                 const closingDate = new Date(invoice.endDate + 'T00:00:00');
                 closingDate.setDate(closingDate.getDate() + 1); // Dia de fechamento = end_date + 1
                 
+                // Calcular data de vencimento: billing_day no mês do fechamento
+                // Exemplo: período 07/11-06/12 fecha em 07/12, vence em 11/12 → "Fatura de Dezembro"
+                const dueDate = new Date(closingDate.getFullYear(), closingDate.getMonth(), card.billing_day || 15);
+                
                 // Verificar se a fatura já fechou (data de fechamento <= hoje)
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -467,12 +487,13 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                 let statusLabel = '';
                 if (isCurrentCycle) {
                   statusLabel = 'Fatura Atual';
-                } else if (isFuture) {
-                  statusLabel = 'Fatura Futura';
-                } else if (hasClosed) {
-                  statusLabel = 'Fatura Fechada';
                 } else {
-                  statusLabel = `Fatura de ${formatDate(invoice.startDate)}`;
+                  // Para faturas não atuais, usar o mês de VENCIMENTO
+                  // Exemplo: período 07/11 - 06/12, fecha 07/12, vence 11/12 → "Fatura de Dezembro"
+                  const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                  const monthName = monthNames[dueDate.getMonth()];
+                  statusLabel = `Fatura de ${monthName}`;
                 }
                 
                 return (

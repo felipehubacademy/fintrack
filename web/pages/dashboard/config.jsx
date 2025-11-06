@@ -10,30 +10,29 @@ import {
   Settings, 
   Bell, 
   Users, 
-  Target,
   Tag,
   UserCheck,
-  Mail,
-  MessageCircle
+  Copy,
+  CheckCircle2
 } from 'lucide-react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import Link from 'next/link';
 import MemberManagementModal from '../../components/MemberManagementModal';
 import CategoryManagementModal from '../../components/CategoryManagementModal';
 import NotificationSettingsModal from '../../components/NotificationSettingsModal';
 import NotificationModal from '../../components/NotificationModal';
-import WhatsAppVerificationModal from '../../components/WhatsAppVerificationModal';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 
 export default function ConfigPage() {
   const router = useRouter();
   const { organization, user: orgUser, isSoloUser, loading: orgLoading, error: orgError } = useOrganization();
+  const { success } = useNotificationContext();
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
-  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -48,86 +47,14 @@ export default function ConfigPage() {
     router.push('/');
   };
 
-  // Preparar seções de configuração
-  const configSections = useMemo(() => {
-    const sections = [
-      // Seção: Usuários e Convites (apenas para contas familiares)
-      {
-        title: "Usuários e Convites",
-        description: "Gerenciar membros da organização",
-        icon: Users,
-        color: "bg-green-50",
-        iconColor: "text-green-600",
-        actions: [
-          {
-            title: "Gerenciar Usuários",
-            description: "Gerenciar membros e convites",
-            action: "users",
-            icon: UserCheck
-          }
-        ]
-      },
-      // Seção: WhatsApp (sempre visível)
-      {
-        title: "WhatsApp",
-        description: "Verificar número para conversar com o Zul",
-        icon: MessageCircle,
-        color: "bg-green-50",
-        iconColor: "text-green-600",
-        actions: [
-          {
-            title: orgUser?.phone_verified ? "WhatsApp Verificado" : "Verificar WhatsApp",
-            description: orgUser?.phone_verified 
-              ? `Número verificado: ${orgUser?.phone?.replace('55', '') || 'N/A'}` 
-              : "Configure seu número para usar o Zul",
-            action: "whatsapp",
-            icon: MessageCircle,
-            status: orgUser?.phone_verified ? "verified" : "pending"
-          }
-        ]
-      },
-      // Seção: Categorias
-      {
-        title: "Categorias",
-        description: "Gerenciar categorias",
-        icon: Settings,
-        color: "bg-blue-50",
-        iconColor: "text-blue-600",
-        actions: [
-          // Categorias sempre disponível
-          {
-            title: "Categorias",
-            description: "Personalizar categorias",
-            action: "categories",
-            icon: Tag
-          }
-        ]
-      },
-      // Seção: Notificações (sempre visível)
-      {
-        title: "Notificações",
-        description: "Configurar alertas e notificações",
-        icon: Bell,
-        color: "bg-orange-50",
-        iconColor: "text-orange-600",
-        actions: [
-          {
-            title: "Configurar Notificações",
-            description: "Alertas e lembretes",
-            action: "notifications",
-            icon: Bell
-          }
-        ]
-      }
-    ];
-
-    // Se for conta solo e não tem ações em "Usuários e Convites", remover essa seção
-    if (isSoloUser) {
-      return sections.filter(section => section.title !== "Usuários e Convites");
+  const handleCopyCode = () => {
+    if (organization?.invite_code) {
+      navigator.clipboard.writeText(organization.invite_code);
+      setCopied(true);
+      success('Código copiado!');
+      setTimeout(() => setCopied(false), 2000);
     }
-
-    return sections;
-  }, [isSoloUser, orgUser]);
+  };
 
   if (orgLoading || !isDataLoaded) {
     return (
@@ -163,101 +90,133 @@ export default function ConfigPage() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-6">
         
-        {/* Organization Info */}
+        {/* Organization Info - Igual às outras páginas */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-              <h2 className="text-lg font-semibold text-gray-900">Informações da Organização</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Informações da Organização</h2>
+                <p className="text-sm text-gray-500 mt-1">Gerencie suas configurações</p>
+              </div>
               <div className="flex items-center space-x-6">
                 <div className="text-left">
                   <p className="text-sm font-medium text-gray-600">Nome</p>
                   <p className="text-lg font-semibold text-gray-900">{organization?.name || 'N/A'}</p>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-medium text-gray-600">Código</p>
-                  <p className="text-lg font-semibold text-gray-900 font-mono">{organization?.invite_code || 'N/A'}</p>
+                  <p className="text-sm font-medium text-gray-600">Código de Convite</p>
+                  <div className="flex items-center space-x-2">
+                    <p className="text-lg font-semibold text-gray-900 font-mono">{organization?.invite_code || 'N/A'}</p>
+                    {organization?.invite_code && (
+                      <button
+                        onClick={handleCopyCode}
+                        className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+                        title="Copiar código"
+                      >
+                        {copied ? (
+                          <CheckCircle2 className="h-4 w-4 text-flight-blue" />
+                        ) : (
+                          <Copy className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </CardHeader>
         </Card>
 
-        {/* Configuration Actions */}
+        {/* Configurações - Layout simples e limpo */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
-            <CardTitle>
-              Ações
-            </CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900">Configurações</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              {configSections.flatMap(section => section.actions).map((action, index) => (
-                <div key={index}>
-                  {action.href ? (
-                    <Link href={action.href}>
-                      <Button
-                        variant="outline"
-                        className="w-full h-auto p-4 flex flex-col items-center space-y-2 bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md"
-                      >
-                        <action.icon className="h-5 w-5" />
-                        <div className="text-center">
-                          <div className="font-medium text-sm">{action.title}</div>
-                          <div className="text-xs opacity-80 mt-1">{action.description}</div>
-                        </div>
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className={`w-full h-auto p-4 flex flex-col items-center space-y-2 hover:scale-105 transition-all duration-200 shadow-sm hover:shadow-md ${
-                        action.action === 'whatsapp' 
-                          ? action.status === 'verified'
-                            ? 'bg-green-500 hover:bg-green-600 border-2 border-green-500 text-white'
-                            : 'bg-orange-500 hover:bg-orange-600 border-2 border-orange-500 text-white'
-                          : 'bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white'
-                      }`}
-                      disabled={action.action === 'export'}
-                      onClick={() => {
-                        if (action.action === 'notifications') {
-                          setShowNotificationSettingsModal(true);
-                        } else if (action.action === 'users') {
-                          setShowMemberModal(true);
-                        } else if (action.action === 'categories') {
-                          setShowCategoryModal(true);
-                        } else if (action.action === 'whatsapp') {
-                          setShowWhatsAppModal(true);
-                        } else if (action.action === 'export') {
-                          // TODO: Implementar exportação
-                        }
-                      }}
-                    >
-                      <div className="relative">
-                        <action.icon className="h-5 w-5" />
-                        {action.action === 'whatsapp' && action.status === 'verified' && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
-                      </div>
-                      <div className="text-center">
-                        <div className="font-medium text-sm">
-                          {action.title}
-                          {(action.action === 'export' || action.action === 'notifications') && (
-                            <span className="ml-2 text-xs text-gray-500">(Em breve)</span>
-                          )}
-                        </div>
-                        <div className="text-xs opacity-80 mt-1">
-                          {action.description}
-                        </div>
-                      </div>
-                    </Button>
-                  )}
+            <div className="space-y-4">
+              {/* Usuários e Membros */}
+              {!isSoloUser && (
+                <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                  <div className="flex items-center space-x-3">
+                    <Users className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <p className="font-medium text-gray-900">Gerenciar Membros</p>
+                      <p className="text-sm text-gray-500">Adicionar, remover e gerenciar membros da organização</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => setShowMemberModal(true)}
+                    className="bg-flight-blue hover:bg-flight-blue/90 text-white min-w-[120px]"
+                  >
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    Gerenciar
+                  </Button>
                 </div>
-              ))}
+              )}
+
+              {/* Notificações */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                <div className="flex items-center space-x-3">
+                  <Bell className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="font-medium text-gray-900">Notificações</p>
+                    <p className="text-sm text-gray-500">Configurar alertas, lembretes e relatórios</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowNotificationSettingsModal(true)}
+                  className="bg-flight-blue hover:bg-flight-blue/90 text-white min-w-[120px]"
+                >
+                  <Bell className="h-4 w-4 mr-2" />
+                  Gerenciar
+                </Button>
+              </div>
+
+              {/* Categorias */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                <div className="flex items-center space-x-3">
+                  <Tag className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="font-medium text-gray-900">Categorias</p>
+                    <p className="text-sm text-gray-500">Personalizar categorias de despesas e receitas</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowCategoryModal(true)}
+                  className="bg-flight-blue hover:bg-flight-blue/90 text-white min-w-[120px]"
+                >
+                  <Tag className="h-4 w-4 mr-2" />
+                  Gerenciar
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Conta e Segurança */}
+        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">Conta</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <p className="font-medium text-gray-900">Sair da Conta</p>
+                <p className="text-sm text-gray-500">Encerrar sua sessão atual</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Modals */}
         <MemberManagementModal
@@ -283,16 +242,6 @@ export default function ConfigPage() {
         <NotificationModal 
           isOpen={showNotificationModal}
           onClose={() => setShowNotificationModal(false)}
-        />
-
-        <WhatsAppVerificationModal
-          isOpen={showWhatsAppModal}
-          onClose={() => setShowWhatsAppModal(false)}
-          user={orgUser}
-          onVerified={() => {
-            // Refresh user data after verification
-            window.location.reload();
-          }}
         />
       </main>
 

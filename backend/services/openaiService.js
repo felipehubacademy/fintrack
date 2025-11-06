@@ -198,6 +198,14 @@ Se não conseguir ler algo, use null.`;
     processed = processed.replace(/\bZews\b/gi, 'Zul'); // Outro erro comum
     processed = processed.replace(/\bZewo\b/gi, 'Zul'); // Outro erro comum
     
+    // Correções para "Azul" (nome pelo qual o usuário chama o assistente)
+    // Correções comuns quando o usuário fala "Azul" no início da frase
+    processed = processed.replace(/\bazulão\b/gi, 'Azul');
+    processed = processed.replace(/\bazulao\b/gi, 'Azul');
+    // Se "azul" aparece no início da frase (com vírgula ou ponto após), provavelmente é o nome do assistente
+    processed = processed.replace(/\bazul[,.]\s*/gi, 'Azul, ');
+    processed = processed.replace(/^azul\s+/gi, 'Azul '); // Início da frase
+    
     // Correções de números comuns que podem ser confundidos
     // Isso é mais conservador - apenas corrigir padrões muito específicos
     // "650" quando o contexto sugere "150" é difícil de detectar automaticamente

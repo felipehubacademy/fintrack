@@ -134,17 +134,17 @@ export default function ResponsiveTable({
                       />
                     </td>
                   )}
-                  {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {column.render ? column.render(item, index) : item[column.key]}
-                    </td>
-                  ))}
-                  {renderRowActions && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {renderRowActions(item, index)}
-                    </td>
-                  )}
-                </tr>
+                {columns.map((column) => (
+                  <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {column.render ? column.render(item, index) : item[column.key]}
+                  </td>
+                ))}
+                {renderRowActions && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {renderRowActions(item, index)}
+                  </td>
+                )}
+              </tr>
               );
             })}
           </tbody>
@@ -176,8 +176,8 @@ export default function ResponsiveTable({
             key={itemId} 
             className={`border shadow-sm ${isSelected ? 'border-flight-blue bg-blue-50' : 'border-gray-200'}`}
           >
-            <CardContent className="p-4">
-              <div className="space-y-3">
+          <CardContent className="p-4">
+            <div className="space-y-3">
                 {enableSelection && (
                   <div className="flex items-center space-x-2 pb-2 border-b border-gray-200">
                     <input
@@ -189,42 +189,42 @@ export default function ResponsiveTable({
                     <span className="text-sm font-medium text-gray-700">Selecionar</span>
                   </div>
                 )}
-                {columns.map((column) => {
-                  const label = column.mobileLabel || column.label;
-                  const value = column.render ? column.render(item, index) : item[column.key];
-                  
-                  // Não mostrar colunas vazias em mobile (opcional)
-                  if (!value && column.hideIfEmpty) return null;
-                  
-                  // Se a coluna tem mobileRender, usar ela
-                  const displayValue = column.mobileRender ? column.mobileRender(item, index) : value;
-                  
-                  // Obter cor do texto mobile (pode ser função ou string)
-                  const mobileColor = typeof column.mobileTextColor === 'function' 
-                    ? column.mobileTextColor(item, index)
-                    : (column.mobileTextColor || 'text-gray-900');
-                  
-                  return (
-                    <div key={column.key} className="flex flex-col space-y-1">
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {label}
-                      </div>
-                      <div className={`text-sm ${mobileColor} break-words`}>
-                        {displayValue || '-'}
-                      </div>
-                    </div>
-                  );
-                })}
+              {columns.map((column) => {
+                const label = column.mobileLabel || column.label;
+                const value = column.render ? column.render(item, index) : item[column.key];
                 
-                {/* Ações no mobile */}
-                {renderRowActions && (
-                  <div className="pt-3 border-t border-gray-200 flex items-center justify-end space-x-2 min-h-[44px]">
-                    {renderRowActions(item, index)}
+                // Não mostrar colunas vazias em mobile (opcional)
+                if (!value && column.hideIfEmpty) return null;
+                
+                // Se a coluna tem mobileRender, usar ela
+                const displayValue = column.mobileRender ? column.mobileRender(item, index) : value;
+                
+                // Obter cor do texto mobile (pode ser função ou string)
+                const mobileColor = typeof column.mobileTextColor === 'function' 
+                  ? column.mobileTextColor(item, index)
+                  : (column.mobileTextColor || 'text-gray-900');
+                
+                return (
+                  <div key={column.key} className="flex flex-col space-y-1">
+                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {label}
+                    </div>
+                    <div className={`text-sm ${mobileColor} break-words`}>
+                      {displayValue || '-'}
+                    </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                );
+              })}
+              
+              {/* Ações no mobile */}
+              {renderRowActions && (
+                <div className="pt-3 border-t border-gray-200 flex items-center justify-end space-x-2 min-h-[44px]">
+                  {renderRowActions(item, index)}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
         );
       })}
     </div>
