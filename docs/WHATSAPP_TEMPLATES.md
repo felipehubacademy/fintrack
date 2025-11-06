@@ -21,13 +21,13 @@ Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
 Total: R$ {{5}}
 
-— Zul
+Qualquer coisa, é só chamar! — Zul
 ```
 
 **⚠️ IMPORTANTE**: 
 - A versão anterior com "Acesse o MeuAzulão para ver detalhes" foi reclassificada para MARKETING
 - Esta versão revisada remove o CTA promocional e palavras como "automático"
-- Adiciona apenas assinatura do Zul (personalização, não promocional)
+- Adiciona assinatura amigável do Zul (personalização, não promocional)
 - Máxima chance de aprovação como UTILITY
 
 ### Variáveis
@@ -59,7 +59,7 @@ Conta de Luz
 
 Total: R$ 450,00
 
-— Zul
+Qualquer coisa, é só chamar! — Zul
 ```
 
 ---
@@ -100,25 +100,14 @@ Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
 Total: R$ {{5}}
 
-— Zul
+Qualquer coisa, é só chamar! — Zul
 ```
 
 **⚠️ NOTA**: 
 - Esta versão foi revisada para garantir aprovação como UTILITY
 - Remove "Acesse o MeuAzulão para ver detalhes" (CTA promocional)
 - Remove palavras como "automático" que podem ser interpretadas como marketing
-- Adiciona apenas assinatura do Zul (personalização, não promocional)
-
-**Alternativa com frase relevante** (opcional):
-```
-Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
-
-{{4}}
-
-Total: R$ {{5}}
-
-Qualquer coisa, é só chamar! — Zul
-```
+- Adiciona assinatura amigável do Zul (personalização, não promocional)
 
 ### Passo 4: Configurar Variáveis
 

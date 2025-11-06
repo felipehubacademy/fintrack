@@ -44,17 +44,6 @@ Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
 Total: R$ {{5}}
 
-— Zul
-```
-
-**Ou com frase relevante**:
-```
-Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
-
-{{4}}
-
-Total: R$ {{5}}
-
 Qualquer coisa, é só chamar! — Zul
 ```
 
@@ -170,19 +159,8 @@ Se o template já foi aprovado como MARKETING:
 
 ## 🎯 Recomendação Final
 
-**Use versão minimalista com assinatura do Zul**:
+**Use versão minimalista com assinatura amigável do Zul**:
 
-```
-Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
-
-{{4}}
-
-Total: R$ {{5}}
-
-— Zul
-```
-
-**Ou com frase relevante**:
 ```
 Olá {{1}}, você tem {{2}} conta(s) vencendo amanhã ({{3}}):
 
