@@ -247,10 +247,10 @@ export default function EditExpenseModal({
       const { error: updateError } = await supabase
         .from('expenses')
         .update({
-          owner: editData.owner,
+          owner: editData.owner.trim(),
           cost_center_id: costCenterId,
           is_shared: isShared,
-          description: editData.description,
+          description: editData.description.trim(),
           category_id: editData.category_id || null, // Salvar category_id
           category: category?.name || null, // Salvar também o nome (legado)
           payment_method: editData.payment_method,

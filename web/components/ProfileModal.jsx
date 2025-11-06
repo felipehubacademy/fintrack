@@ -267,11 +267,11 @@ export default function ProfileModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md border border-flight-blue/20 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl border border-flight-blue/20 flex flex-col max-h-[90vh] sm:max-h-[95vh]">
         {/* Header */}
-        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-lg">Meu Perfil</h2>
+        <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Meu Perfil</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -283,8 +283,8 @@ export default function ProfileModal({ isOpen, onClose }) {
         </div>
 
         {/* Conteúdo */}
-        <div className="flex-1 overflow-y-auto p-6 pt-0">
-          <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-0">
+          <div className="space-y-4 md:space-y-6">
             {/* Avatar Section */}
             <div className="flex flex-col items-center space-y-4">
               <Avatar 
@@ -445,19 +445,19 @@ export default function ProfileModal({ isOpen, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-5 md:p-6 pt-3 sm:pt-4 md:pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={loading}
-            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
             Cancelar
           </Button>
           <Button
             onClick={handleSave}
             disabled={loading}
-            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+            className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
             {loading ? 'Salvando...' : 'Salvar'}
           </Button>

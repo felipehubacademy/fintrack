@@ -172,11 +172,11 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
-        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-lg">Gerenciar Categorias</h2>
+        <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Gerenciar Categorias</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -188,7 +188,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
         </div>
         
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 px-6 pt-4">
+        <div className="flex border-b border-gray-200 px-4 sm:px-5 md:px-6 pt-4">
           <button
             onClick={() => setActiveTab('expense')}
             className={`px-4 py-2 font-medium text-sm transition-colors ${
@@ -212,7 +212,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
         </div>
 
         {/* Conteúdo com scroll */}
-        <div className="flex-1 overflow-y-auto p-6 pt-0 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-0 space-y-4 md:space-y-6">
             {/* Add/Edit Form */}
             {showForm && (
               <div className="bg-gray-50 rounded-lg p-4">

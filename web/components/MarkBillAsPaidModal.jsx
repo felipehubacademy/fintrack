@@ -46,13 +46,13 @@ export default function MarkBillAsPaidModal({
     .map(cc => ({ value: cc.id, label: cc.name }));
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl w-full max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-3">
             <AlertCircle className="w-8 h-8 text-yellow-600" />
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900">
               Confirmar pagamento
             </h2>
           </div>
@@ -65,7 +65,7 @@ export default function MarkBillAsPaidModal({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-5 md:p-6 overflow-y-auto flex-1">
           <p className="text-gray-600 mb-4">
             Marcar <strong>{bill.description}</strong> (R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) como paga?
           </p>
@@ -137,23 +137,25 @@ export default function MarkBillAsPaidModal({
           </div>
 
           {/* Actions */}
-          <div className="flex space-x-3 justify-end">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 justify-end pt-4 border-t border-gray-200 mt-6">
             <Button
               variant="outline"
               onClick={onClose}
-              className="px-6 py-2"
+              className="w-full sm:w-auto px-6 py-2 min-h-[44px]"
             >
               Cancelar
             </Button>
             <Button
               onClick={handleConfirm}
               disabled={!isShared && !selectedOwner}
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto px-6 py-2 min-h-[44px] bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Marcar como Paga
             </Button>
           </div>
         </div>
+        {/* Footer */}
+        <div className="flex-shrink-0 p-4 sm:p-5 md:p-6 pt-3 sm:pt-4 md:pt-4 border-t border-gray-200 bg-gray-50"></div>
       </div>
     </div>
   );

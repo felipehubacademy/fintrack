@@ -231,7 +231,7 @@ export default function SignupInvite() {
         options: {
           emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/email-confirmed`,
           data: {
-            name: formData.name,
+            name: formData.name.trim(),
             phone: phoneWithCountryCode
           }
         }
@@ -249,7 +249,7 @@ export default function SignupInvite() {
         .insert({
           id: authData.user.id,
           email: email,
-          name: formData.name,
+          name: formData.name.trim(),
           phone: phoneWithCountryCode, // Salvar como: 5511999999999 (55 + DDD + número)
           organization_id: organization.id,
           role: invite?.role || 'member',
@@ -271,7 +271,7 @@ export default function SignupInvite() {
         .update({
           default_split_percentage: inviteSplit,
           color: inviteColor,
-          name: formData.name // Garantir que o nome está correto
+          name: formData.name.trim() // Garantir que o nome está correto e sem espaços extras
         })
         .eq('user_id', authData.user.id)
         .eq('organization_id', organization.id);

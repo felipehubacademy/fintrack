@@ -51,6 +51,10 @@ export default function BillsDashboard() {
   const [billToDelete, setBillToDelete] = useState(null);
   const [billToMarkAsPaid, setBillToMarkAsPaid] = useState(null);
   const [selectedOwnerForBill, setSelectedOwnerForBill] = useState(null); // { cost_center_id, is_shared }
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // Mês atual
+  const [selectedBills, setSelectedBills] = useState([]);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -60,7 +64,12 @@ export default function BillsDashboard() {
     } else if (!orgLoading && orgError) {
       router.push('/');
     }
-  }, [orgLoading, orgError, organization]);
+  }, [orgLoading, orgError, organization, selectedMonth]);
+
+  // Limpar seleção quando filtros mudarem
+  useEffect(() => {
+    setSelectedBills([]);
+  }, [filter, filterCategory, filterOwner, searchQuery, selectedMonth]);
 
   const fetchBills = async () => {
     setIsDataLoaded(false);
@@ -75,8 +84,22 @@ export default function BillsDashboard() {
           cost_center:cost_centers(name, color),
           card:cards(name, bank)
         `)
-        .eq('organization_id', organization.id)
-        .order('due_date', { ascending: true });
+        .eq('organization_id', organization.id);
+
+      // Filtrar por mês se selectedMonth estiver definido
+      if (selectedMonth) {
+        const startOfMonth = `${selectedMonth}-01`;
+        const [year, month] = selectedMonth.split('-');
+        // Último dia do mês: usar o primeiro dia do próximo mês e subtrair 1
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        const endOfMonth = `${selectedMonth}-${String(lastDay).padStart(2, '0')}`;
+        
+        query = query
+          .gte('due_date', startOfMonth)
+          .lte('due_date', endOfMonth);
+      }
+
+      query = query.order('due_date', { ascending: true });
 
       const { data, error } = await query;
       
@@ -547,6 +570,132 @@ export default function BillsDashboard() {
     }
   };
 
+  // Handlers para seleção em massa
+  const handleSelectionChange = (billId, checked) => {
+    if (checked) {
+      setSelectedBills(prev => [...prev, billId]);
+    } else {
+      setSelectedBills(prev => prev.filter(id => id !== billId));
+    }
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedBills(filteredBills.map(b => b.id));
+    } else {
+      setSelectedBills([]);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedBills.length === 0) return;
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedBills.length === 0) return;
+
+    setDeleting(true);
+    setShowBulkDeleteConfirm(false);
+
+    try {
+      const billsToDelete = filteredBills.filter(b => selectedBills.includes(b.id));
+      
+      // Separar bills que têm expense_id (pagas) das que não têm
+      const billsWithExpenses = billsToDelete.filter(b => b.status === 'paid' && b.expense_id);
+      const billsWithoutExpenses = billsToDelete.filter(b => !b.expense_id || b.status !== 'paid');
+      
+      let deletedCount = 0;
+      let errors = [];
+      const expenseIdsToDelete = new Set();
+
+      // Coletar todos os expense_ids das bills pagas
+      billsWithExpenses.forEach(bill => {
+        if (bill.expense_id) {
+          expenseIdsToDelete.add(bill.expense_id);
+        }
+      });
+
+      // Se houver expenses para excluir, seguir a ordem correta de cascade
+      if (expenseIdsToDelete.size > 0) {
+        const expenseIdsArray = Array.from(expenseIdsToDelete);
+
+        // 1. Primeiro, remover todas as referências expense_id das bills para quebrar FK constraints
+        const billIdsToUpdate = billsWithExpenses.map(b => b.id);
+        if (billIdsToUpdate.length > 0) {
+          const { error: updateBillsError } = await supabase
+            .from('bills')
+            .update({ expense_id: null })
+            .in('id', billIdsToUpdate);
+          
+          if (updateBillsError) {
+            errors.push(`Erro ao remover referências de contas: ${updateBillsError.message}`);
+          }
+        }
+
+        // 2. Excluir expense_splits relacionados
+        const { error: splitsError } = await supabase
+          .from('expense_splits')
+          .delete()
+          .in('expense_id', expenseIdsArray);
+        
+        if (splitsError) {
+          console.warn('⚠️ [BILLS] Erro ao excluir splits (pode não existir):', splitsError);
+          // Não adicionar aos errors pois pode não existir
+        }
+
+        // 3. Excluir expenses
+        const { error: expenseError } = await supabase
+          .from('expenses')
+          .delete()
+          .in('id', expenseIdsArray);
+        
+        if (expenseError) {
+          errors.push('Erro ao excluir despesas associadas: ' + expenseError.message);
+        } else {
+          deletedCount += expenseIdsArray.length;
+        }
+      }
+
+      // 4. Excluir todas as bills (com e sem expenses)
+      const allBillIds = billsToDelete.map(b => b.id);
+      const { error: billsDeleteError } = await supabase
+        .from('bills')
+        .delete()
+        .in('id', allBillIds);
+      
+      if (billsDeleteError) {
+        errors.push('Erro ao excluir contas: ' + billsDeleteError.message);
+      } else {
+        deletedCount += allBillIds.length;
+      }
+
+      // Recarregar dados
+      await fetchBills();
+
+      // Limpar seleção
+      setSelectedBills([]);
+
+      // Mostrar mensagem de sucesso ou erro
+      if (errors.length > 0) {
+        showError('Alguns itens não puderam ser excluídos: ' + errors.join(', '));
+      } else {
+        const billsCount = billsToDelete.length;
+        const expensesCount = expenseIdsToDelete.size;
+        if (expensesCount > 0) {
+          success(`${billsCount} conta(s) e ${expensesCount} despesa(s) associada(s) excluída(s) com sucesso!`);
+        } else {
+          success(`${billsCount} conta(s) excluída(s) com sucesso!`);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao excluir em massa:', error);
+      showError('Erro ao excluir contas: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleDeleteBill = async (billId) => {
     // Buscar a bill para verificar se tem expense_id
     const bill = bills.find(b => b.id === billId);
@@ -794,13 +943,24 @@ export default function BillsDashboard() {
                 <h2 className="text-lg font-semibold text-gray-900">Contas a Pagar</h2>
                 <p className="text-sm text-gray-600">Gerencie suas contas e vencimentos</p>
               </div>
-              <Button 
-                onClick={openAddModal}
-                className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Conta
-              </Button>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700 hidden sm:block">Mês:</label>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="h-10 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-sm"
+                  />
+                </div>
+                <Button 
+                  onClick={openAddModal}
+                  className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Conta
+                </Button>
+              </div>
             </div>
           </CardHeader>
         </Card>
@@ -1004,6 +1164,31 @@ export default function BillsDashboard() {
           </Card>
         ) : (
           <Card className="border border-gray-200 bg-white shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center space-x-2">
+                  <div className="p-2 bg-flight-blue/5 rounded-lg">
+                    <Calendar className="h-4 w-4 text-flight-blue" />
+                  </div>
+                  <span>Contas a Pagar</span>
+                </CardTitle>
+                {selectedBills.length > 0 && (
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm text-gray-600">
+                      {selectedBills.length} selecionada(s)
+                    </span>
+                    <Button
+                      onClick={handleBulkDelete}
+                      disabled={deleting}
+                      className="bg-red-600 hover:bg-red-700 text-white border-2 border-red-600 shadow-sm hover:shadow-md transition-all duration-200"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir Selecionadas
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
             <CardContent className="p-4 md:p-0">
               {(() => {
                 // Helper para formatação da forma de pagamento
@@ -1191,6 +1376,8 @@ export default function BillsDashboard() {
                       );
                 };
                 
+                const allSelected = selectedBills.length > 0 && selectedBills.length === filteredBills.length;
+
                 return (
                   <ResponsiveTable
                     columns={columns}
@@ -1198,6 +1385,11 @@ export default function BillsDashboard() {
                     renderRowActions={renderActions}
                     sortConfig={sortConfig}
                     onSort={handleSort}
+                    enableSelection={true}
+                    selectedItems={selectedBills}
+                    onSelectionChange={handleSelectionChange}
+                    onSelectAll={handleSelectAll}
+                    allSelected={allSelected}
                     renderEmptyState={() => (
                 <div className="p-8 text-center">
                   <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -1257,6 +1449,31 @@ export default function BillsDashboard() {
           })()
         }
         confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showBulkDeleteConfirm}
+        onClose={() => {
+          setShowBulkDeleteConfirm(false);
+        }}
+        onConfirm={confirmBulkDelete}
+        title="Confirmar exclusão em massa"
+        message={
+          (() => {
+            const billsToDelete = filteredBills.filter(b => selectedBills.includes(b.id));
+            const billsWithExpenses = billsToDelete.filter(b => b.status === 'paid' && b.expense_id);
+            const expensesCount = new Set(billsWithExpenses.map(b => b.expense_id)).size;
+            
+            if (expensesCount > 0) {
+              return `Tem certeza que deseja excluir ${selectedBills.length} conta(s)? Esta ação também excluirá ${expensesCount} despesa(s) associada(s) criada(s) quando as contas foram marcadas como pagas. Esta ação não pode ser desfeita.`;
+            }
+            return `Tem certeza que deseja excluir ${selectedBills.length} conta(s)? Esta ação não pode ser desfeita.`;
+          })()
+        }
+        confirmText={deleting ? "Excluindo..." : "Excluir Todas"}
         cancelText="Cancelar"
         type="danger"
       />

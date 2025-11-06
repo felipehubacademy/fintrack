@@ -196,6 +196,7 @@ async function processWebhook(body) {
             
             // Buscar tipo da organização (solo vs family)
             const orgType = user.organization?.type || 'family';
+            const organizationName = user.organization?.name || 'Família';
             
             // Nota: A lógica completa de saveExpense está em zulAssistant.js (context.saveExpense)
             // Aqui apenas garantimos que o contexto tem os dados necessários
@@ -204,6 +205,7 @@ async function processWebhook(body) {
               userId: user.id,
               organizationId: user.organization_id,
               organizationType: orgType,
+              organizationName: organizationName,
               isSoloUser: orgType === 'solo',
               availableCards: cards?.map(c => c.name) || []
             };

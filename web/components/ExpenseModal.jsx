@@ -272,7 +272,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
           p_amount: Number(form.amount),
           p_installments: Number(form.installments),
-          p_description: form.description,
+          p_description: form.description.trim(),
           p_date: form.date,
           p_card_id: form.card_id,
           p_category_id: category?.id || null,
@@ -289,7 +289,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           const { error: updateError } = await supabase
             .from('expenses')
             .update({ 
-              owner: form.owner_name,
+              owner: form.owner_name.trim(),
               is_shared: true 
             })
             .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
@@ -355,12 +355,12 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           organization_id: organization.id,
           user_id: orgUser.id,
           cost_center_id: costCenter?.id || null, // NULL para compartilhado
-          owner: form.owner_name,
+          owner: form.owner_name.trim(),
           is_shared: willBeShared, // Usar willBeShared calculado acima
           category_id: category?.id || null,
           category: category?.name || null,
           amount: Number(form.amount),
-          description: form.description,
+          description: form.description.trim(),
           date: form.date,
           payment_method: form.payment_method,
           status: 'confirmed',
@@ -440,11 +440,11 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] border border-flight-blue/20 flex flex-col mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
-        <div className="flex flex-row items-center justify-between p-4 md:p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-base md:text-lg">Nova Despesa</h2>
+        <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Nova Despesa</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -456,9 +456,9 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         </div>
         
         {/* Conteúdo com scroll */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="md:col-span-2">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+              <div className="md:col-span-2 lg:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
                 <input
                   type="text"
@@ -648,19 +648,19 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         </div>
         
         {/* Footer fixo */}
-        <div className="flex flex-col md:flex-row justify-end space-y-2 md:space-y-0 md:space-x-3 p-4 md:p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-5 md:p-6 pt-3 sm:pt-4 md:pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={saving}
-            className="w-full md:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
+            className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
             Cancelar
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="w-full md:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
+            className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
             {saving ? 'Salvando...' : 'Salvar'}
           </Button>

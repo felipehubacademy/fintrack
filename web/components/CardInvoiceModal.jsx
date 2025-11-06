@@ -426,12 +426,12 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
         {/* Header */}
-        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+        <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <div>
-            <h2 className="text-gray-900 font-semibold text-lg">Faturas - {card.name}</h2>
+            <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Faturas - {card.name}</h2>
             <p className="text-sm text-gray-600 mt-1">
               Vence no dia {card.billing_day}
             </p>
@@ -447,7 +447,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 pt-0">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-flight-blue"></div>
@@ -544,10 +544,10 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
         </div>
         
         {/* Footer */}
-        <div className="flex justify-end p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+        <div className="flex justify-end p-4 sm:p-5 md:p-6 pt-3 sm:pt-4 md:pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
           <Button
             onClick={onClose}
-            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+            className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
             Fechar
           </Button>

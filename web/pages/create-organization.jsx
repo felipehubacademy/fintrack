@@ -164,7 +164,7 @@ export default function CreateOrganization() {
         .from('organizations')
         .insert({
           id: orgId,
-          name: formData.name,
+          name: formData.name.trim(),
           email: formData.adminEmail, // Email da organização = email do admin
           admin_id: authUserId, // ID do usuário do Supabase Auth
           invite_code: inviteCodeGen,
@@ -179,7 +179,7 @@ export default function CreateOrganization() {
         .insert({
           id: authUserId, // Mesmo ID do Supabase Auth
           organization_id: orgId,
-          name: formData.adminName,
+          name: formData.adminName.trim(),
           email: formData.adminEmail,
           phone: normalizedPhone, // Salvar apenas números: 5511999999999
           role: 'admin'
@@ -191,7 +191,7 @@ export default function CreateOrganization() {
       // Será rebalanceado para 50/50 quando o segundo membro for adicionado
       const { error: costCenterError } = await supabase.from('cost_centers').insert({
         organization_id: orgId,
-        name: formData.adminName,
+        name: formData.adminName.trim(),
         color: '#3B82F6',
         default_split_percentage: 100.00, // Começa com 100%, será rebalanceado ao adicionar membros
         user_id: authUserId, // Usar authUserId aqui

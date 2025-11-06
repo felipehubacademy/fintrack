@@ -441,11 +441,11 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
           {/* Header */}
-          <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-            <h2 className="text-gray-900 font-semibold text-lg">Gerenciar Usuários</h2>
+          <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+            <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Gerenciar Usuários</h2>
             <Button 
               variant="ghost" 
               size="icon" 
@@ -457,7 +457,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
           </div>
           
           {/* Conteúdo com scroll */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="w-16 h-16 border-4 border-[#207DFF]/30 border-t-[#207DFF] rounded-full animate-spin"></div>
@@ -749,11 +749,11 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
           </div>
 
           {/* Footer com botões */}
-          <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+          <div className="flex-shrink-0 px-4 sm:px-5 md:px-6 py-3 sm:py-4 md:py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
             {!showInviteForm ? (
               <Button
                 onClick={() => setShowInviteForm(true)}
-                className="bg-[#207DFF] hover:bg-[#207DFF]/90 text-white"
+                className="w-full sm:w-auto bg-[#207DFF] hover:bg-[#207DFF]/90 text-white min-h-[44px]"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Convidar Novo Usuário
@@ -773,6 +773,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                     setEditablePercentages({});
                   }}
                   variant="ghost"
+                  className="w-full sm:w-auto min-h-[44px]"
                 >
                   Cancelar
                 </Button>
@@ -783,7 +784,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                     !!emailError || 
                     (formData.role !== 'viewer' && Math.abs(calculatedTotal - 100) > 0.01)
                   }
-                  className="bg-[#207DFF] hover:bg-[#207DFF]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto bg-[#207DFF] hover:bg-[#207DFF]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
                 >
                   {inviting ? 'Enviando...' : 'Enviar Convite'}
                 </Button>

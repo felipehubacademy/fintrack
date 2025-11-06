@@ -84,10 +84,10 @@ const BudgetModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl max-h-[95vh] sm:max-h-[90vh] border border-flight-blue/20 flex flex-col">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
-        <div className="flex flex-row items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-base sm:text-lg pr-2">
+        <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl pr-2">
             {isEdit ? 'Editar Orçamento' : 'Novo Orçamento'}
           </h2>
           <Button 
@@ -101,8 +101,8 @@ const BudgetModal = ({
         </div>
         
         {/* Conteúdo com scroll */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pt-0">
-          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-0">
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-6">
             {/* Categoria */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -216,19 +216,19 @@ const BudgetModal = ({
         </div>
         
         {/* Footer fixo */}
-        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 pt-3 sm:pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-5 md:p-6 pt-3 sm:pt-4 md:pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={saving}
-            className="border-gray-300 text-gray-700 hover:bg-gray-50 w-full sm:w-auto order-2 sm:order-1"
+            className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px] order-2 sm:order-1"
           >
             Cancelar
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={saving || !formData.category_id || !formData.limit_amount}
-            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md w-full sm:w-auto order-1 sm:order-2"
+            className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px] order-1 sm:order-2"
           >
             {saving ? 'Salvando...' : (isEdit ? 'Atualizar' : 'Criar Orçamento')}
           </Button>

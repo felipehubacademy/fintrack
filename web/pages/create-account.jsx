@@ -133,13 +133,13 @@ export default function CreateAccount() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.adminEmail,
         password: formData.password,
-        options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/email-confirmed`,
-          data: {
-            name: formData.adminName,
-            phone: normalizedPhone
+          options: {
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/email-confirmed`,
+            data: {
+              name: formData.adminName.trim(),
+              phone: normalizedPhone
+            }
           }
-        }
       });
 
       if (authError) throw authError;
@@ -164,7 +164,7 @@ export default function CreateAccount() {
         .from('organizations')
         .insert({
           id: orgId,
-          name: formData.dashboardName, // Nome do dashboard escolhido
+          name: formData.dashboardName.trim(), // Nome do dashboard escolhido
           email: formData.adminEmail,
           admin_id: authUserId, // ID do usuário do Supabase Auth
           invite_code: inviteCode,
@@ -179,7 +179,7 @@ export default function CreateAccount() {
         .insert({
           id: authUserId, // Mesmo ID do Supabase Auth
           organization_id: orgId,
-          name: formData.adminName,
+          name: formData.adminName.trim(),
           email: formData.adminEmail,
           phone: normalizedPhone,
           role: 'admin'

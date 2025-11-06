@@ -176,7 +176,7 @@ export default function InvitePage() {
         .upsert({
           id: user.id,
           email: user.email,
-          name: formData.name,
+          name: formData.name.trim(),
           phone: phoneWithCountryCode, // Salvar como: 5511999999999 (55 + DDD + número)
           organization_id: organization.id,
           role: invite?.role || 'member',
@@ -206,7 +206,7 @@ export default function InvitePage() {
         .update({
           default_split_percentage: inviteSplit,
           color: inviteColor,
-          name: formData.name // Garantir que o nome está correto
+          name: formData.name.trim() // Garantir que o nome está correto e sem espaços extras
         })
         .eq('user_id', user.id)
         .eq('organization_id', organization.id);

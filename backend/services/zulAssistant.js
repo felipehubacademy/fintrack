@@ -816,6 +816,12 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
             isShared = false;
           }
 
+          // Se for compartilhado, usar o nome da organização ao invés de "compartilhado"
+          if (isShared) {
+            owner = context.organizationName || 'Compartilhado';
+            ownerNorm = this.normalizeText(owner);
+          }
+
           if (!isShared && owner) {
             // Matching normalizado (case/acento) com suporte a primeiro nome e desambiguação
             const { data: centers } = await supabase
@@ -1352,8 +1358,8 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
           if (paymentMethod === 'credit_card' && installments > 1 && cardId) {
             console.log('💳 [SAVE] Criando parcelas usando RPC create_installments');
             
-            // Garantir que owner seja "Compartilhado" quando compartilhado
-            const ownerForRPC = isShared ? 'Compartilhado' : owner;
+            // owner já está correto (nome da organização quando compartilhado)
+            const ownerForRPC = owner;
             
             const rpcParams = {
               p_amount: Number(amount),
@@ -1397,20 +1403,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
               console.log('✅ [SAVE] Metadados atualizados (source=whatsapp)');
             }
             
-            // Atualizar owner para o nome correto se for compartilhado (a função já criou com "Compartilhado")
-            if (isShared && ownerForRPC !== owner) {
-              const { error: updateError } = await supabase
-                .from('expenses')
-                .update({ 
-                  owner: owner,
-                  is_shared: true 
-                })
-                .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
-              
-              if (updateError) {
-                console.warn('⚠️ [SAVE] Erro ao atualizar owner das parcelas:', updateError);
-              }
-            }
+            // Owner já está correto (nome da organização) quando compartilhado, não precisa atualizar
             
             // Atualizar available_limit do cartão (decrementar o valor total da compra)
             try {
@@ -2434,7 +2427,13 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       
       // Buscar cost_center_id
       let costCenterId = null;
-      const isShared = ownerNorm.includes('compartilhado');
+      let isShared = ownerNorm.includes('compartilhado');
+      
+      // Se for compartilhado, usar o nome da organização ao invés de "compartilhado"
+      if (isShared) {
+        owner = context.organizationName || 'Compartilhado';
+        ownerNorm = this.normalizeText(owner);
+      }
       
       if (!isShared && owner) {
         const { data: centers } = await supabase
@@ -2623,6 +2622,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         description: description,
         date: date || this.getBrazilDate(),
         category: finalCategory || null,
+        owner: owner, // ✅ Nome do responsável (cost center individual ou nome da organização quando compartilhado)
         cost_center_id: costCenterId,
         bank_account_id: bankAccountId, // ✅ OBRIGATÓRIO
         payment_method: paymentMethod, // ✅ Método de recebimento (cash, pix, deposit, bank_transfer, boleto, other)

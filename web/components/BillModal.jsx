@@ -259,11 +259,11 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
-        <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-lg">
+        <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
             {editingBill ? 'Editar Conta' : 'Nova Conta a Pagar'}
           </h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -272,8 +272,8 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         </div>
         
         {/* Conteúdo com scroll */}
-        <div className="flex-1 overflow-y-auto p-6 pt-0">
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-0">
+            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
               {/* Descrição */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -297,7 +297,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
               </div>
 
               {/* Valor e Data */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Valor *
@@ -346,7 +346,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
               </div>
 
               {/* Categoria e Centro de Custo */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Categoria
@@ -472,7 +472,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
               </div>
 
               {/* Método de Pagamento (Opcional) */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Método de Pagamento (Opcional)
@@ -524,19 +524,19 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         </div>
         
         {/* Footer fixo */}
-        <div className="flex justify-end space-x-3 p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-5 md:p-6 pt-3 sm:pt-4 md:pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={loading}
-            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
             Cancelar
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+            className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
             {loading ? 'Salvando...' : editingBill ? 'Atualizar' : 'Criar Conta'}
           </Button>
