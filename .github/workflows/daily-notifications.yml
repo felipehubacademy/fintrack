@@ -21,24 +21,30 @@ jobs:
       - name: Check Bills Due Tomorrow (Preventivo)
         # Executa nas 2x por dia (8h e 20h BRT) e em execuções manuais
         run: |
-          curl -X POST ${{ secrets.APP_URL }}/api/notifications/check-bills-due-tomorrow \
+          echo "🔔 Verificando contas vencendo amanhã..."
+          curl -v -X POST ${{ secrets.APP_URL }}/api/notifications/check-bills-due-tomorrow \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -w "\nHTTP Status: %{http_code}\n"
         continue-on-error: true
       
       - name: Check Bills Due Today
         # Executa às 6h BRT (9h UTC) para notificar contas vencendo hoje
         run: |
-          curl -X POST ${{ secrets.APP_URL }}/api/notifications/check-bills \
+          echo "🔔 Verificando contas vencendo hoje..."
+          curl -v -X POST ${{ secrets.APP_URL }}/api/notifications/check-bills \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -w "\nHTTP Status: %{http_code}\n"
         continue-on-error: true
       
       - name: Check Investment Goals
         run: |
-          curl -X POST ${{ secrets.APP_URL }}/api/notifications/check-investments \
+          echo "🎯 Verificando metas de investimento..."
+          curl -v -X POST ${{ secrets.APP_URL }}/api/notifications/check-investments \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -w "\nHTTP Status: %{http_code}\n"
         continue-on-error: true
       
       - name: Log status
