@@ -18,6 +18,36 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Verificar Secrets Configurados
+        run: |
+          echo "🔍 Verificando secrets necessários..."
+          echo ""
+          
+          # Verificar APP_URL
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "⚠️ APP_URL não configurado"
+            echo "   Usando fallback: https://fintrack-web.vercel.app"
+          else
+            echo "✅ APP_URL configurado"
+          fi
+          
+          # Verificar CRON_SECRET
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ CRON_SECRET não configurado"
+            echo "   Configure em: Settings > Secrets and variables > Actions"
+            echo ""
+            echo "💡 Para gerar um secret:"
+            echo "   openssl rand -hex 32"
+            echo ""
+            echo "⚠️ Workflow continuará, mas as chamadas falharão sem autenticação"
+          else
+            echo "✅ CRON_SECRET configurado"
+          fi
+          
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+      
       - name: Check Bills Due Tomorrow (Preventivo)
         # Executa nas 2x por dia (8h e 20h BRT) e em execuções manuais
         run: |
