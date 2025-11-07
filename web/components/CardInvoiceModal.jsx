@@ -143,26 +143,10 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
             console.log(`  📦 É parcela ${expense.installment_info.current_installment}/${expense.installment_info.total_installments} (data: ${parcelDate})`);
             
             // Calcular qual é o ciclo dessa data
-            // IMPORTANTE: Se a data é o dia de fechamento, ela pertence ao ciclo que FECHA neste dia
-            // Exemplo: parcela em 07/12 deve estar no ciclo 07/11-06/12 (que fecha em 07/12), não 07/12-06/01
             try {
-              const closingDay = card.closing_day || card.billing_day;
-              const parcelDateObj = new Date(parcelDate + 'T00:00:00');
-              let referenceDate = parcelDate;
-              
-              // Se a data é exatamente o dia de fechamento, usar o último dia do ciclo anterior
-              // Isso garante que a função retorne o ciclo que fecha neste dia
-              if (closingDay && parcelDateObj.getDate() === closingDay) {
-                // Usar o último dia do ciclo anterior (end_date) como referência
-                // Exemplo: se fecha em 07/12, usar 06/12 como referência para pegar o ciclo 07/11-06/12
-                const prevDate = new Date(parcelDateObj);
-                prevDate.setDate(prevDate.getDate() - 1);
-                referenceDate = prevDate.toISOString().split('T')[0];
-              }
-              
               const { data: parcelCycle, error: cycleError } = await supabase.rpc('get_billing_cycle', {
                 card_uuid: card.id,
-                reference_date: referenceDate
+                reference_date: parcelDate
               });
               
               if (cycleError) {
