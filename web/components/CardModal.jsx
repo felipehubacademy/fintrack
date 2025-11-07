@@ -42,7 +42,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
 
   useEffect(() => {
     if (editingCard) {
-      const creditLimit = parseFloat(editingCard.credit_limit || 0);
+      const creditLimit = editingCard.credit_limit || 0;
       
       // Converter cor hex do banco para classe CSS do formulário
       const cardColor = editingCard.color || '#3B82F6';
@@ -54,7 +54,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         holder_name: editingCard.holder_name || '',
         billing_day: editingCard.billing_day?.toString() || '',
         closing_day: editingCard.closing_day?.toString() || '',
-        credit_limit: creditLimit > 0 ? creditLimit.toString() : '',
+        credit_limit: creditLimit > 0 ? formatCurrencyInput(creditLimit) : '',
         color: cssColor
       });
     } else {
@@ -94,7 +94,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
       newErrors.best_day = 'Melhor dia deve ser entre 1 e 31';
     }
 
-    if (!formData.credit_limit || parseFloat(formData.credit_limit) <= 0) {
+    if (!formData.credit_limit || parseCurrencyInput(formData.credit_limit) <= 0) {
       newErrors.credit_limit = 'Limite deve ser maior que zero';
     }
 
@@ -117,7 +117,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
         ? (closingDay === 31 ? 1 : closingDay + 1)
         : null;
 
-      const creditLimit = parseFloat(formData.credit_limit);
+      const creditLimit = parseCurrencyInput(formData.credit_limit);
       
       // Converter classe CSS para hex antes de enviar
       const colorHex = CARD_COLORS.find(c => c.value === formData.color)?.hex || '#2563EB';
@@ -253,17 +253,33 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Limite de Crédito *
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.credit_limit}
-                onChange={(e) => handleChange('credit_limit', e.target.value)}
-                placeholder="5000.00"
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
-                  errors.credit_limit ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <input
+                  type="text"
+                  value={formData.credit_limit}
+                  onChange={(e) => handleCurrencyChange(e, (value) => handleChange('credit_limit', value))}
+                  onBlur={(e) => {
+                    // Garantir formatação completa ao sair do campo
+                    const value = e.target.value.trim();
+                    if (!value) {
+                      handleChange('credit_limit', '');
+                      return;
+                    }
+                    const parsed = parseCurrencyInput(value);
+                    if (parsed > 0) {
+                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      handleChange('credit_limit', formatted);
+                    } else {
+                      handleChange('credit_limit', '');
+                    }
+                  }}
+                  placeholder="0,00"
+                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
+                    errors.credit_limit ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+              </div>
               {errors.credit_limit && (
                 <p className="mt-1 text-sm text-red-600 flex items-center">
                   <AlertCircle className="h-4 w-4 mr-1" />

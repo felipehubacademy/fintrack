@@ -6,6 +6,7 @@ import { X, Calendar, CreditCard, ArrowRight, CheckCircle } from 'lucide-react';
 import MarkInvoiceAsPaidModal from './MarkInvoiceAsPaidModal';
 import { useOrganization } from '../hooks/useOrganization';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { getBrazilToday, createBrazilDate, isDateBeforeOrEqualToday } from '../lib/utils';
 
 export default function CardInvoiceModal({ isOpen, onClose, card }) {
   const { organization, user, costCenters } = useOrganization();
@@ -27,8 +28,12 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
     
     setLoading(true);
     try {
-      const today = new Date();
-      const refDate = today.toISOString().split('T')[0];
+      // Usar fuso horário do Brasil para calcular data de referência
+      const today = getBrazilToday();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const refDate = `${year}-${month}-${day}`;
 
       // Buscar ciclo atual para destacar na UI
       let startDate, endDate;
@@ -311,7 +316,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
       const expenseData = {
         description: invoiceDescription,
         amount: selectedInvoice.total,
-        date: new Date().toISOString().split('T')[0],
+        date: getBrazilTodayString(),
         category_id: category?.id || null,
         category: category?.name || null,
         cost_center_id: cost_center_id || null,
@@ -444,11 +449,9 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
           ) : (
             <div className="space-y-3">
               {invoices.map((invoice, index) => {
-                const isCurrentCycle = invoice.startDate === currentCycle?.start;
-                
-                // Calcular data de fechamento (dia seguinte ao end_date)
-                const closingDate = new Date(invoice.endDate + 'T00:00:00');
-                closingDate.setDate(closingDate.getDate() + 1); // Dia de fechamento = end_date + 1
+                // Calcular data de fechamento (dia seguinte ao end_date) no fuso do Brasil
+                const endDateBrazil = createBrazilDate(invoice.endDate);
+                const closingDate = new Date(endDateBrazil.getFullYear(), endDateBrazil.getMonth(), endDateBrazil.getDate() + 1); // Dia de fechamento = end_date + 1
                 
                 // Calcular data de vencimento: billing_day pode ser no mês de fechamento ou no mês seguinte
                 // Se o billing_day é menor que o dia de fechamento, o vencimento é no mês seguinte
@@ -463,14 +466,23 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                 }
                 
                 // Verificar se a fatura já fechou (data de fechamento <= hoje)
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const hasClosed = closingDate <= today;
+                // IMPORTANTE: Se fecha hoje, já consideramos como fechada
+                const today = getBrazilToday();
+                const closingDateNormalized = new Date(closingDate.getFullYear(), closingDate.getMonth(), closingDate.getDate());
+                const hasClosed = closingDateNormalized <= today;
+                
+                // Verificar se é o ciclo atual usando fuso do Brasil
+                // IMPORTANTE: Se a fatura já fechou, ela não pode ser o ciclo atual
+                const invoiceStartDate = createBrazilDate(invoice.startDate);
+                const invoiceStartDateNormalized = new Date(invoiceStartDate.getFullYear(), invoiceStartDate.getMonth(), invoiceStartDate.getDate());
+                const currentCycleStart = currentCycle?.start ? createBrazilDate(currentCycle.start) : null;
+                const currentCycleStartNormalized = currentCycleStart ? new Date(currentCycleStart.getFullYear(), currentCycleStart.getMonth(), currentCycleStart.getDate()) : null;
+                
+                // Se a fatura já fechou, ela não é mais o ciclo atual
+                const isCurrentCycle = !hasClosed && currentCycleStartNormalized && invoiceStartDateNormalized.getTime() === currentCycleStartNormalized.getTime();
                 
                 // Verificar se é fatura futura (ainda não chegou no período)
-                const invoiceStartDate = new Date(invoice.startDate + 'T00:00:00');
-                invoiceStartDate.setHours(0, 0, 0, 0);
-                const isFuture = invoiceStartDate > today;
+                const isFuture = invoiceStartDateNormalized > today;
                 
                 // Mostrar botão apenas se a fatura fechou (não é atual e não é futura)
                 const canMarkAsPaid = hasClosed && !isCurrentCycle && !isFuture;

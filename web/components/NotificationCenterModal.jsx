@@ -51,23 +51,33 @@ export default function NotificationCenterModal({ isOpen, onClose, userId, organ
     currentPage * itemsPerPage
   );
 
-  // Agrupar por data
+  // Agrupar por data usando fuso horário do Brasil
   const groupedNotifications = {};
+  const today = getBrazilToday();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  
   paginatedNotifications.forEach(notification => {
-    const date = new Date(notification.created_at);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    // Converter created_at para data no fuso do Brasil
+    const notificationDate = new Date(notification.created_at);
+    // Criar data normalizada (sem hora) no fuso local
+    const notificationDateNormalized = new Date(
+      notificationDate.getFullYear(),
+      notificationDate.getMonth(),
+      notificationDate.getDate()
+    );
     
     let groupKey;
-    if (date.toDateString() === today.toDateString()) {
+    if (notificationDateNormalized.getTime() === today.getTime()) {
       groupKey = 'Hoje';
-    } else if (date.toDateString() === yesterday.toDateString()) {
+    } else if (notificationDateNormalized.getTime() === yesterday.getTime()) {
       groupKey = 'Ontem';
-    } else if (date >= new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)) {
+    } else if (notificationDateNormalized >= weekAgo) {
       groupKey = 'Esta Semana';
     } else {
-      groupKey = date.toLocaleDateString('pt-BR', { 
+      groupKey = notificationDate.toLocaleDateString('pt-BR', { 
         year: 'numeric', 
         month: 'long' 
       });

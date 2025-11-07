@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+import { getBrazilTodayString, getBrazilTomorrowString } from '../../../lib/dateUtils';
 
 // Criar cliente Supabase com service role para API routes
 const supabase = createClient(
@@ -191,11 +192,9 @@ export default async function handler(req, res) {
   console.log('✅ [check-bills-due-tomorrow] Autenticação OK, processando...');
 
   try {
-    // Calcular data de amanhã
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Calcular data de amanhã no fuso horário do Brasil
+    const tomorrowStr = getBrazilTomorrowString();
+    const todayStr = getBrazilTodayString();
 
     console.log(`📅 Buscando contas vencendo amanhã (${tomorrowStr})...`);
 

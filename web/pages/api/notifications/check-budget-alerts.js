@@ -7,6 +7,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import ZulMessages from '../../../services/zulMessages.js';
+import { getBrazilTodayString } from '../../../lib/dateUtils';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -59,7 +60,9 @@ export default async function handler(req, res) {
     console.log('🔍 Iniciando verificação de alertas de orçamento...');
 
     const zulMessages = new ZulMessages();
-    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    // Usar fuso horário do Brasil
+    const today = getBrazilTodayString();
+    const currentMonth = today.slice(0, 7); // YYYY-MM
 
     // Buscar todos os orçamentos ativos do mês atual
     const { data: budgets, error: budgetError } = await supabase
@@ -117,7 +120,7 @@ export default async function handler(req, res) {
         }
 
         // Verificar se já foi enviado alerta para este orçamento hoje
-        const today = new Date().toISOString().split('T')[0];
+        // Usar fuso horário do Brasil (já calculado acima)
         const { data: existingAlerts } = await supabase
           .from('notification_history')
           .select('id')

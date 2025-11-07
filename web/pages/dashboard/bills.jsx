@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import { getBrazilToday, createBrazilDate } from '../../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -51,7 +52,14 @@ export default function BillsDashboard() {
   const [billToDelete, setBillToDelete] = useState(null);
   const [billToMarkAsPaid, setBillToMarkAsPaid] = useState(null);
   const [selectedOwnerForBill, setSelectedOwnerForBill] = useState(null); // { cost_center_id, is_shared }
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // Mês atual
+  // Inicializar mês atual no fuso do Brasil
+  const getCurrentMonth = () => {
+    const today = getBrazilToday();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  };
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth()); // Mês atual no fuso do Brasil
   const [selectedBills, setSelectedBills] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -71,17 +79,9 @@ export default function BillsDashboard() {
     setSelectedBills([]);
   }, [filter, filterCategory, filterOwner, searchQuery, selectedMonth]);
 
-  // Helper para criar data local a partir de string "YYYY-MM-DD"
-  const createLocalDate = (dateString) => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day); // month é 0-indexed
-  };
-
-  // Helper para obter data de hoje no timezone local
-  const getTodayLocal = () => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  };
+  // Usar funções de fuso horário do Brasil
+  const createLocalDate = createBrazilDate;
+  const getTodayLocal = getBrazilToday;
 
   const fetchBills = async () => {
     setIsDataLoaded(false);

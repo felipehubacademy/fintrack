@@ -6,6 +6,7 @@ import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import HelpTooltip from './ui/HelpTooltip';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
 
 export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = [] }) {
   
@@ -29,7 +30,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   const [form, setForm] = useState({
     description: '',
     amount: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: getBrazilTodayString(),
     category_id: '',
     owner_name: '',
     payment_method: 'cash',
@@ -146,7 +147,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   // Recalcular valores quando amount ou percentuais mudarem
   useEffect(() => {
     if (isShared && form.amount && splitDetails.length > 0) {
-      const totalAmount = parseFloat(form.amount) || 0;
+      const totalAmount = parseCurrencyInput(form.amount) || 0;
       console.log('🔍 [EXPENSE MODAL] Recalculating splits for amount:', totalAmount);
       console.log('🔍 [EXPENSE MODAL] Current splitDetails before recalculation:', splitDetails);
       
@@ -163,7 +164,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   // Recriar splitDetails quando showSplitConfig muda para true
   useEffect(() => {
     if (isShared && showSplitConfig && splitDetails.length === 0) {
-      const totalAmount = parseFloat(form.amount) || 0;
+      const totalAmount = parseCurrencyInput(form.amount) || 0;
       const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
       const defaultSplits = activeCenters.map(cc => ({
         cost_center_id: cc.id,
@@ -270,7 +271,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         
         // Call create_installments RPC
         const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
-          p_amount: Number(form.amount),
+          p_amount: parseCurrencyInput(form.amount),
           p_installments: Number(form.installments),
           p_description: form.description.trim(),
           p_date: form.date,
@@ -313,7 +314,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
             
             if (card) {
               const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
-              const newAvailable = Math.max(0, currentAvailable - Number(form.amount));
+              const newAvailable = Math.max(0, currentAvailable - parseCurrencyInput(form.amount));
               
               await supabase
                 .from('cards')
@@ -359,7 +360,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           is_shared: willBeShared, // Usar willBeShared calculado acima
           category_id: category?.id || null,
           category: category?.name || null,
-          amount: Number(form.amount),
+          amount: parseCurrencyInput(form.amount),
           description: form.description.trim(),
           date: form.date,
           payment_method: form.payment_method,
@@ -392,7 +393,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
             
             if (card) {
               const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
-              const newAvailable = Math.max(0, currentAvailable - Number(form.amount));
+              const newAvailable = Math.max(0, currentAvailable - parseCurrencyInput(form.amount));
               
               await supabase
                 .from('cards')
@@ -471,14 +472,31 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Valor *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  placeholder="0.00"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <input
+                    type="text"
+                    value={form.amount}
+                    onChange={(e) => handleCurrencyChange(e, (value) => setForm({ ...form, amount: value }))}
+                    onBlur={(e) => {
+                      // Garantir formatação completa ao sair do campo
+                      const value = e.target.value.trim();
+                      if (!value) {
+                        setForm({ ...form, amount: '' });
+                        return;
+                      }
+                      const parsed = parseCurrencyInput(value);
+                      if (parsed > 0) {
+                        const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        setForm({ ...form, amount: formatted });
+                      } else {
+                        setForm({ ...form, amount: '' });
+                      }
+                    }}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                    placeholder="0,00"
+                  />
+                </div>
               </div>
 
               <div>

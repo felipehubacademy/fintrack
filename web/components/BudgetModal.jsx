@@ -3,6 +3,7 @@ import { X, Plus, AlertCircle } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
 
 const BudgetModal = ({ 
   isOpen, 
@@ -27,7 +28,7 @@ const BudgetModal = ({
     if (budget) {
       setFormData({
         category_id: budget.category_id || '',
-        limit_amount: budget.amount?.toString() || '',
+        limit_amount: budget.amount ? formatCurrencyInput(budget.amount) : '',
         category_name: budget.category || ''
       });
     } else {
@@ -174,16 +175,32 @@ const BudgetModal = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Valor do Orçamento (R$) *
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.limit_amount}
-                onChange={(e) => setFormData({ ...formData, limit_amount: e.target.value })}
-                placeholder="Ex: 1000.00"
-                className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                required
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <input
+                  type="text"
+                  value={formData.limit_amount}
+                  onChange={(e) => handleCurrencyChange(e, (value) => setFormData({ ...formData, limit_amount: value }))}
+                  onBlur={(e) => {
+                    // Garantir formatação completa ao sair do campo
+                    const value = e.target.value.trim();
+                    if (!value) {
+                      setFormData({ ...formData, limit_amount: '' });
+                      return;
+                    }
+                    const parsed = parseCurrencyInput(value);
+                    if (parsed > 0) {
+                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      setFormData({ ...formData, limit_amount: formatted });
+                    } else {
+                      setFormData({ ...formData, limit_amount: '' });
+                    }
+                  }}
+                  placeholder="0,00"
+                  className="w-full pl-10 pr-3 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  required
+                />
+              </div>
             </div>
 
             {/* Mês */}

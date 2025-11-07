@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X, Users, User } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
 
 export default function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction = null, categories = [] }) {
   const { organization, user: orgUser, costCenters, incomeCategories, isSoloUser, loading: orgLoading } = useOrganization();
@@ -18,7 +19,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
   const [form, setForm] = useState({
     description: '',
     amount: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: getBrazilTodayString(),
     category_id: '',
     category: '', // Para incomes
     owner_name: '',
@@ -47,7 +48,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         setForm({
           description: editingTransaction.description || '',
           amount: editingTransaction.amount?.toString() || '',
-          date: editingTransaction.date || new Date().toISOString().slice(0, 10),
+          date: editingTransaction.date || getBrazilTodayString(),
           category: editingTransaction.category || '',
           owner_name: ownerName,
           category_id: '',
@@ -91,7 +92,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         setForm({
           description: editingTransaction.description || '',
           amount: editingTransaction.amount?.toString() || '',
-          date: editingTransaction.date || new Date().toISOString().slice(0, 10),
+          date: editingTransaction.date || getBrazilTodayString(),
           category_id: editingTransaction.category_id || '',
           owner_name: ownerName,
           payment_method: editingTransaction.payment_method || 'cash',
@@ -187,7 +188,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
   useEffect(() => {
     if (isShared && form.amount && splitDetails.length > 0) {
-      const totalAmount = parseFloat(form.amount) || 0;
+      const totalAmount = parseCurrencyInput(form.amount) || 0;
       const updatedSplits = splitDetails.map(split => ({
         ...split,
         amount: (totalAmount * split.percentage) / 100
@@ -231,7 +232,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     setForm({
       description: '',
       amount: '',
-      date: new Date().toISOString().slice(0, 10),
+      date: getBrazilTodayString(),
       category_id: '',
       category: '',
       owner_name: '',
@@ -306,7 +307,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             .from('incomes')
             .update({
               description: form.description.trim(),
-              amount: parseFloat(form.amount),
+              amount: parseCurrencyInput(form.amount),
               date: form.date,
               category: form.category ? form.category.trim() : null,
               owner: form.owner_name ? form.owner_name.trim() : (willBeShared ? (organization?.name || 'Compartilhado') : null),
@@ -393,7 +394,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
               const sameAccount = existingTransactions.find(t => t.bank_account_id === form.bank_account_id);
               if (sameAccount) {
                 // Se o valor mudou, deletar e recriar
-                if (parseFloat(sameAccount.amount) !== parseFloat(form.amount)) {
+                if (parseFloat(sameAccount.amount) !== parseCurrencyInput(form.amount)) {
                   console.log('🔄 Valor mudou, removendo e recriando transação...');
                   await supabase
                     .from('bank_account_transactions')
@@ -412,7 +413,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             const { data: transactionData, error: transError } = await supabase.rpc('create_bank_transaction', {
               p_bank_account_id: form.bank_account_id,
               p_transaction_type: 'income_deposit',
-              p_amount: parseFloat(form.amount),
+              p_amount: parseCurrencyInput(form.amount),
               p_description: form.description.trim(),
               p_date: form.date,
               p_organization_id: organization.id,
@@ -500,7 +501,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           });
           
           const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
-            p_amount: Number(form.amount),
+            p_amount: parseCurrencyInput(form.amount),
             p_installments: Number(form.installments),
             p_description: form.description.trim(),
             p_date: form.date,
@@ -550,7 +551,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
               
               if (card) {
                 const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
-                const newAvailable = Math.max(0, currentAvailable - Number(form.amount));
+                const newAvailable = Math.max(0, currentAvailable - parseCurrencyInput(form.amount));
                 
                 await supabase
                   .from('cards')
@@ -586,7 +587,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             is_shared: willBeShared, // Usar willBeShared calculado acima
             category_id: category?.id || null,
             category: category?.name || null,
-            amount: Number(form.amount),
+            amount: parseCurrencyInput(form.amount),
             description: form.description.trim(),
             date: form.date,
             payment_method: form.payment_method,
@@ -646,8 +647,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
               if (card) {
                 const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
                 const amountChange = editingTransaction 
-                  ? (Number(form.amount) - Number(editingTransaction.amount || 0)) // Diferença se editando
-                  : Number(form.amount); // Valor total se criando
+                  ? (parseCurrencyInput(form.amount) - Number(editingTransaction.amount || 0)) // Diferença se editando
+                  : parseCurrencyInput(form.amount); // Valor total se criando
                 
                 const newAvailable = Math.max(0, currentAvailable - amountChange);
                 
@@ -774,14 +775,31 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Valor *</label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                placeholder="0.00"
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <input
+                  type="text"
+                  value={form.amount}
+                  onChange={(e) => handleCurrencyChange(e, (value) => setForm({ ...form, amount: value }))}
+                  onBlur={(e) => {
+                    // Garantir formatação completa ao sair do campo
+                    const value = e.target.value.trim();
+                    if (!value) {
+                      setForm({ ...form, amount: '' });
+                      return;
+                    }
+                    const parsed = parseCurrencyInput(value);
+                    if (parsed > 0) {
+                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      setForm({ ...form, amount: formatted });
+                    } else {
+                      setForm({ ...form, amount: '' });
+                    }
+                  }}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  placeholder="0,00"
+                />
+              </div>
             </div>
 
             <div>

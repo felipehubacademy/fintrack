@@ -4,6 +4,7 @@ import { Button } from './ui/Button';
 import ConfirmationModal from './ConfirmationModal';
 import { X, AlertCircle, Calendar, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { getBrazilToday, createBrazilDate, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
 
 const PAYMENT_METHODS = [
   { value: 'pix', label: 'PIX' },
@@ -51,11 +52,11 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       
       // Se não tiver status definido, determinar baseado na due_date
       if (!editingBill.status) {
-        const dueDate = new Date(editingBill.due_date + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        dueDate.setHours(0, 0, 0, 0);
-        if (dueDate < today) {
+        // Usar fuso horário do Brasil para comparação
+        const dueDate = createBrazilDate(editingBill.due_date);
+        const today = getBrazilToday();
+        const dueDateNormalized = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        if (dueDateNormalized < today) {
           status = 'overdue';
         } else {
           status = 'pending';
@@ -64,7 +65,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       
       setFormData({
         description: editingBill.description || '',
-        amount: editingBill.amount?.toString() || '',
+        amount: editingBill.amount ? formatCurrencyInput(editingBill.amount) : '',
         due_date: editingBill.due_date || '',
         category_id: editingBill.category_id || '',
         cost_center_id: editingBill.cost_center_id || '',
@@ -108,7 +109,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       newErrors.description = 'Descrição é obrigatória';
     }
 
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    if (!formData.amount || parseCurrencyInput(formData.amount) <= 0) {
       newErrors.amount = 'Valor deve ser maior que zero';
     }
 
@@ -147,7 +148,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       
       const billData = {
         description: formData.description.trim(),
-        amount: parseFloat(formData.amount),
+        amount: parseCurrencyInput(formData.amount),
         due_date: formData.due_date,
         category_id: formData.category_id || null,
         cost_center_id: formData.is_shared ? null : (formData.cost_center_id || null),
@@ -293,14 +294,27 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                     Valor *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-gray-500">R$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
                       value={formData.amount}
-                      onChange={(e) => handleChange('amount', e.target.value)}
-                      placeholder="0.00"
+                      onChange={(e) => handleCurrencyChange(e, (value) => handleChange('amount', value))}
+                      onBlur={(e) => {
+                        // Garantir formatação completa ao sair do campo
+                        const value = e.target.value.trim();
+                        if (!value) {
+                          handleChange('amount', '');
+                          return;
+                        }
+                        const parsed = parseCurrencyInput(value);
+                        if (parsed > 0) {
+                          const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          handleChange('amount', formatted);
+                        } else {
+                          handleChange('amount', '');
+                        }
+                      }}
+                      placeholder="0,00"
                       className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                         errors.amount ? 'border-red-500' : 'border-gray-300'
                       }`}

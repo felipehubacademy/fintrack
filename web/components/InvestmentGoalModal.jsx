@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X, AlertCircle, Target, Calendar } from 'lucide-react';
+import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
 
 const FREQUENCY_OPTIONS = [
   { value: 'monthly', label: 'Mensal', daysLabel: 'Dia do mês' },
@@ -31,7 +32,7 @@ export default function InvestmentGoalModal({
     if (editingGoal) {
       setFormData({
         name: editingGoal.name || '',
-        target_amount: editingGoal.target_amount?.toString() || '',
+        target_amount: editingGoal.target_amount ? formatCurrencyInput(editingGoal.target_amount) : '',
         frequency: editingGoal.frequency || 'monthly',
         due_day: editingGoal.due_day?.toString() || '',
         cost_center_id: editingGoal.cost_center_id || ''
@@ -59,7 +60,7 @@ export default function InvestmentGoalModal({
       newErrors.name = 'Nome da meta é obrigatório';
     }
 
-    if (!formData.target_amount || parseFloat(formData.target_amount) <= 0) {
+    if (!formData.target_amount || parseCurrencyInput(formData.target_amount) <= 0) {
       newErrors.target_amount = 'Valor da meta deve ser maior que zero';
     }
 
@@ -87,7 +88,7 @@ export default function InvestmentGoalModal({
     try {
       const goalData = {
         name: formData.name.trim(),
-        target_amount: parseFloat(formData.target_amount),
+        target_amount: parseCurrencyInput(formData.target_amount),
         frequency: formData.frequency,
         due_day: parseInt(formData.due_day),
         cost_center_id: formData.cost_center_id || null,
@@ -166,14 +167,27 @@ export default function InvestmentGoalModal({
                   Valor da Meta (por período) *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
                     value={formData.target_amount}
-                    onChange={(e) => handleChange('target_amount', e.target.value)}
-                    placeholder="0.00"
+                    onChange={(e) => handleCurrencyChange(e, (value) => handleChange('target_amount', value))}
+                    onBlur={(e) => {
+                      // Garantir formatação completa ao sair do campo
+                      const value = e.target.value.trim();
+                      if (!value) {
+                        handleChange('target_amount', '');
+                        return;
+                      }
+                      const parsed = parseCurrencyInput(value);
+                      if (parsed > 0) {
+                        const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        handleChange('target_amount', formatted);
+                      } else {
+                        handleChange('target_amount', '');
+                      }
+                    }}
+                    placeholder="0,00"
                     className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                       errors.target_amount ? 'border-red-500' : 'border-gray-300'
                     }`}

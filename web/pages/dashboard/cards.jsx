@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import { getBrazilToday } from '../../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -105,8 +106,12 @@ export default function CardsDashboard() {
 
   // Calcular uso por cartão no ciclo de faturamento atual
   const calculateAllCardsUsage = async (cardsList) => {
-    const today = new Date();
-    const refDate = today.toISOString().split('T')[0];
+    // Usar fuso horário do Brasil
+    const today = getBrazilToday();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const refDate = `${year}-${month}-${day}`;
 
     const entries = await Promise.all(
       cardsList.map(async (card) => {

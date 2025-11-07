@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabaseClient';
 import axios from 'axios';
+import { getBrazilTodayString } from '../../../lib/dateUtils';
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
@@ -73,10 +74,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const today = new Date();
+    // Usar fuso horário do Brasil
+    const todayISO = getBrazilTodayString();
+    const today = new Date(todayISO + 'T00:00:00');
     const dayOfMonth = today.getDate();
     const dayOfWeek = today.getDay();
-    const todayISO = today.toISOString().split('T')[0];
 
     // Buscar metas ativas
     const { data: goals, error: goalsError } = await supabase

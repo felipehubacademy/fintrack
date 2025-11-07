@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader } from './ui/Card';
 import { X, ArrowRight } from 'lucide-react';
@@ -13,7 +14,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
     to_account_id: '',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0]
+    date: getBrazilTodayString()
   });
   
   const [availableAccounts, setAvailableAccounts] = useState([]);
@@ -53,7 +54,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
       to_account_id: '',
       amount: '',
       description: '',
-      date: new Date().toISOString().split('T')[0]
+      date: getBrazilTodayString()
     });
   };
 
@@ -69,7 +70,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
       return;
     }
 
-    if (parseFloat(formData.amount) <= 0) {
+    if (parseCurrencyInput(formData.amount) <= 0) {
       warning('O valor deve ser maior que zero');
       return;
     }
@@ -86,7 +87,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
       const { data, error } = await supabase.rpc('transfer_between_accounts', {
         p_from_account_id: account.id,
         p_to_account_id: formData.to_account_id,
-        p_amount: parseFloat(formData.amount),
+        p_amount: parseCurrencyInput(formData.amount),
         p_description: formData.description || 'Transferência entre contas',
         p_date: formData.date,
         p_organization_id: organizationId,
@@ -180,16 +181,32 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Valor (R$) *
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={formData.amount}
-                  onChange={(e) => handleChange('amount', e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  required
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <input
+                    type="text"
+                    value={formData.amount}
+                    onChange={(e) => handleCurrencyChange(e, (value) => handleChange('amount', value))}
+                    onBlur={(e) => {
+                      // Garantir formatação completa ao sair do campo
+                      const value = e.target.value.trim();
+                      if (!value) {
+                        handleChange('amount', '');
+                        return;
+                      }
+                      const parsed = parseCurrencyInput(value);
+                      if (parsed > 0) {
+                        const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        handleChange('amount', formatted);
+                      } else {
+                        handleChange('amount', '');
+                      }
+                    }}
+                    placeholder="0,00"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                    required
+                  />
+                </div>
               </div>
 
               {/* Data */}

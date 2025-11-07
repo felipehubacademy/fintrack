@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useOrganization } from '../hooks/useOrganization';
+import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
 
 export default function EditExpenseModal({ 
   isOpen, 
@@ -98,7 +99,7 @@ export default function EditExpenseModal({
         description: data.description || '',
         category_id: data.category_id || '', // Usar category_id
         payment_method: data.payment_method || '',
-        amount: data.amount || '',
+        amount: data.amount ? formatCurrencyInput(data.amount) : '',
         date: data.date || ''
       });
 
@@ -164,7 +165,7 @@ export default function EditExpenseModal({
   // Recalcular valores quando amount ou percentuais mudarem
   useEffect(() => {
     if (isShared && editData.amount && splitDetails.length > 0) {
-      const totalAmount = parseFloat(editData.amount) || 0;
+      const totalAmount = parseCurrencyInput(editData.amount) || 0;
       console.log('🔍 [EDIT EXPENSE MODAL] Recalculating splits for amount:', totalAmount);
       console.log('🔍 [EDIT EXPENSE MODAL] Current splitDetails before recalculation:', splitDetails);
       
@@ -181,7 +182,7 @@ export default function EditExpenseModal({
   // Recriar splitDetails quando showSplitConfig muda para true
   useEffect(() => {
     if (isShared && showSplitConfig && splitDetails.length === 0) {
-      const totalAmount = parseFloat(editData.amount) || 0;
+      const totalAmount = parseCurrencyInput(editData.amount) || 0;
       const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
       const defaultSplits = activeCenters.map(cc => ({
         cost_center_id: cc.id,
@@ -254,7 +255,7 @@ export default function EditExpenseModal({
           category_id: editData.category_id || null, // Salvar category_id
           category: category?.name || null, // Salvar também o nome (legado)
           payment_method: editData.payment_method,
-          amount: parseFloat(editData.amount),
+          amount: parseCurrencyInput(editData.amount),
           date: editData.date
         })
         .eq('id', expenseId);
@@ -351,14 +352,31 @@ export default function EditExpenseModal({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Valor *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editData.amount}
-                  onChange={(e) => setEditData({ ...editData, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  placeholder="0.00"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <input
+                    type="text"
+                    value={editData.amount}
+                    onChange={(e) => handleCurrencyChange(e, (value) => setEditData({ ...editData, amount: value }))}
+                    onBlur={(e) => {
+                      // Garantir formatação completa ao sair do campo
+                      const value = e.target.value.trim();
+                      if (!value) {
+                        setEditData({ ...editData, amount: '' });
+                        return;
+                      }
+                      const parsed = parseCurrencyInput(value);
+                      if (parsed > 0) {
+                        const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        setEditData({ ...editData, amount: formatted });
+                      } else {
+                        setEditData({ ...editData, amount: '' });
+                      }
+                    }}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                    placeholder="0,00"
+                  />
+                </div>
               </div>
 
               <div>

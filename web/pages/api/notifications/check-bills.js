@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabaseClient';
 import axios from 'axios';
+import { getBrazilTodayString } from '../../../lib/dateUtils';
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
@@ -73,7 +74,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    // Usar fuso horário do Brasil
+    const today = getBrazilTodayString();
 
     // Buscar contas vencendo hoje que ainda não foram notificadas
     const { data: bills, error: billsError } = await supabase
