@@ -203,7 +203,7 @@ export default function TransactionsDashboard() {
 
       if (filter.owner !== 'all') {
         // Usar normalização para filtrar por responsável
-        const { data: allExpenses } = await supabase
+        let allExpensesQuery = supabase
           .from('expenses')
           .select(`
             *,
@@ -217,7 +217,18 @@ export default function TransactionsDashboard() {
             )
           `)
           .eq('status', 'confirmed')
-          .eq('organization_id', organization.id)
+          .eq('organization_id', organization.id);
+        
+        // Aplicar filtro de mês também na busca de owner
+        if (filter.month) {
+          const startOfMonth = `${filter.month}-01`;
+          const [year, month] = filter.month.split('-');
+          const lastDay = new Date(year, month, 0).getDate();
+          const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+          allExpensesQuery = allExpensesQuery.gte('date', startOfMonth).lte('date', endOfMonthStr);
+        }
+        
+        const { data: allExpenses } = await allExpensesQuery
           .order('date', { ascending: false })
           .order('created_at', { ascending: false }); // Desempate cronológico
         
@@ -258,13 +269,30 @@ export default function TransactionsDashboard() {
 
       if (error) throw error;
 
+      // Debug: verificar se há despesas fora do mês selecionado
+      if (filter.month && data) {
+        const startOfMonth = `${filter.month}-01`;
+        const [year, month] = filter.month.split('-');
+        const lastDay = new Date(year, month, 0).getDate();
+        const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+        const expensesInMonth = data.filter(e => e.date >= startOfMonth && e.date <= endOfMonthStr);
+        const expensesOutOfMonth = data.filter(e => e.date < startOfMonth || e.date > endOfMonthStr);
+        
+        if (expensesOutOfMonth.length > 0) {
+          console.warn('⚠️ [FINANCE] Despesas fora do mês selecionado encontradas:', {
+            month: filter.month,
+            inMonth: expensesInMonth.length,
+            outOfMonth: expensesOutOfMonth.length,
+            outOfMonthDates: expensesOutOfMonth.map(e => ({ id: e.id, date: e.date, amount: e.amount }))
+          });
+        }
+      }
+      
       console.log('🔍 [FINANCE] Query result:', {
         dataLength: data?.length || 0,
-        data: data,
         filter,
         organizationId: organization?.id,
-        isV2Ready,
-        queryString: query.toString()
+        isV2Ready
       });
 
       // Dados sem filtro de privacidade (tudo visível)
@@ -873,7 +901,21 @@ export default function TransactionsDashboard() {
             if (ownerCostCenter) {
               const split = e.expense_splits.find(s => s.cost_center_id === ownerCostCenter.id);
               if (split) {
-                total += parseFloat(split.amount || 0);
+                const expenseAmount = parseFloat(e.amount || 0);
+                const splitAmount = parseFloat(split.amount || 0);
+                const totalSplitsAmount = e.expense_splits.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+                
+                // Se os splits somam mais que o valor da despesa (dados incorretos),
+                // calcular proporcionalmente baseado no valor da despesa
+                if (totalSplitsAmount > expenseAmount && expenseAmount > 0) {
+                  // Calcular proporção do split em relação ao total dos splits
+                  const splitPercentage = splitAmount / totalSplitsAmount;
+                  // Aplicar essa proporção ao valor real da despesa
+                  total += expenseAmount * splitPercentage;
+                } else {
+                  // Caso normal: usar o valor do split diretamente
+                  total += splitAmount;
+                }
               }
             }
           } else {
@@ -990,7 +1032,7 @@ export default function TransactionsDashboard() {
                     incomes
                       .filter(i => i.status === 'confirmed')
                       .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0)
-                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Total de todas as entradas
@@ -1034,7 +1076,7 @@ export default function TransactionsDashboard() {
                         <span className="text-gray-700">{cc.name}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         <span className="text-gray-500 ml-2">{percentage}%</span>
                       </div>
                     </div>
@@ -1063,9 +1105,20 @@ export default function TransactionsDashboard() {
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   - R$ {Number(
                     expenses
-                      .filter(e => e.status === 'confirmed')
+                      .filter(e => {
+                        if (e.status !== 'confirmed') return false;
+                        // Aplicar filtro de mês se existir
+                        if (filter.month) {
+                          const startOfMonth = `${filter.month}-01`;
+                          const [year, month] = filter.month.split('-');
+                          const lastDay = new Date(year, month, 0).getDate();
+                          const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+                          return e.date >= startOfMonth && e.date <= endOfMonthStr;
+                        }
+                        return true;
+                      })
                       .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
-                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Total de todas as despesas
@@ -1109,7 +1162,7 @@ export default function TransactionsDashboard() {
                           <span className="text-gray-700 font-medium">À Vista</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
                         </div>
                       </div>
@@ -1119,7 +1172,7 @@ export default function TransactionsDashboard() {
                           <span className="text-gray-700 font-medium">Crédito</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
                         </div>
                       </div>
@@ -1150,9 +1203,20 @@ export default function TransactionsDashboard() {
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     - R$ {Number(
                       expenses
-                        .filter(e => e.status === 'confirmed')
+                        .filter(e => {
+                          if (e.status !== 'confirmed') return false;
+                          // Aplicar filtro de mês se existir
+                          if (filter.month) {
+                            const startOfMonth = `${filter.month}-01`;
+                            const [year, month] = filter.month.split('-');
+                            const lastDay = new Date(year, month, 0).getDate();
+                            const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+                            return e.date >= startOfMonth && e.date <= endOfMonthStr;
+                          }
+                          return true;
+                        })
                         .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
-                    ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Total de todas as despesas
@@ -1194,7 +1258,7 @@ export default function TransactionsDashboard() {
                             <span className="text-gray-700 font-medium">À Vista</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                            <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
                           </div>
                         </div>
@@ -1204,7 +1268,7 @@ export default function TransactionsDashboard() {
                             <span className="text-gray-700 font-medium">Crédito</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                            <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
                           </div>
                         </div>
@@ -1217,37 +1281,138 @@ export default function TransactionsDashboard() {
           )}
 
           {/* StatsCards por Responsável - Apenas para contas familiares - DENTRO DO MESMO GRID */}
+          {!isSoloUser && costCenters && (() => {
+            // Debug: calcular total geral uma vez antes do map
+            const allExpensesInMonth = expenses.filter(e => e.status === 'confirmed' && (filter.month ? (() => {
+              const startOfMonth = `${filter.month}-01`;
+              const [year, month] = filter.month.split('-');
+              const lastDay = new Date(year, month, 0).getDate();
+              const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+              return e.date >= startOfMonth && e.date <= endOfMonthStr;
+            })() : true));
+            const totalGeral = allExpensesInMonth.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            const individuais = allExpensesInMonth.filter(e => !e.is_shared && !e.expense_splits?.length).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            const compartilhadas = allExpensesInMonth.filter(e => e.is_shared || e.expense_splits?.length).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            console.log('🔍 [TRANSACTIONS] Total Geral do Mês:', {
+              totalGeral,
+              individuais,
+              compartilhadas,
+              countIndividuais: allExpensesInMonth.filter(e => !e.is_shared && !e.expense_splits?.length).length,
+              countCompartilhadas: allExpensesInMonth.filter(e => e.is_shared || e.expense_splits?.length).length,
+              filterMonth: filter.month
+            });
+            return null;
+          })()}
           {!isSoloUser && costCenters && costCenters.filter(cc => cc && cc.is_active !== false && !cc.is_shared).map((cc) => {
-            // Despesas individuais deste responsável
+            // Função auxiliar para verificar se a despesa está no mês selecionado
+            const isInSelectedMonth = (e) => {
+              if (!filter.month) return true;
+              const startOfMonth = `${filter.month}-01`;
+              const [year, month] = filter.month.split('-');
+              const lastDay = new Date(year, month, 0).getDate();
+              const endOfMonthStr = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+              return e.date >= startOfMonth && e.date <= endOfMonthStr;
+            };
+            
+            // Despesas individuais deste responsável (apenas do mês selecionado)
             const individualExpenses = expenses
-              .filter(e => e.status === 'confirmed' && !e.is_shared && e.cost_center_id === cc.id)
+              .filter(e => e.status === 'confirmed' && !e.is_shared && e.cost_center_id === cc.id && isInSelectedMonth(e))
               .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
             
-            // Parte deste responsável nas despesas compartilhadas
+            // Parte deste responsável nas despesas compartilhadas (apenas do mês selecionado)
             let sharedExpenses = 0;
-            expenses
-              .filter(e => e.status === 'confirmed' && (e.is_shared || e.expense_splits?.length > 0))
-              .forEach(e => {
-                if (e.expense_splits && e.expense_splits.length > 0) {
-                  // Usar splits personalizados
-                  const split = e.expense_splits.find(s => s.cost_center_id === cc.id);
-                  if (split) {
-                    sharedExpenses += parseFloat(split.amount || 0);
+            const sharedExpensesInMonth = expenses.filter(e => 
+              e.status === 'confirmed' && 
+              (e.is_shared || e.expense_splits?.length > 0) && 
+              isInSelectedMonth(e)
+            );
+            
+            sharedExpensesInMonth.forEach(e => {
+              if (e.expense_splits && e.expense_splits.length > 0) {
+                // Usar splits personalizados
+                const split = e.expense_splits.find(s => s.cost_center_id === cc.id);
+                if (split) {
+                  const expenseAmount = parseFloat(e.amount || 0);
+                  const splitAmount = parseFloat(split.amount || 0);
+                  const totalSplitsAmount = e.expense_splits.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+                  
+                  // Se os splits somam mais que o valor da despesa (dados incorretos),
+                  // calcular proporcionalmente baseado no valor da despesa
+                  if (totalSplitsAmount > expenseAmount && expenseAmount > 0) {
+                    // Calcular proporção do split em relação ao total dos splits
+                    const splitPercentage = splitAmount / totalSplitsAmount;
+                    // Aplicar essa proporção ao valor real da despesa
+                    sharedExpenses += expenseAmount * splitPercentage;
+                  } else {
+                    // Caso normal: usar o valor do split diretamente
+                    sharedExpenses += splitAmount;
                   }
-                } else if (e.is_shared) {
-                  // Usar fallback (split_percentage do cost_center)
-                  const percentage = parseFloat(cc.default_split_percentage || 0);
-                  const amount = parseFloat(e.amount || 0);
-                  sharedExpenses += (amount * percentage) / 100;
                 }
-              });
+              } else if (e.is_shared) {
+                // Usar fallback (split_percentage do cost_center)
+                const percentage = parseFloat(cc.default_split_percentage || 0);
+                const amount = parseFloat(e.amount || 0);
+                sharedExpenses += (amount * percentage) / 100;
+              }
+            });
             
             const totalExpenses = individualExpenses + sharedExpenses;
             
-            // Calcular total geral para porcentagem
+            // Calcular total geral para porcentagem (apenas do mês selecionado)
+            // IMPORTANTE: Para despesas compartilhadas, somar apenas uma vez o valor total
+            // Não somar os splits individuais, pois isso causaria duplicação
             const totalAllExpenses = expenses
-              .filter(e => e.status === 'confirmed')
-              .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+              .filter(e => {
+                if (e.status !== 'confirmed') return false;
+                return isInSelectedMonth(e);
+              })
+              .reduce((sum, e) => {
+                // Se é despesa compartilhada, somar apenas uma vez o valor total
+                // Se é despesa individual, somar o valor normalmente
+                return sum + parseFloat(e.amount || 0);
+              }, 0);
+            
+            // Debug: log dos cálculos por responsável (todos os cost centers)
+            const allExpensesInMonth = expenses.filter(e => e.status === 'confirmed' && isInSelectedMonth(e));
+            const totalAllExpensesCalculated = allExpensesInMonth.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            
+            // Debug: verificar se há splits de despesas fora do mês
+            const sharedExpensesDebug = sharedExpensesInMonth.map(e => {
+              const split = e.expense_splits?.find(s => s.cost_center_id === cc.id);
+              const expenseAmount = parseFloat(e.amount || 0);
+              const splitAmount = split ? parseFloat(split.amount || 0) : 0;
+              const totalSplitsAmount = e.expense_splits?.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0) || 0;
+              const isIncorrect = totalSplitsAmount > expenseAmount && expenseAmount > 0;
+              const calculatedAmount = isIncorrect ? (expenseAmount * (splitAmount / totalSplitsAmount)) : splitAmount;
+              
+              return {
+                id: e.id,
+                date: e.date,
+                amount: expenseAmount,
+                description: e.description,
+                splitAmount: splitAmount,
+                calculatedAmount: calculatedAmount, // Valor que será usado no cálculo
+                isIncorrect: isIncorrect, // Flag se os splits estão incorretos
+                allSplits: e.expense_splits?.map(s => ({ cost_center_id: s.cost_center_id, amount: s.amount })),
+                totalSplitsAmount: totalSplitsAmount
+              };
+            });
+            
+            console.log(`📊 [TRANSACTIONS] Cálculo para ${cc.name}:`, {
+              costCenterId: cc.id,
+              costCenterName: cc.name,
+              individualExpenses,
+              sharedExpenses,
+              totalExpenses,
+              totalAllExpenses,
+              totalAllExpensesCalculated, // Recalculado para verificar
+              percentage: totalAllExpenses > 0 ? ((totalExpenses / totalAllExpenses) * 100).toFixed(1) : 0,
+              filterMonth: filter.month,
+              expensesCount: allExpensesInMonth.length,
+              individualCount: expenses.filter(e => e.status === 'confirmed' && !e.is_shared && e.cost_center_id === cc.id && isInSelectedMonth(e)).length,
+              sharedCount: sharedExpensesInMonth.length,
+              sharedExpensesDebug // Detalhes de cada despesa compartilhada
+            });
             
             const percentage = totalAllExpenses > 0 ? ((totalExpenses / totalAllExpenses) * 100).toFixed(1) : 0;
             
@@ -1268,7 +1433,7 @@ export default function TransactionsDashboard() {
                   <CardContent className="p-3 pt-0 relative">
                     <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                     <div className="text-2xl font-bold text-gray-900 mb-1">
-                      - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
                       {percentage}% do total
@@ -1290,7 +1455,7 @@ export default function TransactionsDashboard() {
                       </div>
                       <div className="text-right">
                         <span className="text-gray-900 font-semibold">
-                          - R$ {Number(individualExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          - R$ {Number(individualExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         {totalExpenses > 0 && (
                           <span className="text-gray-500 ml-2">
@@ -1306,7 +1471,7 @@ export default function TransactionsDashboard() {
                       </div>
                       <div className="text-right">
                         <span className="text-gray-900 font-semibold">
-                          - R$ {Number(sharedExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          - R$ {Number(sharedExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         {totalExpenses > 0 && (
                           <span className="text-gray-500 ml-2">
@@ -1319,7 +1484,7 @@ export default function TransactionsDashboard() {
                       <div className="flex items-center justify-between text-sm font-semibold">
                         <span className="text-gray-900">Total</span>
                         <span className="text-gray-900">
-                          - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
@@ -1759,7 +1924,7 @@ export default function TransactionsDashboard() {
                     return (
                       <span className={`text-sm font-medium ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
                       {!isIncome && '- '}
-                      R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     );
                   },
@@ -1769,7 +1934,7 @@ export default function TransactionsDashboard() {
                     return (
                       <span>
                         {!isIncome && '- '}
-                        R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     );
                   }

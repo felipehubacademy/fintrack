@@ -391,7 +391,7 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {data.totalIncome > 0 
@@ -450,15 +450,15 @@ export default function MonthlyClosing() {
                           <span className="text-gray-700 font-medium">{cc.name}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           <span className="text-gray-500 ml-2">{percentage}%</span>
                         </div>
                       </div>
                       {(individualTotal > 0 || sharedTotal > 0) && (
                         <div className="text-xs text-gray-500 ml-5">
-                          {individualTotal > 0 && `Individual: R$ ${individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                          {individualTotal > 0 && `Individual: R$ ${individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                           {individualTotal > 0 && sharedTotal > 0 && ' • '}
-                          {sharedTotal > 0 && `${organization?.name || 'Família'}: R$ ${sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                          {sharedTotal > 0 && `${organization?.name || 'Família'}: R$ ${sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </div>
                       )}
                     </div>
@@ -490,7 +490,7 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {data.totalExpense > 0 
@@ -537,7 +537,7 @@ export default function MonthlyClosing() {
                           <span className="text-gray-700 font-medium">À Vista</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
                         </div>
                       </div>
@@ -547,7 +547,7 @@ export default function MonthlyClosing() {
                           <span className="text-gray-700 font-medium">Crédito</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
                         </div>
                       </div>
@@ -575,7 +575,7 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {data.creditInvoices?.reduce((sum, inv) => sum + Number(inv.total || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                  R$ {data.creditInvoices?.reduce((sum, inv) => sum + Number(inv.total || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {data.creditInvoices?.length > 0 
@@ -603,7 +603,7 @@ export default function MonthlyClosing() {
                         </div>
                         <div className="text-right">
                           <span className="text-gray-900 font-semibold">
-                            R$ {Number(invoice.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            R$ {Number(invoice.total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           <span className="text-gray-500 ml-2">{percentage}%</span>
                         </div>
@@ -618,7 +618,7 @@ export default function MonthlyClosing() {
                     <div className="flex items-center justify-between text-sm font-semibold">
                       <span className="text-gray-900">Total</span>
                       <span className="text-gray-900">
-                        R$ {data.creditInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {data.creditInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
@@ -669,13 +669,13 @@ export default function MonthlyClosing() {
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
                   <span className="text-gray-700">Total de Entradas</span>
                   <span className="text-gray-900 font-semibold text-blue-600">
-                    R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
                   <span className="text-gray-700">Total de Saídas</span>
                   <span className="text-gray-900 font-semibold">
-                    R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm py-2">
@@ -683,7 +683,7 @@ export default function MonthlyClosing() {
                   <span className={`font-bold ${
                     totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'
                   }`}>
-                    {totalBalance >= 0 ? '+' : '-'} R$ {Math.abs(totalBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {totalBalance >= 0 ? '+' : '-'} R$ {Math.abs(totalBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
@@ -713,7 +713,7 @@ export default function MonthlyClosing() {
                 <span className="text-gray-600 font-medium">Total de Entradas:</span>
               </div>
               <span className="text-blue-600 font-bold text-lg">
-                R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
@@ -722,7 +722,7 @@ export default function MonthlyClosing() {
                 <span className="text-gray-600 font-medium">Total de Saídas:</span>
               </div>
               <span className="text-gray-600 font-bold text-lg">
-                R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex justify-between items-center py-3 pt-4 bg-gray-50 rounded-lg px-3 -mx-3">

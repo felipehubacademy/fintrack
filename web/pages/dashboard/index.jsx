@@ -578,6 +578,33 @@ export default function DashboardHome() {
   // Filtrar apenas confirmed (alinhado com transactions e closing)
   const confirmedMonthExpenses = monthExpenses.filter(e => e.status === 'confirmed');
   
+  // Debug: identificar despesas sem método de pagamento ou com método desconhecido
+  const expensesWithoutMethod = confirmedMonthExpenses.filter(e => {
+    const method = e.payment_method;
+    return !method || (
+      method !== 'credit_card' &&
+      method !== 'cash' &&
+      method !== 'debit_card' &&
+      method !== 'pix' &&
+      method !== 'bank_transfer' &&
+      method !== 'boleto' &&
+      method !== 'other'
+    );
+  });
+  
+  if (expensesWithoutMethod.length > 0) {
+    console.log('⚠️ [DASHBOARD] Despesas sem método de pagamento ou com método desconhecido:', {
+      count: expensesWithoutMethod.length,
+      total: expensesWithoutMethod.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
+      expenses: expensesWithoutMethod.map(e => ({
+        id: e.id,
+        description: e.description,
+        amount: e.amount,
+        payment_method: e.payment_method
+      }))
+    });
+  }
+  
   const cardTotal = confirmedMonthExpenses
     .filter(e => e.payment_method === 'credit_card')
     .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
@@ -592,8 +619,47 @@ export default function DashboardHome() {
       e.payment_method === 'other'
     )
     .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+  
+  // Incluir despesas sem método ou com método desconhecido no total
+  const unknownMethodTotal = expensesWithoutMethod.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
     
-  const grandTotal = cardTotal + cashTotal;
+  const grandTotal = cardTotal + cashTotal + unknownMethodTotal;
+  
+  // Debug: log dos totais
+  const totalAllExpensesRaw = confirmedMonthExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+  console.log('📊 [DASHBOARD] Totais de despesas:', {
+    cardTotal,
+    cashTotal,
+    unknownMethodTotal,
+    grandTotal,
+    totalAllExpensesRaw,
+    expensesCount: confirmedMonthExpenses.length,
+    selectedMonth,
+    expensesByMethod: confirmedMonthExpenses.reduce((acc, e) => {
+      const method = e.payment_method || 'NULL';
+      acc[method] = (acc[method] || 0) + parseFloat(e.amount || 0);
+      return acc;
+    }, {})
+  });
+  
+  // Debug: verificar se há parcelas sendo contadas
+  const installmentExpenses = confirmedMonthExpenses.filter(e => 
+    e.parent_expense_id || (e.installment_info && e.installment_info.total_installments > 1)
+  );
+  if (installmentExpenses.length > 0) {
+    console.log('📦 [DASHBOARD] Despesas parceladas encontradas:', {
+      count: installmentExpenses.length,
+      total: installmentExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
+      expenses: installmentExpenses.map(e => ({
+        id: e.id,
+        description: e.description,
+        amount: e.amount,
+        date: e.date,
+        parent_expense_id: e.parent_expense_id,
+        installment_info: e.installment_info
+      }))
+    });
+  }
 
   // Recalcular dados do mês anterior baseado no mês selecionado
   const [previousMonthIncomes, setPreviousMonthIncomes] = useState(0);
@@ -751,7 +817,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(totalIncomes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {Number(totalIncomes).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <div className="flex items-center space-x-2 text-xs">
                   {incomesGrowth > 0 && (
@@ -825,15 +891,15 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium">{cc.name}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           <span className="text-gray-500 ml-2">{percentage}%</span>
                         </div>
                       </div>
                       {(individualTotal > 0 || sharedTotal > 0) && (
                         <div className="text-xs text-gray-500 ml-5">
-                          {individualTotal > 0 && `Individual: R$ ${individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                          {individualTotal > 0 && `Individual: R$ ${individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                           {individualTotal > 0 && sharedTotal > 0 && ' • '}
-                          {sharedTotal > 0 && `Compartilhada: R$ ${sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                          {sharedTotal > 0 && `Compartilhada: R$ ${sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </div>
                       )}
                     </div>
@@ -865,7 +931,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  - R$ {Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  - R$ {Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <div className="flex items-center space-x-2 text-xs">
                   {expensesGrowth > 0 && (
@@ -925,7 +991,7 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium">À Vista</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
                         </div>
                       </div>
@@ -935,7 +1001,7 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium">Crédito</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
                         </div>
                       </div>
@@ -970,7 +1036,7 @@ export default function DashboardHome() {
               <div className={`text-2xl font-bold mb-1 ${
                 balance >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {balance >= 0 ? '' : '-'} R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                {balance >= 0 ? '' : '-'} R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="flex items-center space-x-2 text-xs">
                 {balanceGrowth > 0 && (
@@ -1012,7 +1078,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(totalCreditUsed).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {Number(totalCreditUsed).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Em todos os cartões
@@ -1046,7 +1112,7 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium truncate">{card.name || 'Sem nome'}</span>
                         </div>
                         <div className="text-right ml-2">
-                          <span className="text-gray-900 font-semibold">R$ {Number(usage.used).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">R$ {Number(usage.used).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           <span className="text-gray-500 ml-2 text-xs">({percentage}%)</span>
                         </div>
                       </div>
@@ -1074,7 +1140,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(totalCreditAvailable).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {Number(totalCreditAvailable).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Limite disponível
@@ -1108,7 +1174,7 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium truncate">{card.name || 'Sem nome'}</span>
                         </div>
                         <div className="text-right ml-2">
-                          <span className="text-gray-900 font-semibold">R$ {Number(available).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">R$ {Number(available).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
                     );
@@ -1149,7 +1215,7 @@ export default function DashboardHome() {
                 <div className={`text-2xl font-bold mb-1 ${
                   totalBankBalance < 0 ? 'text-red-600' : 'text-gray-900'
                 }`}>
-                  {totalBankBalance < 0 ? '-' : ''} R$ {Number(Math.abs(totalBankBalance)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {totalBankBalance < 0 ? '-' : ''} R$ {Number(Math.abs(totalBankBalance)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className={`text-xs mt-1 ${
                   totalBankBalance < 0 ? 'text-red-600' : 'text-gray-500'
@@ -1180,7 +1246,7 @@ export default function DashboardHome() {
                           <span className={`font-semibold ${
                             balance < 0 ? 'text-red-600' : 'text-gray-900'
                           }`}>
-                            R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             {balance < 0 && <span className="ml-1">-</span>}
                           </span>
                         </div>
