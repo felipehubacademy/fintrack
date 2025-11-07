@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import { X, Calendar, CreditCard, ArrowRight, CheckCircle } from 'lucide-react';
+import { X, Calendar, CreditCard, ArrowRight, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import MarkInvoiceAsPaidModal from './MarkInvoiceAsPaidModal';
 import { useOrganization } from '../hooks/useOrganization';
 import { useNotificationContext } from '../contexts/NotificationContext';
@@ -16,10 +16,12 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
   const [currentCycle, setCurrentCycle] = useState(null);
   const [showMarkAsPaidModal, setShowMarkAsPaidModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [expandedInvoices, setExpandedInvoices] = useState(new Set());
 
   useEffect(() => {
     if (isOpen && card) {
       fetchInvoices();
+      setExpandedInvoices(new Set()); // Resetar expansões ao abrir
     }
   }, [isOpen, card]);
 
@@ -501,19 +503,53 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                   statusLabel = `Fatura de ${monthName}`;
                 }
                 
+                const invoiceKey = `${invoice.startDate}-${invoice.endDate}`;
+                const isExpanded = expandedInvoices.has(invoiceKey);
+                const expenses = invoice.expenses || [];
+                
+                const toggleExpand = () => {
+                  const newExpanded = new Set(expandedInvoices);
+                  if (isExpanded) {
+                    newExpanded.delete(invoiceKey);
+                  } else {
+                    newExpanded.add(invoiceKey);
+                  }
+                  setExpandedInvoices(newExpanded);
+                };
+
                 return (
                   <Card key={index} className={`border-2 ${isCurrentCycle ? 'border-flight-blue bg-flight-blue/5' : hasClosed ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200'}`}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <CardTitle className="text-base font-semibold text-gray-900">
-                            {statusLabel}
-                          </CardTitle>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-base font-semibold text-gray-900">
+                              {statusLabel}
+                            </CardTitle>
+                            {expenses.length > 0 && (
+                              <button
+                                onClick={toggleExpand}
+                                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                title={isExpanded ? 'Ocultar transações' : 'Ver transações'}
+                              >
+                                {isExpanded ? (
+                                  <ChevronUp className="h-4 w-4 text-gray-600" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-gray-600" />
+                                )}
+                              </button>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500 mt-1">
                             {new Date(invoice.startDate + 'T00:00:00').toLocaleDateString('pt-BR')} - {new Date(invoice.endDate + 'T00:00:00').toLocaleDateString('pt-BR')}
                             {hasClosed && !isFuture && (
                               <span className="ml-2 text-yellow-600 font-medium">
                                 • Fechou em {closingDate.toLocaleDateString('pt-BR')}
+                              </span>
+                            )}
+                            {expenses.length > 0 && (
+                              <span className="ml-2 text-gray-400">
+                                • {expenses.length} {expenses.length === 1 ? 'transação' : 'transações'}
                               </span>
                             )}
                           </p>
@@ -524,6 +560,52 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                           </p>
                         </div>
                       </div>
+
+                      {/* Lista de transações expandida */}
+                      {isExpanded && expenses.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                            Transações ({expenses.length})
+                          </h4>
+                          <div className="space-y-1 max-h-96 overflow-y-auto">
+                            {expenses
+                              .sort((a, b) => new Date(a.date) - new Date(b.date))
+                              .map((expense, expIndex) => {
+                                const expenseDate = new Date(expense.date + 'T00:00:00');
+                                const isInstallment = expense.installment_info && 
+                                  expense.installment_info.total_installments > 1;
+                                const displayAmount = expense.installmentAmount || expense.amount || 0;
+                                const installmentText = isInstallment 
+                                  ? `${expense.installment_info.current_installment}/${expense.installment_info.total_installments}`
+                                  : '';
+                                
+                                return (
+                                  <div
+                                    key={expense.id || expIndex}
+                                    className="flex items-center text-sm text-gray-700 py-1.5 px-2 hover:bg-gray-50 rounded transition-colors"
+                                  >
+                                    <span className="text-gray-600">
+                                      {expenseDate.toLocaleDateString('pt-BR')}
+                                    </span>
+                                    <span className="mx-2 text-gray-400">-</span>
+                                    <span className="flex-1 text-gray-900">
+                                      {expense.description || 'Sem descrição'}
+                                      {installmentText && (
+                                        <span className="ml-2 text-gray-600">
+                                          {installmentText}
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="ml-auto font-semibold text-gray-900">
+                                      {formatCurrency(displayAmount)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
+
                       {canMarkAsPaid && (
                         <div className="flex justify-end mt-3 pt-3 border-t border-gray-200">
                           <Button
