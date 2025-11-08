@@ -49,7 +49,7 @@ export default function AccountType() {
                 <img 
                   src="/images/logo_flat.svg" 
                   alt="MeuAzulão" 
-                  className="w-20 h-20"
+                  className="w-16 h-16"
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">

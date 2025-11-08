@@ -11,10 +11,13 @@ import {
   Users, 
   Tag,
   UserCheck,
-  Trash2
+  Trash2,
+  LogOut,
+  FileText,
+  MessageCircle,
+  ChevronRight
 } from 'lucide-react';
 import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import MemberManagementModal from '../../components/MemberManagementModal';
 import CategoryManagementModal from '../../components/CategoryManagementModal';
 import NotificationSettingsModal from '../../components/NotificationSettingsModal';
@@ -41,6 +44,16 @@ export default function ConfigPage() {
       router.push('/');
     }
   }, [orgLoading, orgError, organization]);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      showError('Erro ao fazer logout');
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (!orgUser || !organization) return;
@@ -273,18 +286,15 @@ export default function ConfigPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
+    <>
       <Header 
         organization={organization}
         user={orgUser}
         pageTitle="Configurações"
         showNotificationModal={showNotificationModal}
         setShowNotificationModal={setShowNotificationModal}
-      />
-
-      {/* Main Content */}
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-6">
+      >
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-6">
         
         {/* Organization Info - Igual às outras páginas */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
@@ -368,25 +378,102 @@ export default function ConfigPage() {
           </CardContent>
         </Card>
 
-        {/* Conta e Segurança */}
+        {/* Legal e Suporte */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">Conta</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900">Legal e Suporte</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between py-3">
-              <div>
-                <p className="font-medium text-gray-900">Excluir Conta</p>
-                <p className="text-sm text-gray-500">Remover permanentemente sua conta e todos os dados</p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteAccountModal(true)}
-                className="border-red-300 text-red-600 hover:bg-red-50"
+            <div className="space-y-4">
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-3 transition-colors"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir
-              </Button>
+                <div className="flex items-center space-x-3">
+                  <FileText className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="font-medium text-gray-900">Política de Privacidade</p>
+                    <p className="text-sm text-gray-500">Como tratamos seus dados</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </a>
+
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-3 transition-colors"
+              >
+                <div className="flex items-center space-x-3">
+                  <FileText className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="font-medium text-gray-900">Termos de Uso</p>
+                    <p className="text-sm text-gray-500">Condições de utilização</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </a>
+
+              <a
+                href="/contact"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between py-3 hover:bg-gray-50 rounded-lg px-3 transition-colors"
+              >
+                <div className="flex items-center space-x-3">
+                  <MessageCircle className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="font-medium text-gray-900">Suporte</p>
+                    <p className="text-sm text-gray-500">Entre em contato conosco</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Conta e Sessão */}
+        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">Conta e Sessão</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Encerrar Sessão */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                  <p className="font-medium text-gray-900">Encerrar Sessão</p>
+                  <p className="text-sm text-gray-500">Fazer logout da sua conta</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleLogout}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sair
+                </Button>
+              </div>
+
+              {/* Excluir Conta */}
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="font-medium text-gray-900">Excluir Conta</p>
+                  <p className="text-sm text-gray-500">Remover permanentemente sua conta e todos os dados</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteAccountModal(true)}
+                  className="border-red-300 text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -423,10 +510,8 @@ export default function ConfigPage() {
           onConfirm={handleDeleteAccount}
           loading={isDeletingAccount}
         />
-      </main>
-
-      {/* Footer */}
-      <Footer />
-    </div>
+        </main>
+      </Header>
+    </>
   );
 }

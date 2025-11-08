@@ -29,6 +29,7 @@ import BudgetModal from '../../components/BudgetModal';
 import NotificationModal from '../../components/NotificationModal';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import BudgetWizard from '../../components/BudgetWizard';
 
 export default function BudgetsDashboard() {
   const router = useRouter();
@@ -45,6 +46,7 @@ export default function BudgetsDashboard() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [budgetToDelete, setBudgetToDelete] = useState(null);
   const [actionToConfirm, setActionToConfirm] = useState(null);
+  const [showBudgetWizard, setShowBudgetWizard] = useState(false);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -416,18 +418,13 @@ export default function BudgetsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
+    <>
       <Header 
         organization={organization}
         user={orgUser}
         pageTitle="Orçamentos"
-        showNotificationModal={showNotificationModal}
-        setShowNotificationModal={setShowNotificationModal}
-      />
-
-      {/* Main Content */}
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
+      >
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
         {/* Header Actions */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
@@ -441,6 +438,14 @@ export default function BudgetsDashboard() {
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-transparent"
                 />
+                <Button 
+                  onClick={() => setShowBudgetWizard(true)}
+                  variant="outline"
+                  className="border-flight-blue text-flight-blue hover:bg-flight-blue/10"
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  Planejamento Guiado
+                </Button>
                 <Button 
                   onClick={handleCopyPreviousMonth}
                   variant="outline"
@@ -623,6 +628,22 @@ export default function BudgetsDashboard() {
         )}
       </main>
 
+      {/* Budget Wizard */}
+      {showBudgetWizard && (
+        <BudgetWizard
+          isOpen={showBudgetWizard}
+          onClose={() => setShowBudgetWizard(false)}
+          organization={organization}
+          budgetCategories={budgetCategories}
+          selectedMonth={selectedMonth}
+          isSoloUser={isSoloUser}
+          onComplete={async () => {
+            await fetchData();
+            setShowBudgetWizard(false);
+          }}
+        />
+      )}
+
       {/* Budget Modal */}
       {showBudgetModal && (
         <BudgetModal
@@ -638,16 +659,14 @@ export default function BudgetsDashboard() {
         />
       )}
 
-      {/* Footer */}
-      <Footer />
+        <Footer />
+      </Header>
 
-      {/* Notification Modal */}
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
       />
 
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={showConfirmModal}
         onClose={() => {
@@ -666,6 +685,6 @@ export default function BudgetsDashboard() {
         cancelText="Cancelar"
         type={actionToConfirm === 'delete' ? "danger" : "warning"}
       />
-    </div>
+    </>
   );
 }

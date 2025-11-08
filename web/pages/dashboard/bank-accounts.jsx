@@ -126,10 +126,9 @@ export default function BankAccounts() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <Header organization={organization} user={user} pageTitle="Contas Bancárias" />
-      
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8">
+    <>
+      <Header organization={organization} user={user} pageTitle="Contas Bancárias">
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -256,8 +255,9 @@ export default function BankAccounts() {
           </div>
         )}
       </main>
+        <Footer />
+      </Header>
 
-      {/* Modals */}
       <BankAccountModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -277,9 +277,7 @@ export default function BankAccounts() {
         organizationId={organization?.id}
         onSuccess={fetchAccounts}
       />
-      
-      <Footer />
-    </div>
+    </>
   );
 }
 

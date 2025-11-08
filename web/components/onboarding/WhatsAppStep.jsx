@@ -308,9 +308,9 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
               <Image 
                 src="/images/logo_flat.svg" 
                 alt="Zul" 
-                width={48}
-                height={48}
-                className="w-12 h-12"
+                width={28}
+                height={28}
+                className="w-7 h-7"
               />
             </div>
             <div>

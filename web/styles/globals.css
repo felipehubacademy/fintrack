@@ -22,7 +22,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  transition: padding-left 0.3s ease;
 }
+
 
 /* MeuAzulão Brand Colors */
 :root {

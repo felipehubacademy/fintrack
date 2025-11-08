@@ -64,7 +64,7 @@ export default function VerifyPage() {
               <img 
                 src="/images/logo_flat.svg" 
                 alt="MeuAzulão" 
-                className="w-20 h-20 mx-auto mb-6"
+                className="w-16 h-16 mx-auto mb-6"
               />
             </div>
 

@@ -755,17 +755,11 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
-      <Header 
-        organization={organization}
-        user={orgUser}
-        showNotificationModal={showNotificationModal}
-        setShowNotificationModal={setShowNotificationModal}
-        onUnreadCountChange={setUnreadNotifications}
-      />
-
-      {/* Main Content */}
+    <Header 
+      organization={organization}
+      user={orgUser}
+      pageTitle="Painel Principal"
+    >
       <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-4 md:py-8 space-y-4 md:space-y-8">
         {/* Header Actions */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
@@ -1282,15 +1276,13 @@ export default function DashboardHome() {
         </div>
       </main>
 
-      {/* Footer */}
       <Footer />
 
-      {/* Notification Modal */}
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
         onUnreadCountChange={setUnreadNotifications}
       />
-    </div>
+    </Header>
   );
 }

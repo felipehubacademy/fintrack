@@ -369,7 +369,7 @@ export default function LandingPage() {
                     <img 
                       src="/images/logo_flat.svg" 
                       alt="Zul" 
-                      className="w-12 h-12"
+                      className="w-7 h-7"
                     />
                   </div>
                   <div>

@@ -14,7 +14,6 @@ import NotificationModal from '../../components/NotificationModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import { TrendingUp, TrendingDown, Bell, Settings, Search, LogOut, Calendar, Users, Target, Edit, Trash2, CreditCard, Plus, DollarSign, User, HelpCircle } from 'lucide-react';
 import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 import ResponsiveTable from '../../components/ui/ResponsiveTable';
 import Tooltip from '../../components/ui/Tooltip';
@@ -969,18 +968,13 @@ export default function TransactionsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
+    <>
       <Header 
         organization={organization}
         user={orgUser}
         pageTitle="Transações"
-        showNotificationModal={showNotificationModal}
-        setShowNotificationModal={setShowNotificationModal}
-      />
-
-      {/* Main Content */}
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
+      >
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         {/* Header Actions (consistência com /cards) */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
@@ -1995,7 +1989,6 @@ export default function TransactionsDashboard() {
         </Card>
       </main>
 
-      {/* Transaction Modal */}
       <TransactionModal
         isOpen={showTransactionModal}
         onClose={() => { setShowTransactionModal(false); setEditingTransaction(null); }}
@@ -2004,7 +1997,6 @@ export default function TransactionsDashboard() {
         categories={categories.filter(cat => cat.type === 'expense' || cat.type === 'both')}
       />
 
-      {/* Modal de edição */}
       <EditExpenseModal
         isOpen={!!editingId}
         expenseId={editingId}
@@ -2019,16 +2011,11 @@ export default function TransactionsDashboard() {
         }}
       />
 
-      {/* Notification Modal */}
-      {/* Footer */}
-      <Footer />
-
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
       />
 
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={showConfirmModal}
         onClose={() => {
@@ -2047,7 +2034,6 @@ export default function TransactionsDashboard() {
         type="danger"
       />
 
-      {/* Bulk Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={showBulkDeleteConfirm}
         onClose={() => {
@@ -2060,7 +2046,10 @@ export default function TransactionsDashboard() {
         cancelText="Cancelar"
         type="danger"
       />
-    </div>
+
+      <Footer />
+      </Header>
+    </>
   );
 }
 

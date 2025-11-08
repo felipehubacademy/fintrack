@@ -221,15 +221,15 @@ async function createDefaultCostCenters(organizationId) {
  */
 async function createDefaultBudgetCategories(organizationId) {
   const defaultCategories = [
-    { name: 'Alimentação', color: '#EF4444' },
-    { name: 'Transporte', color: '#F59E0B' },
-    { name: 'Saúde', color: '#10B981' },
-    { name: 'Lazer', color: '#8B5CF6' },
-    { name: 'Contas', color: '#06B6D4' },
-    { name: 'Casa', color: '#8B5A2B' },
-    { name: 'Educação', color: '#EC4899' },
-    { name: 'Investimentos', color: '#10B981' },
-    { name: 'Outros', color: '#6B7280' }
+    { name: 'Alimentação', color: '#EF4444', macro_group: 'needs' },
+    { name: 'Transporte', color: '#F59E0B', macro_group: 'needs' },
+    { name: 'Saúde', color: '#10B981', macro_group: 'needs' },
+    { name: 'Lazer', color: '#8B5CF6', macro_group: 'wants' },
+    { name: 'Contas', color: '#06B6D4', macro_group: 'needs' },
+    { name: 'Casa', color: '#8B5A2B', macro_group: 'needs' },
+    { name: 'Educação', color: '#EC4899', macro_group: 'wants' },
+    { name: 'Investimentos', color: '#10B981', macro_group: 'investments' },
+    { name: 'Outros', color: '#6B7280', macro_group: 'wants' }
   ];
 
   for (const category of defaultCategories) {
@@ -239,6 +239,7 @@ async function createDefaultBudgetCategories(organizationId) {
         organization_id: organizationId,
         name: category.name,
         color: category.color,
+        macro_group: category.macro_group,
         is_default: true
       });
   }

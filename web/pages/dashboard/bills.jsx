@@ -13,7 +13,6 @@ import ConfirmationModal from '../../components/ConfirmationModal';
 import MarkBillAsPaidModal from '../../components/MarkBillAsPaidModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import NotificationModal from '../../components/NotificationModal';
 import ResponsiveTable from '../../components/ui/ResponsiveTable';
 import { 
@@ -968,17 +967,12 @@ export default function BillsDashboard() {
     .reduce((sum, b) => sum + Number(b.amount), 0);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
+    <>
       <Header 
         organization={organization}
         user={orgUser}
         pageTitle="Contas a Pagar"
-        showNotificationModal={showNotificationModal}
-        setShowNotificationModal={setShowNotificationModal}
-      />
-
-      {/* Main Content */}
+      >
       <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
         {/* Header Actions */}
@@ -1465,9 +1459,6 @@ export default function BillsDashboard() {
         />
       </main>
 
-      {/* Footer */}
-      <Footer />
-
       {/* Notification Modal */}
       <NotificationModal 
         isOpen={showNotificationModal}
@@ -1537,7 +1528,10 @@ export default function BillsDashboard() {
         costCenters={costCenters || []}
         organization={organization}
       />
-    </div>
+
+      <Footer />
+      </Header>
+    </>
   );
 }
 

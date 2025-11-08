@@ -10,7 +10,7 @@ export default function LandingFooter() {
               <img 
                 src="/images/logo_flat.svg" 
                 alt="MeuAzulão" 
-                className="h-20 w-20 group-hover:scale-110 transition-transform"
+                className="h-16 w-16 group-hover:scale-110 transition-transform"
               />
               <div>
                 <span className="text-2xl font-bold text-white block">MeuAzulão</span>

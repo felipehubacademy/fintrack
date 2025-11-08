@@ -308,17 +308,14 @@ export default function MonthlyClosing() {
   const totalBalance = data.balance;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
+    <>
       <Header 
         organization={organization}
         user={orgUser}
         pageTitle="Fechamento Mensal"
         showNotificationModal={showNotificationModal}
         setShowNotificationModal={setShowNotificationModal}
-      />
-
-      {/* Main Content */}
+      >
       <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
         {/* Header Actions */}
@@ -753,14 +750,14 @@ export default function MonthlyClosing() {
         )}
       </main>
 
-      {/* Footer */}
-      <Footer />
-
       {/* Notification Modal */}
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
       />
-    </div>
+        
+        <Footer />
+      </Header>
+    </>
   );
 }

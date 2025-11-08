@@ -13,7 +13,6 @@ import ConfirmationModal from '../../components/ConfirmationModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import NotificationModal from '../../components/NotificationModal';
 import { 
   CreditCard, 
@@ -423,17 +422,12 @@ export default function CardsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
+    <>
       <Header 
         organization={organization}
         user={orgUser}
         pageTitle="Cartões"
-        showNotificationModal={showNotificationModal}
-        setShowNotificationModal={setShowNotificationModal}
-      />
-
-      {/* Main Content */}
+      >
       <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
         {/* Header Actions */}
@@ -794,9 +788,6 @@ export default function CardsDashboard() {
         />
       </main>
 
-      {/* Footer */}
-      <Footer />
-
       {/* Notification Modal */}
       <NotificationModal 
         isOpen={showNotificationModal}
@@ -827,6 +818,9 @@ export default function CardsDashboard() {
         cancelText="Cancelar"
         type="danger"
       />
-    </div>
+
+      <Footer />
+      </Header>
+    </>
   );
 }

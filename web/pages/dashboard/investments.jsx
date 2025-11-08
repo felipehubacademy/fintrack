@@ -232,18 +232,15 @@ export default function InvestmentsDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
+    <>
       <Header 
         organization={organization}
         user={orgUser}
         pageTitle="Metas de Investimento"
         showNotificationModal={showNotificationModal}
         setShowNotificationModal={setShowNotificationModal}
-      />
-
-      {/* Main Content */}
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
+      >
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
         {/* Header Actions */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
@@ -345,7 +342,7 @@ export default function InvestmentsDashboard() {
             </CardContent>
           </Card>
         )}
-      </main>
+        </main>
 
       {/* Goal Modal */}
       <InvestmentGoalModal
@@ -436,9 +433,6 @@ export default function InvestmentsDashboard() {
         </div>
       )}
 
-      {/* Footer */}
-      <Footer />
-
       {/* Notification Modal */}
       <NotificationModal 
         isOpen={showNotificationModal}
@@ -459,7 +453,10 @@ export default function InvestmentsDashboard() {
         cancelText="Cancelar"
         type="danger"
       />
-    </div>
+      
+      <Footer />
+      </Header>
+    </>
   );
 }
 

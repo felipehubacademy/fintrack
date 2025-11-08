@@ -25,7 +25,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
             <img 
               src="/images/logo_flat.svg" 
               alt="MeuAzulão" 
-              className="h-20 w-20 transition-transform group-hover:scale-110 group-hover:rotate-3"
+              className="h-16 w-16 transition-transform group-hover:scale-110 group-hover:rotate-3"
             />
             <span className="text-2xl font-bold bg-gradient-to-r from-[#0D2C66] to-[#207DFF] bg-clip-text text-transparent">
               MeuAzulão

@@ -1263,9 +1263,9 @@ export default function ZulFloatingButton() {
           <Image
             src="/images/logo_flat.svg"
             alt="Zul Assistant"
-            width={128}
-            height={128}
-            className="scale-x-[-1] w-20 h-20 md:w-32 md:h-32"
+            width={56}
+            height={56}
+            className="scale-x-[-1] w-14 h-14"
           />
         </div>
       </div>
@@ -1373,13 +1373,13 @@ export default function ZulFloatingButton() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white rounded-t-xl">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
                   <Image
                     src="/images/logo_flat.svg"
                     alt="Zul Assistant"
-                    width={32}
-                    height={32}
-                    className="scale-125"
+                    width={28}
+                    height={28}
+                    className="w-7 h-7 object-contain"
                   />
                 </div>
                 <div>
@@ -1403,9 +1403,9 @@ export default function ZulFloatingButton() {
                         <Image
                           src="/images/logo_flat.svg"
                           alt="Zul"
-                          width={32}
-                          height={32}
-                          className="scale-125"
+                          width={24}
+                          height={24}
+                          className="w-6 h-6 object-contain"
                         />
                       </div>
                     )}

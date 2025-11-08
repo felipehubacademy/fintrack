@@ -17,10 +17,17 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    color: '#6366F1'
+    color: '#6366F1',
+    macro_group: 'needs'
   });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
+
+  const macroOptions = [
+    { value: 'needs', label: 'Necessidades' },
+    { value: 'wants', label: 'Desejos' },
+    { value: 'investments', label: 'Poupança / Investimentos' }
+  ];
 
   const colors = [
     '#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B',
@@ -72,6 +79,11 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
       return;
     }
 
+    if (!formData.macro_group) {
+      warning('Selecione a categoria macro');
+      return;
+    }
+
     try {
       if (editingCategory) {
         // Editar categoria
@@ -80,7 +92,8 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
           .update({
             name: formData.name.trim(),
             description: formData.description.trim() || null,
-            color: formData.color
+            color: formData.color,
+            macro_group: formData.macro_group
           })
           .eq('id', editingCategory.id);
 
@@ -95,6 +108,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
             description: formData.description.trim() || null,
             color: formData.color,
             type: activeTab, // Definir tipo: expense ou income
+            macro_group: formData.macro_group,
             is_default: false
           });
 
@@ -121,7 +135,8 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     setFormData({
       name: category.name,
       description: category.description || '',
-      color: category.color || '#6366F1'
+      color: category.color || '#6366F1',
+      macro_group: category.macro_group || 'needs'
     });
     setShowForm(true);
   };
@@ -163,7 +178,8 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
     setFormData({
       name: '',
       description: '',
-      color: '#6366F1'
+      color: '#6366F1',
+      macro_group: 'needs'
     });
     setEditingCategory(null);
     setShowForm(false);
@@ -264,6 +280,69 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                           onClick={() => setFormData({ ...formData, color })}
                         />
                       ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Nome da Categoria
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                        placeholder="Ex: Alimentação, Transporte..."
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Descrição<br /><span className="text-xs text-gray-400">(opcional)</span>
+                      </label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                        rows="1"
+                        placeholder="Ex: Gastos com alimentação fora de casa"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Cor
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {colors.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            className={`w-8 h-8 rounded-full border-2 ${
+                              formData.color === color ? 'border-gray-800' : 'border-gray-300'
+                            }`}
+                            style={{ backgroundColor: color }}
+                            onClick={() => setFormData({ ...formData, color })}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Categoria Macro
+                      </label>
+                      <select
+                        value={formData.macro_group}
+                        onChange={(e) => setFormData(prev => ({ ...prev, macro_group: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                        required
+                      >
+                        {macroOptions.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   
