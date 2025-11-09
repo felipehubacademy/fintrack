@@ -28,7 +28,6 @@ import Link from 'next/link';
 import BudgetModal from '../../components/BudgetModal';
 import NotificationModal from '../../components/NotificationModal';
 import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import BudgetWizard from '../../components/BudgetWizard';
 
 export default function BudgetsDashboard() {
@@ -627,6 +626,7 @@ export default function BudgetsDashboard() {
           </Card>
         )}
       </main>
+      </Header>
 
       {/* Budget Wizard */}
       {showBudgetWizard && (
@@ -659,32 +659,33 @@ export default function BudgetsDashboard() {
         />
       )}
 
-        <Footer />
-      </Header>
+      {showNotificationModal && (
+        <NotificationModal 
+          isOpen={showNotificationModal}
+          onClose={() => setShowNotificationModal(false)}
+        />
+      )}
 
-      <NotificationModal 
-        isOpen={showNotificationModal}
-        onClose={() => setShowNotificationModal(false)}
-      />
-
-      <ConfirmationModal
-        isOpen={showConfirmModal}
-        onClose={() => {
-          setShowConfirmModal(false);
-          setBudgetToDelete(null);
-          setActionToConfirm(null);
-        }}
-        onConfirm={actionToConfirm === 'delete' ? confirmDeleteBudget : confirmCopyBudgets}
-        title={actionToConfirm === 'delete' ? "Confirmar exclusão" : "Confirmar cópia de orçamentos"}
-        message={
-          actionToConfirm === 'delete' 
-            ? "Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita."
-            : `Já existem orçamentos para ${selectedMonth}. Deseja substituí-los pelos orçamentos do mês anterior?`
-        }
-        confirmText={actionToConfirm === 'delete' ? "Excluir" : "Substituir"}
-        cancelText="Cancelar"
-        type={actionToConfirm === 'delete' ? "danger" : "warning"}
-      />
+      {showConfirmModal && (
+        <ConfirmationModal
+          isOpen={showConfirmModal}
+          onClose={() => {
+            setShowConfirmModal(false);
+            setBudgetToDelete(null);
+            setActionToConfirm(null);
+          }}
+          onConfirm={actionToConfirm === 'delete' ? confirmDeleteBudget : confirmCopyBudgets}
+          title={actionToConfirm === 'delete' ? "Confirmar exclusão" : "Confirmar cópia de orçamentos"}
+          message={
+            actionToConfirm === 'delete' 
+              ? "Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita."
+              : `Já existem orçamentos para ${selectedMonth}. Deseja substituí-los pelos orçamentos do mês anterior?`
+          }
+          confirmText={actionToConfirm === 'delete' ? "Excluir" : "Substituir"}
+          cancelText="Cancelar"
+          type={actionToConfirm === 'delete' ? "danger" : "warning"}
+        />
+      )}
     </>
   );
 }

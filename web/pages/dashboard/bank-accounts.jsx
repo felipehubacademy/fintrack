@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import BankAccountModal from '../../components/BankAccountModal';
 import BankTransactionModal from '../../components/BankTransactionModal';
 import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import LoadingLogo from '../../components/LoadingLogo';
 import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2 } from 'lucide-react';
 import StatsCard from '../../components/ui/StatsCard';
@@ -255,7 +254,6 @@ export default function BankAccounts() {
           </div>
         )}
       </main>
-        <Footer />
       </Header>
 
       <BankAccountModal

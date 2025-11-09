@@ -17,6 +17,7 @@ import Header from '../../components/Header';
 import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 import ResponsiveTable from '../../components/ui/ResponsiveTable';
 import Tooltip from '../../components/ui/Tooltip';
+import Footer from '../../components/Footer';
 
 export default function TransactionsDashboard() {
   const router = useRouter();

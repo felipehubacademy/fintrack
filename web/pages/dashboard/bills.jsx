@@ -1529,7 +1529,6 @@ export default function BillsDashboard() {
         organization={organization}
       />
 
-      <Footer />
       </Header>
     </>
   );

@@ -9,9 +9,10 @@ import ConfirmationModal from './ConfirmationModal';
 
 export default function CategoryManagementModal({ isOpen, onClose, organization }) {
   const { success, error: showError, warning } = useNotificationContext();
+  const INCOME_MACRO_KEY = 'income';
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('expense'); // 'expense' ou 'income'
+  const [activeTab, setActiveTab] = useState('expense'); // 'expense' (Saídas) ou 'income' (Entradas)
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({
@@ -40,6 +41,14 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
       fetchCategories();
     }
   }, [isOpen, organization, activeTab]); // Adicionar activeTab como dependência
+
+  useEffect(() => {
+    if (editingCategory) return;
+    setFormData((prev) => ({
+      ...prev,
+      macro_group: activeTab === 'income' ? INCOME_MACRO_KEY : 'needs'
+    }));
+  }, [activeTab, editingCategory]);
 
   const fetchCategories = async () => {
     try {
@@ -79,7 +88,9 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
       return;
     }
 
-    if (!formData.macro_group) {
+    const selectedMacro = activeTab === 'income' ? INCOME_MACRO_KEY : formData.macro_group;
+
+    if (activeTab !== 'income' && !selectedMacro) {
       warning('Selecione a categoria macro');
       return;
     }
@@ -93,7 +104,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
             name: formData.name.trim(),
             description: formData.description.trim() || null,
             color: formData.color,
-            macro_group: formData.macro_group
+            macro_group: selectedMacro
           })
           .eq('id', editingCategory.id);
 
@@ -108,7 +119,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
             description: formData.description.trim() || null,
             color: formData.color,
             type: activeTab, // Definir tipo: expense ou income
-            macro_group: formData.macro_group,
+            macro_group: selectedMacro,
             is_default: false
           });
 
@@ -136,7 +147,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
       name: category.name,
       description: category.description || '',
       color: category.color || '#6366F1',
-      macro_group: category.macro_group || 'needs'
+      macro_group: category.macro_group || (category.type === 'income' ? INCOME_MACRO_KEY : 'needs')
     });
     setShowForm(true);
   };
@@ -179,7 +190,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
       name: '',
       description: '',
       color: '#6366F1',
-      macro_group: 'needs'
+      macro_group: activeTab === 'income' ? INCOME_MACRO_KEY : 'needs'
     });
     setEditingCategory(null);
     setShowForm(false);
@@ -213,7 +224,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Despesas
+            Saídas
           </button>
           <button
             onClick={() => setActiveTab('income')}
@@ -237,52 +248,6 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                 </h3>
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                      placeholder="Ex: Alimentação, Transporte..."
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Descrição
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                      placeholder="Ex: Gastos com alimentação fora de casa"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cor
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {colors.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          className={`w-8 h-8 rounded-full border-2 ${
-                            formData.color === color ? 'border-gray-800' : 'border-gray-300'
-                          }`}
-                          style={{ backgroundColor: color }}
-                          onClick={() => setFormData({ ...formData, color })}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-gray-700">
@@ -298,8 +263,9 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Descrição<br /><span className="text-xs text-gray-400">(opcional)</span>
+                      <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                        <span>Descrição</span>
+                        <span className="text-xs text-gray-400">(Opcional)</span>
                       </label>
                       <textarea
                         value={formData.description}
@@ -309,40 +275,52 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
                         placeholder="Ex: Gastos com alimentação fora de casa"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Cor
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {colors.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            className={`w-8 h-8 rounded-full border-2 ${
-                              formData.color === color ? 'border-gray-800' : 'border-gray-300'
-                            }`}
-                            style={{ backgroundColor: color }}
-                            onClick={() => setFormData({ ...formData, color })}
-                          />
-                        ))}
+                    {activeTab === 'income' ? (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Categoria Macro
+                        </label>
+                        <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-600">
+                          Recebimentos (definido automaticamente)
+                        </div>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Categoria Macro
-                      </label>
-                      <select
-                        value={formData.macro_group}
-                        onChange={(e) => setFormData(prev => ({ ...prev, macro_group: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                        required
-                      >
-                        {macroOptions.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                    ) : (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Categoria Macro
+                        </label>
+                        <select
+                          value={formData.macro_group}
+                          onChange={(e) => setFormData(prev => ({ ...prev, macro_group: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                          required
+                        >
+                          {macroOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cor
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {colors.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`w-9 h-9 rounded-full border-2 ${
+                            formData.color === color ? 'border-gray-900 ring-2 ring-flight-blue/60' : 'border-gray-300'
+                          }`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => setFormData({ ...formData, color })}
+                        />
+                      ))}
                     </div>
                   </div>
                   

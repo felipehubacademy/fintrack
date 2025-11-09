@@ -11,7 +11,6 @@ import InvestmentProgressCard from '../../components/InvestmentProgressCard';
 import LoadingLogo from '../../components/LoadingLogo';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import NotificationModal from '../../components/NotificationModal';
 import { 
   Target, 
@@ -141,7 +140,7 @@ export default function InvestmentsDashboard() {
       const { error } = await supabase
         .from('investment_goals')
         .update({ is_active: false })
-        .eq('id', goalId);
+        .eq('id', goalToDelete);
 
       if (error) throw error;
 
@@ -454,7 +453,6 @@ export default function InvestmentsDashboard() {
         type="danger"
       />
       
-      <Footer />
       </Header>
     </>
   );

@@ -713,7 +713,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
-            {editingTransaction ? 'Editar' : 'Nova'} {transactionType === 'income' ? 'Entrada' : 'Despesa'}
+            {editingTransaction ? 'Editar Transação' : 'Nova Transação'}
           </h2>
           <Button 
             variant="ghost" 

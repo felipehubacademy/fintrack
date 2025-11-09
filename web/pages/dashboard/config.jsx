@@ -294,7 +294,7 @@ export default function ConfigPage() {
         showNotificationModal={showNotificationModal}
         setShowNotificationModal={setShowNotificationModal}
       >
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-6">
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-6">
         
         {/* Organization Info - Igual às outras páginas */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
@@ -460,19 +460,19 @@ export default function ConfigPage() {
               </div>
 
               {/* Excluir Conta */}
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <p className="font-medium text-gray-900">Excluir Conta</p>
-                  <p className="text-sm text-gray-500">Remover permanentemente sua conta e todos os dados</p>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowDeleteAccountModal(true)}
-                  className="border-red-300 text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir
-                </Button>
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <p className="font-medium text-gray-900">Excluir Conta</p>
+                <p className="text-sm text-gray-500">Remover permanentemente sua conta e todos os dados</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteAccountModal(true)}
+                className="border-red-300 text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </Button>
               </div>
             </div>
           </CardContent>
@@ -510,7 +510,7 @@ export default function ConfigPage() {
           onConfirm={handleDeleteAccount}
           loading={isDeletingAccount}
         />
-        </main>
+      </main>
       </Header>
     </>
   );

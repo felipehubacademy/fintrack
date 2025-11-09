@@ -2,7 +2,6 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { FileText, Scale, CheckCircle } from 'lucide-react';
 import LandingHeader from '../components/LandingHeader';
-import LandingFooter from '../components/LandingFooter';
 
 export default function TermsPage() {
   return (
@@ -270,8 +269,6 @@ export default function TermsPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <LandingFooter />
     </>
   );
 }

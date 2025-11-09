@@ -9,7 +9,6 @@ import {
   CheckCircle
 } from 'lucide-react';
 import LandingHeader from '../components/LandingHeader';
-import LandingFooter from '../components/LandingFooter';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -222,8 +221,6 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <LandingFooter />
     </>
   );
 }

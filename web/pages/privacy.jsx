@@ -2,7 +2,6 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { Shield, Lock, Eye, FileText } from 'lucide-react';
 import LandingHeader from '../components/LandingHeader';
-import LandingFooter from '../components/LandingFooter';
 
 export default function PrivacyPage() {
   return (
@@ -214,8 +213,6 @@ export default function PrivacyPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <LandingFooter />
     </>
   );
 }

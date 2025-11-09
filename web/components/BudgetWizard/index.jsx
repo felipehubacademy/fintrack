@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Card, CardContent } from '../ui/Card';
-import { Badge } from '../ui/Badge';
 import MacroPieChart from './MacroPieChart';
 import { calculateBudgetDistribution, adjustTo100Percent, validateDistribution } from '../../lib/budgetSuggestions';
 import { supabase } from '../../lib/supabaseClient';
@@ -12,14 +10,16 @@ const STEPS = {
   WELCOME: 0,
   INCOME: 1,
   INVESTMENT: 2,
-  PREVIEW: 3,
-  CONFIRM: 4
+  SUCCESS: 3
 };
+
+const PROGRESS_STEPS = [STEPS.WELCOME, STEPS.INCOME, STEPS.INVESTMENT];
+const PROGRESS_TOTAL = PROGRESS_STEPS.length;
 
 const MACRO_LABELS = {
   needs: 'Necessidades',
   wants: 'Desejos',
-  investments: 'Poupança / Investimentos'
+  investments: 'Investimentos'
 };
 
 const MACRO_COLORS = {
@@ -44,7 +44,17 @@ export default function BudgetWizard({
   const [investmentPercentage, setInvestmentPercentage] = useState(20);
   const [distributions, setDistributions] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [loadingPreviousPlan, setLoadingPreviousPlan] = useState(false);
   const [showAnimation, setShowAnimation] = useState(true);
+  const [autoRecalculate, setAutoRecalculate] = useState(true);
+
+  const transitionToStep = (step) => {
+    setShowAnimation(false);
+    setTimeout(() => {
+      setCurrentStep(step);
+      setShowAnimation(true);
+    }, 150);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -54,16 +64,22 @@ export default function BudgetWizard({
     setInvestmentPercentage(20);
     setDistributions([]);
     setShowAnimation(true);
+    setAutoRecalculate(true);
   }, [isOpen]);
 
   useEffect(() => {
     if (currentStep < STEPS.INVESTMENT) return;
-    const income = parseCurrency(monthlyIncome);
-    if (!income || !budgetCategories.length) return;
+    if (!autoRecalculate) return;
 
-    const baseDistribution = calculateBudgetDistribution(income, investmentPercentage, budgetCategories);
+    const income = parseCurrency(monthlyIncome);
+    const expenseCategories = budgetCategories.filter(
+      (category) => category.type === 'expense' || category.type === 'both'
+    );
+    if (!income || !expenseCategories.length) return;
+
+    const baseDistribution = calculateBudgetDistribution(income, investmentPercentage, expenseCategories);
     setDistributions(baseDistribution);
-  }, [monthlyIncome, investmentPercentage, budgetCategories, currentStep]);
+  }, [monthlyIncome, investmentPercentage, budgetCategories, currentStep, autoRecalculate]);
 
   const aggregatedSummary = useMemo(() => {
     const income = parseCurrency(monthlyIncome);
@@ -92,34 +108,22 @@ export default function BudgetWizard({
   }, [distributions, monthlyIncome]);
 
   const handleNext = () => {
-    setShowAnimation(false);
-    setTimeout(() => {
-      setCurrentStep((prev) => Math.min(prev + 1, STEPS.PREVIEW));
-      setShowAnimation(true);
-    }, 150);
-  };
-
-  const handleGoToConfirm = () => {
-    setShowAnimation(false);
-    setTimeout(() => {
-      setCurrentStep(STEPS.CONFIRM);
-      setShowAnimation(true);
-    }, 150);
+    if (currentStep >= STEPS.INVESTMENT) return;
+    const nextStep = Math.min(currentStep + 1, STEPS.INVESTMENT);
+    transitionToStep(nextStep);
   };
 
   const handlePrevious = () => {
     if (currentStep === STEPS.WELCOME) return;
-    setShowAnimation(false);
-    setTimeout(() => {
-      setCurrentStep((prev) => Math.max(prev - 1, STEPS.WELCOME));
-      setShowAnimation(true);
-    }, 150);
+    const previousStep = Math.max(currentStep - 1, STEPS.WELCOME);
+    transitionToStep(previousStep);
   };
 
   const handleIncomeChange = (event) => {
     const raw = event.target.value;
     const cleaned = raw.replace(/[^\d,.-]/g, '');
     setMonthlyIncome(cleaned);
+    setAutoRecalculate(true);
   };
 
   const handleIncomeBlur = () => {
@@ -131,31 +135,52 @@ export default function BudgetWizard({
     setMonthlyIncome(formatCurrency(income));
   };
 
-  const handleDistributionChange = (index, percentage) => {
-    const income = parseCurrency(monthlyIncome);
-    if (!income) return;
-
-    const updated = distributions.map((dist, idx) =>
-      idx === index
-        ? {
-            ...dist,
-            percentage: Math.max(0, Number(percentage) || 0)
-          }
-        : dist
-    );
-    setDistributions(adjustTo100Percent(updated, income));
+  const handleInvestmentChange = (value) => {
+    const clamped = Math.min(Math.max(value, 0), 80);
+    setAutoRecalculate(true);
+    setInvestmentPercentage(clamped);
   };
 
-  const handleResetDistribution = () => {
-    const income = parseCurrency(monthlyIncome);
-    if (!income) return;
-    setDistributions(calculateBudgetDistribution(income, investmentPercentage, budgetCategories));
+  const handleReopenPlan = () => {
+    setAutoRecalculate(true);
+    transitionToStep(STEPS.INCOME);
   };
 
-  const handleAutoAdjust = () => {
-    const income = parseCurrency(monthlyIncome);
-    if (!income) return;
-    setDistributions(adjustTo100Percent(distributions, income));
+  const handleCopyPreviousPlan = async () => {
+    if (loadingPreviousPlan) return;
+
+    setLoadingPreviousPlan(true);
+    try {
+      const result = await loadPreviousBudgets({
+        organizationId: organization?.id,
+        selectedMonth,
+        budgetCategories
+      });
+
+      if (!result.success) {
+        warning(result.message);
+        return;
+      }
+
+      const { totalAmount, distributions: previousDistributions } = result;
+      const adjustedDistributions = adjustTo100Percent(previousDistributions, totalAmount);
+      const investmentFromPlan = adjustedDistributions
+        .filter((dist) => dist.macro_group === 'investments')
+        .reduce((sum, dist) => sum + (dist.percentage || 0), 0);
+
+      setAutoRecalculate(false);
+      setMonthlyIncome(formatCurrency(totalAmount));
+      setInvestmentPercentage(Math.round(investmentFromPlan));
+      setDistributions(adjustedDistributions);
+      transitionToStep(STEPS.INCOME);
+      handleNext();
+      success('Planejamento do mês anterior carregado! Revise e confirme.');
+    } catch (error) {
+      console.error('Erro ao copiar planejamento anterior:', error);
+      showError('Não foi possível copiar o planejamento anterior.');
+    } finally {
+      setLoadingPreviousPlan(false);
+    }
   };
 
   const handleSave = async () => {
@@ -193,13 +218,20 @@ export default function BudgetWizard({
     setSaving(true);
     try {
       await supabase.from('budgets').delete().eq('organization_id', organization.id).eq('month_year', monthYear);
-      if (payload.length) {
+      if (finalDistributions.length) {
+        const payload = finalDistributions
+          .filter((dist) => dist.categoryId && !dist.isPlaceholder)
+          .map((dist) => ({
+            organization_id: organization.id,
+            category_id: dist.categoryId,
+            limit_amount: dist.amount,
+            month_year: monthYear
+          }));
         const { error } = await supabase.from('budgets').insert(payload);
         if (error) throw error;
       }
       success('Planejamento salvo com sucesso!');
-      onComplete?.();
-      onClose();
+      transitionToStep(STEPS.SUCCESS);
     } catch (error) {
       console.error('Erro ao salvar planejamento:', error);
       showError('Erro ao salvar planejamento: ' + (error.message || 'Erro desconhecido'));
@@ -208,37 +240,67 @@ export default function BudgetWizard({
     }
   };
 
+  const handleFinish = () => {
+    onComplete?.();
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const income = parseCurrency(monthlyIncome);
   const totalPercentage = distributions.reduce((sum, dist) => sum + (dist.percentage || 0), 0);
   const isValidDistribution = validateDistribution(distributions);
+  const totalIncomeValue = income || 0;
+  const progressIndex = PROGRESS_STEPS.indexOf(currentStep);
+  const showProgress = progressIndex !== -1;
+  const progressPercent = showProgress ? ((progressIndex + 1) / PROGRESS_TOTAL) * 100 : 100;
+
+  const investmentSummarySection = (
+    <div className="mx-auto w-full max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-6xl px-4 sm:px-6">
+      <div className="w-full bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 md:px-8 md:py-5 lg:px-10 lg:py-6 shadow-sm">
+        <p className="text-blue-900 text-xs md:text-sm lg:text-base leading-relaxed text-center">
+          <strong>Por quê 20%?</strong> Esta é uma meta recomendada pelos especialistas em finanças pessoais do MeuAzulão
+          para garantir uma poupança saudável e crescimento patrimonial a longo prazo.
+        </p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl xl:max-w-6xl 2xl:max-w-6xl max-h-[95vh] border border-gray-200 flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[96rem] max-h-[95vh] border border-gray-200 flex flex-col">
         <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            {currentStep > STEPS.WELCOME && (
-              <Button variant="ghost" size="icon" onClick={handlePrevious} className="text-gray-700 hover:bg-gray-100">
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            )}
-            <div>
-              <p className="text-sm font-medium text-gray-500">
-                Passo {currentStep + 1} de 4
-              </p>
-              <div className="h-1 bg-gray-200 rounded-full mt-2 w-56">
-                <div
-                  className="h-1 bg-flight-blue rounded-full transition-all duration-300"
-                  style={{ width: `${((currentStep + 1) / 4) * 100}%` }}
-                />
+          {showProgress ? (
+            <>
+              <div className="flex items-center space-x-3">
+                {progressIndex > 0 && (
+                  <Button variant="ghost" size="icon" onClick={handlePrevious} className="text-gray-700 hover:bg-gray-100">
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Passo {progressIndex + 1} de {PROGRESS_TOTAL}
+                  </p>
+                  <div className="h-1 bg-gray-200 rounded-full mt-2 w-56">
+                    <div
+                      className="h-1 bg-flight-blue rounded-full transition-all duration-300"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
               </div>
+              <Button variant="ghost" onClick={onClose}>
+                Fechar
+              </Button>
+            </>
+          ) : (
+            <div className="w-full flex justify-end">
+              <Button variant="ghost" onClick={onClose}>
+                Fechar
+              </Button>
             </div>
-          </div>
-          <Button variant="ghost" onClick={onClose}>
-            Fechar
-          </Button>
+          )}
         </header>
 
         <div className="flex-1 overflow-y-auto p-6">
@@ -273,6 +335,14 @@ export default function BudgetWizard({
               </Button>
               <Button variant="outline" onClick={onClose} className="px-8 py-3 text-lg">
                 Mais tarde
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleCopyPreviousPlan}
+                disabled={loadingPreviousPlan}
+                className="px-8 py-3 text-lg"
+              >
+                {loadingPreviousPlan ? 'Carregando...' : 'Copiar planejamento anterior'}
               </Button>
             </div>
           </div>
@@ -320,16 +390,7 @@ export default function BudgetWizard({
               </h2>
             </div>
 
-            {investmentSummarySection}
-
-            <div className="mx-auto w-full max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-6xl px-4 sm:px-6">
-              <div className="w-full bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 md:px-8 md:py-5 lg:px-10 lg:py-6 shadow-sm">
-                <p className="text-blue-900 text-xs md:text-sm lg:text-base leading-relaxed text-center">
-                  <strong>Por quê 20%?</strong> Esta é uma meta recomendada pelos especialistas em finanças pessoais do MeuAzulão
-                  para garantir uma poupança saudável e crescimento patrimonial a longo prazo.
-                </p>
-              </div>
-            </div>
+            {totalIncomeValue > 0 && investmentSummarySection}
 
             <div className="max-w-[720px] mx-auto space-y-6 px-4 sm:px-0">
               <div>
@@ -342,7 +403,7 @@ export default function BudgetWizard({
                     min="0"
                     max="80"
                     value={investmentPercentage}
-                    onChange={(e) => setInvestmentPercentage(parseInt(e.target.value) || 0)}
+                    onChange={(e) => handleInvestmentChange(parseInt(e.target.value) || 0)}
                     className="flex-1"
                   />
                   <input
@@ -350,7 +411,7 @@ export default function BudgetWizard({
                     min="0"
                     max="80"
                     value={investmentPercentage}
-                    onChange={(e) => setInvestmentPercentage(parseInt(e.target.value) || 0)}
+                    onChange={(e) => handleInvestmentChange(parseInt(e.target.value) || 0)}
                     className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
                   />
                   <span className="text-gray-600">%</span>
@@ -378,133 +439,122 @@ export default function BudgetWizard({
               </div>
 
               <div className="flex justify-center pt-4">
-                <Button type="button" onClick={handleNext} className="px-8 py-3 text-lg">
-                  Revisar distribuição
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={!isValidDistribution || saving}
+                  className="px-8 py-3 text-lg"
+                >
+                  {saving ? 'Salvando...' : 'Confirmar planejamento'}
                 </Button>
               </div>
             </div>
           </div>
         );
 
-      case STEPS.PREVIEW:
+      case STEPS.SUCCESS:
         return (
-          <div className={`${baseClasses} space-y-6 lg:space-y-8`}>
-            <div className="text-center">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                Ajuste os valores conforme sua necessidade
-              </h2>
-              <p className="text-gray-600">
-                Edite os percentuais das subcategorias. Use os botões abaixo para restaurar a sugestão ou ajustar automaticamente.
+          <div className={`${baseClasses} flex flex-col items-center justify-center text-center space-y-8 py-12 px-6`}>
+            <div className="flex items-center justify-center space-x-3 bg-green-50 border border-green-200 rounded-full px-5 py-2 shadow-sm">
+              <Sparkles className="h-5 w-5 text-green-600" />
+              <span className="text-sm font-semibold text-green-700 uppercase tracking-wider">Planejamento concluído</span>
+            </div>
+            <div className="bg-white border border-green-200 rounded-3xl px-10 py-10 shadow-lg space-y-5 max-w-3xl">
+              <h2 className="text-4xl font-bold text-green-700">Parabéns!</h2>
+              <p className="text-lg text-green-800 leading-relaxed">
+                Seu planejamento mensal está definido. Vamos monitorar automaticamente seus gastos e avisar quando as metas estiverem próximas do limite. Ajustes finos podem ser feitos em <strong>Pendências e Alertas</strong>.
               </p>
             </div>
-
-            {investmentSummarySection}
-
-            <div className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 px-5 py-3 bg-gray-50 text-sm font-semibold text-gray-700">
-                <span>Categoria</span>
-                <span className="text-center">Percentual</span>
-                <span className="text-right">Valor (R$)</span>
-              </div>
-              <div className="divide-y divide-gray-200 max-h-[380px] overflow-y-auto">
-                {distributions.map((dist, index) => (
-                  <div key={dist.categoryId || index} className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 px-5 py-4 items-center">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: dist.color || '#6B7280' }} />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{dist.categoryName}</p>
-                        <p className="text-xs text-gray-500">{MACRO_LABELS[dist.macro_group]}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-center space-x-2">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        value={dist.percentage.toFixed(1)}
-                        onChange={(e) => handleDistributionChange(index, e.target.value)}
-                        className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center"
-                      />
-                      <span className="text-gray-600">%</span>
-                    </div>
-                    <div className="text-right text-sm font-semibold text-gray-900">
-                      R$ {dist.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="text-center space-y-2">
-              <div className={`inline-block px-4 py-2 rounded-lg ${isValidDistribution ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
-                <span className="font-semibold">Total: {totalPercentage.toFixed(1)}%</span>
-                {!isValidDistribution && <p className="text-sm mt-1">A soma deve ser exatamente 100%</p>}
-              </div>
-              <div className="text-sm text-gray-600">
-                Renda informada: R$ {formatCurrency(parseCurrency(monthlyIncome))} · Total distribuído: R$ {distributions.reduce((sum, d) => sum + (d.amount || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <Button variant="outline" type="button" onClick={handleResetDistribution} className="border-flight-blue/40 text-flight-blue hover:bg-flight-blue/10 px-6 py-3 min-h-[48px]">
-                Restaurar sugestão
-              </Button>
-              {!isValidDistribution && (
-                <Button variant="outline" type="button" onClick={handleAutoAdjust} className="border-blue-300 text-blue-700 hover:bg-blue-50 px-6 py-3 min-h-[48px]">
-                  Ajustar automaticamente
-                </Button>
-              )}
-              <Button onClick={handleGoToConfirm} disabled={!isValidDistribution} type="button" className="bg-flight-blue hover:bg-flight-blue/90 text-white px-8 py-6 text-lg min-h-[56px] disabled:opacity-50">
-                Confirmar
-              </Button>
-            </div>
+            <Button onClick={handleFinish} className="px-8 py-3 text-lg">
+              Ver planejamento
+            </Button>
           </div>
         );
 
-      case STEPS.CONFIRM:
-        return (
-          <div className={`${baseClasses} space-y-6 text-center`}>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Tudo certo com seu planejamento!
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Revisei a distribuição de necessidades, desejos e investimentos. Se estiver tudo certo, salve para aplicarmos este planejamento no mês selecionado.
-            </p>
-
-            <div className="grid gap-4 sm:grid-cols-3 max-w-4xl mx-auto">
-              {aggregatedSummary.map((item) => (
-                <Card key={item.key} className="border border-gray-200 shadow-sm">
-                  <CardContent className="p-4 space-y-2">
-                    <Badge className="text-xs font-semibold bg-white border border-gray-200 text-gray-700">
-                      {item.label}
-                    </Badge>
-                    <p className="text-2xl font-bold" style={{ color: item.color }}>
-                      {item.percentage.toFixed(1)}%
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <Button variant="outline" onClick={() => setCurrentStep(STEPS.PREVIEW)} className="px-8 py-3 text-lg">
-                Ajustar novamente
-              </Button>
-              <Button onClick={handleSave} disabled={saving} className="px-8 py-3 text-lg">
-                {saving ? 'Salvando...' : 'Salvar planejamento'}
-              </Button>
-            </div>
-          </div>
-        );
 
       default:
         return null;
     }
   }
+}
+
+async function loadPreviousBudgets({ organizationId, selectedMonth, budgetCategories }) {
+  if (!organizationId || !selectedMonth) {
+    return { success: false, message: 'Organização ou mês inválido.' };
+  }
+
+  const currentMonth = formatMonthYear(selectedMonth);
+  if (!currentMonth) {
+    return { success: false, message: 'Mês selecionado inválido.' };
+  }
+
+  const baseDate = new Date(currentMonth);
+  baseDate.setMonth(baseDate.getMonth() - 1);
+  const previousMonth = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const { data, error } = await supabase
+    .from('budgets')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('month_year', previousMonth);
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    return { success: false, message: 'Nenhum planejamento encontrado para o mês anterior.' };
+  }
+
+  const expenseCategories = budgetCategories.filter(
+    (category) => category.type === 'expense' || category.type === 'both'
+  );
+  const categoriesMap = new Map(expenseCategories.map((category) => [category.id, category]));
+
+  const entries = data
+    .map((budget) => {
+      const category = categoriesMap.get(budget.category_id);
+      if (!category) return null;
+
+      const amount = Number(budget.limit_amount || 0);
+      return amount > 0
+        ? {
+            category,
+            amount
+          }
+        : null;
+    })
+    .filter(Boolean);
+
+  if (!entries.length) {
+    return {
+      success: false,
+      message: 'As categorias do mês anterior não correspondem às categorias disponíveis atualmente.'
+    };
+  }
+
+  const totalAmount = entries.reduce((sum, item) => sum + item.amount, 0);
+  if (!totalAmount) {
+    return { success: false, message: 'O planejamento anterior não possui valores válidos.' };
+  }
+
+  const distributions = entries.map(({ category, amount }) => ({
+    id: category.id,
+    categoryId: category.id,
+    categoryName: category.name,
+    macro_group: category.macro_group,
+    amount,
+    percentage: (amount / totalAmount) * 100,
+    color: category.color,
+    isPlaceholder: false
+  }));
+
+  return {
+    success: true,
+    totalAmount,
+    distributions,
+    previousMonthLabel: previousMonth
+  };
 }
 
 function parseCurrency(value) {

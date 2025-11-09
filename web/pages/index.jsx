@@ -12,7 +12,7 @@ import {
   Play
 } from 'lucide-react';
 import LandingHeader from '../components/LandingHeader';
-import LandingFooter from '../components/LandingFooter';
+import ZulFloatingButton from '../components/ZulFloatingButton';
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -539,8 +539,8 @@ export default function LandingPage() {
       </section>
 
 
-      {/* Footer */}
-      <LandingFooter />
+      {/* Floating Button */}
+      <ZulFloatingButton />
 
       <style jsx>{`
         @keyframes gradient {

@@ -9,7 +9,6 @@ import {
   Search
 } from 'lucide-react';
 import LandingHeader from '../components/LandingHeader';
-import LandingFooter from '../components/LandingFooter';
 
 export default function HelpPage() {
   const [openFaq, setOpenFaq] = useState(null);
@@ -241,8 +240,6 @@ export default function HelpPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <LandingFooter />
     </>
   );
 }

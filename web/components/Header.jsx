@@ -220,7 +220,7 @@ export default function Header({
     );
   };
 
-  const sidebarWidth = isDesktop 
+  const sidebarWidth = isDesktop
     ? (isSidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH)
     : 0;
 
@@ -241,7 +241,7 @@ export default function Header({
           {isSidebarCollapsed ? <ChevronRight style={{ width: '18px', height: '18px' }} className="text-gray-600" /> : <ChevronLeft style={{ width: '18px', height: '18px' }} className="text-gray-600" />}
         </button>
 
-        <div className="flex h-full w-full flex-col py-6 px-3">
+        <div className="flex h-full w-full flex-col px-3 py-6">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center justify-center w-14 h-14">
               <Image
@@ -254,13 +254,13 @@ export default function Header({
             </div>
             <div className={`ml-3 flex-1 min-w-0 overflow-hidden transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
               <p className="text-sm font-semibold text-deep-sky truncate whitespace-nowrap">
-                {organization?.name || 'MeuAzulão'}
-              </p>
-              {orgUser && (
+                    {organization?.name || 'MeuAzulão'}
+                  </p>
+                  {orgUser && (
                 <p className="text-xs text-gray-500 truncate whitespace-nowrap">
-                  Olá, {userFirstName || orgUser.name}
-                </p>
-              )}
+                      Olá, {userFirstName || orgUser.name}
+                    </p>
+                  )}
             </div>
           </div>
 
@@ -271,7 +271,7 @@ export default function Header({
               title={isSidebarCollapsed ? 'Adicionar Transação' : undefined}
             >
               <div className="w-5 flex items-center justify-center flex-shrink-0">
-                <Plus className="h-5 w-5" />
+              <Plus className="h-5 w-5" />
               </div>
               <span className={`ml-3 text-sm font-medium whitespace-nowrap overflow-hidden transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
                 Nova Transação
@@ -287,8 +287,8 @@ export default function Header({
                     <div className="h-5 flex items-center mb-3">
                       <div className={`px-3 overflow-hidden transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0' : 'opacity-100 w-full'}`}>
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap">
-                          {section.title}
-                        </p>
+                      {section.title}
+                    </p>
                       </div>
                     </div>
                   )}
@@ -300,8 +300,8 @@ export default function Header({
             </div>
           </nav>
 
-          <div className={`mt-auto pt-6 text-center transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}>
-            <p className="text-xs text-gray-400 leading-relaxed px-2">
+          <div className="mt-auto pt-6 text-center">
+            <p className={`text-xs text-gray-400 leading-relaxed px-2 transition-all duration-200 ${isSidebarCollapsed ? 'h-0 overflow-hidden opacity-0' : 'opacity-100'}`}>
               © 2025 MeuAzulão.<br />
               Todos os direitos reservados.
             </p>

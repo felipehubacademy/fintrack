@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X, AlertCircle } from 'lucide-react';
+import { formatCurrencyInput, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
 
 const CARD_COLORS = [
   { value: 'bg-blue-600', label: 'Azul', preview: 'bg-blue-600', hex: '#2563EB' },

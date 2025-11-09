@@ -445,7 +445,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Nova Despesa</h2>
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Nova Transação</h2>
           <Button 
             variant="ghost" 
             size="icon" 

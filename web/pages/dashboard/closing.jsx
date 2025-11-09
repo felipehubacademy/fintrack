@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import NotificationModal from '../../components/NotificationModal';
 import { 
   Calendar,
@@ -756,7 +755,6 @@ export default function MonthlyClosing() {
         onClose={() => setShowNotificationModal(false)}
       />
         
-        <Footer />
       </Header>
     </>
   );

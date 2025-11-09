@@ -819,7 +819,6 @@ export default function CardsDashboard() {
         type="danger"
       />
 
-      <Footer />
       </Header>
     </>
   );
