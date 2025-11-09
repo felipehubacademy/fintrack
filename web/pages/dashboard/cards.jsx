@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import CardModal from '../../components/CardModal';
+import CardBulkTransactionsModal from '../../components/CardBulkTransactionsModal';
 import CardInvoiceModal from '../../components/CardInvoiceModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import LoadingLogo from '../../components/LoadingLogo';
@@ -30,7 +31,8 @@ import {
   Bell,
   HelpCircle,
   Wifi,
-  Shield
+  Shield,
+  Eye
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -49,6 +51,8 @@ export default function CardsDashboard() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedCardForInvoice, setSelectedCardForInvoice] = useState(null);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [selectedCardForBulk, setSelectedCardForBulk] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [cardToDelete, setCardToDelete] = useState(null);
   const [openTooltip, setOpenTooltip] = useState(null);
@@ -722,32 +726,45 @@ export default function CardsDashboard() {
                     {card.type === 'credit' && (
                       <Button 
                         variant="outline" 
-                        size="sm"
+                        size="icon"
                         onClick={() => {
                           setSelectedCardForInvoice(card);
                           setShowInvoiceModal(true);
                         }}
                         className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        aria-label="Ver faturas"
                       >
-                        Ver Faturas
+                        <Eye className="h-4 w-4" />
                       </Button>
                     )}
                     <Button 
                       variant="outline" 
-                      size="sm"
+                      size="icon"
                       onClick={() => openEditModal(card)}
+                      aria-label="Editar cartão"
                     >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Editar
+                      <Edit className="h-4 w-4" />
                     </Button>
                     <Button 
                       variant="outline" 
-                      size="sm"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedCardForBulk(card);
+                        setShowBulkModal(true);
+                      }}
+                      className="text-green-600 border-green-200 hover:bg-green-50"
+                      aria-label="Adicionar transações em massa"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
                       onClick={() => handleDeleteCard(card.id)}
                       className="text-red-600 border-red-200 hover:bg-red-50"
+                      aria-label="Excluir cartão"
                     >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Excluir
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardContent>
@@ -802,6 +819,17 @@ export default function CardsDashboard() {
           setSelectedCardForInvoice(null);
         }}
         card={selectedCardForInvoice}
+      />
+
+      {/* Mass Transactions Modal */}
+      <CardBulkTransactionsModal
+        isOpen={showBulkModal}
+        onClose={() => {
+          setShowBulkModal(false);
+          setSelectedCardForBulk(null);
+        }}
+        card={selectedCardForBulk}
+        onSuccess={fetchCards}
       />
 
       {/* Confirmation Modal */}
