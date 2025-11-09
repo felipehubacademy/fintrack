@@ -7,7 +7,8 @@ export default function Tooltip({
   autoOpen = false,
   visible = null,
   onToggle = null,
-  wide = false
+  wide = false,
+  compact = false
 }) {
   const [isVisible, setIsVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState(position);
@@ -164,7 +165,7 @@ export default function Tooltip({
         />
       )}
       
-    <div className="relative group inline-block" style={{ contain: 'layout' }}>
+    <div className="relative group inline-block">
       <div 
           ref={triggerRef}
           onMouseEnter={handleMouseEnter}
@@ -181,16 +182,15 @@ export default function Tooltip({
         <div 
           ref={tooltipRef}
           className={`
-            z-[100] bg-white rounded-lg shadow-2xl border border-gray-200 p-4 
-            min-w-[200px] max-w-[calc(100vw-32px)]
-            ${wide ? 'md:w-96' : 'md:max-w-xs'} 
+            z-[100] bg-white text-gray-900 rounded-md shadow-lg border border-gray-200
+            px-2 py-1 text-xs whitespace-nowrap
             ${isMobile ? 'fixed' : 'absolute'}
             ${isMobile ? '' : 'md:invisible md:group-hover:visible'}
             ${showTooltip ? 'visible' : 'invisible'}
-            ${!isMobile && position === 'left' ? 'right-0' : ''}
-            ${!isMobile && position === 'right' ? 'left-0' : ''}
-            ${!isMobile && position === 'top' ? 'bottom-full mb-2' : ''}
-            ${!isMobile && position === 'bottom' ? 'top-full mt-2' : ''}
+            ${!isMobile && position === 'left' ? 'right-full mr-2 top-1/2 -translate-y-1/2' : ''}
+            ${!isMobile && position === 'right' ? 'left-full ml-2 top-1/2 -translate-y-1/2' : ''}
+            ${!isMobile && position === 'top' ? 'bottom-full mb-2 left-1/2 -translate-x-1/2' : ''}
+            ${!isMobile && position === 'bottom' ? 'top-full mt-2 left-1/2 -translate-x-1/2' : ''}
           `}
           style={{
             ...(isMobile && {
@@ -198,9 +198,7 @@ export default function Tooltip({
             })
           }}
         >
-        <div className="text-sm text-gray-900 whitespace-normal">
-          {content}
-        </div>
+        {content}
       </div>
     </div>
     </>

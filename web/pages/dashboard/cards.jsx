@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import CardModal from '../../components/CardModal';
 import CardBulkTransactionsModal from '../../components/CardBulkTransactionsModal';
+import Tooltip from '../../components/ui/Tooltip';
 import CardInvoiceModal from '../../components/CardInvoiceModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import LoadingLogo from '../../components/LoadingLogo';
@@ -724,48 +725,56 @@ export default function CardsDashboard() {
                   {/* Actions */}
                   <div className="flex justify-center space-x-2 pt-4 border-t">
                     {card.type === 'credit' && (
+                      <Tooltip content="Ver faturas" position="right">
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => {
+                            setSelectedCardForInvoice(card);
+                            setShowInvoiceModal(true);
+                          }}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          aria-label="Ver faturas"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
+                    )}
+                    <Tooltip content="Editar" position="top">
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => openEditModal(card)}
+                        aria-label="Editar cartão"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip content="Lançar em massa" position="top">
                       <Button 
                         variant="outline" 
                         size="icon"
                         onClick={() => {
-                          setSelectedCardForInvoice(card);
-                          setShowInvoiceModal(true);
+                          setSelectedCardForBulk(card);
+                          setShowBulkModal(true);
                         }}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                        aria-label="Ver faturas"
+                        className="text-green-600 border-green-200 hover:bg-green-50"
+                        aria-label="Adicionar transações em massa"
                       >
-                        <Eye className="h-4 w-4" />
+                        <Plus className="h-4 w-4" />
                       </Button>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => openEditModal(card)}
-                      aria-label="Editar cartão"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => {
-                        setSelectedCardForBulk(card);
-                        setShowBulkModal(true);
-                      }}
-                      className="text-green-600 border-green-200 hover:bg-green-50"
-                      aria-label="Adicionar transações em massa"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => handleDeleteCard(card.id)}
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                      aria-label="Excluir cartão"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </Tooltip>
+                    <Tooltip content="Excluir" position="left">
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => handleDeleteCard(card.id)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        aria-label="Excluir cartão"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </Tooltip>
                   </div>
                 </CardContent>
               </Card>
