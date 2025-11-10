@@ -8,7 +8,6 @@ import { Button } from '../../components/ui/Button';
 import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
 import NotificationModal from '../../components/NotificationModal';
-import MonthlyComparison from '../../components/MonthlyComparison';
 import { 
   Calendar,
   TrendingUp,
@@ -16,18 +15,44 @@ import {
   DollarSign,
   Download,
   HelpCircle,
-  CreditCard
+  CreditCard,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export default function MonthlyClosing() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
   const { warning } = useNotificationContext();
-  
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonthStr = String(now.getMonth() + 1).padStart(2, '0');
+
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(`${currentYear}-${currentMonthStr}`);
   const [loading, setLoading] = useState(true);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [openTooltip, setOpenTooltip] = useState(null);
+  const [historicalExpanded, setHistoricalExpanded] = useState(false);
+
+  const handleYearChange = (yearValue) => {
+    const parsedYear = parseInt(yearValue, 10);
+    if (Number.isNaN(parsedYear)) return;
+    setSelectedYear(parsedYear);
+    const [, monthPart = currentMonthStr] = selectedMonth.split('-');
+    setSelectedMonth(`${parsedYear}-${monthPart}`);
+  };
+
+  const handleMonthChange = (value) => {
+    if (!value) return;
+    setSelectedMonth(value);
+    const [yearPart] = value.split('-');
+    const parsedYear = parseInt(yearPart, 10);
+    if (!Number.isNaN(parsedYear) && parsedYear !== selectedYear) {
+      setSelectedYear(parsedYear);
+    }
+  };
   const [data, setData] = useState({
     incomes: [],
     expenses: [],
@@ -56,7 +81,7 @@ export default function MonthlyClosing() {
     } else if (!orgLoading && orgError) {
       router.push('/');
     }
-  }, [orgLoading, orgError, organization, selectedMonth]);
+  }, [orgLoading, orgError, organization, selectedMonth, selectedYear]);
 
   // Fechar tooltip ao clicar fora em mobile
   useEffect(() => {
@@ -88,13 +113,10 @@ export default function MonthlyClosing() {
       const monthStartStr = formatDate(monthStart);
       const monthEndStr = formatDate(monthEnd);
 
-      const historyWindow = 6;
-      const historyStart = new Date(monthStart);
-      historyStart.setMonth(historyStart.getMonth() - (historyWindow - 1));
-
-      const fetchStart = new Date(historyStart);
-      fetchStart.setMonth(fetchStart.getMonth() - 1);
-      const fetchStartStr = formatDate(fetchStart);
+      const yearStart = new Date(selectedYear, 0, 1);
+      const fetchStartStr = formatDate(yearStart);
+      const fetchEnd = new Date(selectedYear, 11, 31);
+      const fetchEndStr = formatDate(fetchEnd);
 
       const [
         { data: incomesData, error: incomesError },
@@ -117,7 +139,7 @@ export default function MonthlyClosing() {
         .eq('organization_id', organization.id)
         .eq('status', 'confirmed')
           .gte('date', fetchStartStr)
-          .lte('date', monthEndStr),
+          .lte('date', fetchEndStr),
         supabase
         .from('expenses')
         .select(`
@@ -134,7 +156,7 @@ export default function MonthlyClosing() {
         .eq('organization_id', organization.id)
         .eq('status', 'confirmed')
           .gte('date', fetchStartStr)
-          .lte('date', monthEndStr),
+          .lte('date', fetchEndStr),
         supabase
           .from('cards')
           .select('id, name, closing_day, billing_day, is_active, type')
@@ -403,55 +425,63 @@ export default function MonthlyClosing() {
 
       const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 
-      console.log('🔍 [Closing] Calculando série histórica...');
-      const historicalSeries = Array.from({ length: historyWindow }, (_, idx) => {
-          const targetDate = new Date(monthStart);
-          targetDate.setMonth(targetDate.getMonth() - (historyWindow - 1 - idx));
+      console.log('🔍 [Closing] Calculando série histórica anual...');
+      const monthsInYear = 12;
+      const fullYearSeries = Array.from({ length: monthsInYear }, (_, idx) => {
+        const targetYear = year;
+        const targetMonthIndex = idx;
+        const targetStartStr = formatDate(new Date(targetYear, targetMonthIndex, 1));
+        const targetEnd = new Date(targetYear, targetMonthIndex + 1, 0);
+        const targetEndStr = formatDate(targetEnd);
 
-          const targetYear = targetDate.getFullYear();
-          const targetMonthIndex = targetDate.getMonth();
-          const targetStartStr = formatDate(new Date(targetYear, targetMonthIndex, 1));
-          const targetEnd = new Date(targetYear, targetMonthIndex + 1, 0);
-          const targetEndStr = formatDate(targetEnd);
+        const incomesInRange = confirmedIncomes.filter(
+          (income) => income.date >= targetStartStr && income.date <= targetEndStr
+        );
+        const cashExpensesInRange = confirmedExpenses.filter(
+          (expense) =>
+            expense.payment_method !== 'credit_card' &&
+            expense.date >= targetStartStr &&
+            expense.date <= targetEndStr
+        );
+        const invoicesInRange = computeCardInvoicesForMonth(targetYear, targetMonthIndex);
 
-          const incomesInRange = confirmedIncomes.filter(
-            (income) => income.date >= targetStartStr && income.date <= targetEndStr
-          );
-          const cashExpensesInRange = confirmedExpenses.filter(
-            (expense) =>
-              expense.payment_method !== 'credit_card' &&
-              expense.date >= targetStartStr &&
-              expense.date <= targetEndStr
-          );
-          const invoicesInRange = computeCardInvoicesForMonth(targetYear, targetMonthIndex);
+        const incomeTotal = incomesInRange.reduce(
+          (sum, income) => sum + Number(income.amount || 0),
+          0
+        );
+        const cashTotalRange = cashExpensesInRange.reduce(
+          (sum, expense) => sum + Number(expense.amount || 0),
+          0
+        );
+        const creditTotalRange = invoicesInRange.reduce(
+          (sum, invoice) => sum + Number(invoice.total || 0),
+          0
+        );
+        const expensesTotalRange = cashTotalRange + creditTotalRange;
 
-          const incomeTotal = incomesInRange.reduce(
-            (sum, income) => sum + Number(income.amount || 0),
-            0
-          );
-          const cashTotalRange = cashExpensesInRange.reduce(
-            (sum, expense) => sum + Number(expense.amount || 0),
-            0
-          );
-          const creditTotalRange = invoicesInRange.reduce(
-            (sum, invoice) => sum + Number(invoice.total || 0),
-            0
-          );
-          const expensesTotalRange = cashTotalRange + creditTotalRange;
-
-          return {
-            key: `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`,
-            label: new Date(targetYear, targetMonthIndex, 1).toLocaleDateString('pt-BR', {
-              month: 'short',
-              year: 'numeric'
-            }),
-            income: incomeTotal,
-            cash: cashTotalRange,
-            credit: creditTotalRange,
-            totalExpense: expensesTotalRange,
-            balance: incomeTotal - expensesTotalRange,
-            creditInvoices: invoicesInRange
-          };
+        return {
+          key: `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`,
+          label: new Date(targetYear, targetMonthIndex, 1).toLocaleDateString('pt-BR', {
+            month: 'short',
+            year: 'numeric'
+          }),
+          income: incomeTotal,
+          cash: cashTotalRange,
+          credit: creditTotalRange,
+          totalExpense: expensesTotalRange,
+          balance: incomeTotal - expensesTotalRange,
+          creditInvoices: invoicesInRange
+        };
+      }).filter((entry) => {
+        const [entryYearStr, entryMonthStr] = entry.key.split('-');
+        const entryYear = parseInt(entryYearStr, 10);
+        const entryMonth = parseInt(entryMonthStr, 10);
+        const today = new Date();
+        if (entryYear > today.getFullYear()) return false;
+        if (entryYear === today.getFullYear() && entryMonth > today.getMonth() + 1) {
+          return false;
+        }
+        return true;
       });
 
       const monthlyExpenses = [
@@ -471,7 +501,7 @@ export default function MonthlyClosing() {
         creditInvoices,
         individualSummaries,
         familySharedTotals,
-        historicalSeries,
+        historicalSeries: fullYearSeries,
         monthMetadata: {
           start: monthStartStr,
           end: monthEndStr,
@@ -548,17 +578,13 @@ export default function MonthlyClosing() {
     return parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   };
   const historicalSeriesData = Array.isArray(data.historicalSeries) ? data.historicalSeries : [];
-  const historicalChartData = historicalSeriesData.map((series) => ({
-    month: series.label,
-    entradas: Number(series.income || 0),
-    cartoes: Number(series.credit || 0),
-    despesas: Number(series.cash || 0),
-    balance: Number(series.balance || 0),
-    key: series.key
-  }));
-  const hasHistoricalData = historicalChartData.length > 0;
+  const hasHistoricalData = historicalSeriesData.length > 0;
   const selectedMonthKey = data.monthMetadata?.key;
   const historicalRows = [...historicalSeriesData].reverse();
+  const baseYearOptions = Array.from({ length: 6 }, (_, idx) => currentYear - idx);
+  const yearOptions = baseYearOptions.includes(selectedYear)
+    ? baseYearOptions
+    : [selectedYear, ...baseYearOptions];
 
   return (
     <>
@@ -582,14 +608,13 @@ export default function MonthlyClosing() {
               
               <div className="flex items-center space-x-3">
                 {/* Month Selector */}
-                <div className="flex items-center space-x-3">
-                  <label className="text-sm font-medium text-gray-700 hidden sm:block">Mês:</label>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0">
                   <div className="flex items-center space-x-2 bg-gray-50 rounded-lg border border-gray-200 px-3 py-1.5">
                     <Calendar className="h-4 w-4 text-gray-600" />
                     <input
                       type="month"
                       value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      onChange={(e) => handleMonthChange(e.target.value)}
                       className="h-8 border-0 bg-transparent text-sm focus:ring-0 focus:outline-none"
                     />
                   </div>
@@ -982,27 +1007,46 @@ export default function MonthlyClosing() {
         {hasHistoricalData && (
           <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
             <CardHeader>
-              <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-lg font-semibold text-gray-900 space-y-2 sm:space-y-0">
-                <div className="flex items-center space-x-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                <CardTitle className="flex items-center space-x-2 text-lg font-semibold text-gray-900">
                   <Calendar className="h-5 w-5 text-gray-600" />
-                  <span>Histórico Consolidado (últimos {historicalChartData.length} meses)</span>
+                  <span className="hidden sm:inline">Histórico do ano de</span>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => handleYearChange(e.target.value)}
+                    className="border border-gray-200 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-flight-blue focus:border-flight-blue bg-white"
+                  >
+                    {yearOptions.map((yearOption) => (
+                      <option key={`history-year-${yearOption}`} value={yearOption}>
+                        {yearOption}
+                      </option>
+                    ))}
+                  </select>
+                </CardTitle>
+                <div className="flex items-center space-x-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setHistoricalExpanded((prev) => !prev)}
+                    className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  >
+                    {historicalExpanded ? (
+                      <>
+                        <ChevronUp className="h-4 w-4" />
+                        <span className="hidden sm:inline">Ocultar</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4" />
+                        <span className="hidden sm:inline">Exibir</span>
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <span className="text-sm text-gray-500">
-                  Entradas, saídas à vista, faturas e saldo mensal consolidado.
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-                <MonthlyComparison
-                  monthlyData={historicalChartData.map(item => ({
-                    month: item.month,
-                    cartoes: item.cartoes,
-                    despesas: item.despesas,
-                    entradas: item.entradas
-                  }))}
-                />
               </div>
+            </CardHeader>
+            {historicalExpanded && (
+            <CardContent>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead className="bg-gray-50">
@@ -1047,6 +1091,7 @@ export default function MonthlyClosing() {
                 </table>
               </div>
             </CardContent>
+            )}
           </Card>
         )}
 
