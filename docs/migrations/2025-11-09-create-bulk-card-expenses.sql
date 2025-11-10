@@ -103,7 +103,8 @@ BEGIN
       owner_for_rpc,
       p_organization_id,
       p_user_id,
-      NULL
+      NULL::text,
+      NULL::jsonb
     );
 
     IF is_shared THEN

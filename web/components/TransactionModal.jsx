@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X, Users, User } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
 
 export default function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction = null, categories = [] }) {
   const { organization, user: orgUser, costCenters, incomeCategories, budgetCategories, isSoloUser, loading: orgLoading } = useOrganization();
@@ -253,6 +253,53 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     setTransactionType('expense');
   };
 
+  const isExpense = transactionType === 'expense';
+  const isIncome = transactionType === 'income';
+
+  const isFormValid = useMemo(() => {
+    const hasBasic = Boolean(
+      form.description?.trim() &&
+      form.amount &&
+      form.date &&
+      form.owner_name &&
+      form.payment_method
+    );
+    if (!hasBasic) return false;
+
+    const amountValue = parseCurrencyInput(form.amount);
+    if (amountValue <= 0) return false;
+
+    if (isIncome) {
+      return Boolean(form.category?.trim() && form.bank_account_id);
+    }
+
+    if (!form.category_id) return false;
+    if (isCredit && (!form.card_id || !form.installments)) return false;
+
+    if (isShared) {
+      if (!splitDetails.length) return false;
+      if (Math.abs(totalPercentage - 100) > 0.01) return false;
+    }
+
+    return true;
+  }, [
+    form.description,
+    form.amount,
+    form.date,
+    form.owner_name,
+    form.payment_method,
+    form.category,
+    form.bank_account_id,
+    form.category_id,
+    form.card_id,
+    form.installments,
+    isIncome,
+    isCredit,
+    isShared,
+    splitDetails,
+    totalPercentage
+  ]);
+
   const handleSave = async () => {
     if (!organization?.id || !orgUser?.id) {
       showError('Família ou usuário não encontrados');
@@ -267,8 +314,18 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       return;
     }
     
+    if (isIncome && !form.category?.trim()) {
+      warning('Selecione uma categoria');
+      return;
+    }
+
+    if (isExpense && !form.category_id) {
+      warning('Selecione uma categoria');
+      return;
+    }
+
     // Validar conta bancária para incomes
-    if (transactionType === 'income' && !form.bank_account_id) {
+    if (isIncome && !form.bank_account_id) {
       warning('Selecione uma conta bancária para a entrada');
       return;
     }
@@ -290,7 +347,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     setSaving(true);
     
     try {
-      if (transactionType === 'income') {
+    if (isIncome) {
         // Salvar como entrada
         const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
         const isOptionShared = selectedOption?.isShared || willBeShared;
@@ -334,7 +391,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           // Criar nova entrada
           const insertData = {
             description: form.description.trim(),
-            amount: parseFloat(form.amount),
+            amount: parseCurrencyInput(form.amount),
             date: form.date,
             category: form.category ? form.category.trim() : null,
             owner: form.owner_name ? form.owner_name.trim() : (willBeShared ? (organization?.name || 'Compartilhado') : null),
@@ -475,6 +532,11 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
         const category = expenseCategories.find(c => c.id === form.category_id);
         
+        if (!category) {
+          warning('Categoria inválida. Atualize a página e tente novamente.');
+          return;
+        }
+        
         if (!selectedOption) {
           throw new Error('Responsável inválido');
         }
@@ -582,7 +644,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             }
           }
 
-          if (willBeShared && splitDetails.length > 0) {
+          if (!splitTemplate && willBeShared && splitDetails.length > 0) {
             const splitsToInsert = splitDetails.map(split => ({
               expense_id: parentExpenseId,
               cost_center_id: split.cost_center_id,
@@ -1047,7 +1109,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           </Button>
           <Button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !isFormValid}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
             {saving ? 'Salvando...' : 'Salvar'}

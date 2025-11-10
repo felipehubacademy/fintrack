@@ -5,11 +5,11 @@ import { Button } from './ui/Button';
 import { useOrganization } from '../hooks/useOrganization';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
-import { 
-  getBrazilTodayString, 
-  handleCurrencyChange, 
-  parseCurrencyInput, 
-  formatCurrencyInput 
+import {
+  getBrazilTodayString,
+  handleCurrencyChange,
+  parseCurrencyInput,
+  formatCurrencyInput
 } from '../lib/utils';
 
 const MAX_INSTALLMENTS = 24;
@@ -24,7 +24,7 @@ const createEmptyTransaction = () => ({
 });
 
 export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuccess }) {
-  const { organization, user: orgUser, costCenters, budgetCategories } = useOrganization();
+  const { organization, user: orgUser, costCenters, budgetCategories, isSoloUser } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
 
   const [transactions, setTransactions] = useState([createEmptyTransaction()]);
@@ -46,6 +46,12 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
     });
   }, [isOpen]);
 
+  const expenseCategories = useMemo(() => {
+    return (budgetCategories || []).filter(
+      (cat) => cat.type === 'expense' || cat.type === 'both'
+    );
+  }, [budgetCategories]);
+
   const ownerOptions = useMemo(() => {
     const options = (costCenters || [])
       .filter((cc) => cc?.is_active !== false)
@@ -56,7 +62,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
         reference: cc
       }));
 
-    if (organization) {
+    if (organization && !isSoloUser) {
       options.push({
         value: 'shared',
         label: organization?.name || 'Família',
@@ -66,7 +72,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
     }
 
     return options;
-  }, [costCenters, organization]);
+  }, [costCenters, organization, isSoloUser]);
 
   const handleFieldChange = (index, field, value) => {
     setTransactions((prev) => {
@@ -114,7 +120,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
     );
   };
 
-  const allValid = transactions.every(isTransactionValid);
+  const allValid = transactions.length > 0 && transactions.every(isTransactionValid);
 
   const composePayload = () => {
     return transactions.map((tx) => {
@@ -280,7 +286,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${showInvalidState && !transaction.category_id ? 'border-red-300' : 'border-gray-300'}`}
                       >
                         <option value="">Selecione uma categoria</option>
-                        {budgetCategories?.map((category) => (
+                        {expenseCategories.map((category) => (
                           <option key={category.id} value={category.id}>
                             {category.name}
                           </option>
@@ -390,8 +396,8 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
           </Button>
           <Button
             onClick={handleSave}
-            className="bg-flight-blue hover:bg-flight-blue/90 text-white"
-            disabled={isSaving}
+            className="bg-flight-blue hover:bg-flight-blue/90 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={isSaving || !allValid}
           >
             {isSaving ? 'Salvando...' : 'Salvar transações'}
           </Button>
