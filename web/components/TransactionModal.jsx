@@ -8,7 +8,7 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
 
 export default function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction = null, categories = [] }) {
-  const { organization, user: orgUser, costCenters, incomeCategories, isSoloUser, loading: orgLoading } = useOrganization();
+  const { organization, user: orgUser, costCenters, incomeCategories, budgetCategories, isSoloUser, loading: orgLoading } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
   
   const [cards, setCards] = useState([]);
@@ -138,6 +138,13 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     };
     load();
   }, [isOpen, organization]);
+
+  const expenseCategories = useMemo(() => {
+    if (categories && categories.length > 0) {
+      return categories;
+    }
+    return (budgetCategories || []).filter(cat => cat.type === 'expense' || cat.type === 'both');
+  }, [categories, budgetCategories]);
 
   const ownerOptions = useMemo(() => {
     const allCenters = (costCenters || [])
@@ -466,7 +473,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       } else {
         // Salvar como despesa (lógica existente)
         const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
-        const category = categories.find(c => c.id === form.category_id);
+        const category = expenseCategories.find(c => c.id === form.category_id);
         
         if (!selectedOption) {
           throw new Error('Responsável inválido');
@@ -884,7 +891,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
                     <option value="">Selecione...</option>
-                    {categories.map(cat => (
+                    {expenseCategories.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                   </select>
