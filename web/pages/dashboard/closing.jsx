@@ -15,8 +15,6 @@ import {
   TrendingDown,
   DollarSign,
   Download,
-  ChevronLeft,
-  ChevronRight,
   HelpCircle,
   CreditCard
 } from 'lucide-react';
@@ -488,20 +486,6 @@ export default function MonthlyClosing() {
     }
   };
 
-  const changeMonth = (direction) => {
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const date = new Date(year, month - 1, 1);
-    
-    if (direction === 'prev') {
-      date.setMonth(date.getMonth() - 1);
-    } else {
-      date.setMonth(date.getMonth() + 1);
-    }
-    
-    const newMonth = date.toISOString().slice(0, 7);
-    setSelectedMonth(newMonth);
-  };
-
   const getMonthName = () => {
     const [year, month] = selectedMonth.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
@@ -597,32 +581,18 @@ export default function MonthlyClosing() {
               </div>
               
               <div className="flex items-center space-x-3">
-                {/* Month Navigator */}
-                <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-1 border border-gray-200">
-                  <Button
-                    onClick={() => changeMonth('prev')}
-                    size="sm"
-                    variant="ghost"
-                    className="hover:bg-white"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  
-                  <div className="px-4 py-1 flex items-center space-x-2 min-w-[200px] justify-center">
+                {/* Month Selector */}
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-medium text-gray-700 hidden sm:block">Mês:</label>
+                  <div className="flex items-center space-x-2 bg-gray-50 rounded-lg border border-gray-200 px-3 py-1.5">
                     <Calendar className="h-4 w-4 text-gray-600" />
-                    <span className="font-medium text-gray-900 capitalize">
-                      {getMonthName()}
-                    </span>
+                    <input
+                      type="month"
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="h-8 border-0 bg-transparent text-sm focus:ring-0 focus:outline-none"
+                    />
                   </div>
-                  
-                  <Button
-                    onClick={() => changeMonth('next')}
-                    size="sm"
-                    variant="ghost"
-                    className="hover:bg-white"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
                 </div>
 
                 <Button 
