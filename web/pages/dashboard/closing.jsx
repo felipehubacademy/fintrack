@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
 import NotificationModal from '../../components/NotificationModal';
+import MemberDetailsModal from '../../components/MemberDetailsModal';
 import { 
   Calendar,
   TrendingUp,
@@ -35,6 +36,9 @@ export default function MonthlyClosing() {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [openTooltip, setOpenTooltip] = useState(null);
   const [historicalExpanded, setHistoricalExpanded] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [memberTransactions, setMemberTransactions] = useState(null);
+  const [showMemberModal, setShowMemberModal] = useState(false);
 
   const handleYearChange = (yearValue) => {
     const parsedYear = parseInt(yearValue, 10);
@@ -375,6 +379,100 @@ export default function MonthlyClosing() {
         }
       };
 
+      // Preparar transações detalhadas por membro para o modal
+      const memberTransactionsMap = new Map();
+      activeIndividualCenters.forEach((cc) => {
+        memberTransactionsMap.set(cc.id, {
+          incomes: [],
+          cashExpenses: [],
+          creditExpenses: []
+        });
+      });
+
+      // Processar incomes
+      monthIncomes.forEach((income) => {
+        const amount = Number(income.amount || 0);
+        if (income.cost_center_id && memberTransactionsMap.has(income.cost_center_id)) {
+          memberTransactionsMap.get(income.cost_center_id).incomes.push({
+            ...income,
+            isIndividual: !income.is_shared,
+            isShared: income.is_shared
+          });
+        } else if (income.is_shared && income.income_splits && income.income_splits.length > 0) {
+          income.income_splits.forEach((split) => {
+            if (memberTransactionsMap.has(split.cost_center_id)) {
+              memberTransactionsMap.get(split.cost_center_id).incomes.push({
+                ...income,
+                amount: split.amount,
+                memberShare: split.amount,
+                totalAmount: income.amount,
+                isIndividual: false,
+                isShared: true
+              });
+            }
+          });
+        }
+      });
+
+      // Processar cash expenses
+      monthCashExpenses.forEach((expense) => {
+        const amount = Number(expense.amount || 0);
+        if (expense.cost_center_id && memberTransactionsMap.has(expense.cost_center_id)) {
+          memberTransactionsMap.get(expense.cost_center_id).cashExpenses.push({
+            ...expense,
+            payment_method: 'cash',
+            isIndividual: true,
+            isShared: false
+          });
+        } else if (expense.expense_splits && expense.expense_splits.length > 0) {
+          expense.expense_splits.forEach((split) => {
+            if (memberTransactionsMap.has(split.cost_center_id)) {
+              memberTransactionsMap.get(split.cost_center_id).cashExpenses.push({
+                ...expense,
+                payment_method: 'cash',
+                amount: split.amount,
+                memberShare: split.amount,
+                totalAmount: expense.amount,
+                isIndividual: false,
+                isShared: true
+              });
+            }
+          });
+        }
+      });
+
+      // Processar credit expenses
+      monthCreditCharges.forEach((expense) => {
+        const amount = Number(expense.amount || 0);
+        const card = activeCreditCards.find(c => c.id === expense.card_id);
+        const cardName = card ? card.name : 'Cartão';
+        
+        if (expense.cost_center_id && memberTransactionsMap.has(expense.cost_center_id)) {
+          memberTransactionsMap.get(expense.cost_center_id).creditExpenses.push({
+            ...expense,
+            payment_method: 'credit',
+            card_name: cardName,
+            isIndividual: true,
+            isShared: false
+          });
+        } else if (expense.expense_splits && expense.expense_splits.length > 0) {
+          expense.expense_splits.forEach((split) => {
+            if (memberTransactionsMap.has(split.cost_center_id)) {
+              memberTransactionsMap.get(split.cost_center_id).creditExpenses.push({
+                ...expense,
+                payment_method: 'credit',
+                card_name: cardName,
+                amount: split.amount,
+                memberShare: split.amount,
+                totalAmount: expense.amount,
+                isIndividual: false,
+                isShared: true
+              });
+            }
+          });
+        }
+      });
+
       monthCashExpenses.forEach((expense) => processExpenseAllocation(expense, 'cash'));
       monthCreditCharges.forEach((expense) => processExpenseAllocation(expense, 'credit'));
 
@@ -501,6 +599,7 @@ export default function MonthlyClosing() {
         creditInvoices,
         individualSummaries,
         familySharedTotals,
+        memberTransactions: memberTransactionsMap,
         historicalSeries: fullYearSeries,
         monthMetadata: {
           start: monthStartStr,
@@ -524,6 +623,21 @@ export default function MonthlyClosing() {
 
   const exportToPDF = () => {
     warning('Funcionalidade de exportação PDF será implementada em breve!');
+  };
+
+  const handleMemberClick = (summary) => {
+    const transactions = data.memberTransactions?.get(summary.id);
+    if (transactions) {
+      setSelectedMember(summary);
+      setMemberTransactions(transactions);
+      setShowMemberModal(true);
+    }
+  };
+
+  const handleCloseMemberModal = () => {
+    setShowMemberModal(false);
+    setSelectedMember(null);
+    setMemberTransactions(null);
   };
 
   if (orgLoading || loading) {
@@ -956,17 +1070,21 @@ export default function MonthlyClosing() {
                 return (
                   <Card
                     key={`responsibility-${summary.id}`}
-                    className="border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                    className="border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer hover:border-flight-blue"
+                    onClick={() => handleMemberClick(summary)}
                   >
                     <CardHeader className="pb-2">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: summary.color || '#207DFF' }}
-                        />
-                        <CardTitle className="text-sm font-semibold text-gray-900">
-                          {summary.name}
-                        </CardTitle>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: summary.color || '#207DFF' }}
+                          />
+                          <CardTitle className="text-sm font-semibold text-gray-900">
+                            {summary.name}
+                          </CardTitle>
+                        </div>
+                        <span className="text-xs text-gray-400">Clique para detalhes</span>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
@@ -1116,6 +1234,14 @@ export default function MonthlyClosing() {
       <NotificationModal 
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
+      />
+
+      {/* Member Details Modal */}
+      <MemberDetailsModal
+        isOpen={showMemberModal}
+        onClose={handleCloseMemberModal}
+        member={selectedMember}
+        transactions={memberTransactions}
       />
         
       </Header>

@@ -15,7 +15,11 @@ import {
   DollarSign,
   Calendar,
   Edit,
+  Edit3,
   Trash2,
+  PlusCircle,
+  X,
+  AlertTriangle,
   LogOut,
   Settings,
   Bell,
@@ -37,6 +41,19 @@ const MACRO_COLORS = {
   needs: '#2563EB',
   wants: '#8B5CF6',
   investments: '#0EA5E9'
+};
+
+const formatCurrency = (value) =>
+  `R$ ${Number(value || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+
+const formatMonthYear = (value) => {
+  if (!value) return null;
+  const [year, month] = value.split('-');
+  if (!year || !month) return null;
+  return `${year}-${month.padStart(2, '0')}-01`;
 };
 
 const normalizeName = (value = '') =>
@@ -75,6 +92,12 @@ export default function BudgetsDashboard() {
   const [budgetToDelete, setBudgetToDelete] = useState(null);
   const [actionToConfirm, setActionToConfirm] = useState(null);
   const [showBudgetWizard, setShowBudgetWizard] = useState(false);
+  const [editingMacroKey, setEditingMacroKey] = useState(null);
+  const [editingMacroData, setEditingMacroData] = useState(null);
+  const [macroDraft, setMacroDraft] = useState([]);
+  const [macroDraftTarget, setMacroDraftTarget] = useState(0);
+  const [categoryToAdd, setCategoryToAdd] = useState('');
+  const [savingMacro, setSavingMacro] = useState(false);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -432,6 +455,177 @@ export default function BudgetsDashboard() {
     }
   };
 
+  const openMacroEditor = (macro) => {
+    setEditingMacroKey(macro.key);
+    setEditingMacroData(macro);
+    setMacroDraft(
+      (macro.categories || []).map((category) => ({
+        id: category.id,
+        categoryId: category.category_id,
+        name: category.name,
+        amount: Number(category.amount || 0),
+        spent: Number(category.spent || 0),
+        color: category.color || MACRO_COLORS[macro.key] || '#2563EB'
+      }))
+    );
+    setMacroDraftTarget(Number(macro.totalBudget || 0));
+    setCategoryToAdd('');
+  };
+
+  const closeMacroEditor = () => {
+    setEditingMacroKey(null);
+    setEditingMacroData(null);
+    setMacroDraft([]);
+    setMacroDraftTarget(0);
+    setCategoryToAdd('');
+    setSavingMacro(false);
+  };
+
+  const availableMacroCategories = useMemo(() => {
+    if (!editingMacroKey) return [];
+    return (budgetCategories || [])
+      .filter((category) => category.macro_group === editingMacroKey)
+      .filter((category) => !macroDraft.some((entry) => entry.categoryId === category.id))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }, [budgetCategories, editingMacroKey, macroDraft]);
+
+  const macroDraftTotal = useMemo(
+    () => macroDraft.reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+    [macroDraft]
+  );
+  const macroDraftDiff = macroDraftTarget - macroDraftTotal;
+  const macroDraftBalanced = Math.abs(macroDraftDiff) < 0.01;
+  const macroDraftHasOverspend = macroDraft.some((entry) => entry.spent > entry.amount);
+
+  const handleMacroTargetChange = (value) => {
+    const next = Number(value);
+    if (Number.isFinite(next) && next >= 0) {
+      setMacroDraftTarget(next);
+    } else {
+      setMacroDraftTarget(0);
+    }
+  };
+
+  const handleMacroAmountChange = (index, value) => {
+    const next = Number(value);
+    setMacroDraft((prev) => {
+      const draft = [...prev];
+      draft[index] = {
+        ...draft[index],
+        amount: Number.isFinite(next) && next >= 0 ? next : 0
+      };
+      return draft;
+    });
+  };
+
+  const handleAddMacroCategory = () => {
+    if (!categoryToAdd) return;
+    const category = availableMacroCategories.find((item) => item.id === categoryToAdd);
+    if (!category) return;
+
+    setMacroDraft((prev) =>
+      [...prev, {
+        id: null,
+        categoryId: category.id,
+        name: category.name,
+        amount: 0,
+        spent: 0,
+        color: category.color || MACRO_COLORS[category.macro_group] || '#2563EB'
+      }].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    );
+    setCategoryToAdd('');
+  };
+
+  const handleRemoveMacroCategory = (index) => {
+    const entry = macroDraft[index];
+    if (entry && entry.spent > 0) {
+      warning('Não é possível remover uma categoria que já possui gastos. Ajuste o valor para zero caso não deseje mais acompanhá-la.');
+      return;
+    }
+    setMacroDraft((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleSaveMacro = async () => {
+    if (!editingMacroData) return;
+    if (!macroDraftBalanced) {
+      warning('A soma das categorias precisa fechar exatamente o valor planejado para a macro.');
+      return;
+    }
+    if (macroDraftHasOverspend) {
+      warning('Algumas categorias possuem gastos maiores do que o valor planejado. Ajuste os valores antes de salvar.');
+      return;
+    }
+
+    const monthYear = formatMonthYear(selectedMonth);
+    if (!monthYear) {
+      showError('Mês selecionado inválido.');
+      return;
+    }
+
+    const updates = [];
+    const inserts = [];
+    const deletes = [];
+
+    const originalIds = (editingMacroData.categories || [])
+      .map((category) => category.id)
+      .filter(Boolean);
+
+    macroDraft.forEach((entry) => {
+      const amount = Number(entry.amount || 0);
+      if (amount <= 0) {
+        if (entry.id) {
+          deletes.push(entry.id);
+        }
+        return;
+      }
+
+      if (entry.id) {
+        updates.push({ id: entry.id, amount });
+      } else {
+        inserts.push({
+          organization_id: organization.id,
+          category_id: entry.categoryId,
+          limit_amount: amount,
+          month_year: monthYear
+        });
+      }
+    });
+
+    originalIds.forEach((id) => {
+      if (!macroDraft.some((entry) => entry.id === id && entry.amount > 0)) {
+        deletes.push(id);
+      }
+    });
+
+    setSavingMacro(true);
+    try {
+      if (deletes.length) {
+        await supabase.from('budgets').delete().in('id', deletes);
+      }
+
+      if (updates.length) {
+        await Promise.all(
+          updates.map((entry) =>
+            supabase.from('budgets').update({ limit_amount: entry.amount }).eq('id', entry.id)
+          )
+        );
+      }
+
+      if (inserts.length) {
+        await supabase.from('budgets').insert(inserts);
+      }
+
+      success('Macro atualizada com sucesso!');
+      await fetchBudgets();
+      closeMacroEditor();
+    } catch (error) {
+      console.error('Erro ao salvar macro:', error);
+      showError('Erro ao salvar macro. Tente novamente.');
+    } finally {
+      setSavingMacro(false);
+    }
+  };
+
   const categoryMap = useMemo(() => {
     const map = new Map();
     (budgetCategories || []).forEach((category) => {
@@ -674,117 +868,244 @@ export default function BudgetsDashboard() {
 
         {/* Macro Details */}
         <div className="space-y-8">
-          {macroSummary.map((macro) => (
-            <Card key={macro.key} className="border border-gray-200 shadow-sm">
-              <CardHeader className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <CardTitle className="text-lg text-gray-900">{macro.label}</CardTitle>
-                  <p className="text-sm text-gray-500">
-                    {macro.totalBudget > 0
-                      ? `R$ ${macro.totalSpent.toLocaleString('pt-BR')} gastos de R$ ${macro.totalBudget.toLocaleString('pt-BR')}`
-                      : 'Nenhum orçamento cadastrado nesta macro.'}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Restante</p>
-                  <p className={`text-lg font-semibold ${macro.remaining < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    R$ {macro.remaining.toLocaleString('pt-BR')}
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {macro.categories.length ? (
-                  <div className="space-y-5">
-                    {macro.categories.map((categoryItem) => {
-                      const percentage = categoryItem.percentageUsed;
-                      const statusLabel = getStatusLabel(categoryItem.status);
-                      const originalBudget = budgets.find((item) => item.id === categoryItem.id) || null;
+          {macroSummary.map((macro) => {
+            const isEditing = editingMacroKey === macro.key;
+            const diffAbs = Math.abs(macroDraftDiff);
+            const canSaveMacro = isEditing && macroDraftBalanced && !macroDraftHasOverspend && !savingMacro;
 
-                      return (
-                        <div
-                          key={categoryItem.id}
-                          className="flex flex-col gap-4 border border-gray-100 rounded-xl p-4 lg:flex-row lg:items-center lg:gap-6"
-                        >
-                          <div className="flex items-center gap-4 lg:w-[220px] lg:flex-shrink-0">
-                            <span
-                              className="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-semibold"
-                              style={{ borderColor: categoryItem.color, color: categoryItem.color }}
-                            >
-                              {categoryItem.name[0]?.toUpperCase() || 'C'}
-                            </span>
-                            <div>
-                              <p className="text-base font-semibold text-gray-900">{categoryItem.name}</p>
-                              <p className="text-xs text-gray-500">
-                                R$ {categoryItem.amount.toLocaleString('pt-BR')} orçados · {percentage.toFixed(1)}% usados
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex-1 w-full space-y-3 lg:pr-6">
-                            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  categoryItem.status === 'danger'
-                                    ? 'bg-red-500'
-                                    : categoryItem.status === 'warning'
-                                    ? 'bg-yellow-500'
-                                    : 'bg-flight-blue'
-                                }`}
-                                style={{ width: `${Math.min(percentage, 100)}%` }}
-                              />
-                            </div>
-                            <div className="flex items-center justify-between text-sm text-gray-600">
-                              <span>
-                                Gasto: <strong className="text-gray-900">R$ {categoryItem.spent.toLocaleString('pt-BR')}</strong>
-                              </span>
-                              <span className={`font-semibold ${getStatusTextColor(categoryItem.status)}`}>
-                                {statusLabel}
-                              </span>
-                              <span>
-                                Restante:{' '}
-                                <strong className={categoryItem.remaining < 0 ? 'text-red-600' : 'text-green-600'}>
-                                  R$ {categoryItem.remaining.toLocaleString('pt-BR')}
-                                </strong>
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 justify-end lg:w-[150px] lg:flex-shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                const budgetToEdit = originalBudget || {
-                                  id: categoryItem.id,
-                                  category: categoryItem.name,
-                                  category_id: categoryItem.category_id,
-                                  amount: categoryItem.amount,
-                                  spent: categoryItem.spent
-                                };
-                                setEditingBudget(budgetToEdit);
-                                setShowBudgetModal(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteBudget(categoryItem.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+            return (
+              <Card key={macro.key} className="border border-gray-200 shadow-sm">
+                <CardHeader className="space-y-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-lg text-gray-900">{macro.label}</CardTitle>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:gap-6 text-sm text-gray-500">
+                        <span>Orçado: <strong className="text-gray-900">{formatCurrency(macro.totalBudget)}</strong></span>
+                        <span>Gasto: <strong className="text-gray-900">{formatCurrency(macro.totalSpent)}</strong></span>
+                        <span>
+                          Restante:{' '}
+                          <strong className={macro.remaining < 0 ? 'text-red-600' : 'text-green-600'}>
+                            {formatCurrency(macro.remaining)}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+                    <Button variant="outline" onClick={() => openMacroEditor(macro)} className="flex items-center gap-2">
+                      <Edit3 className="h-4 w-4" />
+                      Editar macro
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isEditing ? (
+                    <div className="space-y-5">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="text-sm font-medium text-gray-600">Valor total planejado</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500">R$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={macroDraftTarget}
+                            onChange={(event) => handleMacroTargetChange(event.target.value)}
+                            className="w-40 rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                          />
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-xl">
-                    Nenhum orçamento cadastrado nesta macro para o mês selecionado.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                      </div>
+
+                      <div className="space-y-4">
+                        {macroDraft.map((entry, index) => (
+                          <div
+                            key={`${entry.categoryId}-${index}`}
+                            className="grid gap-4 border border-gray-100 rounded-xl p-4 lg:grid-cols-[260px_minmax(0,1fr)_auto] items-start"
+                          >
+                            <div className="flex items-center gap-4">
+                              <span
+                                className="w-10 h-10 rounded-full border-2 flex.items-center justify-center text-sm font-semibold"
+                                style={{ borderColor: entry.color, color: entry.color }}
+                              >
+                                {entry.name[0]?.toUpperCase() || 'C'}
+                              </span>
+                              <div>
+                                <p className="text-base font-semibold text-gray-900">{entry.name}</p>
+                                <p className="text-xs text-gray-500">Já gasto: {formatCurrency(entry.spent)}</p>
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <label className="text-sm font-medium text-gray-600">Valor planejado</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={entry.amount}
+                                onChange={(event) => handleMacroAmountChange(index, event.target.value)}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                              />
+                              {entry.spent > entry.amount && (
+                                <div className="flex items-start gap-2 text-xs text-red-600">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  <span>
+                                    Valor menor que o já gasto. Ajuste para pelo menos {formatCurrency(entry.spent)}.
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex justify-end">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveMacroCategory(index)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {availableMacroCategories.length > 0 ? (
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 border border-dashed border-flight-blue/40 rounded-xl px-4 py-3">
+                          <select
+                            value={categoryToAdd}
+                            onChange={(event) => setCategoryToAdd(event.target.value)}
+                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                          >
+                            <option value="">Adicionar categoria...</option>
+                            {availableMacroCategories.map((category) => (
+                              <option key={category.id} value={category.id}>
+                                {category.name}
+                              </option>
+                            ))}
+                          </select>
+                          <Button onClick={handleAddMacroCategory} disabled={!categoryToAdd} className="flex items-center gap-2">
+                            <PlusCircle className="h-4 w-4" />
+                            Adicionar
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">
+                          Todas as categorias dessa macro já estão presentes neste planejamento.
+                        </div>
+                      )}
+
+                      <div
+                        className={`rounded-xl border px-4 py-3 text-sm ${
+                          macroDraftBalanced
+                            ? 'border-green-200 bg-green-50 text-green-700'
+                            : macroDraftDiff > 0
+                            ? 'border-amber-200 bg-amber-50 text-amber-700'
+                            : 'border-red-200 bg-red-50 text-red-700'
+                        }`}
+                      >
+                        {macroDraftBalanced
+                          ? 'Distribuição fechada em 100% do valor planejado.'
+                          : macroDraftDiff > 0
+                          ? `Faltam ${formatCurrency(diffAbs)} para distribuir.`
+                          : `Excedeu ${formatCurrency(diffAbs)} do valor planejado.`}
+                      </div>
+                      {macroDraftHasOverspend && (
+                        <div className="flex items-start gap-2 text-sm text-red-600">
+                          <AlertTriangle className="h-4 w-4 mt-0.5" />
+                          <span>
+                            Algumas categorias possuem gastos maiores do que o valor planejado. Ajuste os valores antes de salvar.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : macro.categories.length ? (
+                    <div className="space-y-5">
+                      {macro.categories.map((categoryItem) => {
+                        const percentage = categoryItem.percentageUsed;
+                        const statusLabel = getStatusLabel(categoryItem.status);
+                        const originalBudget = budgets.find((item) => item.id === categoryItem.id) || null;
+
+                        return (
+                          <div
+                            key={categoryItem.id}
+                            className="flex flex-col gap-4 border border-gray-100 rounded-xl p-4 lg:flex-row lg:items-center lg:gap-6"
+                          >
+                            <div className="flex items-center gap-4 lg:w-[220px] lg:flex-shrink-0">
+                              <span
+                                className="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-semibold"
+                                style={{ borderColor: categoryItem.color, color: categoryItem.color }}
+                              >
+                                {categoryItem.name[0]?.toUpperCase() || 'C'}
+                              </span>
+                              <div>
+                                <p className="text-base font-semibold text-gray-900">{categoryItem.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {formatCurrency(categoryItem.amount)} orçados · {percentage.toFixed(1)}% usados
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex-1 w-full space-y-3 lg:pr-6">
+                              <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-2 rounded-full ${
+                                    categoryItem.status === 'danger'
+                                      ? 'bg-red-500'
+                                      : categoryItem.status === 'warning'
+                                      ? 'bg-yellow-500'
+                                      : 'bg-flight-blue'
+                                  }`}
+                                  style={{ width: `${Math.min(percentage, 100)}%` }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-sm text-gray-600">
+                                <span>
+                                  Gasto: <strong className="text-gray-900">{formatCurrency(categoryItem.spent)}</strong>
+                                </span>
+                                <span className={`font-semibold ${getStatusTextColor(categoryItem.status)}`}>
+                                  {statusLabel}
+                                </span>
+                                <span>
+                                  Restante:{' '}
+                                  <strong className={categoryItem.remaining < 0 ? 'text-red-600' : 'text-green-600'}>
+                                    {formatCurrency(categoryItem.remaining)}
+                                  </strong>
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 justify-end lg:w-[150px] lg:flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const budgetToEdit = originalBudget || {
+                                    id: categoryItem.id,
+                                    category: categoryItem.name,
+                                    category_id: categoryItem.category_id,
+                                    amount: categoryItem.amount,
+                                    spent: categoryItem.spent
+                                  };
+                                  setEditingBudget(budgetToEdit);
+                                  setShowBudgetModal(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteBudget(categoryItem.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-xl">
+                      Nenhum orçamento cadastrado nesta macro para o mês selecionado.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Empty State */}
@@ -808,6 +1129,167 @@ export default function BudgetsDashboard() {
         )}
       </main>
       </Header>
+
+      {editingMacroData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col">
+            <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Editar macro · {MACRO_LABELS[editingMacroKey]}</h3>
+                <p className="text-sm text-gray-500">Ajuste o valor total e distribua entre as categorias vinculadas a esta macro.</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={closeMacroEditor}>
+                <X className="h-5 w-5" />
+              </Button>
+            </header>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <p className="text-sm text-gray-500">Valor planejado</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatCurrency(macroDraftTarget)}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <p className="text-sm text-gray-500">Distribuído</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatCurrency(macroDraftTotal)}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <p className="text-sm text-gray-500">Diferença</p>
+                  <p className={`text-lg font-semibold ${macroDraftDiff < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatCurrency(macroDraftDiff)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-sm font-medium text-gray-700" htmlFor="macro-total-input">
+                  Ajustar valor total planejado
+                </label>
+                <div className="flex items-center gap-2 max-w-xs">
+                  <span className="text-gray-500">R$</span>
+                  <input
+                    id="macro-total-input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={macroDraftTarget}
+                    onChange={(event) => handleMacroTargetChange(event.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                  />
+                </div>
+              </div>
+
+              {macroDraft.length ? (
+                <div className="space-y-4">
+                  {macroDraft.map((entry, index) => (
+                    <div
+                      key={`${entry.categoryId}-${index}`}
+                      className="grid gap-4 border border-gray-100 rounded-xl p-4 lg:grid-cols-[260px_minmax(0,1fr)_auto] items-start"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span
+                          className="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-semibold"
+                          style={{ borderColor: entry.color, color: entry.color }}
+                        >
+                          {entry.name[0]?.toUpperCase() || 'C'}
+                        </span>
+                        <div>
+                          <p className="text-base font-semibold text-gray-900">{entry.name}</p>
+                          <p className="text-xs text-gray-500">Já gasto: {formatCurrency(entry.spent)}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium text-gray-600">Valor planejado</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={entry.amount}
+                          onChange={(event) => handleMacroAmountChange(index, event.target.value)}
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                        />
+                        {entry.spent > entry.amount && (
+                          <div className="flex items-start gap-2 text-xs text-red-600">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span>
+                              Valor menor que o já gasto. Ajuste para pelo menos {formatCurrency(entry.spent)}.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex justify-end">
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveMacroCategory(index)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500 text-center">
+                  Nenhuma categoria adicionada ainda. Utilize o seletor abaixo para incluir novas categorias nesta macro.
+                </div>
+              )}
+
+              {availableMacroCategories.length > 0 ? (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 border border-dashed border-flight-blue/40 rounded-xl px-4 py-3">
+                  <select
+                    value={categoryToAdd}
+                    onChange={(event) => setCategoryToAdd(event.target.value)}
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                  >
+                    <option value="">Adicionar categoria...</option>
+                    {availableMacroCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button onClick={handleAddMacroCategory} disabled={!categoryToAdd} className="flex items-center gap-2">
+                    <PlusCircle className="h-4 w-4" />
+                    Adicionar
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">
+                  Todas as categorias dessa macro já estão presentes neste planejamento.
+                </div>
+              )}
+
+              <div
+                className={`rounded-xl border px-4 py-3 text-sm ${
+                  macroDraftBalanced
+                    ? 'border-green-200 bg-green-50 text-green-700'
+                    : macroDraftDiff > 0
+                    ? 'border-amber-200 bg-amber-50 text-amber-700'
+                    : 'border-red-200 bg-red-50 text-red-700'
+                }`}
+              >
+                {macroDraftBalanced
+                  ? 'Distribuição fechada em 100% do valor planejado.'
+                  : macroDraftDiff > 0
+                  ? `Faltam ${formatCurrency(diffAbs)} para distribuir.`
+                  : `Excedeu ${formatCurrency(diffAbs)} do valor planejado.`}
+              </div>
+              {macroDraftHasOverspend && (
+                <div className="flex items-start gap-2 text-sm text-red-600">
+                  <AlertTriangle className="h-4 w-4 mt-0.5" />
+                  <span>
+                    Algumas categorias possuem gastos maiores do que o valor planejado. Ajuste os valores antes de salvar.
+                  </span>
+                </div>
+              )}
+            </div>
+            <footer className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <Button variant="outline" onClick={closeMacroEditor} disabled={savingMacro}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveMacro} disabled={!canSaveMacro}>
+                {savingMacro ? 'Salvando...' : 'Salvar macro'}
+              </Button>
+            </footer>
+          </div>
+        </div>
+      )}
 
       {/* Budget Wizard */}
       {showBudgetWizard && (
