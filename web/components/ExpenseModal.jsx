@@ -269,7 +269,14 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         // Mas salvar o nome da org no owner depois
         const ownerForRPC = willBeShared ? 'Compartilhado' : form.owner_name;
         
-        // Call create_installments RPC
+        const splitTemplate = willBeShared && splitDetails.length > 0
+          ? splitDetails.map(split => ({
+              cost_center_id: split.cost_center_id,
+              percentage: Number(split.percentage) || 0,
+              amount: Number(split.amount) || 0
+            }))
+          : null;
+
         const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
           p_amount: parseCurrencyInput(form.amount),
           p_installments: Number(form.installments),
@@ -281,7 +288,8 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           p_owner: ownerForRPC, // "Compartilhado" para despesa compartilhada
           p_organization_id: organization.id,
           p_user_id: orgUser.id,
-          p_whatsapp_message_id: null
+          p_whatsapp_message_id: null,
+          p_split_template: splitTemplate
         });
         if (error) throw error;
         
@@ -329,27 +337,6 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           }
         }
 
-        // Se for compartilhado, salvar splits para a despesa principal
-        if (willBeShared && splitDetails.length > 0) {
-          console.log('🔍 [EXPENSE MODAL] Saving splits for credit card expense:', splitDetails);
-          const splitsToInsert = splitDetails.map(split => ({
-            expense_id: parentExpenseId,
-            cost_center_id: split.cost_center_id,
-            percentage: split.percentage,
-            amount: split.amount
-          }));
-          console.log('🔍 [EXPENSE MODAL] Splits to insert:', splitsToInsert);
-
-          const { error: splitError } = await supabase
-            .from('expense_splits')
-            .insert(splitsToInsert);
-
-          if (splitError) {
-            throw splitError;
-          }
-          
-          console.log('✅ [EXPENSE MODAL] Splits saved successfully');
-        }
       } else {
         // Insert single expense
         const insertData = {

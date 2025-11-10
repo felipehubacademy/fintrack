@@ -500,6 +500,14 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             cost_center_id: costCenter?.id || null
           });
           
+          const splitTemplate = willBeShared && splitDetails.length > 0
+            ? splitDetails.map(split => ({
+                cost_center_id: split.cost_center_id,
+                percentage: Number(split.percentage) || 0,
+                amount: Number(split.amount) || 0
+              }))
+            : null;
+
           const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
             p_amount: parseCurrencyInput(form.amount),
             p_installments: Number(form.installments),
@@ -511,7 +519,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             p_owner: ownerForRPC, // "Compartilhado" para despesa compartilhada
             p_organization_id: organization.id,
             p_user_id: orgUser.id,
-            p_whatsapp_message_id: null
+            p_whatsapp_message_id: null,
+            p_split_template: splitTemplate
           });
           
           if (error) {

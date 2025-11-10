@@ -268,7 +268,7 @@ export default function Header({
             <button
               onClick={() => setShowTransactionModal(true)}
               className="flex items-center rounded-2xl h-10 w-full bg-flight-blue text-white hover:bg-flight-blue/90 shadow-md hover:shadow-lg transition-colors duration-200 py-2.5 pl-[18px] pr-3"
-              title={isSidebarCollapsed ? 'Adicionar Transação' : undefined}
+              title={isSidebarCollapsed ? 'Nova Transação' : undefined}
             >
               <div className="w-5 flex items-center justify-center flex-shrink-0">
               <Plus className="h-5 w-5" />

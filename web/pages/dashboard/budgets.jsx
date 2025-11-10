@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
@@ -8,15 +8,12 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import LoadingLogo from '../../components/LoadingLogo';
 import ConfirmationModal from '../../components/ConfirmationModal';
-import { 
-  Target, 
-  Plus, 
-  TrendingUp, 
+import {
+  Target,
+  Plus,
   TrendingDown,
   DollarSign,
   Calendar,
-  AlertCircle,
-  CheckCircle,
   Edit,
   Trash2,
   LogOut,
@@ -29,6 +26,38 @@ import BudgetModal from '../../components/BudgetModal';
 import NotificationModal from '../../components/NotificationModal';
 import Header from '../../components/Header';
 import BudgetWizard from '../../components/BudgetWizard';
+
+const MACRO_ORDER = ['needs', 'wants', 'investments'];
+const MACRO_LABELS = {
+  needs: 'Necessidades',
+  wants: 'Desejos',
+  investments: 'Investimentos'
+};
+const MACRO_COLORS = {
+  needs: '#2563EB',
+  wants: '#8B5CF6',
+  investments: '#0EA5E9'
+};
+
+const normalizeName = (value = '') =>
+  value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+const inferMacroFromName = (name = '') => {
+  const normalized = normalizeName(name);
+
+  if (normalized.match(/invest|poup|reserva|fundo|tesouro|acao|cripto/)) {
+    return 'investments';
+  }
+
+  if (normalized.match(/lazer|educa|viag|assin|rest|roupa|hobby|diver/)) {
+    return 'wants';
+  }
+
+  return 'needs';
+};
 
 export default function BudgetsDashboard() {
   const router = useRouter();
@@ -368,19 +397,6 @@ export default function BudgetsDashboard() {
     return 'success';
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'warning':
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-      case 'danger':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <Target className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
   const getStatusColor = (status) => {
     switch (status) {
       case 'success':
@@ -393,6 +409,96 @@ export default function BudgetsDashboard() {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'danger':
+        return 'Excedido';
+      case 'warning':
+        return 'Atenção';
+      default:
+        return 'Dentro do Orçamento';
+    }
+  };
+
+  const getStatusTextColor = (status) => {
+    switch (status) {
+      case 'danger':
+        return 'text-red-500';
+      case 'warning':
+        return 'text-yellow-500';
+      default:
+        return 'text-green-600';
+    }
+  };
+
+  const categoryMap = useMemo(() => {
+    const map = new Map();
+    (budgetCategories || []).forEach((category) => {
+      map.set(category.id, category);
+    });
+    return map;
+  }, [budgetCategories]);
+
+  const macroSummary = useMemo(() => {
+    const groups = MACRO_ORDER.reduce((acc, key) => {
+      acc[key] = {
+        key,
+        label: MACRO_LABELS[key],
+        color: MACRO_COLORS[key],
+        totalBudget: 0,
+        totalSpent: 0,
+        categories: []
+      };
+      return acc;
+    }, {});
+
+    budgets.forEach((budget) => {
+      const categoryInfo = categoryMap.get(budget.category_id);
+      const macroGroup = categoryInfo?.macro_group || inferMacroFromName(budget.category);
+      const color = categoryInfo?.color || MACRO_COLORS[macroGroup] || '#2563EB';
+      const amount = Number(budget.amount || 0);
+      const spent = Number(budget.spent || 0);
+
+      const targetGroup = groups[macroGroup] || groups.needs;
+      targetGroup.totalBudget += amount;
+      targetGroup.totalSpent += spent;
+      targetGroup.categories.push({
+        id: budget.id,
+        name: budget.category,
+        category_id: budget.category_id,
+        amount,
+        spent,
+        remaining: amount - spent,
+        percentageUsed: amount > 0 ? (spent / amount) * 100 : 0,
+        status: getBudgetStatus(spent, amount),
+        color
+      });
+    });
+
+    return MACRO_ORDER.map((key) => {
+      const group = groups[key];
+      const remaining = group.totalBudget - group.totalSpent;
+      const progress = group.totalBudget > 0 ? (group.totalSpent / group.totalBudget) * 100 : 0;
+      group.categories.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      return {
+        ...group,
+        remaining,
+        progress,
+        status: getBudgetStatus(group.totalSpent, group.totalBudget)
+      };
+    });
+  }, [budgets, categoryMap]);
+
+  const totalBudgetValue = useMemo(
+    () => macroSummary.reduce((sum, macro) => sum + macro.totalBudget, 0),
+    [macroSummary]
+  );
+  const totalSpentValue = useMemo(
+    () => macroSummary.reduce((sum, macro) => sum + macro.totalSpent, 0),
+    [macroSummary]
+  );
+  const totalRemainingValue = totalBudgetValue - totalSpentValue;
 
   if (orgLoading || !isDataLoaded) {
     return (
@@ -478,7 +584,7 @@ export default function BudgetsDashboard() {
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {budgets.reduce((sum, b) => sum + b.amount, 0).toLocaleString('pt-BR')}
+                R$ {totalBudgetValue.toLocaleString('pt-BR')}
               </div>
             </CardContent>
           </Card>
@@ -494,7 +600,7 @@ export default function BudgetsDashboard() {
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {budgets.reduce((sum, b) => sum + b.spent, 0).toLocaleString('pt-BR')}
+                R$ {totalSpentValue.toLocaleString('pt-BR')}
               </div>
             </CardContent>
           </Card>
@@ -510,100 +616,175 @@ export default function BudgetsDashboard() {
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {(budgets.reduce((sum, b) => sum + b.amount, 0) - budgets.reduce((sum, b) => sum + b.spent, 0)).toLocaleString('pt-BR')}
+                R$ {totalRemainingValue.toLocaleString('pt-BR')}
               </div>
             </CardContent>
           </Card>
 
         </div>
 
-        {/* Budgets Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-          {budgets.map((budget) => {
-            const percentage = (budget.spent / budget.amount) * 100;
-            const status = getBudgetStatus(budget.spent, budget.amount);
-            
-            return (
-              <Card key={budget.id} className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {getStatusIcon(status)}
-                      <div>
-                        <CardTitle className="text-lg">{budget.category}</CardTitle>
-                        <p className="text-sm text-gray-600">{isSoloUser ? 'Seu orçamento' : 'Orçamento da família'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => {
-                          setEditingBudget(budget);
-                          setShowBudgetModal(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => handleDeleteBudget(budget.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+        {/* Macro Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {macroSummary.map((macro) => (
+            <Card key={macro.key} className="border border-gray-200 shadow-sm">
+              <CardHeader className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold text-gray-900">
+                    {macro.label}
+                  </CardTitle>
+                  <span className="text-sm font-medium text-gray-500">
+                    {macro.totalBudget > 0 ? `${macro.progress.toFixed(1)}% usado` : 'Sem orçamento'}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full"
+                    style={{
+                      width: `${Math.min(macro.progress, 100)}%`,
+                      backgroundColor: macro.color
+                    }}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <p className="text-gray-500">Orçado</p>
+                    <p className="font-semibold text-gray-900">
+                      R$ {macro.totalBudget.toLocaleString('pt-BR')}
+                    </p>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Progresso</span>
-                      <span className="font-medium">{percentage.toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all ${
-                          status === 'danger' ? 'bg-red-500' :
-                          status === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
-                        }`}
-                        style={{ width: `${Math.min(percentage, 100)}%` }}
-                      />
-                    </div>
+                  <div>
+                    <p className="text-gray-500">Gasto</p>
+                    <p className="font-semibold text-gray-900">
+                      R$ {macro.totalSpent.toLocaleString('pt-BR')}
+                    </p>
                   </div>
+                  <div>
+                    <p className="text-gray-500">Restante</p>
+                    <p className={`font-semibold ${macro.remaining < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      R$ {macro.remaining.toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-                  {/* Values */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Orçado:</span>
-                      <span className="font-semibold">R$ {budget.amount.toLocaleString('pt-BR')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Gasto:</span>
-                      <span className="font-semibold">R$ {budget.spent.toLocaleString('pt-BR')}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2">
-                      <span className="text-sm text-gray-600">Restante:</span>
-                      <span className={`font-semibold ${
-                        budget.amount - budget.spent < 0 ? 'text-red-600' : 'text-green-600'
-                      }`}>
-                        R$ {(budget.amount - budget.spent).toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                  </div>
+        {/* Macro Details */}
+        <div className="space-y-8">
+          {macroSummary.map((macro) => (
+            <Card key={macro.key} className="border border-gray-200 shadow-sm">
+              <CardHeader className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg text-gray-900">{macro.label}</CardTitle>
+                  <p className="text-sm text-gray-500">
+                    {macro.totalBudget > 0
+                      ? `R$ ${macro.totalSpent.toLocaleString('pt-BR')} gastos de R$ ${macro.totalBudget.toLocaleString('pt-BR')}`
+                      : 'Nenhum orçamento cadastrado nesta macro.'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">Restante</p>
+                  <p className={`text-lg font-semibold ${macro.remaining < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    R$ {macro.remaining.toLocaleString('pt-BR')}
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {macro.categories.length ? (
+                  <div className="space-y-5">
+                    {macro.categories.map((categoryItem) => {
+                      const percentage = categoryItem.percentageUsed;
+                      const statusLabel = getStatusLabel(categoryItem.status);
+                      const originalBudget = budgets.find((item) => item.id === categoryItem.id) || null;
 
-                  {/* Status Badge */}
-                  <div className="flex justify-center">
-                    <Badge className={`${getStatusColor(status)} border-0`}>
-                      {status === 'danger' ? 'Excedido' : 
-                       status === 'warning' ? 'Atenção' : 'Dentro do Orçamento'}
-                    </Badge>
+                      return (
+                        <div
+                          key={categoryItem.id}
+                          className="flex flex-col gap-4 border border-gray-100 rounded-xl p-4 lg:flex-row lg:items-center lg:gap-6"
+                        >
+                          <div className="flex items-center gap-4 lg:w-[220px] lg:flex-shrink-0">
+                            <span
+                              className="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-semibold"
+                              style={{ borderColor: categoryItem.color, color: categoryItem.color }}
+                            >
+                              {categoryItem.name[0]?.toUpperCase() || 'C'}
+                            </span>
+                            <div>
+                              <p className="text-base font-semibold text-gray-900">{categoryItem.name}</p>
+                              <p className="text-xs text-gray-500">
+                                R$ {categoryItem.amount.toLocaleString('pt-BR')} orçados · {percentage.toFixed(1)}% usados
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex-1 w-full space-y-3 lg:pr-6">
+                            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  categoryItem.status === 'danger'
+                                    ? 'bg-red-500'
+                                    : categoryItem.status === 'warning'
+                                    ? 'bg-yellow-500'
+                                    : 'bg-flight-blue'
+                                }`}
+                                style={{ width: `${Math.min(percentage, 100)}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-sm text-gray-600">
+                              <span>
+                                Gasto: <strong className="text-gray-900">R$ {categoryItem.spent.toLocaleString('pt-BR')}</strong>
+                              </span>
+                              <span className={`font-semibold ${getStatusTextColor(categoryItem.status)}`}>
+                                {statusLabel}
+                              </span>
+                              <span>
+                                Restante:{' '}
+                                <strong className={categoryItem.remaining < 0 ? 'text-red-600' : 'text-green-600'}>
+                                  R$ {categoryItem.remaining.toLocaleString('pt-BR')}
+                                </strong>
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 justify-end lg:w-[150px] lg:flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const budgetToEdit = originalBudget || {
+                                  id: categoryItem.id,
+                                  category: categoryItem.name,
+                                  category_id: categoryItem.category_id,
+                                  amount: categoryItem.amount,
+                                  spent: categoryItem.spent
+                                };
+                                setEditingBudget(budgetToEdit);
+                                setShowBudgetModal(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteBudget(categoryItem.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                ) : (
+                  <div className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-xl">
+                    Nenhum orçamento cadastrado nesta macro para o mês selecionado.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Empty State */}

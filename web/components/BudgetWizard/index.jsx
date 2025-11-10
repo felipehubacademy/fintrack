@@ -240,8 +240,10 @@ export default function BudgetWizard({
     }
   };
 
-  const handleFinish = () => {
-    onComplete?.();
+  const handleFinish = async () => {
+    if (onComplete) {
+      await onComplete();
+    }
     onClose();
   };
 
@@ -267,8 +269,8 @@ export default function BudgetWizard({
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[96rem] max-h-[95vh] border border-gray-200 flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white w-full h-full max-w-none max-h-none flex flex-col border-0 rounded-none shadow-xl">
         <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           {showProgress ? (
             <>
@@ -316,20 +318,20 @@ export default function BudgetWizard({
     switch (currentStep) {
       case STEPS.WELCOME:
         return (
-          <div className={`${baseClasses} text-center space-y-6`}>
-            <div className="flex justify-center">
-              <div className="bg-flight-blue/10 text-flight-blue rounded-full px-4 py-2 text-sm font-medium flex items-center space-x-2">
-                <Sparkles className="h-4 w-4" />
-                <span>Planejamento inteligente {isSoloUser ? 'pessoal' : 'da família'}</span>
-              </div>
+          <div className={`${baseClasses} flex h-full flex-col items-center justify-center px-6 py-12 space-y-10 text-center`}>
+            <div className="flex items-center justify-center space-x-2 bg-flight-blue/10 text-flight-blue rounded-full px-4 py-2 text-sm font-medium">
+              <Sparkles className="h-4 w-4" />
+              <span>Planejamento inteligente {isSoloUser ? 'pessoal' : 'da família'}</span>
             </div>
-            <h2 className="text-3xl font-bold text-gray-900">
-              Vamos iniciar seu planejamento mensal?
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Responda algumas perguntas rápidas e nós sugeriremos o melhor plano de orçamento, com base nas melhores práticas de educação financeira.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+            <div className="space-y-4 max-w-2xl mx-auto">
+              <h2 className="text-3xl font-bold text-gray-900">
+                Vamos iniciar seu planejamento mensal?
+              </h2>
+              <p className="text-lg text-gray-600">
+                Responda algumas perguntas rápidas e nós sugeriremos o melhor plano de orçamento, com base nas melhores práticas de educação financeira.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button onClick={handleNext} className="px-8 py-3 text-lg">
                 Vamos lá
               </Button>
@@ -350,8 +352,8 @@ export default function BudgetWizard({
 
       case STEPS.INCOME:
         return (
-          <div className={`${baseClasses} space-y-6`}>
-            <div className="text-center space-y-3">
+          <div className={`${baseClasses} flex h-full flex-col items-center justify-center px-6 py-12 space-y-10`}>
+            <div className="space-y-3 text-center max-w-2xl">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
                 {isSoloUser ? 'Qual a entrada programada para o mês?' : 'Qual a entrada familiar programada para o mês?'}
               </h2>
@@ -359,7 +361,7 @@ export default function BudgetWizard({
                 {isSoloUser ? '(Salário, recebimentos etc.)' : '(Salários, recebimentos etc.)'}
               </p>
             </div>
-            <div className="max-w-sm mx-auto">
+            <div className="max-w-sm w-full">
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">R$</span>
                 <input
@@ -454,14 +456,14 @@ export default function BudgetWizard({
 
       case STEPS.SUCCESS:
         return (
-          <div className={`${baseClasses} flex flex-col items-center justify-center text-center space-y-8 py-12 px-6`}>
-            <div className="flex items-center justify-center space-x-3 bg-green-50 border border-green-200 rounded-full px-5 py-2 shadow-sm">
-              <Sparkles className="h-5 w-5 text-green-600" />
-              <span className="text-sm font-semibold text-green-700 uppercase tracking-wider">Planejamento concluído</span>
+          <div className="flex h-full flex-col items-center justify-center text-center space-y-8 py-12 px-6">
+            <div className="flex items-center justify-center space-x-3 bg-blue-50 border border-flight-blue/40 rounded-full px-5 py-2 shadow-sm">
+              <Sparkles className="h-5 w-5 text-flight-blue" />
+              <span className="text-sm font-semibold text-flight-blue uppercase tracking-wider">Planejamento concluído</span>
             </div>
-            <div className="bg-white border border-green-200 rounded-3xl px-10 py-10 shadow-lg space-y-5 max-w-3xl">
-              <h2 className="text-4xl font-bold text-green-700">Parabéns!</h2>
-              <p className="text-lg text-green-800 leading-relaxed">
+            <div className="bg-white border border-flight-blue/30 rounded-3xl px-10 py-10 shadow-lg space-y-5 max-w-3xl">
+              <h2 className="text-4xl font-bold text-flight-blue">Parabéns!</h2>
+              <p className="text-lg text-flight-blue/80 leading-relaxed">
                 Seu planejamento mensal está definido. Vamos monitorar automaticamente seus gastos e avisar quando as metas estiverem próximas do limite. Ajustes finos podem ser feitos em <strong>Pendências e Alertas</strong>.
               </p>
             </div>

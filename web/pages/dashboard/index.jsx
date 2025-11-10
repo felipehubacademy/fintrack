@@ -5,7 +5,6 @@ import Link from 'next/link';
 import MonthCharts from '../../components/MonthCharts';
 import IncomeCharts from '../../components/IncomeCharts';
 import MonthlyComparison from '../../components/MonthlyComparison';
-import QuickActions from '../../components/dashboard/QuickActions';
 import NotificationModal from '../../components/NotificationModal';
 import LoadingLogo from '../../components/LoadingLogo';
 import { useOrganization } from '../../hooks/useOrganization';
@@ -1251,9 +1250,6 @@ export default function DashboardHome() {
             </div>
           </div>
         </div>
-
-        {/* Quick Actions */}
-        <QuickActions />
 
         {/* Charts Section */}
         <div className="space-y-6 md:space-y-12">
