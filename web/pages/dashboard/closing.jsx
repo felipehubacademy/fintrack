@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
 import NotificationModal from '../../components/NotificationModal';
+import MonthlyComparison from '../../components/MonthlyComparison';
 import { 
   Calendar,
   TrendingUp,
@@ -16,10 +17,6 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
-  Building2,
-  User,
-  ArrowUpCircle,
-  ArrowDownCircle,
   HelpCircle,
   CreditCard
 } from 'lucide-react';
@@ -36,10 +33,23 @@ export default function MonthlyClosing() {
   const [data, setData] = useState({
     incomes: [],
     expenses: [],
-    totalIncome: 0, // Total da família inteira
-    totalExpense: 0, // Total da família inteira
-    balance: 0, // Saldo da família inteira
-    creditInvoices: [] // Array com informações das faturas por cartão
+    totalIncome: 0,
+    totalExpense: 0,
+    cashExpenseTotal: 0,
+    creditInvoiceTotal: 0,
+    balance: 0,
+    creditInvoices: [],
+    individualSummaries: [],
+    familySharedTotals: {
+      incomes: 0,
+      cash: 0,
+      credit: 0
+    },
+    historicalSeries: [],
+    monthMetadata: {
+      start: null,
+      end: null
+    }
   });
 
   useEffect(() => {
@@ -65,197 +75,414 @@ export default function MonthlyClosing() {
   }, [openTooltip]);
 
   const fetchMonthlyData = async () => {
+    console.log('🔍 [Closing] Iniciando fetchMonthlyData...');
     try {
       setLoading(true);
       
-      const [year, month] = selectedMonth.split('-');
-      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-      const startDate = `${selectedMonth}-01`;
-      const endDate = `${selectedMonth}-${lastDay}`;
+      const [yearStr, monthStr] = selectedMonth.split('-');
+      const year = parseInt(yearStr, 10);
+      const monthIndex = parseInt(monthStr, 10) - 1;
 
-      // Buscar incomes
-      const { data: incomesData, error: incomesError } = await supabase
+      const formatDate = (date) => date.toISOString().split('T')[0];
+
+      const monthStart = new Date(year, monthIndex, 1);
+      const monthEnd = new Date(year, monthIndex + 1, 0);
+      const monthStartStr = formatDate(monthStart);
+      const monthEndStr = formatDate(monthEnd);
+
+      const historyWindow = 6;
+      const historyStart = new Date(monthStart);
+      historyStart.setMonth(historyStart.getMonth() - (historyWindow - 1));
+
+      const fetchStart = new Date(historyStart);
+      fetchStart.setMonth(fetchStart.getMonth() - 1);
+      const fetchStartStr = formatDate(fetchStart);
+
+      const [
+        { data: incomesData, error: incomesError },
+        { data: expensesData, error: expensesError },
+        { data: cardsData, error: cardsError }
+      ] = await Promise.all([
+        supabase
         .from('incomes')
         .select(`
           *,
-          cost_center:cost_centers(id, name, color),
+            cost_center:cost_centers(id, name, color, default_split_percentage),
           income_splits(
             id,
             cost_center_id,
-            cost_center:cost_centers(id, name, color),
+              cost_center:cost_centers(id, name, color, default_split_percentage),
             percentage,
             amount
           )
         `)
         .eq('organization_id', organization.id)
         .eq('status', 'confirmed')
-        .gte('date', startDate)
-        .lte('date', endDate);
-
-      if (incomesError) throw incomesError;
-
-      // Buscar todas as expenses (vamos filtrar depois)
-      // Buscamos um range maior para capturar despesas de cartão que podem estar no mês anterior
-      const extendedStartDate = new Date(parseInt(year), parseInt(month) - 2, 1).toISOString().split('T')[0];
-      const { data: allExpensesData, error: expensesError } = await supabase
+          .gte('date', fetchStartStr)
+          .lte('date', monthEndStr),
+        supabase
         .from('expenses')
         .select(`
           *,
-          cost_center:cost_centers(id, name, color),
+            cost_center:cost_centers(id, name, color, default_split_percentage),
           expense_splits(
             id,
             cost_center_id,
-            cost_center:cost_centers(id, name, color),
+              cost_center:cost_centers(id, name, color, default_split_percentage),
             percentage,
             amount
           )
         `)
         .eq('organization_id', organization.id)
         .eq('status', 'confirmed')
-        .gte('date', extendedStartDate)
-        .lte('date', endDate);
+          .gte('date', fetchStartStr)
+          .lte('date', monthEndStr),
+        supabase
+          .from('cards')
+          .select('id, name, closing_day, billing_day, is_active, type')
+          .eq('organization_id', organization.id)
+      ]);
 
+      if (incomesError) throw incomesError;
       if (expensesError) throw expensesError;
+      if (cardsError) throw cardsError;
 
-      // Buscar todos os cartões da organização para calcular faturas
-      const { data: cardsData } = await supabase
-        .from('cards')
-        .select('id, name, closing_day, billing_day')
-        .eq('organization_id', organization.id)
-        .eq('is_active', true)
-        .eq('type', 'credit');
-
-      // Separar despesas à vista das despesas de cartão
-      const cashExpenses = (allExpensesData || []).filter(exp => 
-        exp.payment_method !== 'credit_card' && 
-        exp.date >= startDate && 
-        exp.date <= endDate
+      const confirmedIncomes = incomesData || [];
+      const confirmedExpenses = expensesData || [];
+      const activeCreditCards = (cardsData || []).filter(
+        (card) => card && card.is_active !== false && card.type === 'credit'
       );
 
-      // Para despesas de cartão, precisamos verificar se pertencem à fatura que fecha no mês selecionado
-      // Exemplo: se closing_day = 15 e mês = novembro, a fatura fecha em 15/11 e inclui compras de 09/10 a 08/11
-      const creditExpenses = [];
-      const creditInvoices = []; // Array para armazenar informações das faturas por cartão
-      
-      try {
-        if (cardsData && cardsData.length > 0) {
-          // Para cada cartão, calcular qual fatura fecha no mês selecionado
-          const invoiceCycles = {};
-          
-          for (const card of cardsData) {
-            const closingDay = card.closing_day || card.billing_day;
-            if (!closingDay) continue;
-            
-            // Calcular o período da fatura que fecha no mês selecionado
-            // Exemplo: se closing_day = 15 e mês = novembro (2025-11)
-            // A fatura fecha em 15/11, então o ciclo é:
-            // - Início: dia após o último fechamento = 16/10 (se último fechamento foi 15/10)
-            // - Fim: dia de fechamento = 15/11
-            
-            try {
-              // Data de fechamento no mês selecionado
-              const invoiceClosingDate = new Date(parseInt(year), parseInt(month) - 1, closingDay);
-              
-              // Data de início do ciclo (dia após o fechamento do mês anterior)
-              const cycleStartDate = new Date(parseInt(year), parseInt(month) - 2, closingDay);
-              cycleStartDate.setDate(cycleStartDate.getDate() + 1); // Dia após o fechamento anterior
-              
-              // Data de fim do ciclo (dia de fechamento)
-              const cycleEndDate = new Date(invoiceClosingDate);
-              
-              // Se a data de fechamento já passou no mês atual, ajustar
-              // Mas como estamos calculando para o mês selecionado, não precisa ajustar
-              
-              const startDateStr = cycleStartDate.toISOString().split('T')[0];
-              const endDateStr = cycleEndDate.toISOString().split('T')[0];
-              
-              // Verificar se a fatura realmente fecha no mês selecionado
-              // (não no mês seguinte)
-              if (invoiceClosingDate.getMonth() + 1 === parseInt(month) && 
-                  invoiceClosingDate.getFullYear() === parseInt(year)) {
-                invoiceCycles[card.id] = {
-                  startDate: startDateStr,
-                  endDate: endDateStr,
-                  cardName: card.name,
-                  cardId: card.id
-                };
-              }
-            } catch (err) {
-              console.error(`Erro ao calcular ciclo do cartão ${card.id}:`, err);
-              // Continuar para o próximo cartão mesmo se este falhar
-            }
+      const monthIncomes = confirmedIncomes.filter(
+        (income) => income.date >= monthStartStr && income.date <= monthEndStr
+      );
+      const totalIncome = monthIncomes.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
+
+      const monthCashExpenses = confirmedExpenses.filter(
+        (expense) =>
+          expense.payment_method !== 'credit_card' &&
+          expense.date >= monthStartStr &&
+          expense.date <= monthEndStr
+      );
+
+      const expensesByCard = confirmedExpenses.reduce((acc, expense) => {
+        if (expense.payment_method === 'credit_card' && expense.card_id) {
+          if (!acc[expense.card_id]) {
+            acc[expense.card_id] = [];
           }
-          
-          // Filtrar despesas de cartão que pertencem às faturas que fecham no mês selecionado
-          // E calcular total por cartão
-          const cardTotals = {};
-          for (const exp of allExpensesData || []) {
-            if (exp.payment_method === 'credit_card' && exp.card_id) {
-              const cycle = invoiceCycles[exp.card_id];
-              if (cycle && exp.date >= cycle.startDate && exp.date <= cycle.endDate) {
-                creditExpenses.push(exp);
-                // Acumular total por cartão
-                if (!cardTotals[exp.card_id]) {
-                  cardTotals[exp.card_id] = {
-                    cardName: cycle.cardName,
-                    total: 0
-                  };
-                }
-                cardTotals[exp.card_id].total += parseFloat(exp.amount || 0);
-              }
-            }
-          }
-          
-          // Converter cardTotals em array para o estado
-          Object.keys(cardTotals).forEach(cardId => {
-            creditInvoices.push({
-              cardId,
-              cardName: cardTotals[cardId].cardName,
-              total: cardTotals[cardId].total
-            });
-          });
-        } else {
-          // Se não há cartões ou não conseguimos calcular ciclos, usar lógica antiga (por data)
-          const fallbackCredit = (allExpensesData || []).filter(exp => 
-            exp.payment_method === 'credit_card' && 
-            exp.date >= startDate && 
-            exp.date <= endDate
-          );
-          creditExpenses.push(...fallbackCredit);
+          acc[expense.card_id].push(expense);
         }
-      } catch (invoiceError) {
-        console.error('Erro ao processar faturas de cartão:', invoiceError);
-        // Em caso de erro, usar fallback: incluir todas as despesas de cartão do mês
-        const fallbackCredit = (allExpensesData || []).filter(exp => 
-          exp.payment_method === 'credit_card' && 
-          exp.date >= startDate && 
-          exp.date <= endDate
-        );
-        creditExpenses.push(...fallbackCredit);
-      }
+        return acc;
+      }, {});
 
-      // Combinar despesas à vista e de cartão
-      const allExpenses = [...cashExpenses, ...creditExpenses];
+      const clampDayToMonth = (targetYear, targetMonthIndex, desiredDay) => {
+        const endOfMonth = new Date(targetYear, targetMonthIndex + 1, 0);
+        const safeDay = Math.min(desiredDay, endOfMonth.getDate());
+        return new Date(targetYear, targetMonthIndex, safeDay);
+      };
 
-      // Dados sem filtro de privacidade (tudo visível para família)
-      const allIncomes = incomesData || [];
+      const computeCardInvoicesForMonth = (targetYear, targetMonthIndex) => {
+        console.log(`🔍 [computeCardInvoices] Iniciando para ${targetYear}-${targetMonthIndex + 1}`);
+        const invoices = [];
 
-      // Calcular totais da família inteira
-      const totalIncome = allIncomes.reduce((sum, inc) => sum + Number(inc.amount), 0);
-      const totalExpense = allExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+        activeCreditCards.forEach((card) => {
+          const billingDay = card.billing_day || card.closing_day;
+          if (!billingDay) return;
+
+          const dueDate = clampDayToMonth(targetYear, targetMonthIndex, billingDay);
+
+          if (dueDate.getMonth() !== targetMonthIndex || dueDate.getFullYear() !== targetYear) {
+            return;
+          }
+
+          const closingDay = card.closing_day;
+          let cycleEnd;
+
+          if (closingDay) {
+            let cycleYear = targetYear;
+            let cycleMonthIndex = targetMonthIndex;
+
+            if (card.billing_day && closingDay > card.billing_day) {
+              cycleMonthIndex -= 1;
+              if (cycleMonthIndex < 0) {
+                cycleMonthIndex = 11;
+                cycleYear -= 1;
+              }
+            }
+            cycleEnd = clampDayToMonth(cycleYear, cycleMonthIndex, closingDay);
+          } else {
+            cycleEnd = new Date(dueDate);
+            cycleEnd.setDate(cycleEnd.getDate() - 1);
+          }
+
+          const cycleStart = new Date(cycleEnd);
+          cycleStart.setMonth(cycleStart.getMonth() - 1);
+          // início inclui o dia de fechamento anterior
+
+          const cycleStartStr = formatDate(cycleStart);
+          const cycleEndStr = formatDate(cycleEnd);
+          const dueDateStr = formatDate(dueDate);
+
+          const relatedExpenses = (expensesByCard[card.id] || []).filter(
+            (expense) => expense.date >= cycleStartStr && expense.date <= cycleEndStr
+          );
+
+          if (!relatedExpenses.length) {
+            return;
+          }
+
+          const total = relatedExpenses.reduce(
+            (sum, expense) => sum + Number(expense.amount || 0),
+            0
+          );
+
+          invoices.push({
+            cardId: card.id,
+            cardName: card.name,
+            dueDate: dueDateStr,
+            total,
+            cycleStart: cycleStartStr,
+            cycleEnd: cycleEndStr,
+            expenses: relatedExpenses.map((expense) => ({
+              ...expense,
+              applied_month: `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`,
+              invoice_due_date: dueDateStr
+            }))
+          });
+        });
+
+        console.log(`🔍 [computeCardInvoices] Finalizando com ${invoices.length} faturas`);
+        invoices.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+        return invoices;
+      };
+
+      console.log('🔍 [Closing] Calculando faturas de cartão...');
+      const creditInvoices = computeCardInvoicesForMonth(year, monthIndex);
+      console.log('🔍 [Closing] Faturas calculadas:', creditInvoices.length);
+      const monthCreditCharges = creditInvoices.flatMap((invoice) => invoice.expenses || []);
+      const cashExpenseTotal = Math.round(monthCashExpenses.reduce(
+        (sum, expense) => sum + Number(expense.amount || 0),
+        0
+      ) * 100) / 100;
+      const creditInvoiceTotal = Math.round(creditInvoices.reduce(
+        (sum, invoice) => sum + Number(invoice.total || 0),
+        0
+      ) * 100) / 100;
+
+      const totalExpense = cashExpenseTotal + creditInvoiceTotal;
       const balance = totalIncome - totalExpense;
 
+
+      const activeIndividualCenters = (costCenters || []).filter(
+        (cc) => cc && cc.is_active !== false && !cc.is_shared
+      );
+
+      const summaryMap = new Map(
+        activeIndividualCenters.map((cc) => [
+          cc.id,
+          {
+            id: cc.id,
+            name: cc.name,
+            color: cc.color || '#207DFF',
+            incomes: { individual: 0, shared: 0 },
+            cash: { individual: 0, shared: 0 },
+            credit: { individual: 0, shared: 0 }
+          }
+        ])
+      );
+
+      const familySharedTotals = {
+        incomes: 0,
+        cash: 0,
+        credit: 0
+      };
+
+      const addToSummary = (ccId, field, amount, allocationType) => {
+        if (!amount) return;
+        const roundedAmount = Math.round(amount * 100) / 100;
+        if (!summaryMap.has(ccId)) {
+          familySharedTotals[field] = Math.round((familySharedTotals[field] + roundedAmount) * 100) / 100;
+          return;
+        }
+        const summary = summaryMap.get(ccId);
+        summary[field][allocationType] = Math.round((summary[field][allocationType] + roundedAmount) * 100) / 100;
+      };
+
+      const distributeSharedAmount = (amount, field) => {
+        let distributed = 0;
+        activeIndividualCenters.forEach((cc) => {
+          const percentage = parseFloat(cc.default_split_percentage || 0);
+          if (percentage > 0) {
+            const share = Math.round((amount * percentage / 100) * 100) / 100;
+            distributed = Math.round((distributed + share) * 100) / 100;
+            addToSummary(cc.id, field, share, 'shared');
+          }
+        });
+        const remainder = Math.round((amount - distributed) * 100) / 100;
+        if (remainder > 0) {
+          familySharedTotals[field] = Math.round((familySharedTotals[field] + remainder) * 100) / 100;
+        }
+      };
+
+      monthIncomes.forEach((income) => {
+        const amount = Number(income.amount || 0);
+        if (income.is_shared) {
+          if (income.income_splits && income.income_splits.length > 0) {
+            income.income_splits.forEach((split) => {
+              addToSummary(split.cost_center_id, 'incomes', Number(split.amount || 0), 'shared');
+            });
+          } else {
+            distributeSharedAmount(amount, 'incomes');
+          }
+        } else if (income.cost_center_id) {
+          addToSummary(income.cost_center_id, 'incomes', amount, 'individual');
+        } else {
+          familySharedTotals.incomes = Math.round((familySharedTotals.incomes + amount) * 100) / 100;
+        }
+      });
+
+      const processExpenseAllocation = (expense, field) => {
+        const amount = Number(expense.amount || 0);
+        const splits = expense.expense_splits || [];
+        if (splits.length > 0) {
+          splits.forEach((split) => {
+            addToSummary(split.cost_center_id, field, Number(split.amount || 0), 'shared');
+          });
+        } else if (expense.cost_center_id) {
+          addToSummary(expense.cost_center_id, field, amount, 'individual');
+        } else {
+          familySharedTotals[field] = Math.round((familySharedTotals[field] + amount) * 100) / 100;
+        }
+      };
+
+      monthCashExpenses.forEach((expense) => processExpenseAllocation(expense, 'cash'));
+      monthCreditCharges.forEach((expense) => processExpenseAllocation(expense, 'credit'));
+
+      let individualSummaries = Array.from(summaryMap.values())
+        .map((summary) => {
+          const totalIncome = Math.round((
+            summary.incomes.individual + summary.incomes.shared
+          ) * 100) / 100;
+          const cashTotal = Math.round((summary.cash.individual + summary.cash.shared) * 100) / 100;
+          const creditTotal = Math.round((summary.credit.individual + summary.credit.shared) * 100) / 100;
+          const totalOut = Math.round((cashTotal + creditTotal) * 100) / 100;
+          const finalBalance = Math.round((totalIncome - totalOut) * 100) / 100;
+
+          return {
+            ...summary,
+            totals: {
+              income: totalIncome,
+              cash: cashTotal,
+              credit: creditTotal,
+              expenses: totalOut,
+              balance: finalBalance
+            }
+          };
+        })
+        .sort((a, b) => b.totals.expenses - a.totals.expenses);
+
+      // Correção de arredondamento: ajustar diferenças para garantir que a soma dos membros = total
+      if (individualSummaries.length > 0) {
+        const membersCashSum = individualSummaries.reduce((sum, m) => sum + m.totals.cash, 0);
+        const membersCreditSum = individualSummaries.reduce((sum, m) => sum + m.totals.credit, 0);
+        
+        const cashDifference = Math.round((cashExpenseTotal - membersCashSum) * 100) / 100;
+        const creditDifference = Math.round((creditInvoiceTotal - membersCreditSum) * 100) / 100;
+        
+        // Aplicar correção no primeiro membro (maior responsabilidade)
+        if (Math.abs(cashDifference) > 0.01) {
+          individualSummaries[0].totals.cash = Math.round((individualSummaries[0].totals.cash + cashDifference) * 100) / 100;
+          individualSummaries[0].totals.expenses = Math.round((individualSummaries[0].totals.cash + individualSummaries[0].totals.credit) * 100) / 100;
+          individualSummaries[0].totals.balance = Math.round((individualSummaries[0].totals.income - individualSummaries[0].totals.expenses) * 100) / 100;
+        }
+        
+        if (Math.abs(creditDifference) > 0.01) {
+          individualSummaries[0].totals.credit = Math.round((individualSummaries[0].totals.credit + creditDifference) * 100) / 100;
+          individualSummaries[0].totals.expenses = Math.round((individualSummaries[0].totals.cash + individualSummaries[0].totals.credit) * 100) / 100;
+          individualSummaries[0].totals.balance = Math.round((individualSummaries[0].totals.income - individualSummaries[0].totals.expenses) * 100) / 100;
+        }
+      }
+
+      const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+
+      console.log('🔍 [Closing] Calculando série histórica...');
+      const historicalSeries = Array.from({ length: historyWindow }, (_, idx) => {
+          const targetDate = new Date(monthStart);
+          targetDate.setMonth(targetDate.getMonth() - (historyWindow - 1 - idx));
+
+          const targetYear = targetDate.getFullYear();
+          const targetMonthIndex = targetDate.getMonth();
+          const targetStartStr = formatDate(new Date(targetYear, targetMonthIndex, 1));
+          const targetEnd = new Date(targetYear, targetMonthIndex + 1, 0);
+          const targetEndStr = formatDate(targetEnd);
+
+          const incomesInRange = confirmedIncomes.filter(
+            (income) => income.date >= targetStartStr && income.date <= targetEndStr
+          );
+          const cashExpensesInRange = confirmedExpenses.filter(
+            (expense) =>
+              expense.payment_method !== 'credit_card' &&
+              expense.date >= targetStartStr &&
+              expense.date <= targetEndStr
+          );
+          const invoicesInRange = computeCardInvoicesForMonth(targetYear, targetMonthIndex);
+
+          const incomeTotal = incomesInRange.reduce(
+            (sum, income) => sum + Number(income.amount || 0),
+            0
+          );
+          const cashTotalRange = cashExpensesInRange.reduce(
+            (sum, expense) => sum + Number(expense.amount || 0),
+            0
+          );
+          const creditTotalRange = invoicesInRange.reduce(
+            (sum, invoice) => sum + Number(invoice.total || 0),
+            0
+          );
+          const expensesTotalRange = cashTotalRange + creditTotalRange;
+
+          return {
+            key: `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`,
+            label: new Date(targetYear, targetMonthIndex, 1).toLocaleDateString('pt-BR', {
+              month: 'short',
+              year: 'numeric'
+            }),
+            income: incomeTotal,
+            cash: cashTotalRange,
+            credit: creditTotalRange,
+            totalExpense: expensesTotalRange,
+            balance: incomeTotal - expensesTotalRange,
+            creditInvoices: invoicesInRange
+          };
+      });
+
+      const monthlyExpenses = [
+        ...monthCashExpenses,
+        ...monthCreditCharges
+      ];
+
+      console.log('🔍 [Closing] Finalizando e setando dados...');
       setData({
-        incomes: allIncomes,
-        expenses: allExpenses,
+        incomes: monthIncomes,
+        expenses: monthlyExpenses,
         totalIncome,
         totalExpense,
+        cashExpenseTotal,
+        creditInvoiceTotal,
         balance,
-        creditInvoices
+        creditInvoices,
+        individualSummaries,
+        familySharedTotals,
+        historicalSeries,
+        monthMetadata: {
+          start: monthStartStr,
+          end: monthEndStr,
+          key: monthKey
+        }
       });
 
     } catch (error) {
-      console.error('Erro ao buscar dados do mês:', error);
+      console.error('❌ [Closing] Erro ao buscar dados do mês:', error);
     } finally {
       setLoading(false);
     }
@@ -305,6 +532,49 @@ export default function MonthlyClosing() {
   }
 
   const totalBalance = data.balance;
+  const totalIncome = data.totalIncome || 0;
+  const totalExpense = data.totalExpense || 0;
+  const totalCash = data.cashExpenseTotal || 0;
+  const totalCredit = data.creditInvoiceTotal || 0;
+
+  const costCenterMap = (costCenters || []).reduce((acc, cc) => {
+    if (cc && cc.id) {
+      acc[cc.id] = cc;
+    }
+    return acc;
+  }, {});
+
+  const sharedTotals = data.familySharedTotals || { incomes: 0, cash: 0, credit: 0 };
+  const familyIncome = Number(sharedTotals.incomes || 0);
+  const familyCash = Number(sharedTotals.cash || 0);
+  const familyCredit = Number(sharedTotals.credit || 0);
+
+  const memberSummaries = !isSoloUser && Array.isArray(data.individualSummaries)
+    ? data.individualSummaries
+    : [];
+
+
+  const showResponsibilityGrid = memberSummaries.length > 0;
+  const cashPercentage = totalExpense > 0 ? ((totalCash / totalExpense) * 100).toFixed(1) : '0.0';
+  const creditPercentage = totalExpense > 0 ? ((totalCredit / totalExpense) * 100).toFixed(1) : '0.0';
+  const formatDateLabel = (isoDate) => {
+    if (!isoDate) return '-';
+    const parsed = new Date(`${isoDate}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return '-';
+    return parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  };
+  const historicalSeriesData = Array.isArray(data.historicalSeries) ? data.historicalSeries : [];
+  const historicalChartData = historicalSeriesData.map((series) => ({
+    month: series.label,
+    entradas: Number(series.income || 0),
+    cartoes: Number(series.credit || 0),
+    despesas: Number(series.cash || 0),
+    balance: Number(series.balance || 0),
+    key: series.key
+  }));
+  const hasHistoricalData = historicalChartData.length > 0;
+  const selectedMonthKey = data.monthMetadata?.key;
+  const historicalRows = [...historicalSeriesData].reverse();
 
   return (
     <>
@@ -387,11 +657,11 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {data.totalIncome > 0 
-                    ? `Total de entradas do mês`
+                  {totalIncome > 0 
+                    ? 'Total de entradas do mês'
                     : 'Nenhuma entrada neste mês'}
                 </p>
               </CardContent>
@@ -399,54 +669,42 @@ export default function MonthlyClosing() {
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'entradas' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-2">{isSoloUser ? 'Entradas Individuais' : 'Divisão por Responsável'}</p>
-              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? 'Suas entradas do mês' : 'Divisão completa da família por responsável'}</p>
+              <p className="text-sm font-semibold text-gray-900 mb-2">
+                {isSoloUser ? 'Entradas Individuais' : 'Divisão por Responsável'}
+              </p>
+              <p className="text-xs text-gray-500 mb-3">
+                {isSoloUser
+                  ? 'Suas entradas confirmadas neste mês'
+                  : 'Distribuição das entradas confirmadas por responsável'}
+              </p>
+              {isSoloUser ? (
+                <p className="text-sm text-gray-500">Conta individual - apenas suas entradas.</p>
+              ) : (
+                <>
+                  {memberSummaries.filter(summary => summary.totals.income > 0).length > 0 ? (
               <div className="space-y-2">
-                {!isSoloUser && costCenters
-                  .filter(cc => cc && cc.is_active !== false && !cc.is_shared)
-                  .map((cc) => {
-                    // Entradas individuais deste responsável
-                    const individualTotal = data.incomes
-                      .filter(i => !i.is_shared && i.cost_center_id === cc.id && i.status === 'confirmed')
-                      .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
-                    
-                    // Parte deste responsável nas entradas compartilhadas
-                    let sharedTotal = 0;
-                    data.incomes
-                      .filter(i => i.is_shared && i.status === 'confirmed')
-                      .forEach(i => {
-                        if (i.income_splits && i.income_splits.length > 0) {
-                          // Usar splits personalizados
-                          const split = i.income_splits.find(s => s.cost_center_id === cc.id);
-                          if (split) {
-                            sharedTotal += parseFloat(split.amount || 0);
-                          }
-                        } else {
-                          // Usar fallback (default_split_percentage do cost_center)
-                          const percentage = parseFloat(cc.default_split_percentage || 0);
-                          const amount = parseFloat(i.amount || 0);
-                          sharedTotal += (amount * percentage) / 100;
-                        }
-                      });
-                    
+                      {memberSummaries
+                        .filter(summary => summary.totals.income > 0)
+                        .map(summary => {
+                          const individualTotal = Number(summary.incomes.individual || 0);
+                          const sharedTotal = Number(summary.incomes.shared || 0);
                     const total = individualTotal + sharedTotal;
-                    const percentage = data.totalIncome > 0 ? ((total / data.totalIncome) * 100).toFixed(1) : 0;
+                          const percentage = totalIncome > 0 ? ((total / totalIncome) * 100).toFixed(1) : '0.0';
                     
-                    return { cc, total, percentage, individualTotal, sharedTotal };
-                  })
-                  .filter(item => item.total > 0)
-                  .map(({ cc, total, percentage, individualTotal, sharedTotal }) => (
-                    <div key={cc.id} className="space-y-1">
+                          return (
+                            <div key={summary.id} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2">
                           <div 
                             className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: cc.color || '#207DFF' }}
+                                    style={{ backgroundColor: summary.color || '#207DFF' }}
                           />
-                          <span className="text-gray-700 font-medium">{cc.name}</span>
+                                  <span className="text-gray-700 font-medium">{summary.name}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  <span className="text-gray-900 font-semibold">
+                                    R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
                           <span className="text-gray-500 ml-2">{percentage}%</span>
                         </div>
                       </div>
@@ -454,18 +712,23 @@ export default function MonthlyClosing() {
                         <div className="text-xs text-gray-500 ml-5">
                           {individualTotal > 0 && `Individual: R$ ${individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                           {individualTotal > 0 && sharedTotal > 0 && ' • '}
-                          {sharedTotal > 0 && `${organization?.name || 'Família'}: R$ ${sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                  {sharedTotal > 0 && `Compartilhado: R$ ${sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </div>
                       )}
                     </div>
-                  ))}
-                {isSoloUser && (
-                  <p className="text-sm text-gray-500">Conta individual - apenas suas entradas</p>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">Nenhuma entrada registrada no mês selecionado.</p>
                 )}
-                {!isSoloUser && costCenters.filter(cc => cc && cc.is_active !== false && !cc.is_shared).length === 0 && (
-                  <p className="text-sm text-gray-500">Nenhum dado disponível</p>
+                  {!isSoloUser && familyIncome > 0 && (
+                    <div className="pt-2 border-t border-gray-200 text-xs text-gray-500">
+                      {organization?.name || 'Família'}: R$ {familyIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (cota compartilhada não atribuída)
+                    </div>
                 )}
-              </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -486,11 +749,11 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  R$ {totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {data.totalExpense > 0 
-                    ? `Total de saídas do mês`
+                  {totalExpense > 0 
+                    ? 'Total de saídas do mês (à vista + faturas)'
                     : 'Nenhuma saída neste mês'}
                 </p>
               </CardContent>
@@ -498,59 +761,42 @@ export default function MonthlyClosing() {
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'saidas' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-2">Divisão por Forma de Pagamento</p>
-              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? 'Suas despesas do mês' : 'Divisão completa da família'}</p>
-              <div className="space-y-3">
-                {(() => {
-                  const confirmedExpenses = data.expenses.filter(e => e.status === 'confirmed');
-                  
-                  // Calcular total à vista (total da família)
-                  const totalAVista = confirmedExpenses
-                    .filter(e => 
-                      e.payment_method === 'cash' || 
-                      e.payment_method === 'debit_card' || 
-                      e.payment_method === 'pix' || 
-                      e.payment_method === 'bank_transfer' || 
-                      e.payment_method === 'boleto' || 
-                      e.payment_method === 'other'
-                    )
-                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-                  
-                  // Calcular total crédito (total da família)
-                  const totalCredito = confirmedExpenses
-                    .filter(e => e.payment_method === 'credit_card')
-                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-                  
-                  const totalDespesas = totalAVista + totalCredito;
-                  const porcentagemAVista = totalDespesas > 0 ? ((totalAVista / totalDespesas) * 100).toFixed(1) : 0;
-                  const porcentagemCredito = totalDespesas > 0 ? ((totalCredito / totalDespesas) * 100).toFixed(1) : 0;
-                  
-                  return (
-                    <>
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 rounded-full bg-gray-600"></div>
-                          <span className="text-gray-700 font-medium">À Vista</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-gray-900 font-semibold">R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                          <span className="text-gray-700 font-medium">Crédito</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-gray-900 font-semibold">R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
+              <p className="text-sm font-semibold text-gray-900 mb-2">
+                Saídas por Forma de Pagamento
+              </p>
+              <p className="text-xs text-gray-500 mb-3">
+                Divisão consolidada das despesas
+              </p>
+              {totalExpense > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 rounded-full bg-gray-600"></div>
+                      <span className="text-gray-700 font-medium">À vista</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-gray-900 font-semibold">
+                        R$ {totalCash.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-gray-500 ml-2">{cashPercentage}%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                      <span className="text-gray-700 font-medium">Faturas no mês</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-gray-900 font-semibold">
+                        R$ {totalCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-gray-500 ml-2">{creditPercentage}%</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Nenhuma saída registrada no mês selecionado.</p>
+              )}
             </div>
           </div>
 
@@ -571,12 +817,12 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {data.creditInvoices?.reduce((sum, inv) => sum + Number(inv.total || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00'}
+                  R$ {totalCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {data.creditInvoices?.length > 0 
-                    ? `${data.creditInvoices.length} ${data.creditInvoices.length === 1 ? 'fatura' : 'faturas'} que fecham no mês`
-                    : 'Nenhuma fatura no mês'}
+                  {data.creditInvoices && data.creditInvoices.length > 0 
+                    ? `${data.creditInvoices.length} ${data.creditInvoices.length === 1 ? 'fatura' : 'faturas'} com vencimento neste mês`
+                    : 'Nenhuma fatura com vencimento no mês'}
                 </p>
               </CardContent>
             </Card>
@@ -584,42 +830,41 @@ export default function MonthlyClosing() {
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'faturas' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-2">Faturas por Cartão</p>
-              <p className="text-xs text-gray-500 mb-3">Faturas que fecham no mês selecionado</p>
-              <div className="space-y-3">
-                {data.creditInvoices && data.creditInvoices.length > 0 ? (
-                  data.creditInvoices.map((invoice) => {
-                    const totalFaturas = data.creditInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0);
-                    const percentage = totalFaturas > 0 ? ((invoice.total / totalFaturas) * 100).toFixed(1) : 0;
+              <p className="text-xs text-gray-500 mb-3">Faturas que vencem no mês selecionado</p>
+              {data.creditInvoices && data.creditInvoices.length > 0 ? (
+                <div className="space-y-2">
+                  {data.creditInvoices.map((invoice) => {
+                    const invoiceTotal = Number(invoice.total || 0);
+                    const totalInvoicesValue = data.creditInvoices.reduce(
+                      (sum, inv) => sum + Number(inv.total || 0),
+                      0
+                    );
+                    const percentage = totalInvoicesValue > 0 ? ((invoiceTotal / totalInvoicesValue) * 100).toFixed(1) : '0.0';
                     
                     return (
                       <div key={invoice.cardId} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center space-x-2">
-                          <CreditCard className="h-4 w-4 text-gray-500" />
-                          <span className="text-gray-700 font-medium">{invoice.cardName}</span>
-                        </div>
+                        <span className="text-gray-700 font-medium">{invoice.cardName}</span>
                         <div className="text-right">
                           <span className="text-gray-900 font-semibold">
-                            R$ {Number(invoice.total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            R$ {invoiceTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           <span className="text-gray-500 ml-2">{percentage}%</span>
                         </div>
                       </div>
                     );
-                  })
-                ) : (
-                  <p className="text-sm text-gray-500">Nenhuma fatura fecha neste mês</p>
-                )}
-                {data.creditInvoices && data.creditInvoices.length > 0 && (
+                  })}
                   <div className="pt-2 border-t border-gray-200">
                     <div className="flex items-center justify-between text-sm font-semibold">
                       <span className="text-gray-900">Total</span>
                       <span className="text-gray-900">
-                        R$ {data.creditInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        R$ {totalCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Nenhuma fatura vence neste mês.</p>
+              )}
             </div>
           </div>
 
@@ -665,13 +910,13 @@ export default function MonthlyClosing() {
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
                   <span className="text-gray-700">Total de Entradas</span>
                   <span className="text-gray-900 font-semibold text-blue-600">
-                    R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
                   <span className="text-gray-700">Total de Saídas</span>
                   <span className="text-gray-900 font-semibold">
-                    R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    R$ {totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm py-2">
@@ -687,50 +932,153 @@ export default function MonthlyClosing() {
           </div>
         </div>
 
-        {/* Card de Fechamento Mensal Unificado */}
-        <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg font-semibold text-gray-900">
-              <div className="p-2 bg-gray-100 rounded-lg">
-                <Building2 className="h-5 w-5 text-gray-600" />
-              </div>
+        {/* Individual Responsibility Cards */}
+        {showResponsibilityGrid && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <span>Fechamento Mensal - {organization?.name || (isSoloUser ? 'Conta Individual' : 'Família')}</span>
-                <p className="text-xs text-gray-500 font-normal mt-1">
-                  {isSoloUser ? 'Resumo completo de suas entradas e saídas' : 'Resumo completo de entradas e saídas da família'}
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Responsabilidade por membro
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Entradas e saídas atribuídas a cada responsável no mês.
                 </p>
               </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <div className="flex items-center space-x-2">
-                <ArrowUpCircle className="h-5 w-5 text-blue-600" />
-                <span className="text-gray-600 font-medium">Total de Entradas:</span>
+            </div>
+            <div className={`grid gap-4 ${
+              memberSummaries.length === 1 ? 'grid-cols-1' :
+              memberSummaries.length === 2 ? 'grid-cols-1 md:grid-cols-2' :
+              memberSummaries.length <= 4 ? 'grid-cols-1 md:grid-cols-2' :
+              'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+            }`}>
+              {memberSummaries.map((summary) => {
+                const totalMemberIncome = Number(summary.totals.income || 0);
+                const individualOut = Number(summary.cash.individual || 0) + Number(summary.credit.individual || 0);
+                const sharedOut = Number(summary.cash.shared || 0) + Number(summary.credit.shared || 0);
+                const balanceMember = Number(summary.totals.balance || 0);
+                const balancePositive = balanceMember >= 0;
+
+                return (
+                  <Card
+                    key={`responsibility-${summary.id}`}
+                    className="border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: summary.color || '#207DFF' }}
+                        />
+                        <CardTitle className="text-sm font-semibold text-gray-900">
+                          {summary.name}
+                        </CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs uppercase tracking-wide text-gray-500">Entradas</span>
+                        <span className="text-base font-semibold text-gray-900">
+                          R$ {totalMemberIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs uppercase tracking-wide text-gray-500">Saídas individuais</span>
+                        <span className="text-base font-semibold text-gray-900">
+                          R$ {individualOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs uppercase tracking-wide text-gray-500">Saídas compartilhadas</span>
+                        <span className="text-base font-semibold text-gray-900">
+                          R$ {sharedOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                        <span className="text-xs uppercase tracking-wide text-gray-500">Saldo</span>
+                        <span className={`text-lg font-bold ${balancePositive ? 'text-green-600' : 'text-red-600'}`}>
+                          {balancePositive ? '+' : '-'} R$ {Math.abs(balanceMember).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+
+        {/* Historical Summary */}
+        {hasHistoricalData && (
+          <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+            <CardHeader>
+              <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-lg font-semibold text-gray-900 space-y-2 sm:space-y-0">
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5 text-gray-600" />
+                  <span>Histórico Consolidado (últimos {historicalChartData.length} meses)</span>
+                </div>
+                <span className="text-sm text-gray-500">
+                  Entradas, saídas à vista, faturas e saldo mensal consolidado.
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+                <MonthlyComparison
+                  monthlyData={historicalChartData.map(item => ({
+                    month: item.month,
+                    cartoes: item.cartoes,
+                    despesas: item.despesas,
+                    entradas: item.entradas
+                  }))}
+                />
               </div>
-              <span className="text-blue-600 font-bold text-lg">
-                    R$ {data.totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <div className="flex items-center space-x-2">
-                <ArrowDownCircle className="h-5 w-5 text-gray-600" />
-                <span className="text-gray-600 font-medium">Total de Saídas:</span>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Mês</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Entradas</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">À vista</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Faturas</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {historicalRows.map((row) => {
+                      const isSelected = row.key === selectedMonthKey;
+                      const balancePositive = Number(row.balance || 0) >= 0;
+                      return (
+                        <tr key={`history-${row.key}`} className={isSelected ? 'bg-blue-50/60' : ''}>
+                          <td className="px-4 py-3 text-gray-700 font-medium">
+                            {row.label}
+                            {isSelected && (
+                              <span className="ml-2 text-[11px] uppercase tracking-wide text-blue-600 font-semibold">
+                                mês atual
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-700">
+                            R$ {Number(row.income || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-700">
+                            R$ {Number(row.cash || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-700">
+                            R$ {Number(row.credit || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className={`px-4 py-3 text-right font-semibold ${balancePositive ? 'text-green-600' : 'text-red-600'}`}>
+                            {balancePositive ? '+' : '-'} R$ {Math.abs(Number(row.balance || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <span className="text-gray-600 font-bold text-lg">
-                    R$ {data.totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-3 pt-4 bg-gray-50 rounded-lg px-3 -mx-3">
-              <span className="font-bold text-gray-900">Saldo Final:</span>
-              <span className={`font-bold text-xl ${
-                totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'
-              }`}>
-                {totalBalance >= 0 ? '+' : '-'} R$ {Math.abs(totalBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
 
         {/* Empty State */}
