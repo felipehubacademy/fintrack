@@ -45,7 +45,89 @@ class ZulAssistant {
     if (!text || typeof text !== 'string') return '';
     const t = text.trim();
     if (t.length === 0) return '';
-    return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+    
+    // Preservar acentuação e capitalização correta para palavras conhecidas
+    const preserveCase = {
+      // Alimentação
+      'sacolao': 'Sacolão',
+      'sacolão': 'Sacolão',
+      'acougue': 'Açougue',
+      'açougue': 'Açougue',
+      'padaria': 'Padaria',
+      'mercado': 'Mercado',
+      'supermercado': 'Supermercado',
+      'restaurante': 'Restaurante',
+      'lanchonete': 'Lanchonete',
+      'churrascaria': 'Churrascaria',
+      'pizzaria': 'Pizzaria',
+      'pao': 'Pão',
+      'pão': 'Pão',
+      'paes': 'Pães',
+      'pães': 'Pães',
+      'macarrao': 'Macarrão',
+      'macarrão': 'Macarrão',
+      'acucar': 'Açúcar',
+      'açucar': 'Açúcar',
+      'açúcar': 'Açúcar',
+      'feijao': 'Feijão',
+      'feijão': 'Feijão',
+      // Casa
+      'construcao': 'Construção',
+      'construção': 'Construção',
+      'material construcao': 'Material Construção',
+      'material construção': 'Material Construção',
+      'coisas cozinha': 'Coisas Cozinha',
+      'cozinha': 'Cozinha',
+      'torradeira': 'Torradeira',
+      'televisao': 'Televisão',
+      'televisão': 'Televisão',
+      'eletrodomestico': 'Eletrodoméstico',
+      'eletrodoméstico': 'Eletrodoméstico',
+      // Transporte
+      'gasolina': 'Gasolina',
+      'pedagio': 'Pedágio',
+      'pedágio': 'Pedágio',
+      // Saúde
+      'farmacia': 'Farmácia',
+      'farmácia': 'Farmácia',
+      'remedio': 'Remédio',
+      'remédio': 'Remédio',
+      'remedios': 'Remédios',
+      'remédios': 'Remédios',
+      'medicamento': 'Medicamento',
+      'saude': 'Saúde',
+      'saúde': 'Saúde',
+      // Beleza
+      'salao': 'Salão',
+      'salão': 'Salão',
+      'barbearia': 'Barbearia',
+      'estetica': 'Estética',
+      'estética': 'Estética',
+      // Educação
+      'educacao': 'Educação',
+      'educação': 'Educação',
+      // Lazer
+      'viagem': 'Viagem',
+      'viagens': 'Viagens',
+      // Pets
+      'racao': 'Ração',
+      'ração': 'Ração',
+      'veterinario': 'Veterinário',
+      'veterinário': 'Veterinário',
+      // Impostos
+      'impostos': 'Impostos',
+      'receita federal': 'Receita Federal',
+      'declaracao': 'Declaração',
+      'declaração': 'Declaração'
+    };
+    
+    const lowerText = t.toLowerCase();
+    if (preserveCase[lowerText]) {
+      return preserveCase[lowerText];
+    }
+    
+    // Capitalizar primeira letra preservando o resto
+    return t.charAt(0).toUpperCase() + t.slice(1);
   }
 
   // Extrair núcleo descritivo (remove apenas verbos/artigos/preposições comuns)
@@ -151,19 +233,27 @@ Gere uma mensagem curta, natural e amigável (máximo 80 caracteres) sobre o lem
 - Dias até vencer: ${daysUntil}
 - Nome do usuário: "${userName || 'usuário'}"
 
-REGRAS:
+REGRAS OBRIGATÓRIAS:
 - Seja natural, brasileiro e descontraído
 - Use 1 emoji relevante
 - Máximo 80 caracteres
-- Mencione que você vai avisar um dia antes (ou similar)
+- **CRÍTICO: SEMPRE use tempo FUTURO (vou avisar, te aviso, vou lembrar) - NUNCA passado (te lembrei, avisei)**
+- Mencione que você VAI avisar um dia antes (ou similar)
 - Varie completamente - não use frases repetitivas
 - Seja criativo e personalizado
 
-Exemplos (NÃO copie, seja criativo):
+Exemplos CORRETOS (NÃO copie, seja criativo, mas use o mesmo tempo verbal):
 - "Pode deixar que te aviso um dia antes! 🔔"
 - "Vou te lembrar um dia antes do vencimento! ⏰"
 - "Relaxa, te aviso quando estiver chegando perto! 📅"
-- "Deixa comigo, te aviso antes de vencer! ✅"
+- "Deixa comigo, vou te avisar antes de vencer! ✅"
+- "Fala, ${userName}! Vou te avisar um dia antes! 🔔"
+- "Fica tranquilo, te lembro antes de vencer! ⏰"
+
+Exemplos INCORRETOS (NUNCA usar):
+- "Te lembrei da conta" ❌ (passado)
+- "Avisei sobre o vencimento" ❌ (passado)
+- "Já te falei" ❌ (passado)
 
 Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
 
@@ -663,13 +753,13 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
       if (isValid) {
         console.log(`✅ Thread válida recuperada do banco: ${savedThread.threadId}`);
         // Preencher cache para performance
-        threadCache.set(userId, {
-          threadId: savedThread.threadId,
-          lastUsed: now,
-          userName: savedThread.userName,
-          userPhone: userPhone
-        });
-        return savedThread.threadId;
+      threadCache.set(userId, {
+        threadId: savedThread.threadId,
+        lastUsed: now,
+        userName: savedThread.userName,
+        userPhone: userPhone
+      });
+      return savedThread.threadId;
       } else {
         console.log(`⚠️ Thread inválida encontrada, criando nova...`);
       }
@@ -1118,7 +1208,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                   },
                   // Mercado/Supermercado (primeiro tentar "Mercado", se não existir, fallback para "Alimentação")
                   { 
-                    keywords: ['mercado', 'supermercado', 'super', 'hiper', 'hipermercado', 'atacadao', 'atacadão', 'atacarejo', 'pao de acucar', 'pao de açúcar', 'pão de açúcar', 'extra', 'carrefour', 'walmart', 'big', 'copacabana', 'assai', 'makro', 'savegnago', 'comper', 'prezunic', 'zona sul', 'st marche', 'emporio sao paulo', 'emporio são paulo', 'emporio', 'emporio', 'compra mercado', 'fui no mercado', 'fui ao mercado', 'comprei no mercado', 'supermercado', 'compras', 'compras mercado', 'compras do mercado', 'compras de mercado', 'arroz', 'feijao', 'feijão', 'açúcar', 'acucar', 'sal', 'oleo', 'óleo', 'azeite', 'macarrao', 'macarrão', 'massa', 'massas', 'farinha', 'trigo', 'fermento', 'leite', 'queijo', 'queijos', 'iogurte', 'iogurtes', 'manteiga', 'margarina', 'frios', 'laticinios', 'laticínios', 'biscoito', 'biscoitos', 'bolacha', 'bolachas', 'refrigerante', 'refrigerantes', 'suco', 'sucos', 'agua', 'água', 'água mineral', 'agua mineral', 'café', 'cafe', 'cha', 'chá', 'azeite', 'vinagre', 'condimento', 'condimentos', 'tempero', 'temperos', 'verdura', 'verduras', 'legume', 'legumes', 'fruta', 'frutas', 'hortifruti', 'quitanda'], 
+                    keywords: ['mercado', 'supermercado', 'super', 'hiper', 'hipermercado', 'atacadao', 'atacadão', 'atacarejo', 'pao de acucar', 'pao de açúcar', 'pão de açúcar', 'extra', 'carrefour', 'walmart', 'big', 'copacabana', 'assai', 'makro', 'savegnago', 'comper', 'prezunic', 'zona sul', 'st marche', 'emporio sao paulo', 'emporio são paulo', 'emporio', 'emporio', 'compra mercado', 'fui no mercado', 'fui ao mercado', 'comprei no mercado', 'supermercado', 'compras', 'compras mercado', 'compras do mercado', 'compras de mercado', 'sacolao', 'sacolão', 'sacolões', 'sacoloes', 'feira', 'feira livre', 'feirinha', 'quitanda', 'quitandas', 'hortifruti', 'hortifrutis', 'verdurão', 'verdurao', 'arroz', 'feijao', 'feijão', 'açúcar', 'acucar', 'sal', 'oleo', 'óleo', 'azeite', 'macarrao', 'macarrão', 'massa', 'massas', 'farinha', 'trigo', 'fermento', 'leite', 'queijo', 'queijos', 'iogurte', 'iogurtes', 'manteiga', 'margarina', 'requeijao', 'requeijão', 'cream cheese', 'frios', 'laticinios', 'laticínios', 'biscoito', 'biscoitos', 'bolacha', 'bolachas', 'refrigerante', 'refrigerantes', 'suco', 'sucos', 'agua', 'água', 'água mineral', 'agua mineral', 'água com gas', 'agua com gás', 'café', 'cafe', 'cha', 'chá', 'achocolatado', 'nescau', 'toddy', 'azeite', 'vinagre', 'condimento', 'condimentos', 'tempero', 'temperos', 'verdura', 'verduras', 'legume', 'legumes', 'fruta', 'frutas', 'banana', 'maçã', 'maca', 'laranja', 'laranjas', 'mamao', 'mamão', 'abacaxi', 'melancia', 'melão', 'melao', 'uva', 'uvas', 'morango', 'morangos', 'tomate', 'tomates', 'cebola', 'cebolas', 'alho', 'batata', 'batatas', 'cenoura', 'cenouras', 'alface', 'alfac', 'couve', 'repolho', 'brocolis', 'brócolis', 'abobrinha', 'abobora', 'abóbora', 'pimentao', 'pimentão', 'pepino', 'pepinos', 'ovos', 'ovo', 'duzia de ovos', 'duzia', 'papel higienico', 'papel higiênico', 'papel toalha', 'guardanapo', 'guardanapos', 'detergente', 'sabao', 'sabão', 'amaciante', 'agua sanitaria', 'água sanitária', 'desinfetante', 'esponja', 'esponjas', 'pano de prato', 'saco de lixo', 'sacos de lixo'], 
                     target: 'Mercado',
                     fallback: 'Alimentação'
                   },
@@ -1128,59 +1218,104 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                     target: 'Restaurante',
                     fallback: 'Alimentação'
                   },
-                  // Saúde (remédios e medicamentos - expandido)
-                  { keywords: ['farmacia', 'farmacia', 'remedio', 'remedios', 'remedio', 'medicamento', 'medicamentos', 'medicina', 'medicinas', 'xarope', 'xaropes', 'comprimido', 'comprimidos', 'capsula', 'cápsula', 'capsulas', 'cápsulas', 'pomada', 'pomadas', 'gotas', 'gota', 'injeção', 'injeção', 'injeções', 'vacina', 'vacinas', 'antibiotico', 'antibiótico', 'antibiòticos', 'antibióticos', 'anti-inflamatório', 'anti-inflamatorio', 'antialérgico', 'antialergico', 'analgésico', 'analgesico', 'dor de cabeça', 'dor de estomago', 'dor de estômago', 'febre', 'tosse', 'gripe', 'resfriado', 'medico', 'medico', 'dentista', 'hospital', 'clinica', 'clinica', 'exame', 'consulta', 'laboratorio', 'laboratorio', 'optica', 'optica', 'oculos', 'oculos', 'fisioterapia', 'fonoaudiologia', 'psicologo', 'psicólogo', 'psiquiatra', 'remedio para', 'comprei remedio', 'fui na farmacia', 'drogasil', 'raia', 'pague menos', 'drograria', 'farmácia', 'drogaria'], target: 'Saúde' },
+                  // Saúde (remédios e medicamentos - expandido, fallback para Outros)
+                  { 
+                    keywords: ['farmacia', 'farmacia', 'remedio', 'remedios', 'remedio', 'medicamento', 'medicamentos', 'medicina', 'medicinas', 'xarope', 'xaropes', 'comprimido', 'comprimidos', 'capsula', 'cápsula', 'capsulas', 'cápsulas', 'pomada', 'pomadas', 'gotas', 'gota', 'injeção', 'injeção', 'injeções', 'vacina', 'vacinas', 'antibiotico', 'antibiótico', 'antibiòticos', 'antibióticos', 'anti-inflamatório', 'anti-inflamatorio', 'antialérgico', 'antialergico', 'analgésico', 'analgesico', 'dor de cabeça', 'dor de estomago', 'dor de estômago', 'febre', 'tosse', 'gripe', 'resfriado', 'medico', 'medico', 'dentista', 'hospital', 'clinica', 'clinica', 'exame', 'consulta', 'laboratorio', 'laboratorio', 'optica', 'optica', 'oculos', 'oculos', 'fisioterapia', 'fonoaudiologia', 'psicologo', 'psicólogo', 'psiquiatra', 'remedio para', 'comprei remedio', 'fui na farmacia', 'drogasil', 'raia', 'pague menos', 'drograria', 'farmácia', 'drogaria'], 
+                    target: 'Saúde',
+                    fallback: 'Outros'
+                  },
                   // Fitness/Academia (primeiro tentar "Fitness" ou "Academia", se não existir, fallback para "Saúde")
                   { 
                     keywords: ['academia', 'academias', 'smartfit', 'gympass', 'treino', 'treinos', 'personal', 'personal trainer', 'personal training', 'crossfit', 'pilates', 'yoga', 'natação', 'natacao', 'musculação', 'musculacao', 'musculacao', 'funcional', 'spinning', 'zumba', 'dança', 'danca', 'aula de dança', 'aula de danca', 'aula de natação', 'aula de natacao', 'aula de pilates', 'aula de yoga', 'aula de crossfit', 'aula de funcional', 'equipamento academia', 'equipamento de academia', 'academia ao ar livre', 'parque', 'parque de calistenia'], 
                     target: 'Fitness',
                     fallback: 'Saúde'
                   },
-                  // Transporte (expandido - tudo fica em Transporte)
-                  { keywords: ['gasolina', 'combustivel', 'combustível', 'combustivel', 'posto', 'postos', 'etanol', 'diesel', 'gnv', 'gás natural veicular', 'gas natural veicular', 'uber', 'uber eats', 'uberx', 'uber black', '99', '99pop', '99taxi', 'taxi', 'táxi', 'taxis', 'táxis', 'onibus', 'ônibus', 'onibus', 'metro', 'metrô', 'metro', 'trem', 'trens', 'estacionamento', 'estacionamentos', 'parking', 'zona azul', 'zona vermelha', 'ipva', 'rodizio', 'rodízio', 'manutencao', 'manutenção', 'manutencao carro', 'manutenção carro', 'manutencao moto', 'manutenção moto', 'lava rapido', 'lava-rápido', 'lava jato', 'lavajato', 'oficina', 'oficinas', 'seguro carro', 'seguro moto', 'seguro veiculo', 'seguro veículo', 'pedagio', 'pedágio', 'pedagios', 'pedágios', 'mecanico', 'mecânico', 'mecanicos', 'mecânicos', 'guincho', 'reboque', 'guinchos', 'reboques', 'combustivel', 'abasteci', 'abastecimento', 'abastecer', 'enchi o tanque', 'enche o tanque', 'abasteceu', 'abastecimento', 'combustível', 'abastecimento', 'tanque', 'tanque cheio', 'tanque cheio'], target: 'Transporte' },
+                  // Transporte (expandido, fallback para Outros)
+                  { 
+                    keywords: ['gasolina', 'combustivel', 'combustível', 'combustivel', 'posto', 'postos', 'etanol', 'diesel', 'gnv', 'gás natural veicular', 'gas natural veicular', 'uber', 'uber eats', 'uberx', 'uber black', '99', '99pop', '99taxi', 'taxi', 'táxi', 'taxis', 'táxis', 'onibus', 'ônibus', 'onibus', 'metro', 'metrô', 'metro', 'trem', 'trens', 'estacionamento', 'estacionamentos', 'parking', 'zona azul', 'zona vermelha', 'ipva', 'rodizio', 'rodízio', 'manutencao', 'manutenção', 'manutencao carro', 'manutenção carro', 'manutencao moto', 'manutenção moto', 'lava rapido', 'lava-rápido', 'lava jato', 'lavajato', 'oficina', 'oficinas', 'seguro carro', 'seguro moto', 'seguro veiculo', 'seguro veículo', 'pedagio', 'pedágio', 'pedagios', 'pedágios', 'mecanico', 'mecânico', 'mecanicos', 'mecânicos', 'guincho', 'reboque', 'guinchos', 'reboques', 'combustivel', 'abasteci', 'abastecimento', 'abastecer', 'enchi o tanque', 'enche o tanque', 'abasteceu', 'abastecimento', 'combustível', 'abastecimento', 'tanque', 'tanque cheio', 'tanque cheio'], 
+                    target: 'Transporte',
+                    fallback: 'Outros'
+                  },
                   // Veículos/Peças (primeiro tentar "Veículos" ou "Peças", se não existir, fallback para "Transporte")
                   { 
                     keywords: ['peça', 'peças', 'peca', 'pecas', 'peça de carro', 'peças de carro', 'peca de carro', 'pecas de carro', 'peça de moto', 'peças de moto', 'peca de moto', 'pecas de moto', 'peça de veículo', 'peças de veículo', 'peca de veiculo', 'pecas de veiculo', 'pneu', 'pneus', 'pneu carro', 'pneu moto', 'bateria', 'baterias', 'bateria carro', 'bateria moto', 'oleo', 'óleo', 'oleo motor', 'óleo motor', 'oleo de motor', 'óleo de motor', 'filtro', 'filtros', 'filtro de oleo', 'filtro de óleo', 'filtro de ar', 'filtro de combustivel', 'filtro de combustível', 'pastilha de freio', 'pastilhas de freio', 'disco de freio', 'discos de freio', 'amortecedor', 'amortecedores', 'escapamento', 'escapamentos', 'radiador', 'radiadores', 'correia', 'correias', 'correia dentada', 'correias dentadas', 'vela', 'velas', 'vela de ignição', 'velas de ignição', 'vela de ignicao', 'velas de ignicao', 'bobina', 'bobinas', 'carburador', 'carburadores', 'injeção eletronica', 'injeção eletrônica', 'injeção eletrônica', 'bomba de combustivel', 'bomba de combustível', 'bomba de agua', 'bomba de água', 'alternador', 'alternadores', 'motor de arranque', 'volante', 'volantes', 'cambio', 'câmbio', 'cambio manual', 'cambio automatico', 'câmbio automático', 'embreagem', 'embreagens', 'cabo de freio', 'cabos de freio', 'mangueira', 'mangueiras', 'parachoque', 'para-choque', 'parachoques', 'para-choques', 'farol', 'farois', 'faróis', 'lanterna', 'lanternas', 'retrovisor', 'retrovisores', 'para-brisa', 'parabrisa', 'para-brisas', 'parabrisas', 'vidro', 'vidros', 'vidro do carro', 'vidros do carro', 'carro', 'carros', 'moto', 'motos', 'motoneta', 'motonetas', 'motocicleta', 'motocicletas', 'veiculo', 'veículo', 'veiculos', 'veículos', 'automovel', 'automóvel', 'automoveis', 'automóveis'], 
                     target: 'Veículos',
                     fallback: 'Transporte'
                   },
-                  // Contas (fixas - sem impostos, que agora estão em "Impostos")
-                  { keywords: ['aluguel', 'condominio', 'condominio', 'agua', 'agua', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos', 'financiamento', 'prestacao', 'prestação', 'cartao', 'cartão', 'fatura'], target: 'Contas' },
-                  // Casa
-                  { keywords: ['casa', 'lar', 'mercadolivre', 'magalu', 'casas bahia', 'tokstok', 'tok&stok', 'leroy', 'ferramenta', 'decoracao', 'decoração', 'limpeza', 'material limpeza', 'ventilador', 'ar condicionado', 'microondas', 'geladeira', 'tv', 'televisao', 'notebook', 'tablet', 'computador', 'computadores', 'pc', 'desktop', 'laptop'], target: 'Casa' },
-                  // Educação
-                  { keywords: ['curso', 'cursos', 'faculdade', 'escola', 'livro', 'livraria', 'udemy', 'curso online', 'pluralsight', 'alura', 'material escolar', 'mensalidade', 'universidade', 'escola', 'faculdade', 'apostila', 'caneta', 'caderno'], target: 'Educação' },
+                  // Contas (fixas - sem impostos, que agora estão em "Impostos", fallback para Casa)
+                  { 
+                    keywords: ['aluguel', 'condominio', 'condominio', 'agua', 'agua', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos', 'financiamento', 'prestacao', 'prestação', 'cartao', 'cartão', 'fatura'], 
+                    target: 'Contas',
+                    fallback: 'Casa'
+                  },
+                  // Casa (expandido com fallback para Outros)
+                  { 
+                    keywords: ['casa', 'lar', 'mercadolivre', 'magalu', 'casas bahia', 'tokstok', 'tok&stok', 'leroy', 'leroy merlin', 'ferramenta', 'ferramentas', 'decoracao', 'decoração', 'limpeza', 'material limpeza', 'material de limpeza', 'produtos de limpeza', 'ventilador', 'ar condicionado', 'microondas', 'geladeira', 'freezer', 'fogao', 'fogão', 'forno', 'forno eletrico', 'forno elétrico', 'cooktop', 'exaustor', 'coifa', 'liquidificador', 'batedeira', 'processador', 'processador de alimentos', 'torradeira', 'sanduicheira', 'grill', 'fritadeira', 'fritadeira eletrica', 'fritadeira elétrica', 'air fryer', 'airfryer', 'cafeteira', 'chaleira', 'chaleira eletrica', 'chaleira elétrica', 'aspirador', 'aspirador de po', 'aspirador de pó', 'ferro de passar', 'ferro', 'tabua', 'tábua', 'panela', 'panelas', 'jogo de panelas', 'frigideira', 'frigideiras', 'assadeira', 'assadeiras', 'forma', 'formas', 'prato', 'pratos', 'copo', 'copos', 'talher', 'talheres', 'faca', 'facas', 'garfo', 'garfos', 'colher', 'colheres', 'pote', 'potes', 'organizador', 'organizadores', 'eletrodomestico', 'eletrodoméstico', 'eletrodomesticos', 'eletrodomésticos', 'tv', 'televisao', 'televisão', 'smart tv', 'notebook', 'tablet', 'computador', 'computadores', 'pc', 'desktop', 'laptop', 'monitor', 'teclado', 'mouse', 'webcam', 'impressora', 'scanner', 'material', 'material construcao', 'material de construção', 'material de construcao', 'material construção', 'construcao', 'construção', 'tijolo', 'cimento', 'areia', 'brita', 'tinta', 'massa corrida', 'gesso', 'canos', 'torneira', 'registro', 'encanamento', 'eletrica', 'elétrica', 'fio', 'fios', 'cabo', 'cabos', 'tomada', 'tomadas', 'interruptor', 'interruptores', 'lampada', 'lâmpada', 'lampadas', 'lâmpadas', 'lustre', 'lustres', 'arandela', 'arandelas', 'coisas', 'coisas cozinha', 'coisas de cozinha', 'coisas da cozinha', 'cozinha', 'utensilio', 'utensílio', 'utensilios', 'utensílios', 'utensilios de cozinha', 'utensílios de cozinha', 'movel', 'móvel', 'moveis', 'móveis', 'sofa', 'sofá', 'mesa', 'cadeira', 'cadeiras', 'armario', 'armário', 'guarda roupa', 'guarda-roupa', 'cama', 'colchao', 'colchão', 'travesseiro', 'travesseiros', 'lencol', 'lençol', 'lencois', 'lençóis', 'cobertor', 'cobertores', 'edredom', 'edredons', 'tapete', 'tapetes', 'cortina', 'cortinas', 'persiana', 'persianas', 'quadro', 'quadros', 'espelho', 'espelhos', 'luminaria', 'luminária', 'luminarias', 'luminárias', 'abajur', 'abajures'], 
+                    target: 'Casa',
+                    fallback: 'Outros'
+                  },
+                  // Educação (fallback para Outros)
+                  { 
+                    keywords: ['curso', 'cursos', 'faculdade', 'escola', 'livro', 'livraria', 'udemy', 'curso online', 'pluralsight', 'alura', 'material escolar', 'mensalidade', 'universidade', 'escola', 'faculdade', 'apostila', 'caneta', 'caderno'], 
+                    target: 'Educação',
+                    fallback: 'Outros'
+                  },
                   // Streaming (primeiro tentar "Streaming", se não existir, fallback para "Lazer")
                   { 
                     keywords: ['streaming', 'netflix', 'spotify', 'prime', 'prime video', 'disney', 'disney+', 'disney plus', 'hbo', 'hbo max', 'hbo go', 'globoplay', 'youtube premium', 'youtube music', 'youtube tv', 'apple tv', 'apple tv+', 'paramount', 'paramount+', 'paramount plus', 'starz', 'crunchyroll', 'funimation', 'amazon prime', 'amazon prime video', 'pluto tv', 'tubi', 'peacock', 'showtime', 'mubi', 'canal+', 'now', 'now tv', 'sky', 'sky go', 'tnt', 'tnt go', 'telecine', 'telecine play', 'oi play', 'claro video', 'vivoplay', 'looke', 'looke play', 'looke plus', 'mubi', 'crunchyroll', 'funimation', 'dc universe', 'dc universe infinite', 'marvel unlimited', 'comixology', 'kindle unlimited', 'audible', 'audible premium', 'scribd', 'scribd premium', 'deezer', 'deezer premium', 'tidal', 'tidal hifi', 'apple music', 'apple music student', 'qobuz', 'soundcloud', 'soundcloud go', 'soundcloud go+', 'pandora', 'pandora premium', 'iheartradio', 'iheartradio all access', 'siriusxm', 'sirius xm', 'tunein', 'tunein premium', 'assinatura streaming', 'assinatura de streaming', 'plano streaming', 'plano de streaming'], 
                     target: 'Streaming',
                     fallback: 'Lazer'
                   },
-                  // Viagem (primeiro tentar "Viagem", se não existir, fallback para "Lazer")
+                  // Viagem (primeiro tentar "Viagem" ou variações, se não existir, fallback para "Lazer")
                   { 
-                    keywords: ['viagem', 'viagens', 'passagem', 'passagens', 'passagem aerea', 'passagem aérea', 'passagem aviao', 'passagem avião', 'passagem de aviao', 'passagem de avião', 'passagem rodoviaria', 'passagem rodoviária', 'passagem de onibus', 'passagem de ônibus', 'passagem de trem', 'hotel', 'hoteis', 'hotéis', 'airbnb', 'air bnb', 'hospedagem', 'hospedagens', 'pousada', 'pousadas', 'resort', 'resorts', 'hostel', 'hostels', 'albergue', 'albergues', 'booking', 'booking.com', 'expedia', 'trivago', 'agoda', 'hotels.com', 'tripadvisor', 'trip advisor', 'passagem de ida', 'passagem de volta', 'passagem de ida e volta', 'passagem ida e volta', 'aluguel de carro', 'aluguel de veiculo', 'aluguel de veículo', 'rent a car', 'rental car', 'seguro viagem', 'seguro de viagem', 'guia turistico', 'guia turístico', 'passeio', 'passeios', 'tour', 'tours', 'excursao', 'excursão', 'excursões', 'excursões', 'cruzeiro', 'cruzeiros', 'voo', 'voos', 'voo domestico', 'voo doméstico', 'voo internacional', 'check in', 'check-in', 'check out', 'check-out', 'bagagem', 'bagagens', 'mala', 'malas', 'mochila', 'mochilas', 'passaporte', 'passaportes', 'visto', 'vistos', 'turismo', 'turista', 'turistas', 'destino', 'destinos', 'ferias', 'férias', 'ferias', 'férias'], 
+                    keywords: ['viagem', 'viagens', 'viajem', 'viajens', 'livelo', 'livelo viagens', 'smiles', 'latam pass', 'tudo azul', 'azul fidelidade', 'milhas', 'pontos', 'programa de fidelidade', 'passagem', 'passagens', 'passagem aerea', 'passagem aérea', 'passagem aviao', 'passagem avião', 'passagem de aviao', 'passagem de avião', 'passagem rodoviaria', 'passagem rodoviária', 'passagem de onibus', 'passagem de ônibus', 'passagem de trem', 'bilhete', 'bilhetes', 'ticket', 'tickets', 'hotel', 'hoteis', 'hotéis', 'airbnb', 'air bnb', 'hospedagem', 'hospedagens', 'pousada', 'pousadas', 'resort', 'resorts', 'hostel', 'hostels', 'albergue', 'albergues', 'booking', 'booking.com', 'expedia', 'trivago', 'decolar', 'decolar.com', 'agoda', 'hotels.com', 'hoteis.com', 'tripadvisor', 'trip advisor', 'passagem de ida', 'passagem de volta', 'passagem de ida e volta', 'passagem ida e volta', 'aluguel de carro', 'aluguel de veiculo', 'aluguel de veículo', 'rent a car', 'rental car', 'locadora', 'locadora de carros', 'seguro viagem', 'seguro de viagem', 'assistencia viagem', 'assistência viagem', 'guia turistico', 'guia turístico', 'passeio', 'passeios', 'tour', 'tours', 'excursao', 'excursão', 'excursões', 'excursões', 'cruzeiro', 'cruzeiros', 'voo', 'voos', 'voo domestico', 'voo doméstico', 'voo internacional', 'voo nacional', 'check in', 'check-in', 'check out', 'check-out', 'bagagem', 'bagagens', 'mala', 'malas', 'mochila', 'mochilas', 'bagagem despachada', 'despacho de bagagem', 'passaporte', 'passaportes', 'visto', 'vistos', 'turismo', 'turista', 'turistas', 'destino', 'destinos', 'ferias', 'férias', 'ferias', 'férias', 'feriado', 'feriados', 'fim de semana', 'final de semana', 'pacote', 'pacote de viagem', 'pacote turistico', 'pacote turístico', 'agencia', 'agência', 'agencia de viagens', 'agência de viagens'], 
                     target: 'Viagem',
                     fallback: 'Lazer'
                   },
-                  // Lazer (categoria geral - cinema, teatro, shows, etc.)
-                  { keywords: ['cinema', 'cinemas', 'teatro', 'teatros', 'show', 'shows', 'balada', 'baladas', 'parque', 'parques', 'ingresso', 'ingressos', 'festa', 'festas', 'aniversario', 'aniversário', 'aniversarios', 'aniversários', 'bar', 'bares', 'balada', 'baladas', 'clube', 'clubes', 'boate', 'boates', 'danceteria', 'danceterias', 'karaoke', 'karaokê', 'bowling', 'bingo', 'cassino', 'cassinos', 'jogos', 'jogo', 'arcade', 'fliperama', 'fliperamas'], target: 'Lazer' },
-                  // Beleza (expandido - tudo fica em Beleza)
-                  { keywords: ['cabelo', 'cabelos', 'cabeleireiro', 'cabeleireiros', 'cabeleireira', 'cabeleireiras', 'corte', 'cortes', 'corte de cabelo', 'cortes de cabelo', 'corte no cabelo', 'cortar cabelo', 'cortou cabelo', 'pintar cabelo', 'pintura de cabelo', 'coloração', 'coloração de cabelo', 'coloracao', 'coloracao de cabelo', 'mechen', 'mechas', 'reflexo', 'reflexos', 'alisamento', 'alisamento de cabelo', 'alisar cabelo', 'escova', 'escovas', 'escova progressiva', 'escova definitiva', 'escova marroquina', 'escova japonesa', 'escova brasileira', 'hidratação', 'hidratação capilar', 'hidratacao', 'hidratacao capilar', 'reconstrução', 'reconstrução capilar', 'reconstrucao', 'reconstrucao capilar', 'nutrição', 'nutrição capilar', 'nutricao', 'nutricao capilar', 'barbearia', 'barbearias', 'barbeiro', 'barbeiros', 'barba', 'barbas', 'corte de barba', 'aparar barba', 'fazer a barba', 'fazer barba', 'barba feita', 'barba feita', 'navalha', 'navalhas', 'gilette', 'gilettes', 'lâmina', 'lamina', 'lâminas', 'laminas', 'manicure', 'manicures', 'pedicure', 'pedicures', 'unha', 'unhas', 'unha de gel', 'unha de acrílico', 'unha de acrilico', 'unha postiça', 'unha postica', 'unhas postiças', 'unhas posticas', 'esmaltação', 'esmaltacao', 'esmaltar', 'cutícula', 'cuticulas', 'cuticula', 'cuticulas', 'estetica', 'estética', 'esteticas', 'estéticas', 'esteticista', 'esteticistas', 'limpeza de pele', 'limpeza facial', 'peeling', 'peelings', 'drenagem', 'drenagem linfatica', 'drenagem linfática', 'massagem', 'massagens', 'massagem relaxante', 'massagem terapêutica', 'massagem terapeutica', 'massagem modeladora', 'depilação', 'depilacao', 'depilação a laser', 'depilacao a laser', 'depilação com cera', 'depilacao com cera', 'cosmetico', 'cosmético', 'cosmeticos', 'cosméticos', 'maquiagem', 'maquiagens', 'make', 'make up', 'makeup', 'baton', 'batons', 'batom', 'batons', 'base', 'bases', 'pó', 'po', 'pó compacto', 'po compacto', 'pó solto', 'po solto', 'blush', 'blushes', 'sombra', 'sombras', 'rimel', 'rimels', 'mascara', 'mascaras', 'máscara', 'máscaras', 'máscara facial', 'mascara facial', 'máscara capilar', 'mascara capilar', 'salão', 'salao', 'salões', 'saloes', 'salão de beleza', 'salao de beleza', 'salão de estética', 'salao de estetica', 'spa', 'spas', 'spa day', 'dia de spa', 'tratamento facial', 'tratamento capilar', 'tratamentos', 'tratamento de beleza', 'procedimento estético', 'procedimento estetico', 'procedimentos estéticos', 'procedimentos esteticos'], target: 'Beleza' },
-                  // Vestuário
-                  { keywords: ['roupa', 'roupas', 'sapato', 'sapatos', 'tenis', 'tenis', 'camisa', 'camiseta', 'calca', 'calça', 'vestido', 'renner', 'riachuelo', 'cea', 'c&a', 'zara', 'h&m', 'nike', 'adidas', 'puma', 'shopping', 'loja'], target: 'Vestuário' },
-                  // Pets
-                  { keywords: ['petshop', 'pet shop', 'ração', 'racao', 'veterinario', 'veterinario', 'banho tosa', 'banho e tosa', 'pet', 'gato', 'cachorro', 'animal'], target: 'Pets' },
+                  // Lazer (categoria geral - cinema, teatro, shows, etc., fallback para Outros)
+                  { 
+                    keywords: ['cinema', 'cinemas', 'teatro', 'teatros', 'show', 'shows', 'balada', 'baladas', 'parque', 'parques', 'ingresso', 'ingressos', 'festa', 'festas', 'aniversario', 'aniversário', 'aniversarios', 'aniversários', 'bar', 'bares', 'balada', 'baladas', 'clube', 'clubes', 'boate', 'boates', 'danceteria', 'danceterias', 'karaoke', 'karaokê', 'bowling', 'bingo', 'cassino', 'cassinos', 'jogos', 'jogo', 'arcade', 'fliperama', 'fliperamas'], 
+                    target: 'Lazer',
+                    fallback: 'Outros'
+                  },
+                  // Beleza (expandido, fallback para Outros)
+                  { 
+                    keywords: ['cabelo', 'cabelos', 'cabeleireiro', 'cabeleireiros', 'cabeleireira', 'cabeleireiras', 'corte', 'cortes', 'corte de cabelo', 'cortes de cabelo', 'corte no cabelo', 'cortar cabelo', 'cortou cabelo', 'pintar cabelo', 'pintura de cabelo', 'coloração', 'coloração de cabelo', 'coloracao', 'coloracao de cabelo', 'mechen', 'mechas', 'reflexo', 'reflexos', 'alisamento', 'alisamento de cabelo', 'alisar cabelo', 'escova', 'escovas', 'escova progressiva', 'escova definitiva', 'escova marroquina', 'escova japonesa', 'escova brasileira', 'hidratação', 'hidratação capilar', 'hidratacao', 'hidratacao capilar', 'reconstrução', 'reconstrução capilar', 'reconstrucao', 'reconstrucao capilar', 'nutrição', 'nutrição capilar', 'nutricao', 'nutricao capilar', 'barbearia', 'barbearias', 'barbeiro', 'barbeiros', 'barba', 'barbas', 'corte de barba', 'aparar barba', 'fazer a barba', 'fazer barba', 'barba feita', 'barba feita', 'navalha', 'navalhas', 'gilette', 'gilettes', 'lâmina', 'lamina', 'lâminas', 'laminas', 'manicure', 'manicures', 'pedicure', 'pedicures', 'unha', 'unhas', 'unha de gel', 'unha de acrílico', 'unha de acrilico', 'unha postiça', 'unha postica', 'unhas postiças', 'unhas posticas', 'esmaltação', 'esmaltacao', 'esmaltar', 'cutícula', 'cuticulas', 'cuticula', 'cuticulas', 'estetica', 'estética', 'esteticas', 'estéticas', 'esteticista', 'esteticistas', 'limpeza de pele', 'limpeza facial', 'peeling', 'peelings', 'drenagem', 'drenagem linfatica', 'drenagem linfática', 'massagem', 'massagens', 'massagem relaxante', 'massagem terapêutica', 'massagem terapeutica', 'massagem modeladora', 'depilação', 'depilacao', 'depilação a laser', 'depilacao a laser', 'depilação com cera', 'depilacao com cera', 'cosmetico', 'cosmético', 'cosmeticos', 'cosméticos', 'maquiagem', 'maquiagens', 'make', 'make up', 'makeup', 'baton', 'batons', 'batom', 'batons', 'base', 'bases', 'pó', 'po', 'pó compacto', 'po compacto', 'pó solto', 'po solto', 'blush', 'blushes', 'sombra', 'sombras', 'rimel', 'rimels', 'mascara', 'mascaras', 'máscara', 'máscaras', 'máscara facial', 'mascara facial', 'máscara capilar', 'mascara capilar', 'salão', 'salao', 'salões', 'saloes', 'salão de beleza', 'salao de beleza', 'salão de estética', 'salao de estetica', 'spa', 'spas', 'spa day', 'dia de spa', 'tratamento facial', 'tratamento capilar', 'tratamentos', 'tratamento de beleza', 'procedimento estético', 'procedimento estetico', 'procedimentos estéticos', 'procedimentos esteticos'], 
+                    target: 'Beleza',
+                    fallback: 'Outros'
+                  },
+                  // Vestuário (fallback para Outros)
+                  { 
+                    keywords: ['roupa', 'roupas', 'sapato', 'sapatos', 'tenis', 'tenis', 'camisa', 'camiseta', 'calca', 'calça', 'vestido', 'renner', 'riachuelo', 'cea', 'c&a', 'zara', 'h&m', 'nike', 'adidas', 'puma', 'shopping', 'loja'], 
+                    target: 'Vestuário',
+                    fallback: 'Outros'
+                  },
+                  // Pets (fallback para Outros)
+                  { 
+                    keywords: ['petshop', 'pet shop', 'ração', 'racao', 'veterinario', 'veterinario', 'banho tosa', 'banho e tosa', 'pet', 'gato', 'cachorro', 'animal'], 
+                    target: 'Pets',
+                    fallback: 'Outros'
+                  },
                   // Impostos (primeiro tentar "Impostos", se não existir, fallback para "Casa")
                   { 
                     keywords: ['imposto', 'impostos', 'receita federal', 'receita', 'irpf', 'ir', 'imposto de renda', 'imposto sobre renda', 'declaracao', 'declaração', 'declaracao de imposto', 'declaração de imposto', 'dar', 'dar imposto', 'taxa', 'taxas', 'taxa de', 'multa', 'multas', 'multa de transito', 'multa de trânsito', 'detran', 'ipva', 'iptu', 'iss', 'icms', 'ipi', 'cofins', 'pis', 'csll', 'irpj', 'simples nacional', 'mei', 'darf', 'guia de recolhimento', 'guia de imposto', 'recolhimento de imposto', 'pagamento de imposto', 'paguei imposto', 'paguei impostos', 'pagamos imposto', 'pagamos impostos', 'imposto pago', 'impostos pagos', 'declaracao anual', 'declaração anual', 'imposto anual', 'impostos anuais', 'receita federal do brasil', 'rf', 'fazenda', 'fazenda publica', 'fazenda pública', 'secretaria da fazenda', 'sefaz', 'prefeitura', 'prefeitura municipal', 'municipio', 'município', 'governo', 'governo federal', 'governo estadual', 'governo municipal', 'tributo', 'tributos', 'contribuicao', 'contribuição', 'contribuicao social', 'contribuição social'], 
                     target: 'Impostos',
                     fallback: 'Casa'
                   },
-                  // Presentes/Doações
-                  { keywords: ['presente', 'presentes', 'doacao', 'doação', 'vaquinha', 'aniversario', 'aniversário'], target: 'Outros' }
+                  // Alimentação (categoria genérica para qualquer comida/bebida não categorizada, fallback para Outros)
+                  { 
+                    keywords: ['alimentacao', 'alimentação', 'alimento', 'alimentos', 'comida', 'comidas', 'bebida', 'bebidas'], 
+                    target: 'Alimentação',
+                    fallback: 'Outros'
+                  },
+                  // Presentes/Doações (fallback para Outros)
+                  { 
+                    keywords: ['presente', 'presentes', 'doacao', 'doação', 'vaquinha', 'aniversario', 'aniversário'], 
+                    target: 'Outros'
+                  }
                 ];
 
-                // 3a) Tentar sinônimos pelo texto informado (com fallback para categorias que têm fallback)
+                // 3a) Tentar sinônimos pelo texto informado (com fallback hierárquico recursivo)
                 let resolvedName = null;
                 for (const group of synonyms) {
                   if (group.keywords.some(k => inputCategory.includes(k))) {
@@ -1190,13 +1325,35 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                       categoryId = byNormalizedName.get(targetNorm).id;
                       break;
                     } else if (group.fallback) {
-                      // Tentar fallback se a categoria principal não existir
-                      const fallbackNorm = normalize(group.fallback);
-                      if (byNormalizedName.has(fallbackNorm)) {
-                        resolvedName = byNormalizedName.get(fallbackNorm).name;
-                        categoryId = byNormalizedName.get(fallbackNorm).id;
-                        break;
+                      // Tentar fallback recursivamente se a categoria principal não existir
+                      let fallbackChain = [group.fallback];
+                      // Construir cadeia de fallbacks (ex: Viagem -> Lazer -> Outros)
+                      let currentFallback = group.fallback;
+                      let maxDepth = 5; // Limite de profundidade para evitar loops
+                      while (currentFallback && maxDepth-- > 0) {
+                        const fallbackGroup = synonyms.find(s => s.target === currentFallback);
+                        if (fallbackGroup && fallbackGroup.fallback && fallbackGroup.fallback !== currentFallback) {
+                          fallbackChain.push(fallbackGroup.fallback);
+                          currentFallback = fallbackGroup.fallback;
+                        } else {
+                          break;
+                        }
                       }
+                      // Adicionar "Outros" no final da cadeia se não estiver lá
+                      if (!fallbackChain.includes('Outros')) {
+                        fallbackChain.push('Outros');
+                      }
+                      
+                      // Tentar cada fallback na cadeia
+                      for (const fallback of fallbackChain) {
+                        const fallbackNorm = normalize(fallback);
+                        if (byNormalizedName.has(fallbackNorm)) {
+                          resolvedName = byNormalizedName.get(fallbackNorm).name;
+                          categoryId = byNormalizedName.get(fallbackNorm).id;
+                          break;
+                        }
+                      }
+                      if (categoryId) break;
                     }
                   }
                 }
@@ -1954,28 +2111,29 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    - **NUNCA trate respostas curtas como nova conversa** - sempre use o histórico para entender o contexto
    - **SEMPRE combine informações do histórico com a resposta atual** antes de chamar save_expense
    - Se você fez uma pergunta e o usuário respondeu com uma resposta curta, use essa resposta para completar a informação faltante e chame save_expense imediatamente
-6.  **INFERÊNCIA DE CATEGORIA**: INFIRA automaticamente quando tiver CERTEZA. IMPORTANTE: O sistema tenta primeiro a categoria mais específica, e se não existir na organização, faz fallback para a categoria mais geral:
-   - **Suplementos** (primeiro tentar "Suplementos", se não existir, fallback para "Saúde"): whey, whey protein, creatina, proteína, proteína em pó, multivitamínico, vitamina, suplemento, bcaa, glutamina, pré treino, termogênico, albumina, colágeno, omega 3, aminoácidos, etc.
-   - **Fitness** (primeiro tentar "Fitness" ou "Academia", se não existir, fallback para "Saúde"): academia, smartfit, gympass, treino, personal trainer, crossfit, pilates, yoga, natação, musculação, funcional, spinning, zumba, etc.
-   - **Padaria** (primeiro tentar "Padaria", se não existir, fallback para "Alimentação"): padaria, pão, pães, baguete, croissant, bolo, torta, doce, biscoito, salgado, coxinha, pastel, empada, pão de queijo, brigadeiro, etc.
-   - **Açougue** (primeiro tentar "Açougue", se não existir, fallback para "Alimentação"): açougue, carne, carnes, carne bovina, carne de porco, carne de frango, porco, frango, picanha, alcatra, linguiça, salsicha, bacon, presunto, mistura, churrasco, etc.
-   - **Mercado** (primeiro tentar "Mercado", se não existir, fallback para "Alimentação"): mercado, supermercado, super, hiper, atacadão, arroz, feijão, macarrão, massa, leite, queijo, iogurte, manteiga, frutas, verduras, legumes, etc.
-   - **Restaurante** (primeiro tentar "Restaurante", se não existir, fallback para "Alimentação"): restaurante, lanchonete, lanche, churrascaria, churrasco, pizzaria, pizza, macarrão, massa, ifood, delivery, almoço, jantar, etc.
-   - **Alimentação** (categoria geral para alimentos que não se encaixam nas categorias específicas acima): bebida, cerveja, suco, refrigerante, água, pipoca, peixaria, quitanda, etc.
-   - **Veículos** (primeiro tentar "Veículos" ou "Peças", se não existir, fallback para "Transporte"): peça de carro, peça de moto, pneu, bateria, óleo motor, filtro, pastilha de freio, amortecedor, escapamento, etc.
-   - **Transporte** (categoria geral - expandida): gasolina, combustível, posto, uber, 99, taxi, ônibus, metro, trem, estacionamento, ipva, manutenção, oficina, seguro carro, pedágio, etc.
-   - **Saúde**: remédio, medicamento, medicina, xarope, comprimido, cápsula, pomada, farmácia, médico, dentista, hospital, consulta, exame, laboratório, óculos, fisioterapia, psicólogo, psiquiatra, vacina, antibiótico, etc.
-   - **Streaming** (primeiro tentar "Streaming", se não existir, fallback para "Lazer"): netflix, spotify, prime, disney, hbo max, globoplay, youtube premium, apple tv, paramount, etc.
-   - **Viagem** (primeiro tentar "Viagem", se não existir, fallback para "Lazer"): viagem, passagem, passagem aérea, hotel, airbnb, hospedagem, pousada, resort, seguro viagem, etc.
-   - **Lazer** (categoria geral - cinema, teatro, shows, etc.): cinema, teatro, show, balada, **bar**, parque, ingresso, festa, aniversário, etc.
-   - **Beleza** (expandido - tudo fica em Beleza): cabelo, cabeleireiro, corte de cabelo, pintar cabelo, barbearia, barbeiro, barba, corte de barba, manicure, pedicure, unha, estética, maquiagem, cosmético, salão, spa, massagem, depilação, etc.
-   - **Casa**: eletrodomésticos, eletrônicos (tv, notebook, computador, tablet), móveis, decoração, limpeza
-   - **Contas**: aluguel, condomínio, água, luz, energia, internet, telefone
-   - **Impostos** (primeiro tentar "Impostos", se não existir, fallback para "Casa"): imposto, impostos, receita federal, receita, irpf, ir, imposto de renda, declaracao, declaração, dar, taxa, taxas, multa, multas, detran, ipva, iptu, iss, icms, ipi, cofins, pis, csll, irpj, simples nacional, mei, darf, guia de recolhimento, fazenda, sefaz, prefeitura, governo, tributo, tributos, contribuição, contribuição social
-   - **Vestuário**: roupa, sapato, tênis, camisa
-   - **Educação**: curso, faculdade, escola, livro
-   - **Pets**: petshop, ração, veterinário
-   - Se NÃO TIVER CERTEZA, OBRIGATORIAMENTE PERGUNTE (categoria é obrigatória - nunca salve sem)
+6.  **INFERÊNCIA DE CATEGORIA COM FALLBACK HIERÁRQUICO**: INFIRA automaticamente quando tiver CERTEZA. **SISTEMA INTELIGENTE**: O sistema tenta primeiro a categoria mais específica, e se não existir na organização, faz fallback hierárquico para a categoria mais geral, e no final para "Outros":
+   - **Suplementos** (primeiro tentar "Suplementos", se não existir, fallback para "Saúde" → "Outros"): whey, whey protein, creatina, proteína, proteína em pó, multivitamínico, vitamina, suplemento, bcaa, glutamina, pré treino, termogênico, albumina, colágeno, omega 3, aminoácidos, etc.
+   - **Fitness** (primeiro tentar "Fitness" ou "Academia", se não existir, fallback para "Saúde" → "Outros"): academia, smartfit, gympass, treino, personal trainer, crossfit, pilates, yoga, natação, musculação, funcional, spinning, zumba, etc.
+   - **Padaria** (primeiro tentar "Padaria", se não existir, fallback para "Alimentação" → "Outros"): padaria, pão, pães, baguete, croissant, bolo, torta, doce, biscoito, salgado, coxinha, pastel, empada, pão de queijo, brigadeiro, etc.
+   - **Açougue** (primeiro tentar "Açougue", se não existir, fallback para "Alimentação" → "Outros"): açougue, carne, carnes, carne bovina, carne de porco, carne de frango, porco, frango, picanha, alcatra, linguiça, salsicha, bacon, presunto, mistura, churrasco, etc.
+   - **Mercado** (primeiro tentar "Mercado", se não existir, fallback para "Alimentação" → "Outros"): mercado, supermercado, super, hiper, atacadão, sacolão, feira, quitanda, hortifruti, arroz, feijão, macarrão, massa, leite, queijo, iogurte, manteiga, frutas, verduras, legumes, ovos, detergente, papel higiênico, etc.
+   - **Restaurante** (primeiro tentar "Restaurante", se não existir, fallback para "Alimentação" → "Outros"): restaurante, lanchonete, lanche, churrascaria, churrasco, pizzaria, pizza, macarrão, massa, ifood, delivery, almoço, jantar, café da manhã, sushi, açaí, etc.
+   - **Alimentação** (categoria geral para alimentos que não se encaixam nas categorias específicas acima, fallback para "Outros"): comida, bebida, cerveja, suco, refrigerante, água, alimento, etc.
+   - **Viagem** (primeiro tentar "Viagem" ou "Viagens", se não existir, fallback para "Lazer" → "Outros"): viagem, viagens, livelo, livelo viagens, smiles, latam pass, milhas, pontos, passagem, bilhete, hotel, hospedagem, airbnb, booking, decolar, pacote turístico, etc.
+   - **Streaming** (primeiro tentar "Streaming", se não existir, fallback para "Lazer" → "Outros"): netflix, spotify, prime, disney, hbo, globoplay, youtube premium, apple tv, assinatura streaming, etc.
+   - **Lazer** (categoria geral para entretenimento, fallback para "Outros"): cinema, teatro, show, balada, parque, ingresso, festa, aniversário, bar, clube, boate, karaokê, bowling, jogos, etc.
+   - **Casa** (expandido com construção e utensílios, fallback para "Outros"): casa, material construção, material de construção, coisas cozinha, coisas de cozinha, torradeira, eletrodoméstico, móveis, decoração, tv, televisão, notebook, computador, monitor, ferramentas, tinta, cimento, limpeza, panela, frigideira, prato, copo, etc.
+   - **Contas** (primeiro tentar "Contas", se não existir, fallback para "Casa" → "Outros"): aluguel, condomínio, água, luz, energia, gás, internet, telefone, celular, conta, boleto, financiamento, fatura, etc.
+   - **Impostos** (primeiro tentar "Impostos", se não existir, fallback para "Casa" → "Outros"): impostos, imposto, receita federal, receita, irpf, ir, imposto de renda, declaração, dar, taxa, multa, detran, ipva, iptu, darf, etc.
+   - **Veículos** (primeiro tentar "Veículos" ou "Peças", se não existir, fallback para "Transporte" → "Outros"): peça de carro, peça de moto, pneu, bateria, óleo motor, filtro, pastilha de freio, amortecedor, escapamento, etc.
+   - **Transporte** (categoria geral, fallback para "Outros"): gasolina, combustível, posto, uber, 99, taxi, ônibus, metro, trem, estacionamento, ipva, manutenção, oficina, seguro carro, pedágio, mecânico, guincho, etc.
+   - **Saúde** (fallback para "Outros"): remédio, medicamento, medicina, xarope, comprimido, cápsula, pomada, farmácia, médico, dentista, hospital, consulta, exame, laboratório, óculos, fisioterapia, psicólogo, psiquiatra, vacina, antibiótico, etc.
+   - **Beleza** (fallback para "Outros"): cabelo, cabeleireiro, corte, barbearia, barbeiro, manicure, pedicure, unha, estética, maquiagem, cosmético, salão, spa, etc.
+   - **Vestuário** (fallback para "Outros"): roupa, roupas, sapato, tênis, camisa, camiseta, calça, vestido, shopping, loja, etc.
+   - **Pets** (fallback para "Outros"): petshop, pet shop, ração, veterinário, banho e tosa, pet, gato, cachorro, animal, etc.
+   - **Educação** (fallback para "Outros"): curso, faculdade, escola, livro, livraria, udemy, material escolar, mensalidade, universidade, apostila, etc.
+   - **Outros** (categoria final de fallback - sempre existe): presente, doação, vaquinha, ou qualquer outra despesa que não se encaixe nas categorias acima.
+   - Se NÃO TIVER CERTEZA sobre a categoria, OBRIGATORIAMENTE PERGUNTE (categoria é obrigatória - nunca salve sem)
 7.  **SALVAMENTO AUTOMÁTICO E CONFIRMAÇÃO DE VALORES ALTOS**: 
    - Chame a função save_expense **IMEDIATAMENTE** quando tiver: valor, descrição, pagamento, e responsável. NÃO ESCREVA NADA além da chamada da função.
    - **EXCEÇÃO CRÍTICA PARA ÁUDIO**: Se a mensagem veio de uma transcrição de áudio (você saberá pelo contexto ou histórico) E o valor for R$ 500 ou mais, SEMPRE pergunte confirmação antes de chamar save_expense:
@@ -2477,7 +2635,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             // ✅ FEATURE FLAG: Registrar Entradas/Receitas
             if (process.env.USE_INCOME_FEATURE === 'true') {
                 output = await this.saveIncome(args, context);
-            } else {
+    } else {
                 output = { success: false, error: 'Feature save_income is disabled' };
             }
         } else if (functionName === 'save_bill') {
@@ -2913,7 +3071,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         
         const result = `${targetYear}-${monthStr}-${dayStr}`;
         console.log(`✅ [PARSE_DUE_DATE] Recalculado (corrigido): ${result}`);
-        return result;
+    return result;
       }
       
       // Se chegou aqui, ano está correto ou igual ao atual
