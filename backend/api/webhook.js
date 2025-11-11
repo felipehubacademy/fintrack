@@ -12,6 +12,204 @@ const supabase = createClient(
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
+// Configuração do debounce de mensagens
+const MESSAGE_DEBOUNCE_MS = 3000; // 3 segundos
+const MAX_BUFFERED_MESSAGES = 5;  // Máximo de mensagens para agrupar
+
+// Map para armazenar timers ativos por usuário (em memória)
+const activeTimers = new Map();
+
+/**
+ * Adicionar mensagem ao buffer e retornar se deve processar agora
+ */
+async function addToMessageBuffer(userPhone, messageText, messageType = 'text') {
+  try {
+    const normalized = String(userPhone || '').replace(/\D/g, '');
+    
+    // Buscar buffer atual
+    const { data: current } = await supabase
+      .from('conversation_state')
+      .select('temp_data, state')
+      .eq('user_phone', normalized)
+      .maybeSingle();
+    
+    const buffer = current?.temp_data?.message_buffer || [];
+    const lastUpdate = current?.temp_data?.last_buffer_update || null;
+    
+    // Adicionar nova mensagem ao buffer
+    buffer.push({
+      text: messageText,
+      type: messageType,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Limitar a MAX_BUFFERED_MESSAGES
+    const limitedBuffer = buffer.slice(-MAX_BUFFERED_MESSAGES);
+    
+    // Atualizar no banco
+    await supabase
+      .from('conversation_state')
+      .upsert({
+        user_phone: normalized,
+        state: current?.state || 'buffering',
+        temp_data: {
+          ...current?.temp_data,
+          message_buffer: limitedBuffer,
+          last_buffer_update: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_phone'
+      });
+    
+    console.log(`📦 [BUFFER] Mensagem adicionada ao buffer de ${normalized}. Total: ${limitedBuffer.length} msgs`);
+    
+    return {
+      shouldProcess: false, // Ainda não processar, aguardar debounce
+      bufferSize: limitedBuffer.length
+    };
+  } catch (error) {
+    console.error('❌ Erro ao adicionar mensagem ao buffer:', error);
+    return {
+      shouldProcess: true, // Em caso de erro, processar imediatamente
+      bufferSize: 1
+    };
+  }
+}
+
+/**
+ * Obter e limpar buffer de mensagens
+ */
+async function getAndClearMessageBuffer(userPhone) {
+  try {
+    const normalized = String(userPhone || '').replace(/\D/g, '');
+    
+    // Buscar buffer atual
+    const { data: current } = await supabase
+      .from('conversation_state')
+      .select('temp_data')
+      .eq('user_phone', normalized)
+      .maybeSingle();
+    
+    const buffer = current?.temp_data?.message_buffer || [];
+    
+    if (buffer.length === 0) {
+      return null;
+    }
+    
+    // Limpar buffer
+    await supabase
+      .from('conversation_state')
+      .update({
+        temp_data: {
+          ...current?.temp_data,
+          message_buffer: [],
+          last_buffer_update: null
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_phone', normalized);
+    
+    console.log(`📦 [BUFFER] Buffer de ${normalized} limpado. ${buffer.length} msgs recuperadas`);
+    
+    // Concatenar mensagens
+    const concatenated = buffer
+      .map(msg => msg.text)
+      .join('\n');
+    
+    return {
+      concatenatedText: concatenated,
+      messageCount: buffer.length,
+      messages: buffer
+    };
+  } catch (error) {
+    console.error('❌ Erro ao obter buffer:', error);
+    return null;
+  }
+}
+
+/**
+ * Processar buffer de mensagens após debounce
+ */
+async function processBufferedMessages(userPhone) {
+  try {
+    console.log(`⏰ [DEBOUNCE] Timer expirado para ${userPhone}. Processando buffer...`);
+    
+    // Remover timer ativo
+    activeTimers.delete(userPhone);
+    
+    // Obter mensagens do buffer
+    const buffer = await getAndClearMessageBuffer(userPhone);
+    
+    if (!buffer || buffer.messageCount === 0) {
+      console.log(`⚠️ [DEBOUNCE] Buffer vazio para ${userPhone}, nada a processar`);
+      return;
+    }
+    
+    console.log(`📨 [DEBOUNCE] Processando ${buffer.messageCount} mensagens concatenadas`);
+    
+    // Processar com ZulAssistant
+    const { default: ZulAssistant } = await import('../services/zulAssistant.js');
+    const zul = new ZulAssistant();
+    
+    const user = await getUserByPhone(userPhone);
+    
+    if (!user) {
+      console.log('❌ [DEBOUNCE] Usuário não encontrado');
+      await sendWhatsAppMessage(userPhone, 
+        'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
+      );
+      return;
+    }
+    
+    // Buscar cartões
+    const { data: cards } = await supabase
+      .from('cards')
+      .select('name')
+      .eq('organization_id', user.organization_id)
+      .eq('is_active', true);
+    
+    const orgType = user.organization?.type || 'family';
+    const organizationName = user.organization?.name || 'Família';
+    
+    const context = {
+      userName: user.name,
+      userId: user.id,
+      organizationId: user.organization_id,
+      organizationType: orgType,
+      organizationName: organizationName,
+      isSoloUser: orgType === 'solo',
+      availableCards: cards?.map(c => c.name) || []
+    };
+    
+    // Processar mensagem concatenada
+    const result = await zul.processMessage(
+      buffer.concatenatedText,
+      user.id,
+      user.name,
+      userPhone,
+      context
+    );
+    
+    // Enviar resposta
+    if (result && result.message) {
+      await sendWhatsAppMessage(userPhone, result.message);
+    }
+    
+    console.log('✅ [DEBOUNCE] Buffer processado com sucesso');
+  } catch (error) {
+    console.error('❌ [DEBOUNCE] Erro ao processar buffer:', error);
+    
+    try {
+      await sendWhatsAppMessage(userPhone, 
+        'Ops! Tive um problema aqui. 😅\n\nTenta de novo? Se continuar, melhor falar com o suporte!'
+      );
+    } catch (sendError) {
+      console.error('❌ Erro ao enviar mensagem de erro:', sendError);
+    }
+  }
+}
+
 /**
  * Buscar usuário por telefone
  */
@@ -149,90 +347,49 @@ async function processWebhook(body) {
         console.log('🔄 [B1][DEBUG] Message type:', message.type);
         
         if (message.type === 'text') {
-          console.log(`📱 [B1] Processing message from ${message.from}: "${message.text.body}"`);
+          console.log(`📱 [B1] Message from ${message.from}: "${message.text.body}"`);
 
           try {
-            // Fast path para testes: evitar processamento pesado em payloads de teste
+            // Fast path para testes
             if (message.id?.includes('test_') || process.env.WEBHOOK_DRY_RUN === '1') {
-              console.log('🧪 [B2][DEBUG] Dry-run/test payload detected. Skipping ZulAssistant.');
+              console.log('🧪 [B2][DEBUG] Dry-run/test payload detected. Skipping.');
               continue;
             }
 
-            console.log('🔄 [B2][DEBUG] Importing ZulAssistant...');
-            // Import dinâmico do ZulAssistant (consolidado)
-            const { default: ZulAssistant } = await import('../services/zulAssistant.js');
-            console.log('🔄 [B2][DEBUG] ZulAssistant imported successfully');
-
-            console.log('🔄 [B2][DEBUG] Creating ZulAssistant instance...');
-            const zul = new ZulAssistant();
-            console.log('🔄 [B2][DEBUG] ZulAssistant instance created');
-
-            // Buscar usuário por telefone
-            console.log('🔄 [B2][DEBUG] Looking up user by phone...');
+            // Verificar usuário primeiro
             const user = await getUserByPhone(message.from);
-            
             if (!user) {
-              console.log('❌ [B2][DEBUG] User not found for phone:', message.from);
-              // Enviar mensagem de erro via WhatsApp
+              console.log('❌ User not found for phone:', message.from);
               await sendWhatsAppMessage(message.from, 
                 'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
               );
               continue;
             }
-            
-            console.log('✅ [B2][DEBUG] User found:', user.name);
 
-            console.log('🔄 [B2][DEBUG] Calling ZulAssistant processMessage...');
-            console.log('🔄 [B2][DEBUG] User organization_id:', user.organization_id);
+            // ===== SISTEMA DE DEBOUNCE =====
+            // Adicionar mensagem ao buffer
+            const bufferResult = await addToMessageBuffer(message.from, message.text.body, 'text');
             
-            // Buscar cartões disponíveis
-            const { data: cards } = await supabase
-              .from('cards')
-              .select('name')
-              .eq('organization_id', user.organization_id)
-              .eq('is_active', true);
-            
-            console.log('🔄 [B2][DEBUG] Found cards:', cards?.map(c => c.name));
-            
-            // Buscar tipo da organização (solo vs family)
-            const orgType = user.organization?.type || 'family';
-            const organizationName = user.organization?.name || 'Família';
-            
-            // Nota: A lógica completa de saveExpense está em zulAssistant.js (context.saveExpense)
-            // Aqui apenas garantimos que o contexto tem os dados necessários
-            const context = {
-              userName: user.name,
-              userId: user.id,
-              organizationId: user.organization_id,
-              organizationType: orgType,
-              organizationName: organizationName,
-              isSoloUser: orgType === 'solo',
-              availableCards: cards?.map(c => c.name) || []
-            };
-
-            console.log('🔄 [B2][DEBUG] Context montado:', JSON.stringify(context, null, 2));
-            
-            const result = await zul.processMessage(
-              message.text.body,
-              user.id,
-              user.name,
-              message.from,
-              context
-            );
-            
-            // Enviar resposta via WhatsApp
-            if (result && result.message) {
-              await sendWhatsAppMessage(message.from, result.message);
+            // Cancelar timer anterior se existir
+            if (activeTimers.has(message.from)) {
+              clearTimeout(activeTimers.get(message.from));
+              console.log(`⏱️ [DEBOUNCE] Timer anterior cancelado para ${message.from}`);
             }
             
-            console.log('🔄 [B2][DEBUG] ProcessMessage completed');
-
-            console.log('💬 [B1] Message processed successfully');
-          } catch (zulError) {
-            console.error('❌ [B2][DEBUG] Error in ZulAssistant:', zulError);
-            console.error('❌ [B2][DEBUG] Error stack:', zulError?.stack);
+            // Criar novo timer para processar após MESSAGE_DEBOUNCE_MS
+            const timer = setTimeout(() => {
+              processBufferedMessages(message.from).catch(err => {
+                console.error('❌ [DEBOUNCE] Erro ao processar buffer:', err);
+              });
+            }, MESSAGE_DEBOUNCE_MS);
             
-            // Enviar mensagem de erro ao usuário
+            activeTimers.set(message.from, timer);
+            console.log(`⏱️ [DEBOUNCE] Novo timer criado para ${message.from} (${bufferResult.bufferSize} msgs no buffer)`);
+            
+          } catch (error) {
+            console.error('❌ [B2][DEBUG] Error processing message:', error);
+            console.error('❌ [B2][DEBUG] Error stack:', error?.stack);
+            
             try {
               await sendWhatsAppMessage(message.from, 
                 'Ops! Tive um problema aqui. 😅\n\nTenta de novo? Se continuar, melhor falar com o suporte!'
@@ -248,6 +405,16 @@ async function processWebhook(body) {
             // Fast path para testes
             if (message.id?.includes('test_') || process.env.WEBHOOK_DRY_RUN === '1') {
               console.log('🧪 [AUDIO][DEBUG] Dry-run/test payload detected. Skipping audio processing.');
+              continue;
+            }
+
+            // Verificar usuário primeiro
+            const user = await getUserByPhone(message.from);
+            if (!user) {
+              console.log('❌ [AUDIO] User not found for phone:', message.from);
+              await sendWhatsAppMessage(message.from, 
+                'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
+              );
               continue;
             }
 
@@ -276,70 +443,25 @@ async function processWebhook(body) {
             
             console.log('✅ [AUDIO] Transcrição:', `"${transcription}"`);
 
-            // Importar ZulAssistant
-            console.log('🔄 [AUDIO][DEBUG] Importing ZulAssistant...');
-            const { default: ZulAssistant } = await import('../services/zulAssistant.js');
-            console.log('🔄 [AUDIO][DEBUG] ZulAssistant imported successfully');
-
-            console.log('🔄 [AUDIO][DEBUG] Creating ZulAssistant instance...');
-            const zul = new ZulAssistant();
-            console.log('🔄 [AUDIO][DEBUG] ZulAssistant instance created');
-
-            // Buscar usuário por telefone
-            console.log('🔄 [AUDIO][DEBUG] Looking up user by phone...');
-            const user = await getUserByPhone(message.from);
+            // ===== SISTEMA DE DEBOUNCE (mesmo que texto) =====
+            // Adicionar transcrição ao buffer
+            const bufferResult = await addToMessageBuffer(message.from, transcription, 'audio');
             
-            if (!user) {
-              console.log('❌ [AUDIO][DEBUG] User not found for phone:', message.from);
-              await sendWhatsAppMessage(message.from, 
-                'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
-              );
-              continue;
+            // Cancelar timer anterior se existir
+            if (activeTimers.has(message.from)) {
+              clearTimeout(activeTimers.get(message.from));
+              console.log(`⏱️ [DEBOUNCE] Timer anterior cancelado para ${message.from}`);
             }
             
-            console.log('✅ [AUDIO][DEBUG] User found:', user.name);
-
-            // Buscar cartões disponíveis
-            const { data: cards } = await supabase
-              .from('cards')
-              .select('name')
-              .eq('organization_id', user.organization_id)
-              .eq('is_active', true);
+            // Criar novo timer para processar após MESSAGE_DEBOUNCE_MS
+            const timer = setTimeout(() => {
+              processBufferedMessages(message.from).catch(err => {
+                console.error('❌ [DEBOUNCE] Erro ao processar buffer:', err);
+              });
+            }, MESSAGE_DEBOUNCE_MS);
             
-            console.log('🔄 [AUDIO][DEBUG] Found cards:', cards?.map(c => c.name));
-            
-            // Buscar tipo da organização (solo vs family)
-            const orgType = user.organization?.type || 'family';
-            
-            // Montar contexto
-            const context = {
-              userName: user.name,
-              userId: user.id,
-              organizationId: user.organization_id,
-              organizationType: orgType,
-              isSoloUser: orgType === 'solo',
-              availableCards: cards?.map(c => c.name) || []
-            };
-
-            console.log('🔄 [AUDIO][DEBUG] Context montado:', JSON.stringify(context, null, 2));
-            
-            // Processar transcrição como mensagem de texto
-            console.log('🔄 [AUDIO][DEBUG] Processing transcription as text message...');
-            const result = await zul.processMessage(
-              transcription,
-              user.id,
-              user.name,
-              message.from,
-              context
-            );
-            
-            // Enviar resposta via WhatsApp
-            if (result && result.message) {
-              await sendWhatsAppMessage(message.from, result.message);
-            }
-            
-            console.log('🔄 [AUDIO][DEBUG] ProcessMessage completed');
-            console.log('💬 [AUDIO] Audio message processed successfully');
+            activeTimers.set(message.from, timer);
+            console.log(`⏱️ [DEBOUNCE] Novo timer criado para ${message.from} (${bufferResult.bufferSize} msgs no buffer)`);
 
           } catch (audioError) {
             console.error('❌ [AUDIO][DEBUG] Error processing audio:', audioError);
