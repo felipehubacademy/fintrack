@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader } from './ui/Card';
 import { X, AlertCircle } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 
-export default function BankAccountModal({ isOpen, onClose, account, costCenters = [], organizationId, onSuccess }) {
+export default function BankAccountModal({ isOpen, onClose, account, costCenters = [], organizationId, onSuccess, organization = null, user = null }) {
   const { success, error: showError, warning } = useNotificationContext();
   const [formData, setFormData] = useState({
     name: '',
@@ -22,10 +22,32 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
   const [saving, setSaving] = useState(false);
   const [activeCenters, setActiveCenters] = useState([]);
 
+  const isSoloUser = organization?.type === 'solo';
+
+  const userCostCenter = useMemo(() => {
+    if (!isSoloUser || !user) return null;
+    return (
+      costCenters.find(
+        (cc) => cc.user_id === user.id && cc.is_active !== false
+      ) || costCenters.find((cc) => cc.is_active !== false) || null
+    );
+  }, [isSoloUser, user, costCenters]);
+
+  const ownerType = isSoloUser ? 'individual' : formData.owner_type;
+  const resolvedCostCenterId =
+    ownerType === 'individual'
+      ? (isSoloUser ? userCostCenter?.id : formData.cost_center_id)
+      : null;
+  const isSharedOwner = ownerType === 'shared';
+
   useEffect(() => {
-    // Filtrar apenas cost centers ativos e não compartilhados
-    setActiveCenters(costCenters.filter(cc => cc.is_active !== false && !cc.is_shared));
-  }, [costCenters]);
+    if (isSoloUser && userCostCenter) {
+      setActiveCenters([userCostCenter]);
+    } else {
+      // Filtrar apenas cost centers ativos e não compartilhados
+      setActiveCenters(costCenters.filter(cc => cc.is_active !== false && !cc.is_shared));
+    }
+  }, [costCenters, isSoloUser, userCostCenter]);
 
   useEffect(() => {
     if (account) {
@@ -35,14 +57,14 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
         account_type: account.account_type || 'checking',
         account_number: account.account_number || '',
         initial_balance: account.initial_balance || '',
-        owner_type: account.owner_type || 'individual',
-        cost_center_id: account.cost_center_id || ''
+        owner_type: isSoloUser ? 'individual' : (account.owner_type || 'individual'),
+        cost_center_id: isSoloUser && userCostCenter ? (account.cost_center_id || userCostCenter.id) : (account.cost_center_id || '')
       });
-      setShowShares(account.owner_type === 'shared');
+      setShowShares(!isSoloUser && account.owner_type === 'shared');
     } else {
       resetForm();
     }
-  }, [account]);
+  }, [account, isSoloUser, userCostCenter]);
 
   useEffect(() => {
     if (showShares && activeCenters.length > 0 && shares.length === 0) {
@@ -64,7 +86,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
       account_number: '',
       initial_balance: '',
       owner_type: 'individual',
-      cost_center_id: ''
+      cost_center_id: isSoloUser && userCostCenter ? userCostCenter.id : ''
     });
     setShares([]);
     setShowShares(false);
@@ -74,6 +96,9 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
     setFormData(prev => ({ ...prev, [field]: value }));
     
     if (field === 'owner_type') {
+      if (isSoloUser) {
+        return;
+      }
       setShowShares(value === 'shared');
       if (value === 'individual') {
         setShares([]);
@@ -97,12 +122,12 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
       return;
     }
 
-    if (formData.owner_type === 'individual' && !formData.cost_center_id) {
+    if (ownerType === 'individual' && !resolvedCostCenterId) {
       warning('Selecione um responsável para conta individual');
       return;
     }
 
-    if (formData.owner_type === 'shared' && totalPercentage !== 100) {
+    if (ownerType === 'shared' && totalPercentage !== 100) {
       warning(`A soma das porcentagens deve ser 100%. Atual: ${totalPercentage}%`);
       return;
     }
@@ -122,8 +147,8 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
         account_number: formData.account_number || null,
         initial_balance: parseFloat(formData.initial_balance),
         current_balance: parseFloat(formData.initial_balance),
-        owner_type: formData.owner_type,
-        cost_center_id: formData.owner_type === 'individual' ? formData.cost_center_id : null,
+        owner_type: ownerType,
+        cost_center_id: ownerType === 'individual' ? resolvedCostCenterId : null,
         organization_id: organizationId,
         user_id: user.id
       };
@@ -152,7 +177,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
       }
 
       // Salvar shares se for compartilhada
-      if (formData.owner_type === 'shared' && shares.length > 0) {
+      if (ownerType === 'shared' && shares.length > 0) {
         // Deletar shares existentes
         await supabase
           .from('bank_account_shares')
@@ -288,23 +313,25 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
             </div>
 
             {/* Tipo de Propriedade */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Propriedade *
-              </label>
-              <select
-                value={formData.owner_type}
-                onChange={(e) => handleChange('owner_type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                required
-              >
-                <option value="individual">Individual</option>
-                <option value="shared">Compartilhada</option>
-              </select>
-            </div>
+            {!isSoloUser && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Propriedade *
+                </label>
+                <select
+                  value={formData.owner_type}
+                  onChange={(e) => handleChange('owner_type', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  required
+                >
+                  <option value="individual">Individual</option>
+                  <option value="shared">Compartilhada</option>
+                </select>
+              </div>
+            )}
 
             {/* Responsável (Individual) */}
-            {formData.owner_type === 'individual' && (
+            {ownerType === 'individual' && !isSoloUser && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Responsável *
@@ -372,10 +399,10 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={saving || (totalPercentage !== 100 && formData.owner_type === 'shared')}
+            disabled={saving || (totalPercentage !== 100 && isSharedOwner)}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
-            {saving ? 'Salvando...' : (account ? 'Atualizar' : 'Criar Conta')}
+            {saving ? 'Salvando...' : (account ? 'Salvar Alterações' : 'Salvar')}
           </Button>
         </div>
       </div>

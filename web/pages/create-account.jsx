@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
 import { ArrowLeft, User, Mail, Phone, Loader2, CheckCircle, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -42,14 +41,6 @@ export default function CreateAccount() {
     hasPhoneDuplicate 
   } = useRealtimeDuplicateCheck(formData.adminEmail, formData.adminPhone);
   
-  // Helper para criar URL dinâmica
-  const getDynamicUrl = (path, orgId, userId) => {
-    if (path.startsWith('/')) {
-      path = path.substring(1);
-    }
-    return `/org/${orgId}/user/${userId}/${path}`;
-  };
-
   // Formatar telefone automaticamente (DDD + número, sem +)
   const formatPhone = (value) => {
     const numbers = value.replace(/\D/g, '');
@@ -127,75 +118,39 @@ export default function CreateAccount() {
       }
 
       // Normalizar telefone: adicionar código do Brasil (55) e remover formatação
-      const normalizedPhone = '55' + formData.adminPhone.replace(/\D/g, '');
-      
-      // Criar conta do usuário
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.adminEmail,
-        password: formData.password,
-          options: {
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/email-confirmed`,
-            data: {
-              name: formData.adminName.trim(),
-              phone: normalizedPhone
-            }
-          }
+      const normalizedPhone = formData.adminPhone
+        ? '55' + formData.adminPhone.replace(/\D/g, '')
+        : null;
+
+      // Criar organização + usuário via API (service role)
+      const response = await fetch('/api/account/create-solo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          organizationName: formData.dashboardName.trim(),
+          adminEmail: formData.adminEmail.trim(),
+          adminName: formData.adminName.trim(),
+          adminPhone: normalizedPhone,
+          password: formData.password
+        })
       });
 
-      if (authError) throw authError;
+      const result = await response.json();
 
-      // Usar o ID do usuário autenticado do Supabase
-      const authUserId = authData.user.id;
-      const orgId = crypto.randomUUID();
-      
-      // Gerar código de convite aleatório (6 caracteres)
-      const generateInviteCode = () => {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let code = '';
-        for (let i = 0; i < 6; i++) {
-          code += chars.charAt(Math.floor(Math.random() * chars.length));
+      if (!response.ok || !result?.success) {
+        console.error('Erro ao criar conta solo:', result);
+        throw new Error(result?.details || result?.error || 'Erro ao criar conta');
+      }
+
+      router.push({
+        pathname: '/verify-email',
+        query: {
+          email: formData.adminEmail.trim()
         }
-        return code;
-      };
-      const inviteCode = generateInviteCode();
-
-      // Criar organização (individual) - usar authUserId como admin_id
-      const { error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          id: orgId,
-          name: formData.dashboardName.trim(), // Nome do dashboard escolhido
-          email: formData.adminEmail,
-          admin_id: authUserId, // ID do usuário do Supabase Auth
-          invite_code: inviteCode,
-          type: 'solo'
-        });
-
-      if (orgError) throw orgError;
-
-      // Criar usuário na tabela users
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authUserId, // Mesmo ID do Supabase Auth
-          organization_id: orgId,
-          name: formData.adminName.trim(),
-          email: formData.adminEmail,
-          phone: normalizedPhone,
-          role: 'admin'
-        });
-
-      if (userError) throw userError;
-
-      // Cost center será criado automaticamente pelo trigger do banco
-      // O trigger cria com default_split_percentage = 100% para contas solo
-      
-      // Categorias globais já estão no banco (criadas no FRESH_DATABASE_SETUP.sql)
-      // Não precisamos criar categorias por organização
-
-      // Redirecionar para o dashboard com URL dinâmica
-      const dynamicUrl = getDynamicUrl('dashboard', orgId, authUserId);
-      router.push(dynamicUrl);
+      });
+      return;
 
     } catch (err) {
       setError(err.message);

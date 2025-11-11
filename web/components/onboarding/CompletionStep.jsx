@@ -73,7 +73,7 @@ export default function CompletionStep({ organization, onComplete }) {
   };
 
   return (
-    <div className="max-w-3xl xl:max-w-4xl mx-auto text-center space-y-12 py-12">
+    <div className="max-w-3xl xl:max-w-4xl mx-auto flex flex-col items-center justify-center text-center space-y-12 py-8 md:py-12 min-h-[70vh]">
 
       {/* Title */}
       <div className="space-y-8">

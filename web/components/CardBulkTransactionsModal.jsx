@@ -31,6 +31,15 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
   const [isSaving, setIsSaving] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
 
+  const userCostCenter = useMemo(() => {
+    if (!costCenters || !orgUser) return null;
+    return (
+      costCenters.find(
+        (cc) => cc.user_id === orgUser.id && cc.is_active !== false
+      ) || null
+    );
+  }, [costCenters, orgUser]);
+
   useEffect(() => {
     if (isOpen) {
       setTransactions([createEmptyTransaction()]);
@@ -46,6 +55,17 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
     });
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isSoloUser || !userCostCenter) return;
+    setTransactions((prev) =>
+      prev.map((tx) =>
+        tx.responsibility === userCostCenter.id
+          ? tx
+          : { ...tx, responsibility: userCostCenter.id }
+      )
+    );
+  }, [isSoloUser, userCostCenter, userCostCenter?.id, isOpen]);
+
   const expenseCategories = useMemo(() => {
     return (budgetCategories || []).filter(
       (cat) => cat.type === 'expense' || cat.type === 'both'
@@ -53,6 +73,19 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
   }, [budgetCategories]);
 
   const ownerOptions = useMemo(() => {
+    if (isSoloUser) {
+      return userCostCenter
+        ? [
+            {
+              value: userCostCenter.id,
+              label: userCostCenter.name,
+              type: 'cost_center',
+              reference: userCostCenter
+            }
+          ]
+        : [];
+    }
+
     const options = (costCenters || [])
       .filter((cc) => cc?.is_active !== false)
       .map((cc) => ({
@@ -62,7 +95,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
         reference: cc
       }));
 
-    if (organization && !isSoloUser) {
+    if (organization) {
       options.push({
         value: 'shared',
         label: organization?.name || 'Família',
@@ -72,7 +105,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
     }
 
     return options;
-  }, [costCenters, organization, isSoloUser]);
+  }, [costCenters, organization, isSoloUser, userCostCenter]);
 
   const handleFieldChange = (index, field, value) => {
     setTransactions((prev) => {
@@ -111,11 +144,12 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
 
   const isTransactionValid = (transaction) => {
     const amount = parseCurrencyInput(transaction.amount);
+    const hasResponsibility = isSoloUser ? true : Boolean(transaction.responsibility);
     return Boolean(
       transaction.date &&
       transaction.description.trim() &&
       transaction.category_id &&
-      transaction.responsibility &&
+      hasResponsibility &&
       amount > 0
     );
   };
@@ -143,6 +177,9 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
       } else if (selectedResponsibility?.type === 'shared') {
         ownerName = organization?.name || 'Família';
         isShared = true;
+      } else if (isSoloUser && userCostCenter) {
+        ownerName = userCostCenter.name;
+        costCenterId = userCostCenter.id;
       }
 
       return {
@@ -234,7 +271,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
             <span>Data</span>
             <span>Descrição</span>
             <span>Categoria</span>
-            <span>Responsabilidade</span>
+            {!isSoloUser && <span>Responsabilidade</span>}
             <span>Parcelas</span>
             <span>Valor</span>
             <span className="text-center">Remover</span>
@@ -294,23 +331,25 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                       </select>
                     </div>
 
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
-                        Responsabilidade
-                      </label>
-                      <select
-                        value={transaction.responsibility}
-                        onChange={(e) => handleFieldChange(index, 'responsibility', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${showInvalidState && !transaction.responsibility ? 'border-red-300' : 'border-gray-300'}`}
-                      >
-                        <option value="">Selecione</option>
-                        {ownerOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    {!isSoloUser && (
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
+                          Responsabilidade
+                        </label>
+                        <select
+                          value={transaction.responsibility}
+                          onChange={(e) => handleFieldChange(index, 'responsibility', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${showInvalidState && !transaction.responsibility ? 'border-red-300' : 'border-gray-300'}`}
+                        >
+                          <option value="">Selecione</option>
+                          {ownerOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <div>
                       <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">

@@ -1253,7 +1253,7 @@ export default function ZulFloatingButton() {
   return (
     <>
       {/* Botão Flutuante */}
-      <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50">
+      <div className="fixed bottom-12 right-8 md:bottom-16 md:right-10 z-50">
         {/* Logo do Zul */}
         <div 
           id="zul-button"
@@ -1273,7 +1273,7 @@ export default function ZulFloatingButton() {
 
       {/* Card de dicas/tour - Responsivo para mobile */}
       {((showTip && currentTip) || isTourActive) && (
-        <div className="fixed bottom-28 right-4 md:bottom-28 md:right-28 w-[calc(100vw-32px)] md:w-72 max-w-sm z-50 pointer-events-auto">
+        <div className="fixed bottom-32 right-8 md:bottom-32 md:right-32 w-[calc(100vw-32px)] md:w-72 max-w-sm z-50 pointer-events-auto">
           <Card className="shadow-lg border border-gray-200 bg-white animate-in slide-in-from-bottom-2 duration-300 relative">
             {/* X no canto superior direito para tour */}
             {isTourActive && (
@@ -1367,7 +1367,7 @@ export default function ZulFloatingButton() {
           
           <div 
             ref={chatModalRef}
-            className="fixed bottom-4 right-4 md:bottom-28 md:right-28 w-[calc(100vw-32px)] md:w-[28rem] max-w-md z-50 pointer-events-auto"
+            className="fixed bottom-12 right-8 md:bottom-32 md:right-32 w-[calc(100vw-32px)] md:w-[28rem] max-w-md z-50 pointer-events-auto"
           >
             <div className="bg-blue-50 rounded-xl shadow-xl w-full h-[calc(100vh-120px)] md:h-[75vh] max-h-[600px] flex flex-col border border-blue-200">
             {/* Header */}

@@ -41,9 +41,18 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   const [splitDetails, setSplitDetails] = useState([]);
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
+  const userCostCenter = useMemo(() => {
+    if (!costCenters || !orgUser) return null;
+    return (
+      costCenters.find(
+        (cc) => cc.user_id === orgUser.id && cc.is_active !== false
+      ) || null
+    );
+  }, [costCenters, orgUser]);
+
   const isCredit = form.payment_method === 'credit_card';
   // Verificar se é compartilhado: se owner_name for o nome da organização
-  const isShared = form.owner_name === (organization?.name || 'Organização');
+  const isShared = !isSoloUser && form.owner_name === (organization?.name || 'Organização');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -64,13 +73,23 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
     load();
     
     // Se for usuário solo, auto-selecionar o próprio cost center
-    if (isSoloUser && orgUser && !form.owner_name) {
-      const userCostCenter = costCenters.find(cc => cc.user_id === orgUser.id);
-      if (userCostCenter) {
-        setForm(prev => ({ ...prev, owner_name: userCostCenter.name }));
-      }
+    if (isSoloUser && userCostCenter && !form.owner_name) {
+      setForm(prev => ({ ...prev, owner_name: userCostCenter.name }));
     }
-  }, [isOpen, organization, isSoloUser, orgUser, costCenters]);
+  }, [isOpen, organization, isSoloUser, userCostCenter, form.owner_name]);
+
+  useEffect(() => {
+    if (!isSoloUser || !userCostCenter) return;
+    setForm((prev) => {
+      if (prev.owner_name === userCostCenter.name) {
+        return prev;
+      }
+      return {
+        ...prev,
+        owner_name: userCostCenter.name || prev.owner_name
+      };
+    });
+  }, [isSoloUser, userCostCenter, userCostCenter?.name, isOpen]);
 
   // Quando selecionar organização, garantir que splits estão configurados
   useEffect(() => {
@@ -92,31 +111,42 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   }, [form.owner_name, organization?.name, costCenters, isShared]);
 
   const ownerOptions = useMemo(() => {
-    // Todos os cost centers (não há mais distinção de "type")
+    if (isSoloUser) {
+      return userCostCenter
+        ? [
+            {
+              id: userCostCenter.id,
+              name: userCostCenter.name,
+              default_split_percentage: userCostCenter.default_split_percentage,
+              color: userCostCenter.color,
+              user_id: userCostCenter.user_id,
+              linked_email: userCostCenter.linked_email
+            }
+          ]
+        : [];
+    }
+
     const allCenters = (costCenters || [])
-      .filter(cc => cc.is_active !== false) // Apenas ativos
-      .map(cc => ({ 
-        id: cc.id, 
-        name: cc.name, 
-        default_split_percentage: cc.default_split_percentage, 
+      .filter((cc) => cc.is_active !== false)
+      .map((cc) => ({
+        id: cc.id,
+        name: cc.name,
+        default_split_percentage: cc.default_split_percentage,
         color: cc.color,
         user_id: cc.user_id,
         linked_email: cc.linked_email
       }));
-    
-    // Adicionar nome da organização como opção especial APENAS para contas familiares
-    if (!isSoloUser) {
-      allCenters.push({
-        id: null,
-        name: organization?.name || 'Organização',
-        default_split_percentage: 0,
-        color: '#8B5CF6',
-        isShared: true
-      });
-    }
-    
+
+    allCenters.push({
+      id: null,
+      name: organization?.name || 'Organização',
+      default_split_percentage: 0,
+      color: '#8B5CF6',
+      isShared: true
+    });
+
     return allCenters;
-  }, [costCenters, organization, isSoloUser]);
+  }, [costCenters, organization, isSoloUser, userCostCenter]);
 
   // Inicializar divisão quando "Compartilhado" for selecionado
   useEffect(() => {
@@ -225,7 +255,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
     }
 
     // Recalcular isShared antes de salvar (pode ter mudado)
-    const willBeShared = form.owner_name === (organization?.name || 'Organização');
+    const willBeShared = !isSoloUser && form.owner_name === (organization?.name || 'Organização');
     
     // Validar splits se for compartilhado
     if (willBeShared && splitDetails.length === 0) {
@@ -242,7 +272,13 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
     
     try {
       // Resolve IDs by selections
-      const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
+      let selectedOption = ownerOptions.find(o => o.name === form.owner_name);
+      if (!selectedOption && isSoloUser && userCostCenter) {
+        selectedOption = {
+          id: userCostCenter.id,
+          name: userCostCenter.name
+        };
+      }
       const category = categories.find(c => c.id === form.category_id);
       
       if (!selectedOption) {
@@ -510,14 +546,12 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                 </select>
               </div>
 
-              {!isSoloUser && (
+              {!isSoloUser ? (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <label className="block text-sm font-medium text-gray-700">Responsável *</label>
                     <HelpTooltip 
-                      content={isSoloUser 
-                        ? `Sua despesa individual` 
-                        : `Individual: só você vê. ${organization?.name || 'Organização'}: todos da família veem`}
+                      content={`Individual: só você vê. ${organization?.name || 'Organização'}: todos veem.`}
                       autoOpen={true}
                     />
                   </div>
@@ -528,11 +562,11 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                   >
                     <option value="">Selecione...</option>
                     {ownerOptions.map(o => (
-                      <option key={o.id} value={o.name}>{o.name}</option>
+                      <option key={o.id ?? o.name} value={o.name}>{o.name}</option>
                     ))}
                   </select>
                 </div>
-              )}
+              ) : null}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
@@ -559,12 +593,18 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                       value={form.card_id}
                       onChange={(e) => setForm({ ...form, card_id: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                      disabled={cards.length === 0}
                     >
                       <option value="">Selecione...</option>
                       {cards.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
+                    {cards.length === 0 && (
+                      <p className="mt-2 text-sm text-gray-500">
+                        Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Parcelas *</label>

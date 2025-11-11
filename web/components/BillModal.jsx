@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import ConfirmationModal from './ConfirmationModal';
@@ -25,7 +25,7 @@ const RECURRENCE_OPTIONS = [
   { value: 'yearly', label: 'Anual' }
 ];
 
-export default function BillModal({ isOpen, onClose, onSave, editingBill = null, costCenters = [], categories = [], cards = [], organization = null }) {
+export default function BillModal({ isOpen, onClose, onSave, editingBill = null, costCenters = [], categories = [], cards = [], organization = null, user = null }) {
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -44,6 +44,17 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
   const [loading, setLoading] = useState(false);
   const [showRevertModal, setShowRevertModal] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState(null);
+
+  const isSoloUser = organization?.type === 'solo';
+
+  const userCostCenter = useMemo(() => {
+    if (!isSoloUser || !user) return null;
+    return (
+      costCenters.find(
+        (cc) => cc.user_id === user.id && cc.is_active !== false
+      ) || costCenters.find((cc) => cc.is_active !== false) || null
+    );
+  }, [isSoloUser, user, costCenters]);
 
   useEffect(() => {
     if (editingBill) {
@@ -68,8 +79,8 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         amount: editingBill.amount ? formatCurrencyInput(editingBill.amount) : '',
         due_date: editingBill.due_date || '',
         category_id: editingBill.category_id || '',
-        cost_center_id: editingBill.cost_center_id || '',
-        is_shared: editingBill.is_shared || false,
+        cost_center_id: isSoloUser && userCostCenter ? (editingBill.cost_center_id || userCostCenter.id) : (editingBill.cost_center_id || ''),
+        is_shared: isSoloUser ? false : (editingBill.is_shared || false),
         is_recurring: editingBill.is_recurring || false,
         recurrence_frequency: editingBill.recurrence_frequency || 'monthly',
         payment_method: editingBill.payment_method || '',
@@ -81,7 +92,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
     } else {
       resetForm();
     }
-  }, [editingBill, isOpen]);
+  }, [editingBill, isOpen, isSoloUser, userCostCenter]);
 
   const resetForm = () => {
     setFormData({
@@ -89,7 +100,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       amount: '',
       due_date: '',
       category_id: '',
-      cost_center_id: '',
+      cost_center_id: isSoloUser && userCostCenter ? userCostCenter.id : '',
       is_shared: false,
       is_recurring: false,
       recurrence_frequency: 'monthly',
@@ -146,13 +157,20 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       
       console.log('🔍 [BILLMODAL] paymentMethod final:', paymentMethod);
       
+      const isShared = isSoloUser ? false : formData.is_shared;
+      const costCenterId = isSoloUser
+        ? userCostCenter?.id || null
+        : isShared
+          ? null
+          : (formData.cost_center_id || null);
+
       const billData = {
         description: formData.description.trim(),
         amount: parseCurrencyInput(formData.amount),
         due_date: formData.due_date,
         category_id: formData.category_id || null,
-        cost_center_id: formData.is_shared ? null : (formData.cost_center_id || null),
-        is_shared: formData.is_shared,
+        cost_center_id: costCenterId,
+        is_shared: isShared,
         is_recurring: formData.is_recurring,
         recurrence_frequency: formData.is_recurring ? formData.recurrence_frequency : null
       };
@@ -376,50 +394,52 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <div className="flex items-center space-x-2">
-                      <span>Responsável</span>
-                      {formData.is_shared && (
-                        <div className="relative group">
-                          <AlertCircle className="h-4 w-4 text-red-500 cursor-help" />
-                          <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-white text-gray-800 text-xs rounded-lg shadow-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 w-64">
-                            <div className="text-left">
-                              <div className="font-medium text-gray-900">Conta Compartilhada</div>
-                              <div className="text-gray-600 mt-1 leading-relaxed">
-                                Será dividida entre todos os responsáveis financeiros conforme suas porcentagens padrão.
+                {!isSoloUser && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span>Responsável</span>
+                        {formData.is_shared && (
+                          <div className="relative group">
+                            <AlertCircle className="h-4 w-4 text-red-500 cursor-help" />
+                            <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-white text-gray-800 text-xs rounded-lg shadow-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity duração-200 pointer-events-none z-10 w-64">
+                              <div className="text-left">
+                                <div className="font-medium text-gray-900">Conta Compartilhada</div>
+                                <div className="text-gray-600 mt-1 leading-relaxed">
+                                  Será dividida entre todos os responsáveis financeiros conforme suas porcentagens padrão.
+                                </div>
                               </div>
+                              <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
                             </div>
-                            <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                    </label>
+                    <div className="space-y-2">
+                      <select
+                        value={formData.is_shared ? 'shared' : formData.cost_center_id}
+                        onChange={(e) => {
+                          if (e.target.value === 'shared') {
+                            handleChange('is_shared', true);
+                            handleChange('cost_center_id', '');
+                          } else {
+                            handleChange('is_shared', false);
+                            handleChange('cost_center_id', e.target.value);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                      >
+                        <option value="">Selecione...</option>
+                        <option value="shared">
+                          {organization && organization.name ? organization.name : 'Família'}
+                        </option>
+                        {costCenters.map(cc => (
+                          <option key={cc.id} value={cc.id}>{cc.name}</option>
+                        ))}
+                      </select>
                     </div>
-                  </label>
-                  <div className="space-y-2">
-                    <select
-                      value={formData.is_shared ? 'shared' : formData.cost_center_id}
-                      onChange={(e) => {
-                        if (e.target.value === 'shared') {
-                          handleChange('is_shared', true);
-                          handleChange('cost_center_id', '');
-                        } else {
-                          handleChange('is_shared', false);
-                          handleChange('cost_center_id', e.target.value);
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                    >
-                      <option value="">Selecione...</option>
-                      <option value="shared">
-                        {organization && organization.name ? organization.name : 'Família'}
-                      </option>
-                      {costCenters.map(cc => (
-                        <option key={cc.id} value={cc.id}>{cc.name}</option>
-                      ))}
-                    </select>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Status (apenas ao editar) */}
@@ -502,6 +522,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                       value={formData.card_id}
                       onChange={(e) => handleChange('card_id', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                      disabled={cards.length === 0}
                     >
                       <option value="">Selecione...</option>
                       {cards.map(card => (
@@ -510,6 +531,11 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                         </option>
                       ))}
                     </select>
+                    {cards.length === 0 && (
+                      <p className="mt-2 text-sm text-gray-500">
+                        Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

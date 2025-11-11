@@ -36,12 +36,35 @@ export default function EditExpenseModal({
   const [splitDetails, setSplitDetails] = useState([]);
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
-  const isShared = editData.owner === (finalOrganization?.name || 'Organização');
+  const isShared = !isSoloUser && editData.owner === (finalOrganization?.name || 'Organização');
 
   // Preparar opções de responsável (todos os cost centers ativos + Compartilhado)
+  const userCostCenter = useMemo(() => {
+    if (!isSoloUser || !orgUser) return null;
+    return (
+      costCenters.find(
+        (cc) => cc.user_id === orgUser.id && cc.is_active !== false
+      ) || null
+    );
+  }, [isSoloUser, orgUser, costCenters]);
+
   const ownerOptions = useMemo(() => {
+    if (isSoloUser) {
+      return userCostCenter
+        ? [
+            {
+              id: userCostCenter.id,
+              name: userCostCenter.name,
+              type: 'individual',
+              split_percentage: userCostCenter.default_split_percentage,
+              color: userCostCenter.color
+            }
+          ]
+        : [];
+    }
+
     const individuals = (costCenters || [])
-      .filter(cc => cc.is_active !== false && !cc.is_shared) // Filtrar apenas por is_active e não compartilhados
+      .filter(cc => cc.is_active !== false && !cc.is_shared)
       .map(cc => ({ 
         id: cc.id, 
         name: cc.name, 
@@ -50,20 +73,17 @@ export default function EditExpenseModal({
         color: cc.color 
       }));
     
-    // Adicionar nome da organização como opção especial APENAS para contas familiares
-    if (!isSoloUser) {
-      individuals.push({
-        id: null,
-        name: finalOrganization?.name || 'Organização',
-        type: 'shared',
-        split_percentage: 0,
-        color: '#8B5CF6',
-        isShared: true
-      });
-    }
+    individuals.push({
+      id: null,
+      name: finalOrganization?.name || 'Organização',
+      type: 'shared',
+      split_percentage: 0,
+      color: '#8B5CF6',
+      isShared: true
+    });
     
     return individuals;
-  }, [costCenters, finalOrganization, isSoloUser]);
+  }, [costCenters, finalOrganization, isSoloUser, userCostCenter]);
 
   // Buscar despesa e splits
   useEffect(() => {
@@ -95,7 +115,7 @@ export default function EditExpenseModal({
 
       setExpense(data);
       setEditData({
-        owner: data.owner || '',
+        owner: isSoloUser && userCostCenter ? userCostCenter.name : (data.owner || ''),
         description: data.description || '',
         category_id: data.category_id || '', // Usar category_id
         payment_method: data.payment_method || '',
@@ -195,6 +215,19 @@ export default function EditExpenseModal({
     }
   }, [isShared, showSplitConfig, costCenters, editData.amount]);
 
+  useEffect(() => {
+    if (!isSoloUser || !userCostCenter) return;
+    setEditData((prev) => {
+      if (prev.owner === userCostCenter.name) {
+        return prev;
+      }
+      return {
+        ...prev,
+        owner: userCostCenter.name
+      };
+    });
+  }, [isSoloUser, userCostCenter, userCostCenter?.name, isOpen]);
+
   const totalPercentage = useMemo(() => {
     return splitDetails.reduce((sum, split) => sum + (parseFloat(split.percentage) || 0), 0);
   }, [splitDetails]);
@@ -240,7 +273,10 @@ export default function EditExpenseModal({
     setSaving(true);
     try {
       // Determinar cost_center_id e category
-      const selectedOption = ownerOptions.find(o => o.name === editData.owner);
+      let selectedOption = ownerOptions.find(o => o.name === editData.owner);
+      if (!selectedOption && isSoloUser && userCostCenter) {
+        selectedOption = { id: userCostCenter.id, name: userCostCenter.name };
+      }
       const costCenterId = selectedOption?.isShared ? null : selectedOption?.id;
       const category = categories.find(c => c.id === editData.category_id);
 
@@ -403,7 +439,7 @@ export default function EditExpenseModal({
                 </select>
               </div>
 
-              {!isSoloUser && (
+              {!isSoloUser ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
                   <select
@@ -417,7 +453,7 @@ export default function EditExpenseModal({
                     ))}
                   </select>
                 </div>
-              )}
+              ) : null}
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>

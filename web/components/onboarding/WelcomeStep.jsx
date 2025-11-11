@@ -15,7 +15,7 @@ export default function WelcomeStep({ user, organization, onNext, onboardingType
   };
 
   return (
-    <div className="max-w-3xl xl:max-w-4xl mx-auto text-center space-y-12 py-20">
+    <div className="max-w-3xl xl:max-w-4xl mx-auto flex flex-col items-center justify-center text-center space-y-12 py-8 md:py-12 min-h-[70vh]">
       {/* Welcome Message */}
       <div className="space-y-8">
         <h2 className="text-5xl md:text-6xl xl:text-7xl font-bold text-gray-900">

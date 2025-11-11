@@ -15,7 +15,8 @@ export default function InvestmentGoalModal({
   onClose, 
   onSave, 
   editingGoal = null,
-  costCenters = []
+  costCenters = [],
+  isSoloUser = false
 }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -127,9 +128,8 @@ export default function InvestmentGoalModal({
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-lg flex items-center space-x-2">
-            <Target className="h-5 w-5 text-flight-blue" />
-            <span>{editingGoal ? 'Editar Meta' : 'Nova Meta de Investimento'}</span>
+          <h2 className="text-gray-900 font-semibold text-lg">
+            {editingGoal ? 'Editar Meta' : 'Nova Meta de Investimento'}
           </h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -270,25 +270,7 @@ export default function InvestmentGoalModal({
                 )}
               </div>
 
-              {/* Centro de Custo (Opcional) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Responsável (Opcional)
-                </label>
-                <select
-                  value={formData.cost_center_id}
-                  onChange={(e) => handleChange('cost_center_id', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                >
-                  <option value="">Selecione...</option>
-                  {costCenters.filter(cc => cc.is_active !== false).map(cc => (
-                    <option key={cc.id} value={cc.id}>{cc.name}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  Vincule esta meta a um responsável específico (opcional)
-                </p>
-              </div>
+              {/* Responsável opcional removido para simplificar o fluxo */}
 
               {/* Info Box */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

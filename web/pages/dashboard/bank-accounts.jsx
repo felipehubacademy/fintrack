@@ -262,6 +262,8 @@ export default function BankAccounts() {
         account={editingAccount}
         costCenters={costCenters}
         organizationId={organization?.id}
+        organization={organization}
+        user={user}
         onSuccess={fetchAccounts}
       />
       

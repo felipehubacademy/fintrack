@@ -64,41 +64,25 @@ export default function ConfigPage() {
       const isAdmin = orgUser.role === 'admin' || organization.admin_id === orgUser.id;
       
       if (isAdmin) {
-        // Se for admin, deletar a organização (CASCADE vai deletar tudo relacionado automaticamente)
-        const { error: orgError } = await supabase
-          .from('organizations')
-          .delete()
-          .eq('id', organization.id);
+        const response = await fetch('/api/account/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            organizationId: organization.id,
+            userId: orgUser.id
+          })
+        });
 
-        if (orgError) {
-          console.error('Erro ao deletar organização:', orgError);
-          throw orgError;
+        const result = await response.json();
+
+        if (!response.ok || !result?.success) {
+          console.error('Erro ao excluir organização (API):', result);
+          throw new Error(result?.details || result?.error || 'Erro ao excluir conta');
         }
 
-        // Deletar o usuário também (não é deletado automaticamente pelo CASCADE da organização)
-        const { error: userError } = await supabase
-          .from('users')
-          .delete()
-          .eq('id', orgUser.id);
-
-        if (userError) {
-          console.error('Erro ao deletar usuário:', userError);
-          throw userError;
-        }
-
-        // Tentar deletar do auth
-        try {
-          const { error: authError } = await supabase.auth.admin?.deleteUser?.(
-            orgUser.id
-          );
-          if (authError) {
-            console.warn('Aviso: Não foi possível deletar do auth:', authError);
-          }
-        } catch (authErr) {
-          console.warn('Aviso: Método admin.deleteUser não disponível:', authErr);
-        }
-
-        // Fazer logout e redirecionar
+        // Fazer logout e redirecionar após exclusão
         await supabase.auth.signOut();
         router.push('/');
         return; // Sair da função aqui se for admin

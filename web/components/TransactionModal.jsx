@@ -32,9 +32,18 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
   const [splitDetails, setSplitDetails] = useState([]);
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
+  const userCostCenter = useMemo(() => {
+    if (!costCenters || !orgUser) return null;
+    return (
+      costCenters.find(
+        (cc) => cc.user_id === orgUser.id && cc.is_active !== false
+      ) || null
+    );
+  }, [costCenters, orgUser]);
+
   const isCredit = form.payment_method === 'credit_card';
   // Verificar se é compartilhado: se owner_name for o nome da família
-  const isShared = form.owner_name === (organization?.name || 'Família');
+  const isShared = !isSoloUser && form.owner_name === (organization?.name || 'Família');
 
   useEffect(() => {
     if (editingTransaction) {
@@ -139,6 +148,19 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     load();
   }, [isOpen, organization]);
 
+  useEffect(() => {
+    if (!isSoloUser || !userCostCenter) return;
+    setForm((prev) => {
+      if (prev.owner_name === userCostCenter.name) {
+        return prev;
+      }
+      return {
+        ...prev,
+        owner_name: userCostCenter.name || prev.owner_name
+      };
+    });
+  }, [isSoloUser, userCostCenter, userCostCenter?.name, isOpen]);
+
   const expenseCategories = useMemo(() => {
     if (categories && categories.length > 0) {
       return categories;
@@ -147,30 +169,42 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
   }, [categories, budgetCategories]);
 
   const ownerOptions = useMemo(() => {
+    if (isSoloUser) {
+      return userCostCenter
+        ? [
+            {
+              id: userCostCenter.id,
+              name: userCostCenter.name,
+              default_split_percentage: userCostCenter.default_split_percentage,
+              color: userCostCenter.color,
+              user_id: userCostCenter.user_id,
+              linked_email: userCostCenter.linked_email
+            }
+          ]
+        : [];
+    }
+
     const allCenters = (costCenters || [])
-      .filter(cc => cc.is_active !== false)
-      .map(cc => ({ 
-        id: cc.id, 
-        name: cc.name, 
-        default_split_percentage: cc.default_split_percentage, 
+      .filter((cc) => cc.is_active !== false)
+      .map((cc) => ({
+        id: cc.id,
+        name: cc.name,
+        default_split_percentage: cc.default_split_percentage,
         color: cc.color,
         user_id: cc.user_id,
         linked_email: cc.linked_email
       }));
-    
-    // Adicionar nome da organização como opção especial APENAS para contas familiares
-    if (!isSoloUser) {
-      allCenters.push({
-        id: null,
-        name: organization?.name || 'Família',
-        default_split_percentage: 0,
-        color: '#8B5CF6',
-        isShared: true
-      });
-    }
-    
+
+    allCenters.push({
+      id: null,
+      name: organization?.name || 'Família',
+      default_split_percentage: 0,
+      color: '#8B5CF6',
+      isShared: true
+    });
+
     return allCenters;
-  }, [costCenters, organization, isSoloUser]);
+  }, [costCenters, organization, isSoloUser, userCostCenter]);
 
   // Inicializar splits quando selecionar organização/compartilhado
   useEffect(() => {
@@ -242,7 +276,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       date: getBrazilTodayString(),
       category_id: '',
       category: '',
-      owner_name: '',
+      owner_name:
+        isSoloUser && userCostCenter ? userCostCenter.name : '',
       payment_method: 'cash',
       card_id: '',
       installments: 1,
@@ -331,7 +366,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     }
 
     // Recalcular isShared antes de salvar (pode ter mudado)
-    const willBeShared = form.owner_name === (organization?.name || 'Família');
+    const willBeShared = !isSoloUser && form.owner_name === (organization?.name || 'Família');
     
     // Validar splits se for compartilhado
     if (willBeShared && splitDetails.length === 0) {
@@ -349,7 +384,13 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     try {
     if (isIncome) {
         // Salvar como entrada
-        const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
+        let selectedOption = ownerOptions.find(o => o.name === form.owner_name);
+        if (!selectedOption && isSoloUser && userCostCenter) {
+          selectedOption = {
+            id: userCostCenter.id,
+            name: userCostCenter.name
+          };
+        }
         const isOptionShared = selectedOption?.isShared || willBeShared;
         const costCenter = isOptionShared ? null : selectedOption;
 
@@ -977,19 +1018,21 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
               </>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
-              <select
-                value={form.owner_name}
-                onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-              >
-                <option value="">Selecione...</option>
-                {ownerOptions.map(o => (
-                  <option key={o.id} value={o.name}>{o.name}</option>
-                ))}
-              </select>
-            </div>
+            {!isSoloUser ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
+                <select
+                  value={form.owner_name}
+                  onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                >
+                  <option value="">Selecione...</option>
+                  {ownerOptions.map(o => (
+                    <option key={o.id ?? o.name} value={o.name}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
 
             {/* Campos específicos de despesa */}
             {transactionType === 'expense' && (
@@ -1002,12 +1045,18 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                         value={form.card_id}
                         onChange={(e) => setForm({ ...form, card_id: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                        disabled={cards.length === 0}
                       >
                         <option value="">Selecione...</option>
                         {cards.map(c => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>
+                      {cards.length === 0 && (
+                        <p className="mt-2 text-sm text-gray-500">
+                          Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Parcelas *</label>

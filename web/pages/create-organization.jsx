@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
-import { ArrowLeft, Building2, User, Mail, Phone, Loader2, CheckCircle, Copy, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Building2, User, Mail, Phone, Loader2, CheckCircle, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
 import { useRealtimeDuplicateCheck } from '../hooks/useRealtimeDuplicateCheck';
 import DuplicateUserModal from '../components/DuplicateUserModal';
@@ -28,8 +27,6 @@ export default function CreateOrganization() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [inviteCode, setInviteCode] = useState(null);
   const [duplicateData, setDuplicateData] = useState(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   
@@ -43,14 +40,6 @@ export default function CreateOrganization() {
     hasPhoneDuplicate 
   } = useRealtimeDuplicateCheck(formData.adminEmail, formData.adminPhone);
   
-  // Helper para criar URL dinâmica
-  const getDynamicUrl = (path, orgId, userId) => {
-    if (path.startsWith('/')) {
-      path = path.substring(1);
-    }
-    return `/org/${orgId}/user/${userId}/${path}`;
-  };
-
   // Formatar telefone automaticamente (DDD + número, sem +)
   const formatPhone = (value) => {
     const numbers = value.replace(/\D/g, '');
@@ -107,15 +96,6 @@ export default function CreateOrganization() {
     }
   };
 
-  const generateInviteCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -138,79 +118,38 @@ export default function CreateOrganization() {
       }
 
       // Normalizar telefone: adicionar código do Brasil (55) e remover formatação
-      const normalizedPhone = '55' + formData.adminPhone.replace(/\D/g, '');
-      
-      // Criar conta do usuário
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.adminEmail,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/auth/email-confirmed`,
-          data: {
-            name: formData.adminName,
-            phone: normalizedPhone // Salvar apenas números
-          }
-        }
+      const normalizedPhone = formData.adminPhone
+        ? '55' + formData.adminPhone.replace(/\D/g, '')
+        : null;
+
+      const response = await fetch('/api/account/create-family', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          organizationName: formData.name.trim(),
+          adminEmail: formData.adminEmail.trim(),
+          adminName: formData.adminName.trim(),
+          adminPhone: normalizedPhone,
+          password: formData.password
+        })
       });
 
-      if (authError) throw authError;
+      const result = await response.json();
 
-      // Usar o ID do usuário autenticado do Supabase
-      const authUserId = authData.user.id;
-      const orgId = crypto.randomUUID();
-      const inviteCodeGen = generateInviteCode();
-
-      const { error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          id: orgId,
-          name: formData.name.trim(),
-          email: formData.adminEmail, // Email da organização = email do admin
-          admin_id: authUserId, // ID do usuário do Supabase Auth
-          invite_code: inviteCodeGen,
-          type: 'family'
-        });
-
-      if (orgError) throw orgError;
-
-      // Criar usuário na tabela users
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authUserId, // Mesmo ID do Supabase Auth
-          organization_id: orgId,
-          name: formData.adminName.trim(),
-          email: formData.adminEmail,
-          phone: normalizedPhone, // Salvar apenas números: 5511999999999
-          role: 'admin'
-        });
-
-      if (userError) throw userError;
-
-      // Criar apenas o cost center do admin com 100%
-      // Será rebalanceado para 50/50 quando o segundo membro for adicionado
-      const { error: costCenterError } = await supabase.from('cost_centers').insert({
-        organization_id: orgId,
-        name: formData.adminName.trim(),
-        color: '#3B82F6',
-        default_split_percentage: 100.00, // Começa com 100%, será rebalanceado ao adicionar membros
-        user_id: authUserId, // Usar authUserId aqui
-        is_active: true
-      });
-
-      if (costCenterError) {
-        console.error('Erro ao criar cost center:', costCenterError);
-        throw costCenterError;
+      if (!response.ok || !result?.success) {
+        console.error('Erro ao criar organização familiar:', result);
+        throw new Error(result?.details || result?.error || 'Erro ao criar organização');
       }
 
-      // Categorias globais já estão no banco (criadas no FRESH_DATABASE_SETUP.sql)
-      // Não precisamos criar categorias por organização
-
-      setInviteCode(inviteCodeGen);
-      
-      // Redirecionar para o dashboard com URL dinâmica
-      const dynamicUrl = getDynamicUrl('dashboard', orgId, authUserId); // Usar authUserId aqui
-      router.push(dynamicUrl);
+      router.push({
+        pathname: '/verify-email',
+        query: {
+          email: formData.adminEmail.trim()
+        }
+      });
+      return;
 
     } catch (err) {
       setError(err.message);

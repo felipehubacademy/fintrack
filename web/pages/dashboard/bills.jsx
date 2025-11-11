@@ -1456,6 +1456,7 @@ export default function BillsDashboard() {
           categories={categories}
           cards={cards}
           organization={organization}
+          user={orgUser}
         />
       </main>
 
