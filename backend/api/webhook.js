@@ -12,15 +12,20 @@ const supabase = createClient(
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
-// Configuração do debounce de mensagens
-const MESSAGE_DEBOUNCE_MS = 3000; // 3 segundos
+// Configuração do debounce de mensagens (síncrono para serverless)
+const MESSAGE_DEBOUNCE_MS = 2000; // 2 segundos de espera síncrona
 const MAX_BUFFERED_MESSAGES = 5;  // Máximo de mensagens para agrupar
 
-// Map para armazenar timers ativos por usuário (em memória)
-const activeTimers = new Map();
+/**
+ * Sleep síncrono (aguarda X ms)
+ */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 /**
  * Adicionar mensagem ao buffer e retornar se deve processar agora
+ * Lógica para serverless: primeira msg marca como "processing" e processa após delay
  */
 async function addToMessageBuffer(userPhone, messageText, messageType = 'text') {
   try {
@@ -34,7 +39,7 @@ async function addToMessageBuffer(userPhone, messageText, messageType = 'text') 
       .maybeSingle();
     
     const buffer = current?.temp_data?.message_buffer || [];
-    const lastUpdate = current?.temp_data?.last_buffer_update || null;
+    const isProcessing = current?.state === 'processing';
     
     // Adicionar nova mensagem ao buffer
     buffer.push({
@@ -46,12 +51,15 @@ async function addToMessageBuffer(userPhone, messageText, messageType = 'text') 
     // Limitar a MAX_BUFFERED_MESSAGES
     const limitedBuffer = buffer.slice(-MAX_BUFFERED_MESSAGES);
     
+    // Decidir se esta função deve processar ou não
+    const shouldProcess = !isProcessing; // Só processa se ninguém estiver processando
+    
     // Atualizar no banco
     await supabase
       .from('conversation_state')
       .upsert({
         user_phone: normalized,
-        state: current?.state || 'buffering',
+        state: shouldProcess ? 'processing' : current?.state || 'buffering',
         temp_data: {
           ...current?.temp_data,
           message_buffer: limitedBuffer,
@@ -62,17 +70,19 @@ async function addToMessageBuffer(userPhone, messageText, messageType = 'text') 
         onConflict: 'user_phone'
       });
     
-    console.log(`📦 [BUFFER] Mensagem adicionada ao buffer de ${normalized}. Total: ${limitedBuffer.length} msgs`);
+    console.log(`📦 [BUFFER] Mensagem adicionada ao buffer de ${normalized}. Total: ${limitedBuffer.length} msgs. ShouldProcess: ${shouldProcess}`);
     
     return {
-      shouldProcess: false, // Ainda não processar, aguardar debounce
-      bufferSize: limitedBuffer.length
+      shouldProcess,
+      bufferSize: limitedBuffer.length,
+      isFirstMessage: !isProcessing
     };
   } catch (error) {
     console.error('❌ Erro ao adicionar mensagem ao buffer:', error);
     return {
       shouldProcess: true, // Em caso de erro, processar imediatamente
-      bufferSize: 1
+      bufferSize: 1,
+      isFirstMessage: true
     };
   }
 }
@@ -87,7 +97,7 @@ async function getAndClearMessageBuffer(userPhone) {
     // Buscar buffer atual
     const { data: current } = await supabase
       .from('conversation_state')
-      .select('temp_data')
+      .select('temp_data, state')
       .eq('user_phone', normalized)
       .maybeSingle();
     
@@ -97,10 +107,11 @@ async function getAndClearMessageBuffer(userPhone) {
       return null;
     }
     
-    // Limpar buffer
+    // Limpar buffer e resetar estado para idle
     await supabase
       .from('conversation_state')
       .update({
+        state: 'idle',
         temp_data: {
           ...current?.temp_data,
           message_buffer: [],
@@ -110,7 +121,7 @@ async function getAndClearMessageBuffer(userPhone) {
       })
       .eq('user_phone', normalized);
     
-    console.log(`📦 [BUFFER] Buffer de ${normalized} limpado. ${buffer.length} msgs recuperadas`);
+    console.log(`📦 [BUFFER] Buffer de ${normalized} limpado. ${buffer.length} msgs recuperadas. Estado: idle`);
     
     // Concatenar mensagens
     const concatenated = buffer
@@ -129,24 +140,26 @@ async function getAndClearMessageBuffer(userPhone) {
 }
 
 /**
- * Processar buffer de mensagens após debounce
+ * Processar buffer de mensagens após delay síncrono
  */
 async function processBufferedMessages(userPhone) {
   try {
-    console.log(`⏰ [DEBOUNCE] Timer expirado para ${userPhone}. Processando buffer...`);
+    console.log(`⏰ [SYNC-DEBOUNCE] Aguardando ${MESSAGE_DEBOUNCE_MS}ms para processar buffer de ${userPhone}...`);
     
-    // Remover timer ativo
-    activeTimers.delete(userPhone);
+    // Aguardar síncronamente (mantém função viva)
+    await sleep(MESSAGE_DEBOUNCE_MS);
+    
+    console.log(`⏰ [SYNC-DEBOUNCE] Delay concluído. Processando buffer...`);
     
     // Obter mensagens do buffer
     const buffer = await getAndClearMessageBuffer(userPhone);
     
     if (!buffer || buffer.messageCount === 0) {
-      console.log(`⚠️ [DEBOUNCE] Buffer vazio para ${userPhone}, nada a processar`);
+      console.log(`⚠️ [SYNC-DEBOUNCE] Buffer vazio para ${userPhone}, nada a processar`);
       return;
     }
     
-    console.log(`📨 [DEBOUNCE] Processando ${buffer.messageCount} mensagens concatenadas`);
+    console.log(`📨 [SYNC-DEBOUNCE] Processando ${buffer.messageCount} mensagens concatenadas`);
     
     // Processar com ZulAssistant
     const { default: ZulAssistant } = await import('../services/zulAssistant.js');
@@ -155,7 +168,7 @@ async function processBufferedMessages(userPhone) {
     const user = await getUserByPhone(userPhone);
     
     if (!user) {
-      console.log('❌ [DEBOUNCE] Usuário não encontrado');
+      console.log('❌ [SYNC-DEBOUNCE] Usuário não encontrado');
       await sendWhatsAppMessage(userPhone, 
         'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
       );
@@ -196,9 +209,9 @@ async function processBufferedMessages(userPhone) {
       await sendWhatsAppMessage(userPhone, result.message);
     }
     
-    console.log('✅ [DEBOUNCE] Buffer processado com sucesso');
+    console.log('✅ [SYNC-DEBOUNCE] Buffer processado com sucesso');
   } catch (error) {
-    console.error('❌ [DEBOUNCE] Erro ao processar buffer:', error);
+    console.error('❌ [SYNC-DEBOUNCE] Erro ao processar buffer:', error);
     
     try {
       await sendWhatsAppMessage(userPhone, 
@@ -366,25 +379,19 @@ async function processWebhook(body) {
               continue;
             }
 
-            // ===== SISTEMA DE DEBOUNCE =====
+            // ===== SISTEMA DE DEBOUNCE SÍNCRONO =====
             // Adicionar mensagem ao buffer
             const bufferResult = await addToMessageBuffer(message.from, message.text.body, 'text');
             
-            // Cancelar timer anterior se existir
-            if (activeTimers.has(message.from)) {
-              clearTimeout(activeTimers.get(message.from));
-              console.log(`⏱️ [DEBOUNCE] Timer anterior cancelado para ${message.from}`);
+            if (bufferResult.shouldProcess) {
+              // Esta é a primeira mensagem ou única instância processando
+              // Aguardar síncronamente e processar
+              console.log(`⏱️ [SYNC-DEBOUNCE] Primeira mensagem detectada. Iniciando processamento...`);
+              await processBufferedMessages(message.from);
+            } else {
+              // Outra instância já está processando, apenas adicionamos ao buffer
+              console.log(`⏱️ [SYNC-DEBOUNCE] Mensagem adicionada ao buffer. Outra instância já está processando.`);
             }
-            
-            // Criar novo timer para processar após MESSAGE_DEBOUNCE_MS
-            const timer = setTimeout(() => {
-              processBufferedMessages(message.from).catch(err => {
-                console.error('❌ [DEBOUNCE] Erro ao processar buffer:', err);
-              });
-            }, MESSAGE_DEBOUNCE_MS);
-            
-            activeTimers.set(message.from, timer);
-            console.log(`⏱️ [DEBOUNCE] Novo timer criado para ${message.from} (${bufferResult.bufferSize} msgs no buffer)`);
             
           } catch (error) {
             console.error('❌ [B2][DEBUG] Error processing message:', error);
@@ -443,25 +450,19 @@ async function processWebhook(body) {
             
             console.log('✅ [AUDIO] Transcrição:', `"${transcription}"`);
 
-            // ===== SISTEMA DE DEBOUNCE (mesmo que texto) =====
+            // ===== SISTEMA DE DEBOUNCE SÍNCRONO (mesmo que texto) =====
             // Adicionar transcrição ao buffer
             const bufferResult = await addToMessageBuffer(message.from, transcription, 'audio');
             
-            // Cancelar timer anterior se existir
-            if (activeTimers.has(message.from)) {
-              clearTimeout(activeTimers.get(message.from));
-              console.log(`⏱️ [DEBOUNCE] Timer anterior cancelado para ${message.from}`);
+            if (bufferResult.shouldProcess) {
+              // Esta é a primeira mensagem ou única instância processando
+              // Aguardar síncronamente e processar
+              console.log(`⏱️ [SYNC-DEBOUNCE] Primeira mensagem (áudio) detectada. Iniciando processamento...`);
+              await processBufferedMessages(message.from);
+            } else {
+              // Outra instância já está processando, apenas adicionamos ao buffer
+              console.log(`⏱️ [SYNC-DEBOUNCE] Mensagem (áudio) adicionada ao buffer. Outra instância já está processando.`);
             }
-            
-            // Criar novo timer para processar após MESSAGE_DEBOUNCE_MS
-            const timer = setTimeout(() => {
-              processBufferedMessages(message.from).catch(err => {
-                console.error('❌ [DEBOUNCE] Erro ao processar buffer:', err);
-              });
-            }, MESSAGE_DEBOUNCE_MS);
-            
-            activeTimers.set(message.from, timer);
-            console.log(`⏱️ [DEBOUNCE] Novo timer criado para ${message.from} (${bufferResult.bufferSize} msgs no buffer)`);
 
           } catch (audioError) {
             console.error('❌ [AUDIO][DEBUG] Error processing audio:', audioError);
