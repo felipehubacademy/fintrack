@@ -1090,47 +1090,13 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
             }
           }
 
-          // Se categoria não vier, tentar inferir pela descrição (sinônimos/keywords)
-          if (!args.category && args.description) {
-            const norm = (s) => (s || '').toString().toLowerCase();
-            const d = norm(args.description);
-            const catHints = [
-              // Casa (supermercados, mercado livre, eletrodomésticos, etc)
-              { keys: ['mercado', 'supermercado', 'super', 'hiper', 'atacado', 'atacarejo', 'mercadolivre', 'magalu', 'amazon', 'casas bahia', 'tokstok', 'leroy', 'decoracao', 'decoração', 'limpeza', 'material limpeza'], target: 'Casa' },
-              // Eletrodomésticos/Eletroportáteis → Casa
-              { keys: ['ventilador', 'ar condicionado', 'microondas', 'micro-ondas', 'geladeira', 'freezer', 'liquidificador', 'batedeira', 'cafeteira', 'aspirador', 'ferro', 'maquina lavar', 'fogao', 'fogão', 'forno'], target: 'Casa' },
-              // Eletrônicos de uso doméstico → Casa
-              { keys: ['tv', 'televisao', 'televisão', 'som', 'home theater', 'notebook', 'tablet', 'monitor', 'mouse', 'teclado', 'computador', 'computadores', 'pc', 'desktop', 'laptop'], target: 'Casa' },
-              // Alimentação (padarias, restaurantes, delivery, etc)
-              { keys: ['padaria', 'padarias', 'restaurante', 'lanche', 'lanches', 'pizza', 'ifood', 'ubereats', 'rappi', 'sushi', 'açai', 'acai', 'cafeteria', 'cafe', 'almoço', 'almoco', 'jantar', 'delivery', 'pedido', 'comida', 'esfiha', 'hamburguer', 'hambúrguer', 'hot dog', 'cerveja', 'cervejas', 'bebida', 'bebidas', 'refrigerante', 'suco', 'agua', 'água', 'coquinha', 'pepsi', 'guarana', 'vitamina', 'smoothie', 'milk shake', 'milkshake', 'sorvete', 'doces', 'doce', 'bombom', 'chocolate', 'salgado', 'salgados', 'coxinha', 'pastel', 'empada', 'torta', 'bolo', 'pao', 'pão', 'baguete', 'croissant', 'massa', 'macarrao', 'macarrão', 'arroz', 'feijao', 'feijão', 'carne', 'frango', 'peixe', 'verdura', 'legume', 'fruta', 'frutas', 'acougue', 'açougue', 'peixaria', 'quitanda', 'hortifruti', 'frios', 'laticinios', 'laticínios', 'leite', 'queijo', 'iogurte', 'manteiga', 'margarina', 'pao de acucar', 'pao de açúcar', 'atacadao', 'atacadão', 'extra', 'carrefour', 'walmart', 'pipoca', 'pipocas'], target: 'Alimentação' },
-              // Transporte
-              { keys: ['posto', 'gasolina', 'etanol', 'combustivel', 'combustível', 'uber', '99', 'taxi', 'táxi', 'ônibus', 'onibus', 'metro', 'metrô', 'estacionamento', 'ipva', 'rodizio', 'rodízio', 'manutencao', 'manutenção', 'lava rapido', 'lava-rápido', 'oficina', 'seguro carro', 'pedagio', 'pedágio'], target: 'Transporte' },
-              // Saúde
-              { keys: ['farmácia', 'farmacia', 'remédio', 'remedio', 'remedios', 'medicamento', 'medicamentos', 'médico', 'medico', 'dentista', 'hospital', 'clinica', 'clínica', 'exame', 'consulta', 'laboratorio', 'laboratório', 'optica', 'óptica', 'oculos', 'óculos', 'academia', 'smartfit', 'gympass', 'suplemento', 'suplementos', 'fisioterapia', 'fonoaudiologia'], target: 'Saúde' },
-              // Contas
-              { keys: ['aluguel', 'condominio', 'condomínio', 'agua', 'água', 'luz', 'energia', 'gás', 'gas', 'internet', 'net', 'vivo', 'claro', 'tim', 'oi', 'telefone', 'celular', 'conta', 'boletos', 'iptu', 'ir', 'imposto', 'taxa', 'multas', 'detran'], target: 'Contas' },
-              // Educação
-              { keys: ['curso', 'cursos', 'faculdade', 'escola', 'livro', 'livraria', 'udemy', 'curso online', 'pluralsight', 'alura', 'material escolar', 'mensalidade'], target: 'Educação' },
-              // Lazer (bar, balada, entretenimento, etc)
-              { keys: ['cinema', 'teatro', 'show', 'balada', 'bar', 'parque', 'viagem', 'hotel', 'airbnb', 'ingresso', 'ingressos', 'netflix', 'spotify', 'prime', 'disney', 'hbo', 'globoplay', 'youtube premium', 'assinatura', 'streaming'], target: 'Lazer' },
-              // Beleza
-              { keys: ['cabelo', 'barbearia', 'barbeiro', 'manicure', 'pedicure', 'estetica', 'estética', 'cosmetico', 'cosmético', 'cosmeticos', 'cosméticos', 'maquiagem', 'salão', 'salao'], target: 'Beleza' },
-              // Vestuário
-              { keys: ['roupa', 'roupas', 'sapato', 'sapatos', 'tenis', 'tênis', 'camisa', 'camiseta', 'calca', 'calça', 'vestido', 'renner', 'riachuelo', 'cea', 'c&a', 'zara', 'h&m', 'nike', 'adidas', 'puma'], target: 'Vestuário' },
-              // Pets
-              { keys: ['petshop', 'pet shop', 'ração', 'racao', 'veterinario', 'veterinário', 'banho tosa', 'banho e tosa', 'pet'], target: 'Pets' }
-            ];
-            for (const hint of catHints) {
-              if (hint.keys.some(k => d.includes(k))) {
-                args.category = hint.target;
-                break;
-              }
-            }
-          }
-
-          // Buscar category_id se tiver categoria (org + globais) com normalização e sinônimos
+          // Buscar category_id e inferir categoria pela descrição se necessário
           let categoryId = null;
-          if (args.category) {
+          
+          // Se não veio categoria mas veio descrição, tentar inferir pela descrição usando synonyms
+          const shouldInferFromDescription = !args.category && args.description;
+          
+          if (args.category || shouldInferFromDescription) {
             const normalize = (s) => (s || '')
               .toString()
               .trim()
@@ -1138,56 +1104,28 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
               .normalize('NFD')
               .replace(/\p{Diacritic}+/gu, '');
 
-            const inputCategory = normalize(args.category);
-
-            // 1) Tentativa direta case-insensitive na org
-            const { data: catCI } = await supabase
-              .from('budget_categories')
-              .select('id, name')
-              .ilike('name', args.category)
-              .eq('organization_id', context.organizationId)
-              .maybeSingle();
-
-            if (catCI) {
-              categoryId = catCI.id;
-              // Usar nome canônico (capitalização correta)
-              args.category = catCI.name;
-            } else {
-              // 2) Tentativa nas globais (case-insensitive)
-              const { data: globalCatCI } = await supabase
+            // Carregar todas as categorias válidas (org + globais) para inferência e matching
+            const [{ data: orgCatsAll }, { data: globalCatsAll }] = await Promise.all([
+              supabase
                 .from('budget_categories')
                 .select('id, name')
-                .ilike('name', args.category)
+                .eq('organization_id', context.organizationId)
+                .or('type.eq.expense,type.eq.both'),
+              supabase
+                .from('budget_categories')
+                .select('id, name')
                 .is('organization_id', null)
-                .maybeSingle();
+                .or('type.eq.expense,type.eq.both')
+            ]);
 
-              if (globalCatCI) {
-                categoryId = globalCatCI.id;
-                // Usar nome canônico (capitalização correta)
-                args.category = globalCatCI.name;
-              } else {
-                // 3) Carregar todas as categorias válidas (org + globais) e fazer matching inteligente
-                const [{ data: orgCatsAll }, { data: globalCatsAll }] = await Promise.all([
-                  supabase
-                    .from('budget_categories')
-                    .select('id, name')
-                    .eq('organization_id', context.organizationId)
-                    .or('type.eq.expense,type.eq.both'),
-                  supabase
-                    .from('budget_categories')
-                    .select('id, name')
-                    .is('organization_id', null)
-                    .or('type.eq.expense,type.eq.both')
-                ]);
+            const allCats = [...(orgCatsAll || []), ...(globalCatsAll || [])];
+            const byNormalizedName = new Map();
+            for (const c of allCats) {
+              byNormalizedName.set(normalize(c.name), c);
+            }
 
-                const allCats = [...(orgCatsAll || []), ...(globalCatsAll || [])];
-                const byNormalizedName = new Map();
-                for (const c of allCats) {
-                  byNormalizedName.set(normalize(c.name), c);
-                }
-
-                // Sinônimos → categoria canônica (dicionário expandido para cobertura máxima)
-                const synonyms = [
+            // Definir sinônimos para inferência e resolução (sistema unificado)
+            const synonyms = [
                   // Suplementos (primeiro tentar "Suplementos", se não existir, fallback para "Saúde")
                   { 
                     keywords: ['whey', 'whey protein', 'whey isolate', 'whey concentrado', 'whey hidrolisado', 'creatina', 'creatina monohidratada', 'creatina micronizada', 'proteína', 'proteina', 'proteina em po', 'proteína em pó', 'proteina em pó', 'proteína em po', 'proteina isolada', 'proteína isolada', 'proteina vegana', 'proteína vegana', 'proteína de soja', 'proteina de soja', 'proteína de arroz', 'proteina de arroz', 'proteína de ervilha', 'proteina de ervilha', 'proteína de cânhamo', 'proteina de canhamo', 'proteína de chia', 'proteina de chia', 'proteína de linhaça', 'proteina de linhaça', 'proteína de quinoa', 'proteina de quinoa', 'multivitaminico', 'multivitamínico', 'multivitamina', 'multivitaminas', 'vitamina', 'vitaminas', 'vitamina a', 'vitamina b', 'vitamina b12', 'vitamina b complex', 'vitamina c', 'vitamina d', 'vitamina d3', 'vitamina e', 'vitamina k', 'suplemento', 'suplementos', 'suplemento alimentar', 'suplementos alimentares', 'bcaa', 'bcaas', 'aminoácidos', 'aminoacidos', 'aminoácidos essenciais', 'aminoacidos essenciais', 'glutamina', 'glu', 'pre treino', 'pré treino', 'pre workout', 'pré workout', 'termogenico', 'termogênico', 'termogênicos', 'termogenicos', 'queimador de gordura', 'queimadores de gordura', 'albumina', 'albúmina', 'colageno', 'colágeno', 'colágeno hidrolisado', 'colageno hidrolisado', 'omega 3', 'omega3', 'omega 3 6 9', 'omega 369', 'omega 6', 'omega 9', 'óleo de peixe', 'oleo de peixe', 'fish oil', 'óleo de linhaça', 'oleo de linhaça', 'zma', 'zinco magnésio', 'magnésio', 'magnesio', 'zinco', 'ferro', 'calcio', 'cálcio', 'potássio', 'potassio', 'selênio', 'selenio', 'cromo', 'manganês', 'manganes', 'cobre', 'iodo', 'biotina', 'ácido fólico', 'acido folico', 'folato', 'niacina', 'riboflavina', 'tiamina', 'piridoxina', 'cobalamina', 'ácido pantotênico', 'acido pantotenico', 'coenzima q10', 'coq10', 'melatonina', 'probiótico', 'probióticos', 'probiotico', 'probioticos', 'prebiótico', 'prebióticos', 'prebiotico', 'prebioticos', 'enzima digestiva', 'enzimas digestivas', 'digestivo', 'digestivos', 'maltodextrina', 'dextrose', 'glicose', 'caseína', 'caseina', 'soy protein', 'proteína de grão de bico', 'proteina de grao de bico'], 
@@ -1313,12 +1251,24 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                     keywords: ['presente', 'presentes', 'doacao', 'doação', 'vaquinha', 'aniversario', 'aniversário'], 
                     target: 'Outros'
                   }
-                ];
+            ];
 
-                // 3a) Tentar sinônimos pelo texto informado (com fallback hierárquico recursivo)
-                let resolvedName = null;
-                for (const group of synonyms) {
-                  if (group.keywords.some(k => inputCategory.includes(k))) {
+            // Lógica unificada de inferência/resolução
+            let resolvedName = null;
+            let searchText = '';
+
+            if (shouldInferFromDescription) {
+              // Se não veio categoria, inferir pela descrição
+              searchText = normalize(args.description);
+            } else if (args.category) {
+              // Se veio categoria, normalizar para busca
+              searchText = normalize(args.category);
+            }
+
+            // Tentar encontrar correspondência nos synonyms
+            if (searchText) {
+              for (const group of synonyms) {
+                  if (group.keywords.some(k => searchText.includes(k))) {
                     const targetNorm = normalize(group.target);
                     if (byNormalizedName.has(targetNorm)) {
                       resolvedName = byNormalizedName.get(targetNorm).name;
@@ -1358,40 +1308,37 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                   }
                 }
 
-                // 3b) Caso específico: "farmacia" sem "Saúde" disponível → cair para "Casa" se existir
-                if (!categoryId && inputCategory.includes('farmacia')) {
-                  const casa = byNormalizedName.get(normalize('Casa'));
-                  if (casa) {
-                    categoryId = casa.id;
-                    resolvedName = casa.name;
-                  }
+              // Caso específico: "farmacia" sem "Saúde" disponível → cair para "Casa" se existir
+              if (!categoryId && searchText.includes('farmacia')) {
+                const casa = byNormalizedName.get(normalize('Casa'));
+                if (casa) {
+                  categoryId = casa.id;
+                  resolvedName = casa.name;
                 }
+              }
 
-                // 3c) Matching por similaridade simples (substring) entre nomes normalizados
-                if (!categoryId) {
-                  const match = allCats.find(c => normalize(c.name).includes(inputCategory) || inputCategory.includes(normalize(c.name)));
-                  if (match) {
-                    categoryId = match.id;
-                    resolvedName = match.name;
-                  }
+              // Matching por similaridade simples (substring) entre nomes normalizados
+              if (!categoryId && args.category) {
+                const match = allCats.find(c => normalize(c.name).includes(searchText) || searchText.includes(normalize(c.name)));
+                if (match) {
+                  categoryId = match.id;
+                  resolvedName = match.name;
                 }
+              }
 
-                // 3d) Se ainda não achou, não perguntar novamente — use "Outros" se existir
-                if (!categoryId) {
-                  const outros = byNormalizedName.get(normalize('Outros'))
-                    || byNormalizedName.get(normalize('Outras'));
-                  if (outros) {
-                    categoryId = outros.id;
-                    resolvedName = outros.name;
-                  }
+              // Se ainda não achou, usar "Outros" se existir
+              if (!categoryId) {
+                const outros = byNormalizedName.get(normalize('Outros'))
+                  || byNormalizedName.get(normalize('Outras'));
+                if (outros) {
+                  categoryId = outros.id;
+                  resolvedName = outros.name;
                 }
+              }
 
-                // Atualizar args.category para refletir a resolução, se houver
-                if (categoryId && resolvedName) {
-                  args.category = resolvedName;
-                }
-
-                // Se mesmo assim não encontrou, manter null (sem quebrar o fluxo)
+              // Atualizar args.category para refletir a resolução, se houver
+              if (categoryId && resolvedName) {
+                args.category = resolvedName;
               }
             }
           }

@@ -496,6 +496,7 @@ export default function BudgetsDashboard() {
   const macroDraftDiff = macroDraftTarget - macroDraftTotal;
   const macroDraftBalanced = Math.abs(macroDraftDiff) < 0.01;
   const macroDraftHasOverspend = macroDraft.some((entry) => entry.spent > entry.amount);
+  const canSaveMacro = editingMacroKey !== null && macroDraftBalanced && !macroDraftHasOverspend && !savingMacro;
 
   const handleMacroTargetChange = (value) => {
     const next = Number(value);
@@ -871,7 +872,6 @@ export default function BudgetsDashboard() {
           {macroSummary.map((macro) => {
             const isEditing = editingMacroKey === macro.key;
             const diffAbs = Math.abs(macroDraftDiff);
-            const canSaveMacro = isEditing && macroDraftBalanced && !macroDraftHasOverspend && !savingMacro;
 
             return (
               <Card key={macro.key} className="border border-gray-200 shadow-sm">
