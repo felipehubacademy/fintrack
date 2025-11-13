@@ -686,7 +686,7 @@ Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
                   },
                   category: {
                     type: 'string',
-                    description: 'Categoria da despesa identificada automaticamente'
+                    description: 'Categoria da despesa. Tente inferir baseado na descrição (Alimentação para comida, Transporte para combustível/uber, Beleza para perfume/salão, Saúde para remédios, Casa para eletrodomésticos, Lazer para cinema/streaming, etc). SE NÃO TIVER CERTEZA ou não souber, use "Outros" - NUNCA force uma categoria incorreta.'
                   }
                 },
                 required: ['amount', 'description', 'payment_method', 'responsible']
@@ -714,25 +714,55 @@ Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
 
 PERSONALIDADE: Sábio Jovem. Seu tom é **calmo, claro, genuinamente prestativo e inspirador**. Fale como um amigo inteligente que ajuda a família a ter mais controle financeiro. Use um português brasileiro **NATURAL e VARIADO**.
 
-REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
+🔴 REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA (OBRIGATÓRIAS):
 
-1.  **VARIAÇÃO RADICAL**: Mude o estilo de cada resposta (direto, casual, formal, contextual). NUNCA repita a mesma frase ou estrutura de pergunta.
-2.  **CONCISÃO MÁXIMA**: Responda com **1 linha** sempre que possível. Use no máximo 2 linhas em casos de confirmação ou contexto. O WhatsApp exige rapidez.
-3.  **INFERÊNCIA ATIVA**: Se o usuário fornecer informações parciais, use o contexto para inferir e perguntar apenas pela **lacuna CRÍTICA** restante. Ex: Se ele diz "100 no mercado, débito", pergunte apenas "E o responsável?".
-4.  **HUMANIZAÇÃO LEVE**: Use emojis leves (🤔, ❓, 💰) com moderação e apenas para humanizar a pergunta ou confirmação. Não use emojis em excesso.
-5.  **MANUTENÇÃO DE CONTEXTO**: NUNCA repita perguntas já respondidas ou informações já fornecidas.
-6.  **FLUXO DE VALIDAÇÃO**: A ordem de prioridade para coleta é: Valor & Descrição, Pagamento, Responsável.
-7.  **SALVAMENTO AUTOMÁTICO**: Chame a função save_expense **IMEDIATAMENTE** quando tiver: valor, descrição, pagamento, e responsável.
-8.  **TRATAMENTO DE DESVIO**: Se a mensagem não for uma despesa (ex: saudação, pergunta sobre saldo), responda brevemente, mantenha a personalidade e **redirecione gentilmente** para o foco principal: "Oi, [Nome]! Tudo ótimo por aqui. Lembre-se que meu foco é anotar suas despesas rapidinho. Qual foi o gasto de hoje? 😉"
+1.  **MEMÓRIA ABSOLUTA DE CONTEXTO**: 
+    - Você TEM acesso ao histórico completo da conversa através do thread.
+    - **NUNCA** peça informações que o usuário já forneceu em mensagens anteriores (mesmo que foi 2-3 mensagens atrás).
+    - Se você perguntou "Qual cartão e quantas parcelas?" e o usuário respondeu "foi no c6 a vista", você JÁ TEM essas informações. NÃO pergunte novamente sobre valor ou descrição.
+    - Se o usuário mandou em áudio "comprei perfume por 250 no crédito", você TEM valor (250), descrição (perfume) e método (crédito). Pergunte APENAS o que falta (ex: cartão/parcelas, responsável).
 
-FUNÇÕES:
+2.  **PROCESSAMENTO INTELIGENTE DE ÁUDIO**:
+    - Mensagens de áudio podem vir transcritas com erros menores - interprete o contexto.
+    - Se o usuário mandou áudio com múltiplas informações, extraia TODAS antes de perguntar.
+    - Exemplo: "mantdou em audio o valor, a descricao e o me odo credito" = mandou valor, descrição e método crédito. Não pergunte essas 3 coisas novamente!
+
+3.  **INFERÊNCIA CONTEXTUAL ATIVA**:
+    - Se o usuário respondeu sua última pergunta, assuma que a resposta é sobre o que você perguntou.
+    - Você perguntou "Qual cartão?" → Usuário diz "c6 a vista" → Isso é cartão=C6, parcelas=1.
+    - Você perguntou "Quanto e o que foi?" → Usuário diz "11 e 20" → Interprete no contexto (pode ser R$11,20 ou 11 reais + 20 de algo).
+
+4.  **VARIAÇÃO RADICAL**: Mude o estilo de cada resposta (direto, casual, formal, contextual). NUNCA repita a mesma frase ou estrutura de pergunta.
+
+5.  **CONCISÃO MÁXIMA**: Responda com **1 linha** sempre que possível. Use no máximo 2 linhas em casos de confirmação ou contexto. O WhatsApp exige rapidez.
+
+6.  **HUMANIZAÇÃO LEVE**: Use emojis leves (🤔, ❓, 💰) com moderação e apenas para humanizar a pergunta ou confirmação. Não use emojis em excesso.
+
+7.  **FLUXO DE VALIDAÇÃO**: A ordem de prioridade para coleta é: Valor & Descrição, Pagamento (e se for crédito: cartão/parcelas), Responsável.
+
+8.  **INFERÊNCIA DE CATEGORIA** (CRÍTICO):
+    - Tente inferir a categoria baseado na descrição (mercado→Alimentação, perfume→Beleza, remédio→Saúde, etc).
+    - **SE NÃO TIVER CERTEZA ABSOLUTA, use "Outros"**.
+    - NUNCA force uma categoria incorreta (ex: perfume NÃO é Impostos, torradeira NÃO é Contas).
+    - Categorias específicas: Alimentação, Transporte, Saúde, Beleza, Casa, Lazer, Educação, Vestuário, Impostos, Contas, Outros.
+    - Exemplos corretos: perfume→Beleza, torradeira→Casa, sacolão→Alimentação, livelo viagens→Viagem (ou Lazer se não existir).
+
+9.  **SALVAMENTO AUTOMÁTICO**: Chame a função save_expense **IMEDIATAMENTE** quando tiver: valor, descrição, pagamento, e responsável.
+
+10. **TRATAMENTO DE DESVIO**: Se a mensagem não for uma despesa (ex: saudação, pergunta sobre saldo), responda brevemente e **redirecione gentilmente** para o foco principal: "Oi, [Nome]! Tudo ótimo por aqui. Lembre-se que meu foco é anotar suas despesas rapidinho. Qual foi o gasto de hoje? 😉"
+
+11. **AUTOAVALIAÇÃO ANTES DE RESPONDER**:
+    - Antes de perguntar qualquer coisa, REVISE o histórico da conversa.
+    - Pergunte a si mesmo: "O usuário já forneceu isso?"
+    - Se SIM, NÃO pergunte novamente. Use a informação que ele já deu.
+
+FUNÇÕES DISPONÍVEIS:
 - validate_payment_method
 - validate_card
 - validate_responsible
-
 - save_expense (chame quando tiver tudo validado)
 
-Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um assistente humano e eficiente.`;
+Seja IMPREVISÍVEL, NATURAL e EXTREMAMENTE ATENTO ao contexto. Faça o usuário sentir que está falando com um assistente humano inteligente que realmente ESCUTA e LEMBRA do que foi dito.`;
   }
 
   /**
@@ -1218,7 +1248,7 @@ Seja IMPREVISÍVEL e NATURAL. Faça o usuário sentir que está falando com um a
                   },
                   // Beleza (expandido, fallback para Outros)
                   { 
-                    keywords: ['cabelo', 'cabelos', 'cabeleireiro', 'cabeleireiros', 'cabeleireira', 'cabeleireiras', 'corte', 'cortes', 'corte de cabelo', 'cortes de cabelo', 'corte no cabelo', 'cortar cabelo', 'cortou cabelo', 'pintar cabelo', 'pintura de cabelo', 'coloração', 'coloração de cabelo', 'coloracao', 'coloracao de cabelo', 'mechen', 'mechas', 'reflexo', 'reflexos', 'alisamento', 'alisamento de cabelo', 'alisar cabelo', 'escova', 'escovas', 'escova progressiva', 'escova definitiva', 'escova marroquina', 'escova japonesa', 'escova brasileira', 'hidratação', 'hidratação capilar', 'hidratacao', 'hidratacao capilar', 'reconstrução', 'reconstrução capilar', 'reconstrucao', 'reconstrucao capilar', 'nutrição', 'nutrição capilar', 'nutricao', 'nutricao capilar', 'barbearia', 'barbearias', 'barbeiro', 'barbeiros', 'barba', 'barbas', 'corte de barba', 'aparar barba', 'fazer a barba', 'fazer barba', 'barba feita', 'barba feita', 'navalha', 'navalhas', 'gilette', 'gilettes', 'lâmina', 'lamina', 'lâminas', 'laminas', 'manicure', 'manicures', 'pedicure', 'pedicures', 'unha', 'unhas', 'unha de gel', 'unha de acrílico', 'unha de acrilico', 'unha postiça', 'unha postica', 'unhas postiças', 'unhas posticas', 'esmaltação', 'esmaltacao', 'esmaltar', 'cutícula', 'cuticulas', 'cuticula', 'cuticulas', 'estetica', 'estética', 'esteticas', 'estéticas', 'esteticista', 'esteticistas', 'limpeza de pele', 'limpeza facial', 'peeling', 'peelings', 'drenagem', 'drenagem linfatica', 'drenagem linfática', 'massagem', 'massagens', 'massagem relaxante', 'massagem terapêutica', 'massagem terapeutica', 'massagem modeladora', 'depilação', 'depilacao', 'depilação a laser', 'depilacao a laser', 'depilação com cera', 'depilacao com cera', 'cosmetico', 'cosmético', 'cosmeticos', 'cosméticos', 'maquiagem', 'maquiagens', 'make', 'make up', 'makeup', 'baton', 'batons', 'batom', 'batons', 'base', 'bases', 'pó', 'po', 'pó compacto', 'po compacto', 'pó solto', 'po solto', 'blush', 'blushes', 'sombra', 'sombras', 'rimel', 'rimels', 'mascara', 'mascaras', 'máscara', 'máscaras', 'máscara facial', 'mascara facial', 'máscara capilar', 'mascara capilar', 'salão', 'salao', 'salões', 'saloes', 'salão de beleza', 'salao de beleza', 'salão de estética', 'salao de estetica', 'spa', 'spas', 'spa day', 'dia de spa', 'tratamento facial', 'tratamento capilar', 'tratamentos', 'tratamento de beleza', 'procedimento estético', 'procedimento estetico', 'procedimentos estéticos', 'procedimentos esteticos'], 
+                    keywords: ['cabelo', 'cabelos', 'cabeleireiro', 'cabeleireiros', 'cabeleireira', 'cabeleireiras', 'corte', 'cortes', 'corte de cabelo', 'cortes de cabelo', 'corte no cabelo', 'cortar cabelo', 'cortou cabelo', 'pintar cabelo', 'pintura de cabelo', 'coloração', 'coloração de cabelo', 'coloracao', 'coloracao de cabelo', 'mechen', 'mechas', 'reflexo', 'reflexos', 'alisamento', 'alisamento de cabelo', 'alisar cabelo', 'escova', 'escovas', 'escova progressiva', 'escova definitiva', 'escova marroquina', 'escova japonesa', 'escova brasileira', 'hidratação', 'hidratação capilar', 'hidratacao', 'hidratacao capilar', 'reconstrução', 'reconstrução capilar', 'reconstrucao', 'reconstrucao capilar', 'nutrição', 'nutrição capilar', 'nutricao', 'nutricao capilar', 'barbearia', 'barbearias', 'barbeiro', 'barbeiros', 'barba', 'barbas', 'corte de barba', 'aparar barba', 'fazer a barba', 'fazer barba', 'barba feita', 'barba feita', 'navalha', 'navalhas', 'gilette', 'gilettes', 'lâmina', 'lamina', 'lâminas', 'laminas', 'manicure', 'manicures', 'pedicure', 'pedicures', 'unha', 'unhas', 'unha de gel', 'unha de acrílico', 'unha de acrilico', 'unha postiça', 'unha postica', 'unhas postiças', 'unhas posticas', 'esmaltação', 'esmaltacao', 'esmaltar', 'cutícula', 'cuticulas', 'cuticula', 'cuticulas', 'estetica', 'estética', 'esteticas', 'estéticas', 'esteticista', 'esteticistas', 'limpeza de pele', 'limpeza facial', 'peeling', 'peelings', 'drenagem', 'drenagem linfatica', 'drenagem linfática', 'massagem', 'massagens', 'massagem relaxante', 'massagem terapêutica', 'massagem terapeutica', 'massagem modeladora', 'depilação', 'depilacao', 'depilação a laser', 'depilacao a laser', 'depilação com cera', 'depilacao com cera', 'cosmetico', 'cosmético', 'cosmeticos', 'cosméticos', 'perfume', 'perfumes', 'colonia', 'colônia', 'colonias', 'colônias', 'fragancia', 'fragrância', 'fragrancia', 'fragrâncias', 'eau de parfum', 'eau de toilette', 'eau de cologne', 'edt', 'edp', 'edc', 'chanel', 'dior', 'armani', 'carolina herrera', 'versace', 'paco rabanne', 'hugo boss', 'calvin klein', 'dolce gabbana', 'yves saint laurent', 'givenchy', 'burberry', 'gucci', 'tom ford', 'thierry mugler', 'jean paul gaultier', 'issey miyake', 'lancome', 'ralph lauren', 'valentino', 'hermes', 'cartier', 'bvlgari', 'chopard', 'montblanc', 'azzaro', 'davidoff', 'diesel', 'lacoste', 'kenzo', 'cacharel', 'lolita lempicka', 'nina ricci', 'chloe', 'marc jacobs', 'viktor rolf', 'prada', 'miu miu', 'narciso rodriguez', 'balenciaga', 'alexander mcqueen', 'desodorante', 'desodorantes', 'antitranspirante', 'antitranspirantes', 'body splash', 'body splashes', 'agua de colonia', 'água de colônia', 'loção', 'locao', 'locoes', 'loções', 'loção corporal', 'locao corporal', 'maquiagem', 'maquiagens', 'make', 'make up', 'makeup', 'baton', 'batons', 'batom', 'batons', 'base', 'bases', 'pó', 'po', 'pó compacto', 'po compacto', 'pó solto', 'po solto', 'blush', 'blushes', 'sombra', 'sombras', 'rimel', 'rimels', 'mascara', 'mascaras', 'máscara', 'máscaras', 'máscara facial', 'mascara facial', 'máscara capilar', 'mascara capilar', 'salão', 'salao', 'salões', 'saloes', 'salão de beleza', 'salao de beleza', 'salão de estética', 'salao de estetica', 'spa', 'spas', 'spa day', 'dia de spa', 'tratamento facial', 'tratamento capilar', 'tratamentos', 'tratamento de beleza', 'procedimento estético', 'procedimento estetico', 'procedimentos estéticos', 'procedimentos esteticos'], 
                     target: 'Beleza',
                     fallback: 'Outros'
                   },
