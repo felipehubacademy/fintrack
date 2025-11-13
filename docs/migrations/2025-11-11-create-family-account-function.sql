@@ -113,7 +113,7 @@ BEGIN
 EXCEPTION
   WHEN unique_violation THEN
     RAISE NOTICE 'Violação de unicidade, revertendo criação da organização %', p_org_id;
-    PERFORM delete_solo_account(p_org_id, p_admin_id);
+    PERFORM delete_account(p_org_id, p_admin_id);
     RAISE;
 END;
 $$;

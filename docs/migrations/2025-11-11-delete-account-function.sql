@@ -1,10 +1,10 @@
 -- ============================================================================
--- Função: delete_solo_account
--- Objetivo: Remover completamente uma conta solo (organização + usuário)
+-- Função: delete_account
+-- Objetivo: Remover completamente uma conta (solo ou family)
 -- Obs: Executar com service role (RLS bloqueia anon)
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION delete_solo_account(
+CREATE OR REPLACE FUNCTION delete_account(
   p_organization_id UUID,
   p_user_id UUID DEFAULT NULL
 )
@@ -67,6 +67,14 @@ BEGIN
   GET DIAGNOSTICS v_count = ROW_COUNT;
   v_deleted := v_deleted || jsonb_build_object('user_preferences', v_count);
 
+  -- Remover notification_history primeiro (FK para notifications)
+  DELETE FROM notification_history
+  WHERE notification_id IN (
+    SELECT id FROM notifications WHERE organization_id = p_organization_id
+  );
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  v_deleted := v_deleted || jsonb_build_object('notification_history', v_count);
+
   DELETE FROM notifications
   WHERE organization_id = p_organization_id;
   GET DIAGNOSTICS v_count = ROW_COUNT;
@@ -89,7 +97,15 @@ BEGIN
   GET DIAGNOSTICS v_count = ROW_COUNT;
   v_deleted := v_deleted || jsonb_build_object('pending_invites', v_count);
 
-  -- 9. Remover metas de investimento
+  -- 9. Remover metas de investimento e seus aportes
+  -- Primeiro, remover investment_contributions (FK para investment_goals)
+  DELETE FROM investment_contributions
+  WHERE goal_id IN (
+    SELECT id FROM investment_goals WHERE organization_id = p_organization_id
+  );
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  v_deleted := v_deleted || jsonb_build_object('investment_contributions', v_count);
+
   DELETE FROM investment_goals
   WHERE organization_id = p_organization_id;
   GET DIAGNOSTICS v_count = ROW_COUNT;
@@ -113,27 +129,44 @@ BEGIN
   GET DIAGNOSTICS v_count = ROW_COUNT;
   v_deleted := v_deleted || jsonb_build_object('bank_accounts', v_count);
 
-  -- 11. Remover cost centers após limpar dependências
+  -- 11. Remover budgets e budget_categories
+  DELETE FROM budgets
+  WHERE organization_id = p_organization_id;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  v_deleted := v_deleted || jsonb_build_object('budgets', v_count);
+
+  DELETE FROM budget_categories
+  WHERE organization_id = p_organization_id;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  v_deleted := v_deleted || jsonb_build_object('budget_categories', v_count);
+
+  -- 12. Remover cartões (cards) antes de deletar users
+  DELETE FROM cards
+  WHERE organization_id = p_organization_id;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  v_deleted := v_deleted || jsonb_build_object('cards', v_count);
+
+  -- 13. Remover cost centers após limpar dependências
   DELETE FROM cost_centers
   WHERE organization_id = p_organization_id;
   GET DIAGNOSTICS v_count = ROW_COUNT;
   v_deleted := v_deleted || jsonb_build_object('cost_centers', v_count);
 
-  -- 12. Remover códigos de verificação do usuário (se informado)
+  -- 14. Remover códigos de verificação do usuário (se informado)
   IF p_user_id IS NOT NULL THEN
     DELETE FROM verification_codes WHERE user_id = p_user_id;
     GET DIAGNOSTICS v_count = ROW_COUNT;
     v_deleted := v_deleted || jsonb_build_object('verification_codes', v_count);
   END IF;
 
-  -- 13. Remover usuário(s)
+  -- 15. Remover usuário(s)
   DELETE FROM users
   WHERE organization_id = p_organization_id
      OR (p_user_id IS NOT NULL AND id = p_user_id);
   GET DIAGNOSTICS v_count = ROW_COUNT;
   v_deleted := v_deleted || jsonb_build_object('users', v_count);
 
-  -- 14. Finalmente, remover a organização
+  -- 16. Finalmente, remover a organização
   DELETE FROM organizations
   WHERE id = p_organization_id;
   GET DIAGNOSTICS v_count = ROW_COUNT;
@@ -146,6 +179,6 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION delete_solo_account(UUID, UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION delete_account(UUID, UUID) TO service_role;
 
 

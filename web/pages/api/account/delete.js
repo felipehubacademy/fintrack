@@ -1,6 +1,6 @@
 /**
- * API: Delete Account (Solo)
- * Executa limpeza completa via function delete_solo_account
+ * API: Delete Account (Solo ou Family)
+ * Executa limpeza completa via function delete_account
  */
 
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
@@ -17,13 +17,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'organizationId é obrigatório' });
     }
 
-    const { data, error } = await supabaseAdmin.rpc('delete_solo_account', {
+    const { data, error } = await supabaseAdmin.rpc('delete_account', {
       p_organization_id: organizationId,
       p_user_id: userId ?? null
     });
 
     if (error) {
-      console.error('❌ [API] Erro ao executar delete_solo_account:', error);
+      console.error('❌ [API] Erro ao executar delete_account:', error);
       return res.status(500).json({
         success: false,
         error: 'Erro ao excluir dados da organização',
