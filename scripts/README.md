@@ -82,3 +82,4 @@ WABA_ID=1305894714600979  # Opcional (usa valor padrão se não configurado)
 - O código já está atualizado para usar `bill_reminder_utility_v2`
 - O template é do tipo UTILITY, permitindo envio a qualquer momento (sem janela de 24h)
 
+

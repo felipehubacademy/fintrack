@@ -7,19 +7,19 @@ import { supabase } from '../lib/supabaseClient';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import ConfirmationModal from './ConfirmationModal';
 
-export default function CategoryManagementModal({ isOpen, onClose, organization }) {
+export default function CategoryManagementModal({ isOpen, onClose, organization, preSelectedMacro = null, preSelectedTab = 'expense' }) {
   const { success, error: showError, warning } = useNotificationContext();
   const INCOME_MACRO_KEY = 'income';
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('expense'); // 'expense' (Saídas) ou 'income' (Entradas)
-  const [showForm, setShowForm] = useState(false);
+  const [activeTab, setActiveTab] = useState(preSelectedTab); // 'expense' (Saídas) ou 'income' (Entradas)
+  const [showForm, setShowForm] = useState(!!preSelectedMacro); // Abrir form se tiver macro pré-selecionado
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     color: '#6366F1',
-    macro_group: 'needs'
+    macro_group: preSelectedMacro || 'needs'
   });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
@@ -39,16 +39,27 @@ export default function CategoryManagementModal({ isOpen, onClose, organization 
   useEffect(() => {
     if (isOpen && organization) {
       fetchCategories();
+      // Aplicar configurações pré-selecionadas ao abrir
+      if (preSelectedTab) {
+        setActiveTab(preSelectedTab);
+      }
+      if (preSelectedMacro) {
+        setShowForm(true);
+        setFormData((prev) => ({
+          ...prev,
+          macro_group: preSelectedMacro
+        }));
+      }
     }
-  }, [isOpen, organization, activeTab]); // Adicionar activeTab como dependência
+  }, [isOpen, organization, activeTab, preSelectedTab, preSelectedMacro]); // Adicionar activeTab como dependência
 
   useEffect(() => {
     if (editingCategory) return;
     setFormData((prev) => ({
       ...prev,
-      macro_group: activeTab === 'income' ? INCOME_MACRO_KEY : 'needs'
+      macro_group: activeTab === 'income' ? INCOME_MACRO_KEY : (preSelectedMacro || 'needs')
     }));
-  }, [activeTab, editingCategory]);
+  }, [activeTab, editingCategory, preSelectedMacro]);
 
   const fetchCategories = async () => {
     try {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, AlertCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { useNotificationContext } from '../contexts/NotificationContext';
@@ -13,7 +13,7 @@ const BudgetModal = ({
   categories = [], 
   selectedMonth = '2025-10' 
   }) => {
-  const { success, error: showError, warning, info } = useNotificationContext();
+  const { warning } = useNotificationContext();
   
   const [formData, setFormData] = useState({
     category_id: '',
@@ -21,25 +21,34 @@ const BudgetModal = ({
     category_name: ''
   });
   const [saving, setSaving] = useState(false);
-  const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
 
   useEffect(() => {
-    if (budget) {
+    // Limpar formulário quando o modal fecha
+    if (!isOpen) {
+      setFormData({
+        category_id: '',
+        limit_amount: '',
+        category_name: ''
+      });
+      return;
+    }
+
+    // Preencher formulário quando o modal abre
+    if (budget && budget.id) {
+      // Modo edição: preencher com dados do budget
       setFormData({
         category_id: budget.category_id || '',
         limit_amount: budget.amount ? formatCurrencyInput(budget.amount) : '',
-        category_name: budget.category || ''
+        category_name: budget.category || budget.category_name || ''
       });
     } else {
+      // Modo criação: formulário vazio
       setFormData({
         category_id: '',
         limit_amount: '',
         category_name: ''
       });
     }
-    setShowNewCategory(false);
-    setNewCategoryName('');
   }, [budget, isOpen]);
 
   const handleSubmit = async (e) => {
@@ -51,10 +60,18 @@ const BudgetModal = ({
 
     setSaving(true);
     try {
-      await onSave({
+      // Se for edição, incluir o id do budget
+      const budgetData = {
         ...formData,
         category_name: categories.find(c => c.id === formData.category_id)?.name || formData.category_name
-      });
+      };
+      
+      // Se budget existe e tem id, incluir no budgetData para edição
+      if (budget && budget.id) {
+        budgetData.id = budget.id;
+      }
+      
+      await onSave(budgetData);
       onClose();
     } catch (error) {
       console.error('Erro ao salvar orçamento:', error);
@@ -63,25 +80,10 @@ const BudgetModal = ({
     }
   };
 
-  const handleCreateCategory = async () => {
-    if (!newCategoryName.trim()) {
-      warning('Digite o nome da nova categoria');
-      return;
-    }
-
-    // Aqui você pode implementar a criação de categoria
-    // Por enquanto, apenas sugere ao usuário
-    info(`Para criar a categoria "${newCategoryName}", vá em Configurações > Categorias e crie uma nova categoria. Depois volte aqui para criar o orçamento.`);
-    setShowNewCategory(false);
-    setNewCategoryName('');
-  };
-
   if (!isOpen) return null;
 
-  const isEdit = !!budget;
-  const existingBudgets = categories.filter(cat => 
-    categories.some(c => c.id === cat.id) // Simplificado para demonstração
-  );
+  // Verificar se é modo edição: budget deve existir E ter um id válido
+  const isEdit = !!(budget && budget.id);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
@@ -109,65 +111,25 @@ const BudgetModal = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Categoria *
               </label>
-              <div className="space-y-2">
-                <select
-                  value={formData.category_id}
-                  onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                  className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  required
-                >
-                  <option value="">Selecione uma categoria...</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-                
-                {!showNewCategory ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCategory(true)}
-                    className="flex items-center text-xs sm:text-sm text-flight-blue hover:text-flight-blue/80 w-full sm:w-auto"
-                  >
-                    <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
-                    <span className="truncate">Não encontrou a categoria? Criar nova</span>
-                  </button>
-                ) : (
-                  <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500 flex-shrink-0" />
-                      <span className="text-xs sm:text-sm text-gray-600">
-                        Categoria não encontrada
-                      </span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                      <input
-                        type="text"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        placeholder="Nome da nova categoria"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <Button
-                        type="button"
-                        onClick={handleCreateCategory}
-                        size="sm"
-                        className="bg-flight-blue hover:bg-flight-blue/90 w-full sm:w-auto"
-                      >
-                        Criar
-                      </Button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewCategory(false)}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                )}
-              </div>
+              <select
+                value={formData.category_id}
+                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                disabled={isEdit}
+                className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue disabled:bg-gray-100 disabled:text-gray-600 disabled:cursor-not-allowed"
+                required
+              >
+                <option value="">Selecione uma categoria...</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              {isEdit && (
+                <p className="text-xs text-gray-500 mt-1">
+                  A categoria não pode ser alterada. Para mudar, exclua e crie um novo orçamento.
+                </p>
+              )}
             </div>
 
             {/* Valor */}
@@ -203,32 +165,6 @@ const BudgetModal = ({
               </div>
             </div>
 
-            {/* Mês */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mês
-              </label>
-              <input
-                type="text"
-                value={selectedMonth}
-                disabled
-                className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-              />
-            </div>
-
-            {/* Aviso sobre duplicação */}
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start space-x-2">
-                <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="text-xs sm:text-sm text-blue-700">
-                  <p className="font-medium">Apenas 1 orçamento por categoria por mês</p>
-                  <p className="text-blue-600 mt-1">
-                    Se precisar de orçamentos diferentes para o mesmo tipo de gasto, 
-                    crie categorias específicas (ex: "Alimentação - Casa", "Alimentação - Trabalho").
-                  </p>
-                </div>
-              </div>
-            </div>
           </form>
         </div>
         

@@ -88,6 +88,7 @@ export default function DashboardHome() {
     }
   }, [openTooltip]);
 
+
   useEffect(() => {
     console.log('🔍 [Dashboard] useEffect triggered:', { orgLoading, orgError, organization: !!organization });
     if (!orgLoading && !orgError && organization) {
@@ -764,7 +765,7 @@ export default function DashboardHome() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <h2 className="text-lg font-semibold text-gray-900">Painel Principal</h2>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 sm:space-x-3">
                 <div className="flex items-center space-x-2">
                   <label className="text-sm font-medium text-gray-700 hidden sm:block">Mês:</label>
                   <input
@@ -779,8 +780,8 @@ export default function DashboardHome() {
                   disabled={isRefreshing}
                   className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
                 >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  {isRefreshing ? 'Atualizando...' : 'Atualizar Dados'}
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''} sm:mr-2`} />
+                  <span className="hidden sm:inline">{isRefreshing ? 'Atualizando...' : 'Atualizar Dados'}</span>
                 </Button>
               </div>
             </div>
@@ -1276,6 +1277,7 @@ export default function DashboardHome() {
         onClose={() => setShowNotificationModal(false)}
         onUnreadCountChange={setUnreadNotifications}
       />
+
     </Header>
   );
 }

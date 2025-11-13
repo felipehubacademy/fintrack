@@ -64,6 +64,8 @@ export function useDynamicUrls() {
       '/dashboard/cards': `/org/${organization.id}/user/${user.id}/dashboard/cards`,
       '/dashboard/bills': `/org/${organization.id}/user/${user.id}/dashboard/bills`,
       '/dashboard/budgets': `/org/${organization.id}/user/${user.id}/dashboard/budgets`,
+      '/dashboard/insights': `/org/${organization.id}/user/${user.id}/dashboard/insights`,
+      '/dashboard/goals': `/org/${organization.id}/user/${user.id}/dashboard/goals`,
       '/dashboard/investments': `/org/${organization.id}/user/${user.id}/dashboard/investments`,
       '/dashboard/closing': `/org/${organization.id}/user/${user.id}/dashboard/closing`,
       '/dashboard/config': `/org/${organization.id}/user/${user.id}/dashboard/config`,

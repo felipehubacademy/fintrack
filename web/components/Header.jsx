@@ -18,7 +18,9 @@ import {
   ArrowLeftRight,
   ClipboardCheck,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  BarChart3,
+  Flag
 } from 'lucide-react';
 import Logo from './Logo';
 import Link from 'next/link';
@@ -119,6 +121,18 @@ export default function Header({
           label: 'Orçamento',
           href: '/dashboard/budgets',
           icon: Target
+        },
+        {
+          id: 'insights',
+          label: 'Insights',
+          href: '/dashboard/insights',
+          icon: BarChart3
+        },
+        {
+          id: 'goals',
+          label: 'Metas',
+          href: '/dashboard/goals',
+          icon: Flag
         },
         {
           id: 'investments',
@@ -279,7 +293,7 @@ export default function Header({
             </button>
           </div>
 
-          <nav className="mt-6 flex-1 overflow-y-auto">
+          <nav className="mt-6 flex-1 overflow-y-auto scrollbar-thin">
             <div className="flex flex-col gap-6">
               {navSections.map((section) => (
                 <div key={section.id}>

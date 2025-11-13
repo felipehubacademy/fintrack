@@ -4,8 +4,8 @@ import { MessageCircle, X, Lightbulb, ChevronLeft, ChevronRight } from 'lucide-r
 import { Button } from './ui/Button';
 import { Card, CardContent } from './ui/Card';
 import { useZulTips } from '../hooks/useZulTips';
-import { useTour } from '../hooks/useTour';
-import { getTourForRoute, getTourTypeFromRoute } from '../data/tourSteps';
+import { useTour } from '../contexts/TourContext';
+import { getTourForRoute, getTourTypeFromRoute, getDashboardTourSteps } from '../data/tourSteps';
 import { useOrganization } from '../hooks/useOrganization';
 import { supabase } from '../lib/supabaseClient';
 import Image from 'next/image';
@@ -93,6 +93,17 @@ export default function ZulFloatingButton() {
     currentStep,
     tourSteps
   } = useTour();
+  
+  // Debug: Log quando tour está ativo
+  useEffect(() => {
+    console.log('🔍 ZulFloatingButton - Tour state:', {
+      isTourActive,
+      currentStep,
+      totalSteps: tourSteps?.length || 0,
+      tourSteps: tourSteps,
+      stepData: getCurrentStep?.()
+    });
+  }, [isTourActive, currentStep, tourSteps, getCurrentStep]);
   const { currentTip, showTip, hasNewTip, dismissTip, setHasNewTip } = useZulTips(isTourActive);
 
   // Controlar quando mostrar o Zul (SOMENTE após loading terminar)
@@ -247,8 +258,9 @@ export default function ZulFloatingButton() {
     // SEMPRE limpar highlights anteriores primeiro
     clearAllHighlights();
     
-    const statsCards = document.querySelectorAll('main .grid.gap-3.grid-cols-1.md\\:grid-cols-3 > div');
-    statsCards.forEach(card => {
+    // Limpar cards de estatísticas
+    const statsCardsToClear = document.querySelectorAll('main .grid > div');
+    statsCardsToClear.forEach(card => {
       card.style.backgroundColor = '';
       card.style.border = '';
       card.style.borderRadius = '';
@@ -356,18 +368,43 @@ export default function ZulFloatingButton() {
         const targetElement = findTargetElement(currentStepData.target);
         
         if (targetElement === 'stats-cards') {
-          // Destacar todos os cards de estatísticas
-          statsCards.forEach((card) => {
-            card.style.position = 'relative';
-            card.style.zIndex = '10';
-            card.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-            card.style.border = '2px solid rgba(59, 130, 246, 0.3)';
-            card.style.borderRadius = '12px';
-            card.style.transition = 'all 0.3s ease';
-            card.style.transform = 'scale(1.02)';
-            card.style.boxShadow = 'none';
-            highlightedElementsRef.current.push(card); // Rastrear
+          // Buscar cards de estatísticas com seletores mais flexíveis
+          let cardsToHighlight = document.querySelectorAll('main .grid.grid-cols-1 > div, main .grid.md\\:grid-cols-2 > div, main .grid.lg\\:grid-cols-3 > div');
+          // Se não encontrar, tentar buscar qualquer grid dentro de main que tenha cards
+          if (cardsToHighlight.length === 0) {
+            const firstGrid = document.querySelector('main .grid');
+            if (firstGrid) {
+              cardsToHighlight = firstGrid.querySelectorAll(':scope > div');
+              // Limitar aos primeiros 6 cards (geralmente são 3-6 cards de estatísticas)
+              cardsToHighlight = Array.from(cardsToHighlight).slice(0, 6);
+            }
+          }
+          
+          // Destacar todos os cards de estatísticas encontrados
+          cardsToHighlight.forEach((card) => {
+            // Verificar se o card tem conteúdo relevante (não está vazio)
+            if (card.offsetHeight > 50 && card.offsetWidth > 100) {
+              card.style.position = 'relative';
+              card.style.zIndex = '50';
+              card.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+              card.style.border = '3px solid rgba(59, 130, 246, 0.5)';
+              card.style.borderRadius = '12px';
+              card.style.transition = 'all 0.3s ease';
+              card.style.transform = 'scale(1.03)';
+              card.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.3)';
+              highlightedElementsRef.current.push(card); // Rastrear
+            }
           });
+          
+          // Rolar para o primeiro card se encontrou algum
+          if (cardsToHighlight.length > 0) {
+            setTimeout(() => {
+              cardsToHighlight[0].scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+              });
+            }, 100);
+          }
         } else if (targetElement === 'quick-actions') {
           // Destacar o card de ações rápidas - múltiplas tentativas
           let quickActionsCard = null;
@@ -406,13 +443,13 @@ export default function ZulFloatingButton() {
           
           if (quickActionsCard) {
             quickActionsCard.style.position = 'relative';
-            quickActionsCard.style.zIndex = '10';
-            quickActionsCard.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-            quickActionsCard.style.border = '2px solid rgba(59, 130, 246, 0.3)';
+            quickActionsCard.style.zIndex = '50';
+            quickActionsCard.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            quickActionsCard.style.border = '3px solid rgba(59, 130, 246, 0.5)';
             quickActionsCard.style.borderRadius = '12px';
             quickActionsCard.style.transition = 'all 0.3s ease';
-            quickActionsCard.style.transform = 'scale(1.02)';
-            quickActionsCard.style.boxShadow = 'none';
+            quickActionsCard.style.transform = 'scale(1.03)';
+            quickActionsCard.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.3)';
             highlightedElementsRef.current.push(quickActionsCard); // Rastrear
             
             // Rolar a tela para mostrar melhor as ações rápidas
@@ -449,14 +486,14 @@ export default function ZulFloatingButton() {
             
             if (monthlyHeader) {
               monthlyHeader.style.position = 'relative';
-              monthlyHeader.style.zIndex = '10';
-              monthlyHeader.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-              monthlyHeader.style.border = '2px solid rgba(59, 130, 246, 0.3)';
+              monthlyHeader.style.zIndex = '50';
+              monthlyHeader.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+              monthlyHeader.style.border = '3px solid rgba(59, 130, 246, 0.5)';
               monthlyHeader.style.borderRadius = '12px';
               monthlyHeader.style.padding = '20px';
               monthlyHeader.style.transition = 'all 0.3s ease';
-              monthlyHeader.style.transform = 'scale(1.02)';
-              monthlyHeader.style.boxShadow = 'none';
+              monthlyHeader.style.transform = 'scale(1.03)';
+              monthlyHeader.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.3)';
               highlightedElementsRef.current.push(monthlyHeader); // Rastrear
               
               // Rolar a tela para mostrar o container
@@ -494,14 +531,14 @@ export default function ZulFloatingButton() {
             
             if (comparativeHeader) {
               comparativeHeader.style.position = 'relative';
-              comparativeHeader.style.zIndex = '10';
-              comparativeHeader.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-              comparativeHeader.style.border = '2px solid rgba(59, 130, 246, 0.3)';
+              comparativeHeader.style.zIndex = '50';
+              comparativeHeader.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+              comparativeHeader.style.border = '3px solid rgba(59, 130, 246, 0.5)';
               comparativeHeader.style.borderRadius = '12px';
               comparativeHeader.style.padding = '20px';
               comparativeHeader.style.transition = 'all 0.3s ease';
-              comparativeHeader.style.transform = 'scale(1.02)';
-              comparativeHeader.style.boxShadow = 'none';
+              comparativeHeader.style.transform = 'scale(1.03)';
+              comparativeHeader.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.3)';
               highlightedElementsRef.current.push(comparativeHeader); // Rastrear
               
               // Rolar a tela para mostrar o container
@@ -533,13 +570,13 @@ export default function ZulFloatingButton() {
               // Destacar todos os cards do grid
               cards.forEach(card => {
                 card.style.position = 'relative';
-                card.style.zIndex = '10';
-                card.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-                card.style.border = '2px solid rgba(59, 130, 246, 0.3)';
+                card.style.zIndex = '50';
+                card.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+                card.style.border = '3px solid rgba(59, 130, 246, 0.5)';
                 card.style.borderRadius = '12px';
                 card.style.transition = 'all 0.3s ease';
-                card.style.transform = 'scale(1.02)';
-                card.style.boxShadow = 'none';
+                card.style.transform = 'scale(1.03)';
+                card.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.3)';
                 highlightedElementsRef.current.push(card);
               });
               
@@ -556,13 +593,13 @@ export default function ZulFloatingButton() {
           
           // Aplicar highlight IGUAL ao dashboard
           elementToHighlight.style.position = 'relative';
-          elementToHighlight.style.zIndex = '10';
-          elementToHighlight.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-          elementToHighlight.style.border = '2px solid rgba(59, 130, 246, 0.3)';
+          elementToHighlight.style.zIndex = '50';
+          elementToHighlight.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+          elementToHighlight.style.border = '3px solid rgba(59, 130, 246, 0.5)';
           elementToHighlight.style.borderRadius = '12px';
           elementToHighlight.style.transition = 'all 0.3s ease';
-          elementToHighlight.style.transform = 'scale(1.02)';
-          elementToHighlight.style.boxShadow = 'none';
+          elementToHighlight.style.transform = 'scale(1.03)';
+          elementToHighlight.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.3)';
           highlightedElementsRef.current.push(elementToHighlight);
           
           // Rolar para o elemento destacado
@@ -630,11 +667,11 @@ export default function ZulFloatingButton() {
     }
   };
 
-  // Iniciar tour automaticamente em qualquer página que tenha tour disponível
+  // Iniciar tour automaticamente em QUALQUER página que tenha tour disponível
   useEffect(() => {
     const path = router.asPath;
     
-    // Se mudou de rota E há um tour ativo, cancelar
+    // Se mudou de rota E há um tour ativo, cancelar o tour anterior
     if (previousPathRef.current && previousPathRef.current !== path && isTourActive) {
       skipTour();
     }
@@ -642,8 +679,13 @@ export default function ZulFloatingButton() {
     // Atualizar ref do path anterior
     previousPathRef.current = path;
     
-    // NÃO iniciar tour se ainda está loading
-    if (orgLoading) {
+    // Não iniciar se ainda está carregando
+    if (orgLoading || !organization || !user) {
+      return;
+    }
+    
+    // Não iniciar se já está em um tour
+    if (isTourActive) {
       return;
     }
     
@@ -651,49 +693,122 @@ export default function ZulFloatingButton() {
     const userName = user?.name || null;
     const tourSteps = getTourForRoute(path, userName);
     
-    if (tourSteps.length > 0 && !isTourActive) {
-      // Extrair tipo do tour da rota
-      const tourType = getTourTypeFromRoute(path);
-      
-      // Verificar se foi pulado nesta sessão
-      const skippedTours = JSON.parse(sessionStorage.getItem('skippedTours') || '[]');
-      const wasSkippedThisSession = skippedTours.includes(tourType);
-      
-      if (!isTourCompleted(tourType) && !wasSkippedThisSession) {
-        // Verificar se LoadingLogo está visível
-        const checkLoadingLogo = () => {
-          const loadingLogo = document.querySelector('.logo-base, .logo-fill, [alt="Carregando..."]');
-          return loadingLogo && loadingLogo.offsetParent !== null;
-        };
-
-        // Polling para iniciar tour quando LoadingLogo desaparecer
-        const checkInterval = setInterval(() => {
-          if (!checkLoadingLogo()) {
-            // LoadingLogo não está mais visível
-            setTimeout(() => {
-              if (router.asPath === path && !isTourActive && !orgLoading) {
-                startTour(tourSteps, tourType);
-              }
-            }, 1000); // 1s após loading desaparecer
-            clearInterval(checkInterval);
-          }
-        }, 100);
-
-        // Timeout de segurança
-        const safetyTimeout = setTimeout(() => {
-          if (router.asPath === path && !isTourActive && !orgLoading) {
-            startTour(tourSteps, tourType);
-          }
-          clearInterval(checkInterval);
-        }, 5000);
-        
-        return () => {
-          clearInterval(checkInterval);
-          clearTimeout(safetyTimeout);
-        };
+    // Se não tem tour para esta página, não fazer nada
+    if (!tourSteps || tourSteps.length === 0) {
+      return;
+    }
+    
+    // Extrair tipo do tour da rota
+    const tourType = getTourTypeFromRoute(path);
+    
+    // Verificar se o tour já foi completado (no banco)
+    const isCompleted = isTourCompleted(tourType);
+    
+    // Verificar se o tour foi fechado nesta sessão (sessionStorage)
+    let isSkippedInSession = false;
+    if (typeof window !== 'undefined' && tourType) {
+      try {
+        const skippedTours = JSON.parse(sessionStorage.getItem('skipped_tours') || '{}');
+        isSkippedInSession = skippedTours[tourType] === true;
+      } catch (error) {
+        console.error('Erro ao verificar tour fechado na sessão:', error);
       }
     }
-  }, [router.asPath, orgLoading, isTourCompleted, startTour, skipTour]);
+    
+    console.log('🔍 ZulFloatingButton - Verificando tour:', {
+      path,
+      tourType,
+      isCompleted,
+      isSkippedInSession,
+      hasSteps: tourSteps.length > 0,
+      isTourActive
+    });
+    
+    // Se o tour foi completado no banco, não iniciar
+    if (isCompleted) {
+      console.log('✅ Tour já completado no banco, não iniciar:', tourType);
+      return;
+    }
+    
+    // Se o tour foi fechado nesta sessão, não iniciar (aparecerá no próximo login)
+    if (isSkippedInSession) {
+      console.log('⏭️ Tour fechado nesta sessão, não iniciar (aparecerá no próximo login):', tourType);
+      return;
+    }
+    
+    // Verificar se LoadingLogo está visível no DOM
+    const checkLoadingLogo = () => {
+      const loadingLogo = document.querySelector('.logo-base, .logo-fill, [alt="Carregando..."]');
+      return loadingLogo && loadingLogo.offsetParent !== null;
+    };
+
+    // Polling para iniciar tour quando LoadingLogo desaparecer
+    const checkInterval = setInterval(() => {
+      if (!checkLoadingLogo()) {
+        // LoadingLogo não está mais visível
+        setTimeout(() => {
+          // Verificar novamente se ainda está na mesma página e não está em tour
+          if (router.asPath === path && !isTourActive && !orgLoading) {
+            const currentTourType = getTourTypeFromRoute(router.asPath);
+            const currentIsCompleted = isTourCompleted(currentTourType);
+            
+            // Verificar se foi fechado nesta sessão
+            let currentIsSkipped = false;
+            if (typeof window !== 'undefined' && currentTourType) {
+              try {
+                const skippedTours = JSON.parse(sessionStorage.getItem('skipped_tours') || '{}');
+                currentIsSkipped = skippedTours[currentTourType] === true;
+              } catch (error) {
+                // Ignorar erro
+              }
+            }
+            
+            if (!currentIsCompleted && !currentIsSkipped) {
+              console.log('🎯 ZulFloatingButton - Iniciando tour automático:', currentTourType);
+              const currentTourSteps = getTourForRoute(router.asPath, userName);
+              if (currentTourSteps && currentTourSteps.length > 0) {
+                startTour(currentTourSteps, currentTourType);
+              }
+            }
+          }
+        }, 1500); // 1.5s após loading desaparecer
+        clearInterval(checkInterval);
+      }
+    }, 100);
+
+    // Timeout de segurança: iniciar após 3s mesmo se LoadingLogo ainda visível
+    const safetyTimeout = setTimeout(() => {
+      if (router.asPath === path && !isTourActive && !orgLoading) {
+        const currentTourType = getTourTypeFromRoute(router.asPath);
+        const currentIsCompleted = isTourCompleted(currentTourType);
+        
+        // Verificar se foi fechado nesta sessão
+        let currentIsSkipped = false;
+        if (typeof window !== 'undefined' && currentTourType) {
+          try {
+            const skippedTours = JSON.parse(sessionStorage.getItem('skipped_tours') || '{}');
+            currentIsSkipped = skippedTours[currentTourType] === true;
+          } catch (error) {
+            // Ignorar erro
+          }
+        }
+        
+        if (!currentIsCompleted && !currentIsSkipped) {
+          console.log('🎯 ZulFloatingButton - Iniciando tour automático (timeout):', currentTourType);
+          const currentTourSteps = getTourForRoute(router.asPath, userName);
+          if (currentTourSteps && currentTourSteps.length > 0) {
+            startTour(currentTourSteps, currentTourType);
+          }
+        }
+      }
+      clearInterval(checkInterval);
+    }, 3000);
+    
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(safetyTimeout);
+    };
+  }, [router.asPath, orgLoading, organization, user, isTourActive, isTourCompleted, startTour, skipTour]);
 
   // Scroll automático quando novas mensagens são adicionadas
   useEffect(() => {
@@ -1273,8 +1388,8 @@ export default function ZulFloatingButton() {
 
       {/* Card de dicas/tour - Responsivo para mobile */}
       {((showTip && currentTip) || isTourActive) && (
-        <div className="fixed bottom-32 right-8 md:bottom-32 md:right-32 w-[calc(100vw-32px)] md:w-72 max-w-sm z-50 pointer-events-auto">
-          <Card className="shadow-lg border border-gray-200 bg-white animate-in slide-in-from-bottom-2 duration-300 relative">
+        <div className="fixed bottom-32 right-8 md:bottom-32 md:right-32 w-[calc(100vw-32px)] md:w-72 max-w-sm z-[60] pointer-events-auto">
+          <Card className="shadow-2xl border border-gray-200 bg-white animate-in slide-in-from-bottom-2 duration-300 relative">
             {/* X no canto superior direito para tour */}
             {isTourActive && (
               <Button
@@ -1308,6 +1423,24 @@ export default function ZulFloatingButton() {
                   </div>
                 )}
 
+                {/* Indicador de progresso do tour */}
+                {isTourActive && tourSteps.length > 0 && (
+                  <div className="flex items-center justify-center space-x-1.5 pt-2">
+                    {tourSteps.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          index === currentStep
+                            ? 'bg-blue-600 w-6'
+                            : index < currentStep
+                            ? 'bg-blue-400 w-2'
+                            : 'bg-gray-300 w-2'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex space-x-2">
                   {isTourActive ? (
                     <>
@@ -1324,7 +1457,7 @@ export default function ZulFloatingButton() {
                       <Button
                         size="sm"
                         onClick={isLastStep() ? completeTour : nextStep}
-                        className="bg-blue-600 hover:bg-blue-700 text-white border-0 text-xs px-3 py-1 h-7"
+                        className="bg-blue-600 hover:bg-blue-700 text-white border-0 text-xs px-3 py-1 h-7 flex-1"
                       >
                         {isLastStep() ? 'Finalizar' : 'Próximo'}
                         {!isLastStep() && <ChevronRight className="h-3 w-3 ml-1" />}
@@ -1481,6 +1614,15 @@ export default function ZulFloatingButton() {
         </div>
         </>
       )}
+
+      {/* REMOVIDO: Onboarding automático do Zul - desabilitado */}
+      {/* <OnboardingOverlay
+        steps={zulWebOnboardingSteps}
+        isOpen={showZulOnboarding}
+        onComplete={() => setShowZulOnboarding(false)}
+        onSkip={() => setShowZulOnboarding(false)}
+        storageKey="zul_web"
+      /> */}
 
     </>
   );

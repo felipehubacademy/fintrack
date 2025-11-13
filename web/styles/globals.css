@@ -135,7 +135,7 @@ body {
   animation: scale-in 0.5s ease-out forwards;
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Default */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -151,6 +151,30 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* Custom Scrollbar - Thin (for sidebar) */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Firefox scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
 }
 
 /* Glass Effect */
@@ -383,5 +407,69 @@ select {
   /* Touch devices - remove hover transforms */
   button:active, a:active {
     transform: scale(0.98);
+  }
+}
+
+/* Onboarding Overlay - Sempre acima de tudo */
+.onboarding-overlay {
+  position: fixed !important;
+  z-index: 99999 !important;
+  pointer-events: auto !important;
+}
+
+.onboarding-overlay-content {
+  position: relative !important;
+  z-index: 100000 !important;
+  pointer-events: auto !important;
+}
+
+/* Progress dots - Pequenas mas visíveis no desktop */
+.onboarding-progress-dot {
+  /* Mobile: tamanhos pequenos mas visíveis */
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 10px !important;
+  min-height: 10px !important;
+}
+
+/* Bola ativa: ligeiramente maior no mobile */
+.onboarding-progress-dot[data-step-active="true"] {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  min-height: 12px !important;
+}
+
+/* Tablet: menores mas ainda visíveis */
+@media (min-width: 768px) {
+  .onboarding-progress-dot {
+    width: 6px !important;
+    height: 6px !important;
+    min-width: 6px !important;
+    min-height: 6px !important;
+  }
+  
+  .onboarding-progress-dot[data-step-active="true"] {
+    width: 7px !important;
+    height: 7px !important;
+    min-width: 7px !important;
+    min-height: 7px !important;
+  }
+}
+
+/* Desktop: pequenas mas visíveis */
+@media (min-width: 1024px) {
+  .onboarding-progress-dot {
+    width: 5px !important;
+    height: 5px !important;
+    min-width: 5px !important;
+    min-height: 5px !important;
+  }
+  
+  .onboarding-progress-dot[data-step-active="true"] {
+    width: 6px !important;
+    height: 6px !important;
+    min-width: 6px !important;
+    min-height: 6px !important;
   }
 }

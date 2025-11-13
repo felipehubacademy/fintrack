@@ -14,22 +14,19 @@ import {
   TrendingDown,
   DollarSign,
   Calendar,
-  Edit,
   Edit3,
   Trash2,
   PlusCircle,
   X,
   AlertTriangle,
-  LogOut,
-  Settings,
-  Bell,
-  Copy
+  Copy,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
-import Link from 'next/link';
-import BudgetModal from '../../components/BudgetModal';
 import NotificationModal from '../../components/NotificationModal';
 import Header from '../../components/Header';
 import BudgetWizard from '../../components/BudgetWizard';
+import CategoryManagementModal from '../../components/CategoryManagementModal';
 
 const MACRO_ORDER = ['needs', 'wants', 'investments'];
 const MACRO_LABELS = {
@@ -78,14 +75,11 @@ const inferMacroFromName = (name = '') => {
 
 export default function BudgetsDashboard() {
   const router = useRouter();
-  const { organization, user: orgUser, costCenters, budgetCategories, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
+  const { organization, user: orgUser, budgetCategories, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
   const { success, showError, warning } = useNotificationContext();
   const [budgets, setBudgets] = useState([]);
-  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [showBudgetModal, setShowBudgetModal] = useState(false);
-  const [editingBudget, setEditingBudget] = useState(null);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -98,6 +92,51 @@ export default function BudgetsDashboard() {
   const [macroDraftTarget, setMacroDraftTarget] = useState(0);
   const [categoryToAdd, setCategoryToAdd] = useState('');
   const [savingMacro, setSavingMacro] = useState(false);
+  const [showMonthTurnoverModal, setShowMonthTurnoverModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [preSelectedMacro, setPreSelectedMacro] = useState(null);
+  const [expandedMacro, setExpandedMacro] = useState(null);
+
+  // Auto-open wizard on first access without budgets
+  useEffect(() => {
+    if (!isDataLoaded || budgets.length > 0) return;
+    
+    const currentMonth = selectedMonth;
+    const dismissedKey = `dismissed_wizard_${currentMonth}`;
+    const isDismissed = localStorage.getItem(dismissedKey);
+    
+    if (!isDismissed) {
+      // Small delay to ensure smooth UX
+      const timer = setTimeout(() => {
+        setShowBudgetWizard(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isDataLoaded, budgets.length, selectedMonth]);
+
+  // Detect month turnover
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    
+    const currentMonth = selectedMonth;
+    const lastCheckedMonth = localStorage.getItem('last_budget_check_month');
+    
+    // Update last checked month
+    if (lastCheckedMonth !== currentMonth) {
+      localStorage.setItem('last_budget_check_month', currentMonth);
+      
+      // If month changed AND no budgets for new month AND it's current month
+      const isCurrentMonth = currentMonth === new Date().toISOString().slice(0, 7);
+      if (lastCheckedMonth && budgets.length === 0 && isCurrentMonth) {
+        const dismissedKey = `dismissed_turnover_${currentMonth}`;
+        const isDismissed = localStorage.getItem(dismissedKey);
+        
+        if (!isDismissed) {
+          setShowMonthTurnoverModal(true);
+        }
+      }
+    }
+  }, [isDataLoaded, budgets.length, selectedMonth]);
 
   useEffect(() => {
     if (!orgLoading && !orgError && organization) {
@@ -110,7 +149,7 @@ export default function BudgetsDashboard() {
   const fetchData = async () => {
     setIsDataLoaded(false);
     try {
-      await Promise.all([fetchBudgets(), fetchExpenses()]);
+      await fetchBudgets();
       setIsDataLoaded(true);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -169,98 +208,65 @@ export default function BudgetsDashboard() {
     }
   };
 
-  const fetchExpenses = async () => {
-    try {
-      const startOfMonth = `${selectedMonth}-01`;
-      const endOfMonth = new Date(selectedMonth + '-01');
-      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-      endOfMonth.setDate(0);
-
-      let query = supabase
-        .from('expenses')
-        .select('*')
-        .eq('status', 'confirmed')
-        .gte('date', startOfMonth)
-        .lte('date', endOfMonth.toISOString().split('T')[0])
-        .order('date', { ascending: false });
-
-      if (organization?.id && organization.id !== 'default-org') {
-        query = query.eq('organization_id', organization.id);
-      }
-
-      const { data, error } = await query;
-      if (!error) {
-        setExpenses(data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching expenses:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleDismissWizard = () => {
+    const dismissedKey = `dismissed_wizard_${selectedMonth}`;
+    localStorage.setItem(dismissedKey, 'true');
+    setShowBudgetWizard(false);
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
+  const handleDismissTurnover = () => {
+    const dismissedKey = `dismissed_turnover_${selectedMonth}`;
+    localStorage.setItem(dismissedKey, 'true');
+    setShowMonthTurnoverModal(false);
   };
 
-  const handleAddBudget = async (budgetData) => {
+  const handleCopyPreviousBudget = async () => {
     try {
+      // Get previous month
       const [year, month] = selectedMonth.split('-');
-      const monthYear = `${year}-${month.padStart(2, '0')}-01`;
+      const currentDate = new Date(year, month - 1, 1);
+      const prevDate = new Date(currentDate);
+      prevDate.setMonth(prevDate.getMonth() - 1);
+      const prevMonth = prevDate.toISOString().slice(0, 7);
+      const prevMonthYear = `${prevMonth}-01`;
 
-      const { error } = await supabase
+      // Fetch previous month budgets
+      const { data: prevBudgets, error: fetchError } = await supabase
         .from('budgets')
-        .insert({
-          organization_id: organization.id,
-          category_id: budgetData.category_id,
-          limit_amount: parseFloat(budgetData.limit_amount),
-          month_year: monthYear
-        });
+        .select('*')
+        .eq('organization_id', organization.id)
+        .eq('month_year', prevMonthYear);
 
-      if (error) {
-        // Verificar se é erro de duplicação
-        if (error.code === '23505' && error.message.includes('budgets_unique_category_month')) {
-          const categoryName = budgetData.category_name || 'esta categoria';
-          warning(`Já existe um orçamento para ${categoryName} em ${selectedMonth}. Crie uma nova categoria se precisar de um orçamento diferente para o mesmo tipo de gasto.`);
-          return;
-        }
-        throw error;
+      if (fetchError) throw fetchError;
+
+      if (!prevBudgets || prevBudgets.length === 0) {
+        warning(`Não encontramos orçamentos em ${prevMonth}. Crie um novo planejamento.`);
+        setShowMonthTurnoverModal(false);
+        setShowBudgetWizard(true);
+        return;
       }
 
-      await fetchBudgets();
-      success('Orçamento criado com sucesso!');
-    } catch (error) {
-      console.error('Erro ao criar orçamento:', error);
-      showError('Erro ao criar orçamento: ' + (error.message || 'Erro desconhecido'));
-    }
-  };
+      // Create budgets for current month
+      const currentMonthYear = `${selectedMonth}-01`;
+      const newBudgets = prevBudgets.map(budget => ({
+        organization_id: organization.id,
+        category_id: budget.category_id,
+        limit_amount: budget.limit_amount,
+        month_year: currentMonthYear
+      }));
 
-  const handleEditBudget = async (budgetData) => {
-    try {
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('budgets')
-        .update({
-          category_id: budgetData.category_id,
-          limit_amount: parseFloat(budgetData.limit_amount)
-        })
-        .eq('id', budgetData.id);
+        .insert(newBudgets);
 
-      if (error) {
-        // Verificar se é erro de duplicação (se mudou a categoria)
-        if (error.code === '23505' && error.message.includes('budgets_unique_category_month')) {
-          const categoryName = budgetData.category_name || 'esta categoria';
-          warning(`Já existe um orçamento para ${categoryName} em ${selectedMonth}. Crie uma nova categoria se precisar de um orçamento diferente para o mesmo tipo de gasto.`);
-          return;
-        }
-        throw error;
-      }
+      if (insertError) throw insertError;
 
-      await fetchBudgets();
-      success('Orçamento atualizado com sucesso!');
+      await fetchData();
+      success(`Planejamento copiado de ${prevMonth}!`);
+      setShowMonthTurnoverModal(false);
     } catch (error) {
-      console.error('Erro ao atualizar orçamento:', error);
-      showError('Erro ao atualizar orçamento: ' + (error.message || 'Erro desconhecido'));
+      console.error('Error copying budget:', error);
+      showError('Erro ao copiar planejamento: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
@@ -754,13 +760,6 @@ export default function BudgetsDashboard() {
                   <Copy className="h-4 w-4 mr-2" />
                   Copiar Mês Anterior
                 </Button>
-                <Button 
-                  onClick={() => setShowBudgetModal(true)}
-                  className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Orçamento
-                </Button>
               </div>
             </div>
           </CardHeader>
@@ -821,12 +820,23 @@ export default function BudgetsDashboard() {
         {/* Macro Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {macroSummary.map((macro) => (
-            <Card key={macro.key} className="border border-gray-200 shadow-sm">
+            <Card 
+              key={macro.key} 
+              className="border border-gray-200 shadow-sm cursor-pointer hover:border-flight-blue/40 transition-all duration-200"
+              onClick={() => setExpandedMacro(expandedMacro === macro.key ? null : macro.key)}
+            >
               <CardHeader className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-gray-900">
-                    {macro.label}
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base font-semibold text-gray-900">
+                      {macro.label}
+                    </CardTitle>
+                    {expandedMacro === macro.key ? (
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-500" />
+                    )}
+                  </div>
                   <span className="text-sm font-medium text-gray-500">
                     {macro.totalBudget > 0 ? `${macro.progress.toFixed(1)}% usado` : 'Sem orçamento'}
                   </span>
@@ -868,13 +878,14 @@ export default function BudgetsDashboard() {
         </div>
 
         {/* Macro Details */}
-        <div className="space-y-8">
-          {macroSummary.map((macro) => {
-            const isEditing = editingMacroKey === macro.key;
-            const diffAbs = Math.abs(macroDraftDiff);
+        {expandedMacro ? (
+          <div className="space-y-8">
+            {macroSummary.filter(macro => macro.key === expandedMacro).map((macro) => {
+              const isEditing = editingMacroKey === macro.key;
+              const diffAbs = Math.abs(macroDraftDiff);
 
-            return (
-              <Card key={macro.key} className="border border-gray-200 shadow-sm">
+              return (
+                <Card key={macro.key} className="border border-gray-200 shadow-sm">
                 <CardHeader className="space-y-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="space-y-1">
@@ -890,7 +901,14 @@ export default function BudgetsDashboard() {
                         </span>
                       </div>
                     </div>
-                    <Button variant="outline" onClick={() => openMacroEditor(macro)} className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openMacroEditor(macro);
+                      }} 
+                      className="flex items-center gap-2"
+                    >
                       <Edit3 className="h-4 w-4" />
                       Editar macro
                     </Button>
@@ -920,18 +938,18 @@ export default function BudgetsDashboard() {
                             key={`${entry.categoryId}-${index}`}
                             className="grid gap-4 border border-gray-100 rounded-xl p-4 lg:grid-cols-[260px_minmax(0,1fr)_auto] items-start"
                           >
-                            <div className="flex items-center gap-4">
-                              <span
-                                className="w-10 h-10 rounded-full border-2 flex.items-center justify-center text-sm font-semibold"
-                                style={{ borderColor: entry.color, color: entry.color }}
-                              >
-                                {entry.name[0]?.toUpperCase() || 'C'}
-                              </span>
-                              <div>
-                                <p className="text-base font-semibold text-gray-900">{entry.name}</p>
-                                <p className="text-xs text-gray-500">Já gasto: {formatCurrency(entry.spent)}</p>
-                              </div>
-                            </div>
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-10 h-10 min-w-[2.5rem] rounded-full border-2 flex items-center justify-center text-sm font-semibold flex-shrink-0"
+                          style={{ borderColor: entry.color, color: entry.color }}
+                        >
+                          {entry.name[0]?.toUpperCase() || 'C'}
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-gray-900">{entry.name}</p>
+                          <p className="text-xs text-gray-500">Já gasto: {formatCurrency(entry.spent)}</p>
+                        </div>
+                      </div>
                             <div className="space-y-3">
                               <label className="text-sm font-medium text-gray-600">Valor planejado</label>
                               <input
@@ -964,30 +982,49 @@ export default function BudgetsDashboard() {
                         ))}
                       </div>
 
-                      {availableMacroCategories.length > 0 ? (
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 border border-dashed border-flight-blue/40 rounded-xl px-4 py-3">
-                          <select
-                            value={categoryToAdd}
-                            onChange={(event) => setCategoryToAdd(event.target.value)}
-                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
-                          >
-                            <option value="">Adicionar categoria...</option>
-                            {availableMacroCategories.map((category) => (
-                              <option key={category.id} value={category.id}>
-                                {category.name}
-                              </option>
-                            ))}
-                          </select>
-                          <Button onClick={handleAddMacroCategory} disabled={!categoryToAdd} className="flex items-center gap-2">
-                            <PlusCircle className="h-4 w-4" />
-                            Adicionar
-                          </Button>
+                      <div className="space-y-3">
+                        {availableMacroCategories.length > 0 ? (
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-3 border border-dashed border-flight-blue/40 rounded-xl px-4 py-3">
+                            <select
+                              value={categoryToAdd}
+                              onChange={(event) => setCategoryToAdd(event.target.value)}
+                              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                            >
+                              <option value="">Adicionar categoria existente...</option>
+                              {availableMacroCategories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                  {category.name}
+                                </option>
+                              ))}
+                            </select>
+                            <Button onClick={handleAddMacroCategory} disabled={!categoryToAdd} className="flex items-center gap-2">
+                              <PlusCircle className="h-4 w-4" />
+                              Adicionar
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500">
+                            Todas as categorias dessa macro já estão presentes neste planejamento.
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center justify-center">
+                          <span className="text-sm text-gray-500">ou</span>
                         </div>
-                      ) : (
-                        <div className="text-sm text-gray-500">
-                          Todas as categorias dessa macro já estão presentes neste planejamento.
-                        </div>
-                      )}
+                        
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            // Abrir modal de categorias inline
+                            setPreSelectedMacro(macro.key);
+                            setShowCategoryModal(true);
+                          }}
+                          className="w-full border-dashed border-2 border-flight-blue/40 text-flight-blue hover:bg-flight-blue/5"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Criar nova categoria para esta macro
+                        </Button>
+                      </div>
 
                       <div
                         className={`rounded-xl border px-4 py-3 text-sm ${
@@ -1014,84 +1051,77 @@ export default function BudgetsDashboard() {
                       )}
                     </div>
                   ) : macro.categories.length ? (
-                    <div className="space-y-5">
+                    <div className="space-y-2">
+                      {/* Header da Tabela */}
+                      <div className="grid grid-cols-[48px_180px_1fr_120px_120px_120px_80px] gap-3 px-3 pb-2 text-xs font-medium text-gray-500">
+                        <div></div>
+                        <div>Categoria</div>
+                        <div>Progresso</div>
+                        <div className="text-right">Orçado</div>
+                        <div className="text-right">Gasto</div>
+                        <div className="text-right">Restante</div>
+                        <div className="text-center">Status</div>
+                      </div>
+
+                      {/* Linhas da Tabela */}
                       {macro.categories.map((categoryItem) => {
                         const percentage = categoryItem.percentageUsed;
                         const statusLabel = getStatusLabel(categoryItem.status);
-                        const originalBudget = budgets.find((item) => item.id === categoryItem.id) || null;
 
                         return (
                           <div
                             key={categoryItem.id}
-                            className="flex flex-col gap-4 border border-gray-100 rounded-xl p-4 lg:flex-row lg:items-center lg:gap-6"
+                            className="grid grid-cols-[48px_180px_1fr_120px_120px_120px_80px] gap-3 items-center border border-gray-100 rounded-lg px-3 h-12"
                           >
-                            <div className="flex items-center gap-4 lg:w-[220px] lg:flex-shrink-0">
-                              <span
-                                className="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-semibold"
-                                style={{ borderColor: categoryItem.color, color: categoryItem.color }}
-                              >
-                                {categoryItem.name[0]?.toUpperCase() || 'C'}
+                            {/* Avatar */}
+                            <div
+                              className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-semibold"
+                              style={{ borderColor: categoryItem.color, color: categoryItem.color }}
+                            >
+                              {categoryItem.name[0]?.toUpperCase() || 'C'}
+                            </div>
+                            
+                            {/* Nome */}
+                            <div className="truncate">
+                              <p className="text-sm font-semibold text-gray-900 truncate">{categoryItem.name}</p>
+                            </div>
+
+                            {/* Barra de Progresso */}
+                            <div className="bg-gray-200 h-2 rounded-full overflow-hidden">
+                              <div
+                                className={`h-2 rounded-full transition-all duration-300 ${
+                                  categoryItem.status === 'danger'
+                                    ? 'bg-red-500'
+                                    : categoryItem.status === 'warning'
+                                    ? 'bg-yellow-500'
+                                    : 'bg-flight-blue'
+                                }`}
+                                style={{ width: `${Math.min(percentage, 100)}%` }}
+                              />
+                            </div>
+
+                            {/* Orçado */}
+                            <div className="text-right text-xs">
+                              <span className="font-semibold text-gray-900">{formatCurrency(categoryItem.amount)}</span>
+                            </div>
+
+                            {/* Gasto */}
+                            <div className="text-right text-xs">
+                              <span className="font-semibold text-gray-900">{formatCurrency(categoryItem.spent)}</span>
+                            </div>
+
+                            {/* Restante */}
+                            <div className="text-right text-xs">
+                              <span className={`font-semibold ${categoryItem.remaining < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                {formatCurrency(categoryItem.remaining)}
                               </span>
-                              <div>
-                                <p className="text-base font-semibold text-gray-900">{categoryItem.name}</p>
-                                <p className="text-xs text-gray-500">
-                                  {formatCurrency(categoryItem.amount)} orçados · {percentage.toFixed(1)}% usados
-                                </p>
-                              </div>
                             </div>
-                            <div className="flex-1 w-full space-y-3 lg:pr-6">
-                              <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-2 rounded-full ${
-                                    categoryItem.status === 'danger'
-                                      ? 'bg-red-500'
-                                      : categoryItem.status === 'warning'
-                                      ? 'bg-yellow-500'
-                                      : 'bg-flight-blue'
-                                  }`}
-                                  style={{ width: `${Math.min(percentage, 100)}%` }}
-                                />
-                              </div>
-                              <div className="flex items-center justify-between text-sm text-gray-600">
-                                <span>
-                                  Gasto: <strong className="text-gray-900">{formatCurrency(categoryItem.spent)}</strong>
-                                </span>
-                                <span className={`font-semibold ${getStatusTextColor(categoryItem.status)}`}>
-                                  {statusLabel}
-                                </span>
-                                <span>
-                                  Restante:{' '}
-                                  <strong className={categoryItem.remaining < 0 ? 'text-red-600' : 'text-green-600'}>
-                                    {formatCurrency(categoryItem.remaining)}
-                                  </strong>
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 justify-end lg:w-[150px] lg:flex-shrink-0">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  const budgetToEdit = originalBudget || {
-                                    id: categoryItem.id,
-                                    category: categoryItem.name,
-                                    category_id: categoryItem.category_id,
-                                    amount: categoryItem.amount,
-                                    spent: categoryItem.spent
-                                  };
-                                  setEditingBudget(budgetToEdit);
-                                  setShowBudgetModal(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteBudget(categoryItem.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+
+                            {/* Status Badge */}
+                            <div className="flex justify-center">
+                              <Badge className={getStatusColor(categoryItem.status)}>
+                                {percentage.toFixed(0)}%
+                              </Badge>
                             </div>
                           </div>
                         );
@@ -1104,9 +1134,21 @@ export default function BudgetsDashboard() {
                   )}
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : budgets.length > 0 && (
+          <Card className="border border-flight-blue/20 bg-flight-blue/5">
+            <CardContent className="p-8 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <ChevronDown className="h-8 w-8 text-flight-blue animate-bounce" />
+                <p className="text-gray-600">
+                  Clique em uma das macros acima para ver e gerenciar suas subcategorias
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Empty State */}
         {budgets.length === 0 && (
@@ -1118,11 +1160,11 @@ export default function BudgetsDashboard() {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum orçamento definido</h3>
               <p className="text-gray-600 mb-6">Configure suas metas mensais para ter controle total sobre seus gastos.</p>
               <Button 
-                onClick={() => setShowBudgetModal(true)}
+                onClick={() => setShowBudgetWizard(true)}
                 className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Primeiro Orçamento
+                <Target className="h-4 w-4 mr-2" />
+                Criar Planejamento Guiado
               </Button>
             </CardContent>
           </Card>
@@ -1186,12 +1228,12 @@ export default function BudgetsDashboard() {
                       className="grid gap-4 border border-gray-100 rounded-xl p-4 lg:grid-cols-[260px_minmax(0,1fr)_auto] items-start"
                     >
                       <div className="flex items-center gap-4">
-                        <span
-                          className="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-semibold"
+                        <div
+                          className="w-10 h-10 min-w-[2.5rem] rounded-full border-2 flex items-center justify-center text-sm font-semibold flex-shrink-0"
                           style={{ borderColor: entry.color, color: entry.color }}
                         >
                           {entry.name[0]?.toUpperCase() || 'C'}
-                        </span>
+                        </div>
                         <div>
                           <p className="text-base font-semibold text-gray-900">{entry.name}</p>
                           <p className="text-xs text-gray-500">Já gasto: {formatCurrency(entry.spent)}</p>
@@ -1230,30 +1272,49 @@ export default function BudgetsDashboard() {
                 </div>
               )}
 
-              {availableMacroCategories.length > 0 ? (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 border border-dashed border-flight-blue/40 rounded-xl px-4 py-3">
-                  <select
-                    value={categoryToAdd}
-                    onChange={(event) => setCategoryToAdd(event.target.value)}
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
-                  >
-                    <option value="">Adicionar categoria...</option>
-                    {availableMacroCategories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Button onClick={handleAddMacroCategory} disabled={!categoryToAdd} className="flex items-center gap-2">
-                    <PlusCircle className="h-4 w-4" />
-                    Adicionar
-                  </Button>
+              <div className="space-y-3">
+                {availableMacroCategories.length > 0 ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 border border-dashed border-flight-blue/40 rounded-xl px-4 py-3">
+                    <select
+                      value={categoryToAdd}
+                      onChange={(event) => setCategoryToAdd(event.target.value)}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                    >
+                      <option value="">Adicionar categoria existente...</option>
+                      {availableMacroCategories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button onClick={handleAddMacroCategory} disabled={!categoryToAdd} className="flex items-center gap-2">
+                      <PlusCircle className="h-4 w-4" />
+                      Adicionar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">
+                    Todas as categorias dessa macro já estão presentes neste planejamento.
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-center">
+                  <span className="text-sm text-gray-500">ou</span>
                 </div>
-              ) : (
-                <div className="text-sm text-gray-500">
-                  Todas as categorias dessa macro já estão presentes neste planejamento.
-                </div>
-              )}
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Abrir modal de categorias inline
+                    setPreSelectedMacro(editingMacroKey);
+                    setShowCategoryModal(true);
+                  }}
+                  className="w-full border-dashed border-2 border-flight-blue/40 text-flight-blue hover:bg-flight-blue/5"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar nova categoria para esta macro
+                </Button>
+              </div>
 
               <div
                 className={`rounded-xl border px-4 py-3 text-sm ${
@@ -1291,11 +1352,53 @@ export default function BudgetsDashboard() {
         </div>
       )}
 
+      {/* Month Turnover Modal */}
+      {showMonthTurnoverModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center space-x-3">
+              <Calendar className="h-6 w-6 text-flight-blue" />
+              <h2 className="text-xl font-bold text-gray-900">Novo Mês Detectado!</h2>
+            </div>
+            <p className="text-gray-600">
+              Você ainda não tem um planejamento para este mês. O que deseja fazer?
+            </p>
+            <div className="space-y-3">
+              <Button 
+                onClick={handleCopyPreviousBudget}
+                className="w-full justify-center"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copiar planejamento do mês anterior
+              </Button>
+              <Button 
+                onClick={() => {
+                  setShowMonthTurnoverModal(false);
+                  setShowBudgetWizard(true);
+                }}
+                variant="outline"
+                className="w-full justify-center border-flight-blue text-flight-blue hover:bg-flight-blue/10"
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Criar novo planejamento
+              </Button>
+              <Button 
+                onClick={handleDismissTurnover}
+                variant="ghost"
+                className="w-full justify-center text-gray-500"
+              >
+                Depois
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Budget Wizard */}
       {showBudgetWizard && (
         <BudgetWizard
           isOpen={showBudgetWizard}
-          onClose={() => setShowBudgetWizard(false)}
+          onClose={handleDismissWizard}
           organization={organization}
           budgetCategories={budgetCategories}
           selectedMonth={selectedMonth}
@@ -1304,21 +1407,6 @@ export default function BudgetsDashboard() {
             await fetchData();
             setShowBudgetWizard(false);
           }}
-        />
-      )}
-
-      {/* Budget Modal */}
-      {showBudgetModal && (
-        <BudgetModal
-          isOpen={showBudgetModal}
-          onClose={() => {
-            setShowBudgetModal(false);
-            setEditingBudget(null);
-          }}
-          onSave={editingBudget ? handleEditBudget : handleAddBudget}
-          editingBudget={editingBudget}
-          categories={budgetCategories}
-          selectedMonth={selectedMonth}
         />
       )}
 
@@ -1347,6 +1435,21 @@ export default function BudgetsDashboard() {
           confirmText={actionToConfirm === 'delete' ? "Excluir" : "Substituir"}
           cancelText="Cancelar"
           type={actionToConfirm === 'delete' ? "danger" : "warning"}
+        />
+      )}
+
+      {/* Category Management Modal */}
+      {showCategoryModal && (
+        <CategoryManagementModal
+          isOpen={showCategoryModal}
+          onClose={() => {
+            setShowCategoryModal(false);
+            setPreSelectedMacro(null);
+            fetchData(); // Recarregar budgets e categorias
+          }}
+          organization={organization}
+          preSelectedMacro={preSelectedMacro}
+          preSelectedTab="expense"
         />
       )}
     </>

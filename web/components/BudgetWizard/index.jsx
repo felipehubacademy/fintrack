@@ -10,10 +10,11 @@ const STEPS = {
   WELCOME: 0,
   INCOME: 1,
   INVESTMENT: 2,
-  SUCCESS: 3
+  SUBCATEGORIES: 3,
+  SUCCESS: 4
 };
 
-const PROGRESS_STEPS = [STEPS.WELCOME, STEPS.INCOME, STEPS.INVESTMENT];
+const PROGRESS_STEPS = [STEPS.WELCOME, STEPS.INCOME, STEPS.INVESTMENT, STEPS.SUBCATEGORIES];
 const PROGRESS_TOTAL = PROGRESS_STEPS.length;
 
 const MACRO_LABELS = {
@@ -47,6 +48,7 @@ export default function BudgetWizard({
   const [loadingPreviousPlan, setLoadingPreviousPlan] = useState(false);
   const [showAnimation, setShowAnimation] = useState(true);
   const [autoRecalculate, setAutoRecalculate] = useState(true);
+  const [expandedMacros, setExpandedMacros] = useState(['needs', 'wants', 'investments']);
 
   const transitionToStep = (step) => {
     setShowAnimation(false);
@@ -108,8 +110,8 @@ export default function BudgetWizard({
   }, [distributions, monthlyIncome]);
 
   const handleNext = () => {
-    if (currentStep >= STEPS.INVESTMENT) return;
-    const nextStep = Math.min(currentStep + 1, STEPS.INVESTMENT);
+    if (currentStep >= STEPS.SUBCATEGORIES) return;
+    const nextStep = Math.min(currentStep + 1, STEPS.SUBCATEGORIES);
     transitionToStep(nextStep);
   };
 
@@ -144,6 +146,38 @@ export default function BudgetWizard({
   const handleReopenPlan = () => {
     setAutoRecalculate(true);
     transitionToStep(STEPS.INCOME);
+  };
+
+  const toggleMacroExpansion = (macroKey) => {
+    setExpandedMacros(prev => 
+      prev.includes(macroKey) 
+        ? prev.filter(k => k !== macroKey)
+        : [...prev, macroKey]
+    );
+  };
+
+  const handleSubcategoryChange = (categoryId, newAmount) => {
+    setDistributions(prev => prev.map(dist => 
+      dist.category_id === categoryId 
+        ? { ...dist, amount: newAmount }
+        : dist
+    ));
+  };
+
+  const handleDistributeEvenly = (macroKey) => {
+    const income = parseCurrency(monthlyIncome);
+    const macroCategories = distributions.filter(d => d.macro_group === macroKey);
+    const macroTotal = aggregatedSummary.find(m => m.key === macroKey)?.amount || 0;
+    
+    if (macroCategories.length === 0 || macroTotal === 0) return;
+    
+    const amountPerCategory = macroTotal / macroCategories.length;
+    
+    setDistributions(prev => prev.map(dist => 
+      dist.macro_group === macroKey 
+        ? { ...dist, amount: amountPerCategory, percentage: (amountPerCategory / income) * 100 }
+        : dist
+    ));
   };
 
   const handleCopyPreviousPlan = async () => {
@@ -443,8 +477,145 @@ export default function BudgetWizard({
               <div className="flex justify-center pt-4">
                 <Button
                   type="button"
+                  onClick={handleNext}
+                  disabled={!isValidDistribution}
+                  className="px-8 py-3 text-lg"
+                >
+                  Ajustar subcategorias
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case STEPS.SUBCATEGORIES:
+        return (
+          <div className={`${baseClasses} space-y-6`}>
+            <div className="text-center w-full px-4 sm:px-6">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                Ajuste os valores para cada categoria
+              </h2>
+              <p className="text-gray-600">
+                Distribua o valor de cada macro entre as subcategorias
+              </p>
+            </div>
+
+            <div className="max-w-[900px] mx-auto space-y-4 px-4 sm:px-6">
+              {Object.keys(MACRO_LABELS).map((macroKey) => {
+                const macro = aggregatedSummary.find(m => m.key === macroKey);
+                const macroCategories = distributions.filter(d => d.macro_group === macroKey);
+                const isExpanded = expandedMacros.includes(macroKey);
+                const macroSpent = macroCategories.reduce((sum, cat) => sum + (cat.amount || 0), 0);
+                const macroDiff = (macro?.amount || 0) - macroSpent;
+                const isBalanced = Math.abs(macroDiff) < 0.01;
+
+                return (
+                  <div key={macroKey} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <button
+                      onClick={() => toggleMacroExpansion(macroKey)}
+                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: MACRO_COLORS[macroKey] }}
+                        />
+                        <span className="font-semibold text-gray-900">
+                          {MACRO_LABELS[macroKey]}
+                        </span>
+                        <span className="text-gray-600">
+                          · R$ {(macro?.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          {' '}({(macro?.percentage || 0).toFixed(1)}%)
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        {!isBalanced && (
+                          <span className="text-xs text-orange-600 font-medium">
+                            Ajustar: R$ {Math.abs(macroDiff).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        )}
+                        <ChevronLeft 
+                          className={`h-5 w-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-[-90deg]' : ''}`}
+                        />
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-gray-200 p-4 space-y-3 bg-gray-50">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-gray-600">
+                            {macroCategories.length} {macroCategories.length === 1 ? 'categoria' : 'categorias'}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDistributeEvenly(macroKey)}
+                            className="text-xs"
+                          >
+                            Distribuir igualmente
+                          </Button>
+                        </div>
+
+                        {macroCategories.map((category) => {
+                          const percentage = (macro?.amount || 0) > 0 
+                            ? ((category.amount || 0) / (macro?.amount || 1)) * 100 
+                            : 0;
+
+                          return (
+                            <div key={category.category_id} className="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {category.category_name}
+                                </span>
+                                <span className="text-xs text-gray-600">
+                                  {percentage.toFixed(1)}%
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max={macro?.amount || 0}
+                                  step="10"
+                                  value={category.amount || 0}
+                                  onChange={(e) => handleSubcategoryChange(category.category_id, parseFloat(e.target.value))}
+                                  className="flex-1"
+                                />
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={macro?.amount || 0}
+                                  step="10"
+                                  value={(category.amount || 0).toFixed(2)}
+                                  onChange={(e) => handleSubcategoryChange(category.category_id, parseFloat(e.target.value) || 0)}
+                                  className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-flight-blue"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {!isBalanced && (
+                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs text-orange-700">
+                            ⚠️ A soma das subcategorias deve totalizar R$ {(macro?.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <div className="flex justify-center pt-6 space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={handlePrevious}
+                >
+                  Voltar
+                </Button>
+                <Button
                   onClick={handleSave}
-                  disabled={!isValidDistribution || saving}
+                  disabled={saving}
                   className="px-8 py-3 text-lg"
                 >
                   {saving ? 'Salvando...' : 'Confirmar planejamento'}

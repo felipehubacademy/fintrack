@@ -58,6 +58,15 @@ export default function TransactionsDashboard() {
   const [transactionToDelete, setTransactionToDelete] = useState(null);
   const [selectedTransactions, setSelectedTransactions] = useState([]);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Resetar para página 1 quando filtros mudarem
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   // Fechar tooltip ao clicar fora em mobile
   useEffect(() => {
@@ -1960,13 +1969,21 @@ export default function TransactionsDashboard() {
               };
               
               const sortedTransactions = sortTransactions(filterTransactions(transactions));
+              
+              // Paginação
+              const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage);
+              const startIndex = (currentPage - 1) * itemsPerPage;
+              const endIndex = startIndex + itemsPerPage;
+              const paginatedTransactions = sortedTransactions.slice(startIndex, endIndex);
+              
               const allSelected = sortedTransactions.length > 0 && 
                 sortedTransactions.every(t => selectedTransactions.includes(t.id || t));
               
               return (
+                <>
                 <ResponsiveTable
                   columns={columns}
-                  data={sortedTransactions}
+                  data={paginatedTransactions}
                   renderRowActions={renderActions}
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -1984,6 +2001,68 @@ export default function TransactionsDashboard() {
             </div>
           )}
                 />
+                
+                {/* Controles de Paginação */}
+                {sortedTransactions.length > itemsPerPage && (
+                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-gray-50 rounded-lg">
+                    <div className="text-sm text-gray-700">
+                      Mostrando <span className="font-semibold">{startIndex + 1}</span> a{' '}
+                      <span className="font-semibold">{Math.min(endIndex, sortedTransactions.length)}</span> de{' '}
+                      <span className="font-semibold">{sortedTransactions.length}</span> transações
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1"
+                      >
+                        Anterior
+                      </Button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                          // Mostrar apenas algumas páginas para não sobrecarregar
+                          if (
+                            page === 1 ||
+                            page === totalPages ||
+                            (page >= currentPage - 1 && page <= currentPage + 1)
+                          ) {
+                            return (
+                              <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`w-8 h-8 rounded-md text-sm font-medium transition-colors ${
+                                  currentPage === page
+                                    ? 'bg-flight-blue text-white'
+                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            );
+                          } else if (page === currentPage - 2 || page === currentPage + 2) {
+                            return <span key={page} className="text-gray-400">...</span>;
+                          }
+                          return null;
+                        })}
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1"
+                      >
+                        Próxima
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                </>
               );
             })()}
           </CardContent>

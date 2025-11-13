@@ -1,4 +1,5 @@
 // Definições dos tours da aplicação
+import { LayoutDashboard, BarChart3, Zap, TrendingUp, Calendar } from 'lucide-react';
 
 // Esta função retorna os steps do dashboard tour com personalização
 export function getDashboardTourSteps(userName) {
@@ -7,46 +8,39 @@ export function getDashboardTourSteps(userName) {
   
   return [
     {
-      stepNumber: 1,
-      totalSteps: 5,
-      target: 'body', // Primeiro passo sem highlight específico
+      icon: LayoutDashboard,
       title: greeting,
-      description: firstName 
-        ? `Vou te guiar pelos principais recursos da aplicação.\n\nEste é o seu painel principal onde você tem uma visão completa das suas finanças.`
-        : `Prazer, eu sou o Zul e vou te guiar pelos principais recursos da aplicação.\n\nEste é o seu painel principal onde você tem uma visão completa das suas finanças.`,
-      tip: 'Dica: Você pode sempre clicar no meu ícone (canto inferior direito) para obter ajuda personalizada!'
+      description: `Este é o seu painel principal! Aqui você terá uma visão completa das suas finanças assim que começar a registrar suas transações.`,
+      tip: 'Complete este tour para conhecer todas as funcionalidades do seu painel!',
+      target: 'body' // Visão geral
     },
-  {
-    stepNumber: 2,
-    totalSteps: 5,
-    target: 'stats-cards', // Seletor especial para todos os cards
-    title: 'StatsCards 📊',
-    description: 'Aqui estão os números essenciais: Total de Entradas, Total de Despesas e Saldo do Mês. Eu te ajudo a acompanhar sua situação financeira em tempo real.',
-    tip: 'Estes valores são atualizados automaticamente conforme você adiciona transações!'
-  },
-  {
-    stepNumber: 3,
-    totalSteps: 5,
-    target: 'quick-actions', // Seletor especial para ações rápidas
-    title: 'Ações Rápidas ⚡',
-    description: 'Aqui você tem acesso rápido às principais funcionalidades: Adicionar Transação, Ver Transações, Gerenciar Cartões e Orçamentos. Eu te ajudo a navegar por tudo!',
-    tip: 'Use estas ações rápidas para acessar as funcionalidades mais usadas!'
-  },
-  {
-    stepNumber: 4,
-    totalSteps: 5,
-    target: 'monthly-analysis-header', // Header da análise mensal
-    title: 'Análise do Mês 📈',
-    description: 'Aqui você vê gráficos detalhados das suas finanças do mês atual. Eu te ajudo a entender seus padrões de gastos e identificar oportunidades de economia.',
-    tip: 'Use os gráficos para identificar padrões e oportunidades de economia!'
-  },
     {
-      stepNumber: 5,
-      totalSteps: 5,
-      target: 'comparative-analysis-header', // Header do comparativo mensal
-      title: 'Comparativo Mensal 📊',
-      description: 'Aqui você compara seus gastos entre diferentes meses para ver sua evolução financeira ao longo do tempo.',
-      tip: 'Compare meses para identificar tendências e melhorias!'
+      icon: BarChart3,
+      title: 'Cards de Resumo',
+      description: 'Aqui aparecerão os números essenciais: Total de Entradas, Total de Despesas e Saldo do Mês. Por enquanto estão zerados, mas assim que você registrar transações, eles serão atualizados automaticamente.',
+      tip: 'Comece registrando suas despesas e receitas na seção "Transações"!',
+      target: 'stats-cards' // Cards de estatísticas
+    },
+    {
+      icon: Zap,
+      title: 'Como Começar',
+      description: 'Para começar a usar o MeuAzulão, vá até "Transações" no menu lateral e registre suas despesas e receitas. Você também pode cadastrar seus cartões de crédito e contas bancárias para ter controle total.',
+      tip: 'Comece registrando as transações do mês atual para ver os dados aparecerem aqui!',
+      target: 'quick-actions' // Ações rápidas ou menu lateral
+    },
+    {
+      icon: TrendingUp,
+      title: 'Análises Visuais',
+      description: 'Conforme você registra transações, gráficos e análises visuais aparecerão aqui automaticamente. Eles ajudam a entender seus padrões de gastos e identificar oportunidades de economia.',
+      tip: 'Quanto mais transações você registrar, mais insights úteis aparecerão!',
+      target: 'monthly-analysis-header' // Seção de gráficos
+    },
+    {
+      icon: Calendar,
+      title: 'Próximos Passos',
+      description: 'Agora que você conhece o dashboard, comece registrando suas transações! Vá até a seção "Transações" no menu lateral e adicione suas despesas e receitas. À medida que você usar a aplicação, mais funcionalidades e análises ficarão disponíveis.',
+      tip: 'Dica: Registre suas despesas diariamente para ter controle total das suas finanças!',
+      target: 'body' // Visão geral final
     }
   ];
 }
@@ -272,6 +266,76 @@ export const closingTourSteps = [
   }
 ];
 
+export const insightsTourSteps = [
+  {
+    stepNumber: 1,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Insights Financeiros 📊',
+    description: 'Análise inteligente das suas finanças! Veja tendências, padrões de gastos, score de saúde financeira e receba insights automáticos para melhorar seu planejamento.',
+    tip: 'O sistema analisa automaticamente seus dados e gera recomendações personalizadas!'
+  },
+  {
+    stepNumber: 2,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Visão Geral do Mês 💰',
+    description: 'Cards mostram: Gasto Total, % do Orçamento Usado, Dias Restantes e Projeção de Gastos. Veja se está no caminho certo ou precisa ajustar!',
+    tip: 'A projeção usa seu ritmo atual para estimar quanto vai gastar até o fim do mês!'
+  },
+  {
+    stepNumber: 3,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Tendências e Padrões 📈',
+    description: 'Gráficos mostram evolução dos últimos 6 meses por macro categoria (Necessidades, Desejos, Investimentos). Identifique padrões sazonais e oportunidades de economia!',
+    tip: 'Compare meses para ver se está melhorando ou piorando em cada categoria!'
+  },
+  {
+    stepNumber: 4,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Score de Saúde Financeira 💎',
+    description: 'Pontuação de 0-100 que avalia 5 fatores: cumprimento de orçamento, consistência de investimentos, reserva de emergência, diversidade de renda e redução de dívidas.',
+    tip: 'Trabalhe para melhorar seu score mês a mês. Meta: acima de 80 pontos!'
+  }
+];
+
+export const goalsTourSteps = [
+  {
+    stepNumber: 1,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Metas Financeiras 🎯',
+    description: 'Defina e acompanhe suas metas: reserva de emergência, quitação de dívidas, compras planejadas, investimentos. Veja progresso, projeções e receba dicas para atingir mais rápido!',
+    tip: 'Ter metas claras aumenta em 80% a chance de sucesso financeiro!'
+  },
+  {
+    stepNumber: 2,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Criar Meta ➕',
+    description: 'Clique em "Nova Meta" para criar. Escolha o tipo (emergência, dívida, compra, etc), defina valor alvo, prazo desejado e quanto pode contribuir por mês.',
+    tip: 'O sistema calcula automaticamente quando você vai atingir a meta!'
+  },
+  {
+    stepNumber: 3,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Acompanhamento Visual 📊',
+    description: 'Cada meta aparece em um card com: progress bar circular, valor atual vs. alvo, projeção de atingimento e botão para adicionar contribuições.',
+    tip: 'Progress bars mudam de cor: verde (no caminho), amarelo (atrasado), azul (atingido)!'
+  },
+  {
+    stepNumber: 4,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Gamificação e Badges 🏆',
+    description: 'Ganhe badges ao atingir marcos: primeira meta, 50% de progresso, meta em tempo recorde! Veja seu streak de meses consecutivos economizando.',
+    tip: 'Badges motivam você a manter a disciplina financeira!'
+  }
+];
+
 // Função para obter tour baseado na rota
 export function getTourForRoute(route, userName = null) {
   // Normalizar a rota - remover parâmetros dinâmicos se houver
@@ -296,6 +360,10 @@ export function getTourForRoute(route, userName = null) {
       return billsTourSteps;
     case '/dashboard/budgets':
       return budgetsTourSteps;
+    case '/dashboard/insights':
+      return insightsTourSteps;
+    case '/dashboard/goals':
+      return goalsTourSteps;
     case '/dashboard/investments':
       return investmentsTourSteps;
     case '/dashboard/closing':

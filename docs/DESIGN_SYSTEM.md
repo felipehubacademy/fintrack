@@ -1,204 +1,489 @@
-# 🎨 DESIGN SYSTEM - FINTRACK V2
+# 🎨 FinTrack Design System
 
-## 📋 BASE UI/UX ESTABLECIDA
+**Versão:** 1.0  
+**Data:** 12 de Novembro de 2025  
+**Princípio:** Design First - Sempre!
 
-### ✅ COMPONENTES BASE
-- **shadcn/ui** como design system principal
-- **Lucide React** para ícones
-- **Tailwind CSS** para estilização
-- **Glassmorphism** e gradientes modernos
+---
 
-### 🎯 PRINCÍPIOS DE DESIGN
+## 🎯 Princípios de Design
 
-#### 1. **Layout Responsivo**
-```jsx
-// Grid responsivo padrão
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-```
+### 1. **Clareza Acima de Tudo**
+- Instruções visuais em cada página
+- Tooltips informativos em elementos complexos
+- Feedback visual constante
+- Mensagens de erro/sucesso claras
 
-#### 2. **Cards Profissionais**
-```jsx
-<Card className="border-0 shadow-sm">
-  <CardHeader>
-    <CardTitle className="flex items-center space-x-2">
-      <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-        <Icon className="h-4 w-4 text-white" />
-      </div>
-      <span>Título</span>
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    {/* Conteúdo */}
-  </CardContent>
-</Card>
-```
+### 2. **Guia o Usuário**
+- Tour guiado para novas features
+- Onboarding para primeira vez
+- Estados vazios com call-to-action
+- Progressão visual clara
 
-#### 3. **Header Profissional**
-```jsx
-<header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-    <div className="flex justify-between items-center">
-      {/* Logo + Info */}
-      <div className="flex items-center space-x-4">
-        <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
-          <Icon className="h-6 w-6 text-white" />
-        </div>
-        {/* Título e role */}
-      </div>
-      
-      {/* Actions */}
-      <div className="flex items-center space-x-3">
-        <Button variant="ghost" size="icon">...</Button>
-      </div>
-    </div>
-  </div>
-</header>
-```
+### 3. **Profissional, Não Infantil**
+- Cores sóbrias e elegantes
+- Ícones minimalistas
+- Animações sutis
+- Linguagem madura
 
-#### 4. **Background Gradiente**
-```jsx
-<div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-```
+### 4. **Consistência Visual**
+- Mesmos componentes em toda app
+- Espaçamentos padronizados
+- Tipografia uniforme
+- Paleta de cores coesa
 
-#### 5. **Stats Cards com Tendências**
-```jsx
-<Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
-  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-    <CardTitle className="text-sm font-medium text-gray-600">
-      Título
-    </CardTitle>
-    <div className="p-2 rounded-lg bg-color-50">
-      <Icon className="h-4 w-4 text-color-600" />
-    </div>
-  </CardHeader>
-  <CardContent>
-    <div className="text-2xl font-bold text-gray-900 mb-1">
-      Valor
-    </div>
-    <div className="flex items-center space-x-2 text-xs">
-      <TrendingUp className="h-3 w-3 text-green-600" />
-      <span className="text-green-600">+12%</span>
-      <span className="text-gray-500">vs mês anterior</span>
-    </div>
-  </CardContent>
-</Card>
-```
+---
 
-### 🎨 PALETA DE CORES OFICIAL
+## 🎨 Paleta de Cores
 
-#### Cores da Marca
-| Nível | Nome | Código HEX | Uso Principal | Descrição |
-|-------|------|------------|---------------|-----------|
-| 🟦 Primária | **Flight Blue** | `#207DFF` | Corpo principal do pássaro, títulos, botões, ícone principal | Azul vibrante que transmite clareza, leveza e confiança. É a cor base da marca. |
-| 🔵 Secundária Escura | **Deep Sky** | `#0D2C66` | Sombra, profundidade, textos escuros e fundos contrastantes | Azul profundo que adiciona seriedade e sofisticação ao contraste. |
-| 🩵 Secundária Clara | **Feather Blue** | `#8FCBFF` | Reflexos, gradientes suaves e detalhes luminosos | Azul claro suave que confere volume e sensação de leveza. |
-| 💚 Acento | **Spring Accent** | `#5FFFA7` | Detalhes visuais, animações e ícones de destaque | Verde neon que traz energia, inovação e frescor — usar com moderação. |
-| ⚪ Neutro | **Fog Mist** | `#E9EEF5` | Fundos, áreas de respiro, interfaces e layouts limpos | Cinza-azulado claro e neutro, que garante contraste e equilíbrio visual. |
-
-#### Aplicação em Tailwind
+### Cores Primárias
 ```css
-/* Adicionar ao tailwind.config.js */
-colors: {
-  brand: {
-    primary: '#207DFF',      // Flight Blue
-    dark: '#0D2C66',         // Deep Sky
-    light: '#8FCBFF',        // Feather Blue
-    accent: '#5FFFA7',       // Spring Accent
-    neutral: '#E9EEF5',      // Fog Mist
+--flight-blue: #3B82F6      /* Azul principal */
+--flight-blue-dark: #2563EB /* Azul escuro */
+--flight-blue-light: #60A5FA /* Azul claro */
+```
+
+### Cores Secundárias
+```css
+--success: #10B981   /* Verde - sucesso, metas atingidas */
+--warning: #F59E0B   /* Amarelo/Dourado - alertas, badges gold */
+--error: #EF4444     /* Vermelho - erros, dívidas */
+--info: #3B82F6      /* Azul - informações */
+```
+
+### Cores de Macro
+```css
+--needs: #EF4444     /* Necessidades - Vermelho */
+--wants: #8B5CF6     /* Desejos - Roxo */
+--investments: #10B981 /* Investimentos - Verde */
+--income: #3B82F6    /* Recebimentos - Azul */
+```
+
+### Cores de Badges
+```css
+--badge-bronze: #CD7F32  /* Bronze */
+--badge-silver: #C0C0C0  /* Prata */
+--badge-gold: #FFD700    /* Ouro */
+```
+
+### Tons de Cinza
+```css
+--gray-50: #F9FAFB
+--gray-100: #F3F4F6
+--gray-200: #E5E7EB
+--gray-300: #D1D5DB
+--gray-400: #9CA3AF
+--gray-500: #6B7280
+--gray-600: #4B5563
+--gray-700: #374151
+--gray-800: #1F2937
+--gray-900: #111827
+```
+
+---
+
+## 📏 Espaçamentos
+
+### Sistema 8pt Grid
+```css
+--spacing-1: 0.25rem  /* 4px */
+--spacing-2: 0.5rem   /* 8px */
+--spacing-3: 0.75rem  /* 12px */
+--spacing-4: 1rem     /* 16px */
+--spacing-5: 1.25rem  /* 20px */
+--spacing-6: 1.5rem   /* 24px */
+--spacing-8: 2rem     /* 32px */
+--spacing-10: 2.5rem  /* 40px */
+--spacing-12: 3rem    /* 48px */
+--spacing-16: 4rem    /* 64px */
+```
+
+### Aplicação
+- **Padding de cards:** `p-6` (24px)
+- **Gap entre elementos:** `gap-4` (16px)
+- **Margin entre seções:** `mb-8` (32px)
+- **Padding de página:** `px-4 sm:px-6 lg:px-8` (responsivo)
+
+---
+
+## 🔤 Tipografia
+
+### Família
+```css
+font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+```
+
+### Tamanhos
+```css
+--text-xs: 0.75rem    /* 12px - labels, badges */
+--text-sm: 0.875rem   /* 14px - body secundário */
+--text-base: 1rem     /* 16px - body principal */
+--text-lg: 1.125rem   /* 18px - subtítulos */
+--text-xl: 1.25rem    /* 20px - títulos de card */
+--text-2xl: 1.5rem    /* 24px - títulos de seção */
+--text-3xl: 1.875rem  /* 30px - títulos de página */
+```
+
+### Pesos
+```css
+--font-normal: 400    /* Texto regular */
+--font-medium: 500    /* Destaque leve */
+--font-semibold: 600  /* Títulos */
+--font-bold: 700      /* Ênfase forte */
+```
+
+---
+
+## 🧩 Componentes Base
+
+### 1. **HelpCard**
+Instruções e dicas visuais
+
+**Tipos:**
+- `info` - Informações gerais (azul)
+- `tip` - Dicas úteis (amarelo)
+- `warning` - Alertas (laranja)
+- `success` - Confirmações (verde)
+- `help` - Ajuda contextual (roxo)
+
+**Uso:**
+```jsx
+<HelpCard type="tip" title="Dica Importante">
+  Configure sua primeira meta para começar!
+</HelpCard>
+```
+
+### 2. **HelpTooltip**
+Tooltips informativos (já existente)
+
+**Uso:**
+```jsx
+<HelpTooltip content="Explicação detalhada aqui" />
+```
+
+### 3. **EmptyState**
+Estados vazios com call-to-action
+
+**Uso:**
+```jsx
+<EmptyState
+  icon={Target}
+  title="Nenhuma meta criada"
+  description="Crie sua primeira meta financeira"
+  actionLabel="Criar Meta"
+  onAction={() => setShowModal(true)}
+/>
+```
+
+### 4. **OnboardingOverlay**
+Tutorial interativo passo a passo
+
+**Uso:**
+```jsx
+<OnboardingOverlay
+  steps={onboardingSteps}
+  isOpen={showOnboarding}
+  onComplete={() => setShowOnboarding(false)}
+  storageKey="goals_onboarding"
+/>
+```
+
+### 5. **Button**
+Botões padronizados (já existente)
+
+**Variantes:**
+- `default` - Azul sólido
+- `outline` - Borda azul
+- `ghost` - Transparente
+- `destructive` - Vermelho
+
+### 6. **Card**
+Cards padronizados (já existente)
+
+**Estrutura:**
+```jsx
+<Card>
+  <CardHeader>
+    <CardTitle>Título</CardTitle>
+  </CardHeader>
+  <CardContent>
+    Conteúdo
+  </CardContent>
+</Card>
+```
+
+---
+
+## 🎭 Padrões de Interação
+
+### 1. **Primeira Vez (Onboarding)**
+
+**Quando usar:**
+- Primeira vez acessando uma página
+- Nova feature lançada
+- Fluxo complexo
+
+**Estrutura:**
+```javascript
+const [showOnboarding, setShowOnboarding] = useState(false);
+
+useEffect(() => {
+  const hasSeenOnboarding = localStorage.getItem('onboarding_goals');
+  if (!hasSeenOnboarding && goals.length === 0) {
+    setShowOnboarding(true);
   }
-}
+}, [goals]);
 ```
 
-#### Uso em Componentes
-- **Botões primários:** `bg-[#207DFF] hover:bg-[#0D2C66]`
-- **Títulos principais:** `text-[#207DFF]`
-- **Textos secundários:** `text-[#0D2C66]`
-- **Backgrounds:** `bg-[#E9EEF5]`
-- **Acentos e CTAs:** `text-[#5FFFA7]` ou `border-[#5FFFA7]`
-- **Gradientes:** `bg-gradient-to-r from-[#207DFF] to-[#8FCBFF]`
+### 2. **Estado Vazio**
 
-### 🚀 PADRÕES DE COMPONENTES
+**Quando usar:**
+- Nenhum dado disponível
+- Lista vazia
+- Primeira vez
 
-#### QuickActions Grid
+**Estrutura:**
 ```jsx
-<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-  {actions.map((action) => (
-    <Button className="w-full h-auto p-4 flex flex-col items-center space-y-2 bg-color-500 hover:bg-color-600 text-white border-0 hover:scale-105 transition-transform">
-      <action.icon className="h-5 w-5" />
-      <div className="text-center">
-        <div className="font-medium text-sm">{action.title}</div>
-        <div className="text-xs opacity-80 mt-1">{action.description}</div>
-      </div>
-    </Button>
-  ))}
+{items.length === 0 ? (
+  <EmptyState
+    icon={Icon}
+    title="Título claro"
+    description="Explicação do que fazer"
+    actionLabel="Ação principal"
+    onAction={handleAction}
+  />
+) : (
+  <ItemsList items={items} />
+)}
+```
+
+### 3. **Tooltips Informativos**
+
+**Quando usar:**
+- Termos técnicos
+- Cálculos complexos
+- Funcionalidades não óbvias
+
+**Estrutura:**
+```jsx
+<div className="flex items-center space-x-2">
+  <span>Projeção de Atingimento</span>
+  <HelpTooltip content="Calculado com base na sua contribuição mensal atual" />
 </div>
 ```
 
-#### Activity Timeline
+### 4. **Cards de Ajuda**
+
+**Quando usar:**
+- Instruções importantes
+- Dicas contextuais
+- Avisos de ação necessária
+
+**Estrutura:**
 ```jsx
-<div className="space-y-4">
-  {items.map((item) => (
-    <div className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-      <div className="flex-shrink-0">
-        <div className="p-2 bg-gray-100 rounded-lg">
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      <div className="flex-1 min-w-0">
-        {/* Conteúdo */}
-      </div>
-    </div>
-  ))}
-</div>
+<HelpCard type="tip" title="Como funciona?">
+  <ul className="list-disc list-inside space-y-1">
+    <li>Passo 1: Configure o valor alvo</li>
+    <li>Passo 2: Defina contribuição mensal</li>
+    <li>Passo 3: Acompanhe o progresso</li>
+  </ul>
+</HelpCard>
 ```
 
-### 📱 RESPONSIVIDADE
+### 5. **Feedback Visual**
 
-#### Breakpoints
-- **Mobile:** `grid-cols-1`
-- **Tablet:** `md:grid-cols-2`
-- **Desktop:** `lg:grid-cols-3` ou `lg:grid-cols-4`
-
-#### Spacing
-- **Gap padrão:** `gap-6` ou `gap-8`
-- **Padding:** `p-6`, `py-4`, `px-4`
-- **Margin:** `mb-8`, `space-y-8`
-
-### 🔧 IMPLEMENTAÇÃO
-
-#### 1. Instalar dependências
-```bash
-npm install clsx tailwind-merge lucide-react
+**Loading:**
+```jsx
+{loading ? (
+  <LoadingLogo className="h-24 w-24" />
+) : (
+  <Content />
+)}
 ```
 
-#### 2. Usar componentes
+**Sucesso:**
 ```jsx
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
-import { TrendingUp, Users, Settings } from 'lucide-react';
+success('Meta criada com sucesso!');
 ```
 
-#### 3. Aplicar estilos
+**Erro:**
 ```jsx
-// Sempre usar classes utilitárias do Tailwind
-className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg"
-className="border-0 shadow-sm hover:shadow-md transition-shadow"
-className="text-gray-900 font-semibold"
+error('Erro ao salvar meta');
 ```
 
 ---
 
-## 📝 NOTAS IMPORTANTES
+## 📱 Responsividade
 
-1. **NUNCA** usar estilos inline ou CSS customizado
-2. **SEMPRE** usar o design system estabelecido
-3. **MANTER** consistência visual em todas as páginas
-4. **SEGUIR** os padrões de layout responsivo
-5. **USAR** gradientes e glassmorphism para modernidade
-6. **IMPLEMENTAR** transições suaves em hover/focus
+### Breakpoints
+```css
+sm: 640px   /* Mobile landscape */
+md: 768px   /* Tablet */
+lg: 1024px  /* Desktop */
+xl: 1280px  /* Large desktop */
+2xl: 1536px /* Extra large */
+```
+
+### Grid Padrão
+```jsx
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {/* Cards */}
+</div>
+```
+
+### Padding Responsivo
+```jsx
+<div className="px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24">
+  {/* Conteúdo */}
+</div>
+```
 
 ---
 
-**🎯 Este é o padrão visual que define o FinTrack V2!**
+## 🎬 Animações
+
+### Princípios
+- **Sutis:** Não distrair
+- **Rápidas:** 200-300ms
+- **Propósito:** Guiar atenção
+
+### Transições Padrão
+```css
+transition-all duration-300
+transition-colors duration-200
+transition-opacity duration-200
+```
+
+### Hover States
+```jsx
+className="hover:scale-105 transition-transform duration-200"
+className="hover:bg-gray-50 transition-colors"
+```
+
+---
+
+## ✅ Checklist de Implementação
+
+### Para Cada Nova Página:
+
+- [ ] **Onboarding**
+  - [ ] Tour guiado para primeira vez
+  - [ ] Salvar estado no localStorage
+  - [ ] Botão "Pular tutorial"
+
+- [ ] **Estado Vazio**
+  - [ ] EmptyState com ícone
+  - [ ] Título claro
+  - [ ] Descrição explicativa
+  - [ ] Call-to-action principal
+
+- [ ] **Tooltips**
+  - [ ] HelpTooltip em termos técnicos
+  - [ ] Explicação de cálculos
+  - [ ] Dicas contextuais
+
+- [ ] **Cards de Ajuda**
+  - [ ] HelpCard no topo (se necessário)
+  - [ ] Instruções passo a passo
+  - [ ] Dicas úteis
+
+- [ ] **Feedback**
+  - [ ] Loading states
+  - [ ] Mensagens de sucesso
+  - [ ] Mensagens de erro
+  - [ ] Confirmações de ação
+
+- [ ] **Responsividade**
+  - [ ] Grid responsivo
+  - [ ] Padding responsivo
+  - [ ] Teste em mobile/tablet/desktop
+
+- [ ] **Acessibilidade**
+  - [ ] Labels descritivos
+  - [ ] Contraste adequado
+  - [ ] Navegação por teclado
+
+---
+
+## 🎨 Exemplos Práticos
+
+### Página de Metas (Implementado)
+```jsx
+// 1. Onboarding na primeira vez
+<OnboardingOverlay steps={goalsOnboarding} />
+
+// 2. Estado vazio
+{goals.length === 0 && (
+  <EmptyState
+    icon={Flag}
+    title="Nenhuma meta criada ainda"
+    description="Defina suas metas financeiras..."
+    actionLabel="Criar Primeira Meta"
+  />
+)}
+
+// 3. Tooltips em elementos
+<HelpTooltip content="Projeção baseada na contribuição mensal" />
+
+// 4. Card de ajuda
+<HelpCard type="tip" title="Como começar?">
+  Configure o valor alvo e a contribuição mensal...
+</HelpCard>
+```
+
+### Página de Histórico (A implementar)
+```jsx
+// 1. Filtros com tooltips
+<div className="flex items-center space-x-2">
+  <label>Período</label>
+  <HelpTooltip content="Filtre por mês, trimestre ou ano" />
+</div>
+
+// 2. Estado vazio
+{contributions.length === 0 && (
+  <EmptyState
+    icon={Calendar}
+    title="Nenhuma contribuição registrada"
+    description="Adicione sua primeira contribuição..."
+  />
+)}
+
+// 3. Card de instrução
+<HelpCard type="info">
+  Aqui você visualiza todo o histórico de aportes...
+</HelpCard>
+```
+
+---
+
+## 📚 Recursos
+
+### Componentes Criados:
+- ✅ `HelpCard.jsx` - Cards de instrução
+- ✅ `EmptyState.jsx` - Estados vazios
+- ✅ `OnboardingOverlay.jsx` - Tutorial interativo
+- ✅ `HelpTooltip.jsx` - Tooltips (já existia)
+- ✅ `GoalBadges.jsx` - Gamificação elegante
+
+### Próximos Componentes:
+- [ ] `ProgressTimeline.jsx` - Timeline de evolução
+- [ ] `ContributionHistory.jsx` - Histórico de aportes
+- [ ] `GoalInsights.jsx` - Insights automáticos
+
+---
+
+## 🎯 Conclusão
+
+**Design First significa:**
+1. ✅ Pensar na experiência do usuário ANTES do código
+2. ✅ Instruir e guiar SEMPRE
+3. ✅ Feedback visual CONSTANTE
+4. ✅ Consistência em TODAS as páginas
+5. ✅ Profissional, mas ACESSÍVEL
+
+**Lembre-se:** Cada pixel importa. Cada palavra importa. Cada interação importa.
+
+---
+
+**Mantido por:** Time de Desenvolvimento FinTrack  
+**Última atualização:** 12 de Novembro de 2025

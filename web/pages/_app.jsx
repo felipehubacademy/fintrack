@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { NotificationProvider } from '../contexts/NotificationContext';
+import { TourProvider } from '../contexts/TourContext';
 import { APP_CONFIG, redirectToCorrectDomain, getCanonicalUrl } from '../lib/constants';
 import ZulFloatingButton from '../components/ZulFloatingButton';
 
@@ -71,13 +72,15 @@ function MyApp({ Component, pageProps }) {
         />
       </Head>
       <NotificationProvider>
-        <Component {...pageProps} />
-        {/* Renderizar Zul apenas nas páginas do dashboard */}
-        {(router.pathname.startsWith('/dashboard') || 
-          router.pathname.startsWith('/org/') || 
-          router.pathname.startsWith('/onboarding')) && 
-          <ZulFloatingButton />
-        }
+        <TourProvider>
+          <Component {...pageProps} />
+          {/* Renderizar Zul apenas nas páginas do dashboard */}
+          {(router.pathname.startsWith('/dashboard') || 
+            router.pathname.startsWith('/org/') || 
+            router.pathname.startsWith('/onboarding')) && 
+            <ZulFloatingButton />
+          }
+        </TourProvider>
       </NotificationProvider>
     </>
   );
