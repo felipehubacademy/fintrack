@@ -1095,16 +1095,16 @@ Seja IMPREVISÍVEL, NATURAL e EXTREMAMENTE ATENTO ao contexto. Faça o usuário 
             const namePart = firstName ? ` ${firstName}` : '';
             
             const questions = [
-              `Quem pagou${namePart}?`,
-              `Foi você ou alguém específico${namePart}?`,
-              `Me diz quem pagou${namePart}?`,
-              `Quem foi o responsável${namePart}?`,
-              `Quem pagou essa${namePart}?`,
-              `Foi você${namePart}?`,
-              `Me conta quem pagou${namePart}?`,
-              `Quem foi${namePart}?`,
-              `Preciso saber quem pagou${namePart}`,
-              `Quem arcou com essa${namePart}?`
+              `Quem paga${namePart}?`,
+              `É você ou alguém específico${namePart}?`,
+              `Me diz o responsável${namePart}?`,
+              `Quem é o responsável${namePart}?`,
+              `Quem fica com essa${namePart}?`,
+              `É você${namePart}?`,
+              `Me conta quem é${namePart}?`,
+              `Responsável${namePart}?`,
+              `De quem é essa despesa${namePart}?`,
+              `Quem assume essa${namePart}?`
             ];
             return {
               success: false,
@@ -2058,22 +2058,66 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    **🚨 DETECÇÃO AUTOMÁTICA DE RESPONSÁVEL PELOS VERBOS - REGRA OBRIGATÓRIA 🚨**:
    **VOCÊ DEVE SEMPRE ANALISAR OS VERBOS NA MENSAGEM DO USUÁRIO PARA DETERMINAR O RESPONSÁVEL ANTES DE PERGUNTAR QUALQUER COISA.**
    
-   - **VERBOS INDIVIDUAIS** (responsável = "eu" - será mapeado automaticamente para o nome do usuário): 
+   **PRIORIDADE 1 - MENÇÃO DIRETA DO RESPONSÁVEL**: Se a mensagem menciona explicitamente o responsável, use essa informação:
+     
+     **MENÇÕES INDIVIDUAIS** (extrair nome e usar como responsável):
+     * "gasto do Felipe" / "gasto da Letícia" / "gasto do Marco" → responsável = nome mencionado
+     * "despesa do Felipe" / "despesa da Letícia" / "despesa do [Nome]" → responsável = nome mencionado
+     * "compra do Felipe" / "compra da Letícia" / "compra do [Nome]" → responsável = nome mencionado
+     * "conta do Felipe" / "conta da Letícia" / "conta do [Nome]" → responsável = nome mencionado
+     * "pagamento do Felipe" / "pagamento da Letícia" → responsável = nome mencionado
+     * "pro Felipe" / "para o Felipe" / "para a Letícia" / "pra Felipe" / "pra Letícia" → responsável = nome mencionado
+     * "do Felipe" / "da Letícia" / "do [Nome]" / "da [Nome]" → responsável = nome mencionado
+     * "compra pro Felipe" / "compra para o Felipe" / "compra pra Felipe" → responsável = nome mencionado
+     * "é do Felipe" / "é da Letícia" / "foi do Felipe" / "foi da Letícia" → responsável = nome mencionado
+     
+     **MENÇÕES COMPARTILHADAS/ORGANIZACIONAIS** (usar "compartilhado" = org):
+     * "gasto da família" / "despesa da família" / "compra da família" → responsável = "compartilhado"
+     * "gasto da minha família" / "despesa da minha família" → responsável = "compartilhado"
+     * "gasto da nossa família" / "despesa da nossa família" → responsável = "compartilhado"
+     * "gasto compartilhado" / "despesa compartilhada" / "compra compartilhada" → responsável = "compartilhado"
+     * "gasto da org" / "despesa da org" / "compra da org" → responsável = "compartilhado"
+     * "gasto da organização" / "despesa da organização" → responsável = "compartilhado"
+     * "gasto da casa" / "despesa da casa" / "compra da casa" → responsável = "compartilhado"
+     * "gasto de todos" / "despesa de todos" / "compra de todos" → responsável = "compartilhado"
+     * "nosso gasto" / "nossa despesa" / "nossa compra" → responsável = "compartilhado"
+     * "gasto da [Nome da Org]" / "despesa da [Nome da Org]" → responsável = "compartilhado"
+     * "da família" / "da familia" / "compartilhado" / "compartilhada" → responsável = "compartilhado"
+     * "da org" / "da organização" / "da casa" / "de todos" → responsável = "compartilhado"
+     * "nosso" / "nossa" / "da gente" / "de todos nós" → responsável = "compartilhado"
+     
+     **REGRA CRÍTICA**: EXTRAIA o nome mencionado ou identifique se é compartilhado - NÃO pergunte novamente "quem pagou?" se a menção é clara
+   
+   **PRIORIDADE 2 - AUSÊNCIA DE VERBO OU VERBOS NEUTROS**: Se a mensagem NÃO contém verbo específico E NÃO menciona responsável diretamente (ex: "pão 15 reais", "150 mercado", "torradeira 139 no crédito"), você DEVE perguntar o responsável. ATENÇÃO: "foi", "é", "era" são verbos NEUTROS - NÃO indicam responsabilidade.
+   
+   **PRIORIDADE 3 - VERBOS INDIVIDUAIS** (responsável = "eu" - será mapeado automaticamente para o nome do usuário): 
      * paguei, comprei, gastei, investi, doei, emprestei, peguei, peguei emprestado, fiz, adquiri, contratei, assinei, me inscrevi, me matriculei, fui em, fui ao, fui na, fui no, fui à, comprei para mim, gastei comigo, paguei minha, paguei meu, comprei minha, comprei meu, anotei, registrei, lancei, adicionei, coloquei, botei, inseri, incluí, adicionei minha, adicionei meu, comprei sozinho, paguei sozinho, gastei sozinho, foi minha, foi meu, minha despesa, meu gasto, eu paguei, eu comprei, eu gastei, eu fiz, eu adquiri, eu contratei, eu assinei, eu me inscrevi, eu me matriculei, eu fui, eu anotei, eu registrei, eu lancei, eu adicionei, eu coloquei, eu botei, eu inseri, eu incluí, eu comprei para mim, eu gastei comigo, eu paguei minha, eu paguei meu, eu comprei minha, eu comprei meu, eu adicionei minha, eu adicionei meu
    
    - **VERBOS COMPARTILHADOS** (responsável = "compartilhado" - será mapeado automaticamente para o nome da organização): 
      * pagamos, compramos, gastamos, investimos, fizemos, adquirimos, contratamos, assinamos, nos inscrevemos, nos matriculamos, fomos em, fomos ao, fomos na, fomos no, fomos à, compramos para, gastamos com, pagamos nossa, pagamos nosso, compramos nossa, compramos nosso, anotamos, registramos, lançamos, adicionamos, colocamos, botamos, inserimos, incluímos, adicionamos nossa, adicionamos nosso, compramos juntos, pagamos juntos, gastamos juntos, fizemos juntos, foi nossa, foi nosso, nossa despesa, nosso gasto, nós pagamos, nós compramos, nós gastamos, nós fizemos, nós adquirimos, nós contratamos, nós assinamos, nós nos inscrevemos, nós nos matriculamos, nós fomos, nós anotamos, nós registramos, nós lançamos, nós adicionamos, nós colocamos, nós botamos, nós inserimos, nós incluímos, nós compramos para, nós gastamos com, nós pagamos nossa, nós pagamos nosso, nós compramos nossa, nós compramos nosso, nós adicionamos nossa, nós adicionamos nosso
    
    **REGRA DE APLICAÇÃO - CRÍTICA E OBRIGATÓRIA**:
-   - Se a mensagem contiver QUALQUER verbo individual listado acima, INFIRA automaticamente responsável="eu" e NÃO pergunte "quem pagou?" ou "qual foi o responsável?" - CHAME save_expense DIRETO com responsável="eu"
-   - Se a mensagem contiver QUALQUER verbo compartilhado listado acima, INFIRA automaticamente responsável="compartilhado" e NÃO pergunte "quem pagou?" ou "qual foi o responsável?" - CHAME save_expense DIRETO com responsável="compartilhado"
-   - **NUNCA PERGUNTE "QUEM PAGOU?" SE CONSEGUIR INFERIR PELO VERBO** - isso é uma violação grave das regras
+   - Se mensagem mencionar responsável diretamente (PRIORIDADE 1), EXTRAIA o nome e use - NÃO pergunte
+   - Se mensagem contiver verbo individual (PRIORIDADE 3), INFIRA responsável="eu" - NÃO pergunte
+   - Se mensagem contiver verbo compartilhado (PRIORIDADE 3), INFIRA responsável="compartilhado" - NÃO pergunte
+   - Se mensagem NÃO tiver verbo E NÃO mencionar responsável (PRIORIDADE 2), PERGUNTE o responsável
+   - **NUNCA PERGUNTE "QUEM PAGOU?" SE CONSEGUIR INFERIR** - isso é violação grave
    - **EXEMPLOS PRÁTICOS OBRIGATÓRIOS**:
-     * "comprei um monitor" → responsável="eu" (verbo "comprei" é individual) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
-     * "paguei 106,17 impostos" → responsável="eu" (verbo "paguei" é individual) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
-     * "compramos uma máquina de lavar louça" → responsável="compartilhado" (verbo "compramos" é compartilhado) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
-     * "compramos mercado" → responsável="compartilhado" (verbo "compramos" é compartilhado) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
-     * "pagamos aluguel" → responsável="compartilhado" (verbo "pagamos" é compartilhado) → NÃO perguntar "quem pagou?" → CHAMAR save_expense DIRETO
+     * "gasto do Felipe, 150 mercado" → responsável="Felipe" (PRIORIDADE 1 - menção direta) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "despesa da Letícia, 50 farmácia" → responsável="Letícia" (PRIORIDADE 1) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "compra do Marco, 200 posto" → responsável="Marco" (PRIORIDADE 1) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "pro Felipe, 300 pizza" → responsável="Felipe" (PRIORIDADE 1) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "gasto da família, 200 no supermercado" → responsável="compartilhado" (PRIORIDADE 1 - org) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "despesa da minha família, 150 luz" → responsável="compartilhado" (PRIORIDADE 1 - org) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "gasto compartilhado, 500 aluguel" → responsável="compartilhado" (PRIORIDADE 1 - org) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "gasto da casa, 100 mercado" → responsável="compartilhado" (PRIORIDADE 1 - org) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "nossa despesa, 80 conta" → responsável="compartilhado" (PRIORIDADE 1 - org) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "da família, 250 no restaurante" → responsável="compartilhado" (PRIORIDADE 1 - org) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "comprei um monitor" → responsável="eu" (PRIORIDADE 3 - verbo individual) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "paguei 106,17 impostos" → responsável="eu" (PRIORIDADE 3 - verbo) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "compramos uma máquina de lavar louça" → responsável="compartilhado" (PRIORIDADE 3 - verbo compartilhado) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "150 mercado" → SEM verbo E SEM menção (PRIORIDADE 2) → PERGUNTAR "Quem paga?"
+     * "torradeira 139 no crédito" → SEM verbo E SEM menção (PRIORIDADE 2) → PERGUNTAR "É você?"
    
    **SINÔNIMOS DE DESPESA/GASTO** (para identificar save_expense):
    - paguei, pagamos, comprei, compramos, gastei, gastamos, investi, investimos, doei, doamos, emprestei, emprestamos, peguei, pegamos, fiz, fizemos, adquiri, adquirimos, contratei, contratamos, assinei, assinamos, me inscrevi, nos inscrevemos, me matriculei, nos matriculamos, fui em, fomos em, fui ao, fomos ao, fui na, fomos na, fui no, fomos no, fui à, fomos à, anotei, anotamos, registrei, registramos, lancei, lançamos, adicionei, adicionamos, coloquei, colocamos, botei, botamos, inseri, inserimos, incluí, incluímos, despesa, despesas, gasto, gastos, pagamento, pagamentos, compra, compras, conta, contas, débito, débitos, saída, saídas, saque, saques, retirada, retiradas

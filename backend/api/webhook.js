@@ -12,54 +12,78 @@ const supabase = createClient(
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
-// Configuração do debounce de mensagens (síncrono para serverless)
-const MESSAGE_DEBOUNCE_MS = 2000; // 2 segundos de espera síncrona
-const MAX_BUFFERED_MESSAGES = 5;  // Máximo de mensagens para agrupar
+// Sistema híbrido: agrupa mensagens rápidas, processa normais diretamente
+const RAPID_SEQUENCE_SILENCE_MS = 500; // 500ms de SILÊNCIO após última msg para processar
+const MAX_BUFFERED_MESSAGES = 10;
+
+// Armazenar timeouts pendentes (em memória, ok para serverless pois é por request)
+const pendingTimeouts = new Map();
 
 /**
- * Sleep síncrono (aguarda X ms)
+ * Verificar se usuário está mandando mensagens em sequência rápida
+ * Retorna: { shouldBuffer: boolean, bufferSize: number }
  */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Adicionar mensagem ao buffer e retornar se deve processar agora
- * Lógica para serverless: primeira msg marca como "processing" e processa após delay
- */
-async function addToMessageBuffer(userPhone, messageText, messageType = 'text') {
+async function checkRapidSequence(userPhone) {
   try {
     const normalized = String(userPhone || '').replace(/\D/g, '');
     
-    // Buscar buffer atual
     const { data: current } = await supabase
       .from('conversation_state')
-      .select('temp_data, state')
+      .select('temp_data, updated_at')
+      .eq('user_phone', normalized)
+      .maybeSingle();
+    
+    if (!current || !current.temp_data?.message_buffer) {
+      return { shouldBuffer: false, bufferSize: 0 };
+    }
+    
+    const buffer = current.temp_data.message_buffer || [];
+    const lastUpdate = new Date(current.updated_at || current.temp_data.last_buffer_update);
+    const now = new Date();
+    const timeSinceLastMessage = now - lastUpdate;
+    
+    // Se última mensagem foi recente E já há mensagens no buffer, é sequência rápida
+    const isRapidSequence = timeSinceLastMessage < 5000 && buffer.length > 0;
+    
+    console.log(`⚡ [RAPID-CHECK] ${normalized}: ${timeSinceLastMessage}ms desde última msg. Buffer: ${buffer.length}. Rapid: ${isRapidSequence}`);
+    
+    return {
+      shouldBuffer: isRapidSequence,
+      bufferSize: buffer.length
+    };
+  } catch (error) {
+    console.error('❌ Erro ao verificar sequência rápida:', error);
+    return { shouldBuffer: false, bufferSize: 0 };
+  }
+}
+
+/**
+ * Adicionar mensagem ao buffer (apenas para sequências rápidas)
+ */
+async function addToRapidBuffer(userPhone, messageText, messageType = 'text') {
+  try {
+    const normalized = String(userPhone || '').replace(/\D/g, '');
+    
+    const { data: current } = await supabase
+      .from('conversation_state')
+      .select('temp_data')
       .eq('user_phone', normalized)
       .maybeSingle();
     
     const buffer = current?.temp_data?.message_buffer || [];
-    const isProcessing = current?.state === 'processing';
-    
-    // Adicionar nova mensagem ao buffer
     buffer.push({
       text: messageText,
       type: messageType,
       timestamp: new Date().toISOString()
     });
     
-    // Limitar a MAX_BUFFERED_MESSAGES
+    // Limitar buffer
     const limitedBuffer = buffer.slice(-MAX_BUFFERED_MESSAGES);
     
-    // Decidir se esta função deve processar ou não
-    const shouldProcess = !isProcessing; // Só processa se ninguém estiver processando
-    
-    // Atualizar no banco
     await supabase
       .from('conversation_state')
       .upsert({
         user_phone: normalized,
-        state: shouldProcess ? 'processing' : current?.state || 'buffering',
         temp_data: {
           ...current?.temp_data,
           message_buffer: limitedBuffer,
@@ -70,34 +94,25 @@ async function addToMessageBuffer(userPhone, messageText, messageType = 'text') 
         onConflict: 'user_phone'
       });
     
-    console.log(`📦 [BUFFER] Mensagem adicionada ao buffer de ${normalized}. Total: ${limitedBuffer.length} msgs. ShouldProcess: ${shouldProcess}`);
+    console.log(`📦 [RAPID-BUFFER] Adicionada ao buffer de ${normalized}. Total: ${limitedBuffer.length}`);
     
-    return {
-      shouldProcess,
-      bufferSize: limitedBuffer.length,
-      isFirstMessage: !isProcessing
-    };
+    return limitedBuffer.length;
   } catch (error) {
-    console.error('❌ Erro ao adicionar mensagem ao buffer:', error);
-    return {
-      shouldProcess: true, // Em caso de erro, processar imediatamente
-      bufferSize: 1,
-      isFirstMessage: true
-    };
+    console.error('❌ Erro ao adicionar ao buffer rápido:', error);
+    return 1;
   }
 }
 
 /**
- * Obter e limpar buffer de mensagens
+ * Obter e limpar buffer de sequência rápida
  */
-async function getAndClearMessageBuffer(userPhone) {
+async function getAndClearRapidBuffer(userPhone) {
   try {
     const normalized = String(userPhone || '').replace(/\D/g, '');
     
-    // Buscar buffer atual
     const { data: current } = await supabase
       .from('conversation_state')
-      .select('temp_data, state')
+      .select('temp_data')
       .eq('user_phone', normalized)
       .maybeSingle();
     
@@ -107,11 +122,10 @@ async function getAndClearMessageBuffer(userPhone) {
       return null;
     }
     
-    // Limpar buffer e resetar estado para idle
+    // Limpar buffer
     await supabase
       .from('conversation_state')
       .update({
-        state: 'idle',
         temp_data: {
           ...current?.temp_data,
           message_buffer: [],
@@ -121,12 +135,10 @@ async function getAndClearMessageBuffer(userPhone) {
       })
       .eq('user_phone', normalized);
     
-    console.log(`📦 [BUFFER] Buffer de ${normalized} limpado. ${buffer.length} msgs recuperadas. Estado: idle`);
+    console.log(`📦 [RAPID-BUFFER] Buffer limpo. ${buffer.length} mensagens recuperadas.`);
     
     // Concatenar mensagens
-    const concatenated = buffer
-      .map(msg => msg.text)
-      .join('\n');
+    const concatenated = buffer.map(msg => msg.text).join('\n');
     
     return {
       concatenatedText: concatenated,
@@ -134,41 +146,23 @@ async function getAndClearMessageBuffer(userPhone) {
       messages: buffer
     };
   } catch (error) {
-    console.error('❌ Erro ao obter buffer:', error);
+    console.error('❌ Erro ao obter buffer rápido:', error);
     return null;
   }
 }
 
 /**
- * Processar buffer de mensagens após delay síncrono
+ * Processar mensagem diretamente (sem buffer/debounce)
+ * O thread do OpenAI JÁ mantém o contexto entre mensagens
  */
-async function processBufferedMessages(userPhone) {
+async function processMessageDirect(userPhone, messageText, messageType = 'text') {
   try {
-    console.log(`⏰ [SYNC-DEBOUNCE] Aguardando ${MESSAGE_DEBOUNCE_MS}ms para processar buffer de ${userPhone}...`);
-    
-    // Aguardar síncronamente (mantém função viva)
-    await sleep(MESSAGE_DEBOUNCE_MS);
-    
-    console.log(`⏰ [SYNC-DEBOUNCE] Delay concluído. Processando buffer...`);
-    
-    // Obter mensagens do buffer
-    const buffer = await getAndClearMessageBuffer(userPhone);
-    
-    if (!buffer || buffer.messageCount === 0) {
-      console.log(`⚠️ [SYNC-DEBOUNCE] Buffer vazio para ${userPhone}, nada a processar`);
-      return;
-    }
-    
-    console.log(`📨 [SYNC-DEBOUNCE] Processando ${buffer.messageCount} mensagens concatenadas`);
-    
-    // Processar com ZulAssistant
-    const { default: ZulAssistant } = await import('../services/zulAssistant.js');
-    const zul = new ZulAssistant();
+    console.log(`📨 [DIRECT] Processando mensagem ${messageType} de ${userPhone}`);
     
     const user = await getUserByPhone(userPhone);
     
     if (!user) {
-      console.log('❌ [SYNC-DEBOUNCE] Usuário não encontrado');
+      console.log('❌ [DIRECT] Usuário não encontrado');
       await sendWhatsAppMessage(userPhone, 
         'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
       );
@@ -195,9 +189,12 @@ async function processBufferedMessages(userPhone) {
       availableCards: cards?.map(c => c.name) || []
     };
     
-    // Processar mensagem concatenada
+    // Processar mensagem diretamente com ZulAssistant (mantém thread/contexto)
+    const { default: ZulAssistant } = await import('../services/zulAssistant.js');
+    const zul = new ZulAssistant();
+    
     const result = await zul.processMessage(
-      buffer.concatenatedText,
+      messageText,
       user.id,
       user.name,
       userPhone,
@@ -209,9 +206,9 @@ async function processBufferedMessages(userPhone) {
       await sendWhatsAppMessage(userPhone, result.message);
     }
     
-    console.log('✅ [SYNC-DEBOUNCE] Buffer processado com sucesso');
+    console.log('✅ [DIRECT] Mensagem processada com sucesso');
   } catch (error) {
-    console.error('❌ [SYNC-DEBOUNCE] Erro ao processar buffer:', error);
+    console.error('❌ [DIRECT] Erro ao processar mensagem:', error);
     
     try {
       await sendWhatsAppMessage(userPhone, 
@@ -379,18 +376,37 @@ async function processWebhook(body) {
               continue;
             }
 
-            // ===== SISTEMA DE DEBOUNCE SÍNCRONO =====
-            // Adicionar mensagem ao buffer
-            const bufferResult = await addToMessageBuffer(message.from, message.text.body, 'text');
+            // Sistema híbrido: detectar sequência rápida
+            const rapidCheck = await checkRapidSequence(message.from);
             
-            if (bufferResult.shouldProcess) {
-              // Esta é a primeira mensagem ou única instância processando
-              // Aguardar síncronamente e processar
-              console.log(`⏱️ [SYNC-DEBOUNCE] Primeira mensagem detectada. Iniciando processamento...`);
-              await processBufferedMessages(message.from);
+            // Adicionar ao buffer
+            const bufferSize = await addToRapidBuffer(message.from, message.text.body, 'text');
+            
+            // Cancelar timeout anterior se existir
+            if (pendingTimeouts.has(message.from)) {
+              clearTimeout(pendingTimeouts.get(message.from));
+              console.log(`⚡ [RAPID] Timeout anterior cancelado. Nova msg recebida.`);
+            }
+            
+            if (rapidCheck.shouldBuffer || bufferSize > 1) {
+              // Há buffer - agendar processamento após silêncio
+              console.log(`⚡ [RAPID] Mensagem adicionada ao buffer. Total: ${bufferSize}. Aguardando ${RAPID_SEQUENCE_SILENCE_MS}ms de silêncio...`);
+              
+              const timeoutId = setTimeout(async () => {
+                const buffer = await getAndClearRapidBuffer(message.from);
+                pendingTimeouts.delete(message.from);
+                
+                if (buffer && buffer.messageCount > 0) {
+                  console.log(`⚡ [RAPID] ${RAPID_SEQUENCE_SILENCE_MS}ms de silêncio. Processando ${buffer.messageCount} mensagens concatenadas`);
+                  await processMessageDirect(message.from, buffer.concatenatedText, 'text-batch');
+                }
+              }, RAPID_SEQUENCE_SILENCE_MS);
+              
+              pendingTimeouts.set(message.from, timeoutId);
             } else {
-              // Outra instância já está processando, apenas adicionamos ao buffer
-              console.log(`⏱️ [SYNC-DEBOUNCE] Mensagem adicionada ao buffer. Outra instância já está processando.`);
+              // Primeira mensagem - processar direto SEM delay
+              console.log(`📨 [DIRECT] Primeira mensagem. Processando imediatamente (0ms delay)`);
+              await processMessageDirect(message.from, message.text.body, 'text');
             }
             
           } catch (error) {
@@ -450,18 +466,37 @@ async function processWebhook(body) {
             
             console.log('✅ [AUDIO] Transcrição:', `"${transcription}"`);
 
-            // ===== SISTEMA DE DEBOUNCE SÍNCRONO (mesmo que texto) =====
-            // Adicionar transcrição ao buffer
-            const bufferResult = await addToMessageBuffer(message.from, transcription, 'audio');
+            // Sistema híbrido: detectar sequência rápida
+            const rapidCheck = await checkRapidSequence(message.from);
             
-            if (bufferResult.shouldProcess) {
-              // Esta é a primeira mensagem ou única instância processando
-              // Aguardar síncronamente e processar
-              console.log(`⏱️ [SYNC-DEBOUNCE] Primeira mensagem (áudio) detectada. Iniciando processamento...`);
-              await processBufferedMessages(message.from);
+            // Adicionar transcrição ao buffer
+            const bufferSize = await addToRapidBuffer(message.from, transcription, 'audio');
+            
+            // Cancelar timeout anterior se existir
+            if (pendingTimeouts.has(message.from)) {
+              clearTimeout(pendingTimeouts.get(message.from));
+              console.log(`⚡ [RAPID-AUDIO] Timeout anterior cancelado. Novo áudio recebido.`);
+            }
+            
+            if (rapidCheck.shouldBuffer || bufferSize > 1) {
+              // Há buffer - agendar processamento após silêncio
+              console.log(`⚡ [RAPID-AUDIO] Transcrição adicionada ao buffer. Total: ${bufferSize}. Aguardando ${RAPID_SEQUENCE_SILENCE_MS}ms de silêncio...`);
+              
+              const timeoutId = setTimeout(async () => {
+                const buffer = await getAndClearRapidBuffer(message.from);
+                pendingTimeouts.delete(message.from);
+                
+                if (buffer && buffer.messageCount > 0) {
+                  console.log(`⚡ [RAPID-AUDIO] ${RAPID_SEQUENCE_SILENCE_MS}ms de silêncio. Processando ${buffer.messageCount} áudios concatenados`);
+                  await processMessageDirect(message.from, buffer.concatenatedText, 'audio-batch');
+                }
+              }, RAPID_SEQUENCE_SILENCE_MS);
+              
+              pendingTimeouts.set(message.from, timeoutId);
             } else {
-              // Outra instância já está processando, apenas adicionamos ao buffer
-              console.log(`⏱️ [SYNC-DEBOUNCE] Mensagem (áudio) adicionada ao buffer. Outra instância já está processando.`);
+              // Primeiro áudio - processar direto SEM delay
+              console.log(`📨 [DIRECT-AUDIO] Primeiro áudio. Processando imediatamente (0ms delay)`);
+              await processMessageDirect(message.from, transcription, 'audio');
             }
 
           } catch (audioError) {
