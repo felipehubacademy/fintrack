@@ -130,6 +130,43 @@ class ZulAssistant {
     return t.charAt(0).toUpperCase() + t.slice(1);
   }
 
+  // Normalizar erros comuns de transcrição do Whisper (aplicar APENAS em mensagens de áudio)
+  // Remove erros onde "Zul" ou "Zuzu" se junta com verbos
+  normalizeTranscriptionErrors(text) {
+    if (!text || typeof text !== 'string') return text;
+    
+    const original = text;
+    let normalized = text;
+    
+    // Erros comuns: "Zul" ou "Zuzu" + verbo (case insensitive)
+    // Padrão: jul/zu/zuzu + verbo → apenas o verbo
+    normalized = normalized.replace(/\bjulgastei\b/gi, 'gastei');
+    normalized = normalized.replace(/\bjulpaguei\b/gi, 'paguei');
+    normalized = normalized.replace(/\bjulcomprei\b/gi, 'comprei');
+    normalized = normalized.replace(/\bzugastei\b/gi, 'gastei');
+    normalized = normalized.replace(/\bzupaguei\b/gi, 'paguei');
+    normalized = normalized.replace(/\bzucomprei\b/gi, 'comprei');
+    normalized = normalized.replace(/\bzuzugastei\b/gi, 'gastei');
+    normalized = normalized.replace(/\bzuzupaguei\b/gi, 'paguei');
+    normalized = normalized.replace(/\bzuzucomprei\b/gi, 'comprei');
+    
+    // Verbos compartilhados
+    normalized = normalized.replace(/\bjulgastamos\b/gi, 'gastamos');
+    normalized = normalized.replace(/\bjulpagamos\b/gi, 'pagamos');
+    normalized = normalized.replace(/\bjulcompramos\b/gi, 'compramos');
+    normalized = normalized.replace(/\bzugastamos\b/gi, 'gastamos');
+    normalized = normalized.replace(/\bzupagamos\b/gi, 'pagamos');
+    normalized = normalized.replace(/\bzucompramos\b/gi, 'compramos');
+    
+    // Log apenas se houve mudança
+    if (normalized !== original) {
+      console.log(`🔧 [NORMALIZE] Original: "${original}"`);
+      console.log(`🔧 [NORMALIZE] Normalizado: "${normalized}"`);
+    }
+    
+    return normalized;
+  }
+
   // Extrair núcleo descritivo (remove apenas verbos/artigos/preposições comuns)
   // Permite números na descrição (ex: "2 televisões", "5kg de carne", "TV 50 polegadas")
   // Remove apenas quando claramente é valor monetário no início (ex: "150 mercado" -> "mercado")
@@ -2144,11 +2181,29 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    
    **PRIORIDADE 2 - AUSÊNCIA DE VERBO OU VERBOS NEUTROS**: Se a mensagem NÃO contém verbo específico E NÃO menciona responsável diretamente (ex: "pão 15 reais", "150 mercado", "torradeira 139 no crédito"), você DEVE perguntar o responsável. ATENÇÃO: "foi", "é", "era" são verbos NEUTROS - NÃO indicam responsabilidade.
    
-   **PRIORIDADE 3 - VERBOS INDIVIDUAIS** (responsável = "eu" - será mapeado automaticamente para o nome do usuário): 
-     * paguei, comprei, gastei, investi, doei, emprestei, peguei, peguei emprestado, fiz, adquiri, contratei, assinei, me inscrevi, me matriculei, fui em, fui ao, fui na, fui no, fui à, comprei para mim, gastei comigo, paguei minha, paguei meu, comprei minha, comprei meu, anotei, registrei, lancei, adicionei, coloquei, botei, inseri, incluí, adicionei minha, adicionei meu, comprei sozinho, paguei sozinho, gastei sozinho, foi minha, foi meu, minha despesa, meu gasto, eu paguei, eu comprei, eu gastei, eu fiz, eu adquiri, eu contratei, eu assinei, eu me inscrevi, eu me matriculei, eu fui, eu anotei, eu registrei, eu lancei, eu adicionei, eu coloquei, eu botei, eu inseri, eu incluí, eu comprei para mim, eu gastei comigo, eu paguei minha, eu paguei meu, eu comprei minha, eu comprei meu, eu adicionei minha, eu adicionei meu
+  **PRIORIDADE 3 - VERBOS INDIVIDUAIS** (responsável = "eu" - será mapeado automaticamente para o nome do usuário):
+    
+    **REGRA CRÍTICA DE PATTERN MATCHING**: Se a mensagem contém QUALQUER PALAVRA que TERMINE com "gastei", "paguei", "comprei" (ex: "julgastei", "já gastei", "hoje paguei", "só comprei"), deve ser considerado verbo individual!
+    
+    **LISTA COMPLETA**:
+    * paguei, comprei, gastei, investi, doei, emprestei, peguei, peguei emprestado, fiz, adquiri, contratei, assinei, me inscrevi, me matriculei, fui em, fui ao, fui na, fui no, fui à, comprei para mim, gastei comigo, paguei minha, paguei meu, comprei minha, comprei meu, anotei, registrei, lancei, adicionei, coloquei, botei, inseri, incluí, adicionei minha, adicionei meu, comprei sozinho, paguei sozinho, gastei sozinho, foi minha, foi meu, minha despesa, meu gasto, eu paguei, eu comprei, eu gastei, eu fiz, eu adquiri, eu contratei, eu assinei, eu me inscrevi, eu me matriculei, eu fui, eu anotei, eu registrei, eu lancei, eu adicionei, eu coloquei, eu botei, eu inseri, eu incluí, eu comprei para mim, eu gastei comigo, eu paguei minha, eu paguei meu, eu comprei minha, eu comprei meu, eu adicionei minha, eu adicionei meu
+    * **VARIAÇÕES COM ERROS DE TRANSCRIÇÃO** (áudio pode ter ruído): julgastei (já gastei), jupaguei (já paguei), jocomprei (já comprei), hoje gastei, hoje paguei, hoje comprei, só gastei, só paguei, só comprei, apenas gastei, apenas paguei, apenas comprei
+  
+  **VERBOS COMPARTILHADOS** (responsável = "compartilhado" - será mapeado automaticamente para o nome da organização): 
+    
+    **REGRA CRÍTICA DE PATTERN MATCHING**: Se a mensagem contém QUALQUER PALAVRA que TERMINE com "gastamos", "pagamos", "compramos" (ex: "hoje compramos", "só gastamos"), deve ser considerado verbo compartilhado!
+    
+    **LISTA COMPLETA**:
+    * pagamos, compramos, gastamos, investimos, fizemos, adquirimos, contratamos, assinamos, nos inscrevemos, nos matriculamos, fomos em, fomos ao, fomos na, fomos no, fomos à, compramos para, gastamos com, pagamos nossa, pagamos nosso, compramos nossa, compramos nosso, anotamos, registramos, lançamos, adicionamos, colocamos, botamos, inserimos, incluímos, adicionamos nossa, adicionamos nosso, compramos juntos, pagamos juntos, gastamos juntos, fizemos juntos, foi nossa, foi nosso, nossa despesa, nosso gasto, nós pagamos, nós compramos, nós gastamos, nós fizemos, nós adquirimos, nós contratamos, nós assinamos, nós nos inscrevemos, nós nos matriculamos, nós fomos, nós anotamos, nós registramos, nós lançamos, nós adicionamos, nós colocamos, nós botamos, nós inserimos, nós incluímos, nós compramos para, nós gastamos com, nós pagamos nossa, nós pagamos nosso, nós compramos nossa, nós compramos nosso, nós adicionamos nossa, nós adicionamos nosso
+    * **VARIAÇÕES COM ERROS DE TRANSCRIÇÃO** (áudio pode ter ruído): hoje compramos, hoje pagamos, hoje gastamos, só compramos, só pagamos, só gastamos, apenas compramos, apenas pagamos, apenas gastamos
    
-   - **VERBOS COMPARTILHADOS** (responsável = "compartilhado" - será mapeado automaticamente para o nome da organização): 
-     * pagamos, compramos, gastamos, investimos, fizemos, adquirimos, contratamos, assinamos, nos inscrevemos, nos matriculamos, fomos em, fomos ao, fomos na, fomos no, fomos à, compramos para, gastamos com, pagamos nossa, pagamos nosso, compramos nossa, compramos nosso, anotamos, registramos, lançamos, adicionamos, colocamos, botamos, inserimos, incluímos, adicionamos nossa, adicionamos nosso, compramos juntos, pagamos juntos, gastamos juntos, fizemos juntos, foi nossa, foi nosso, nossa despesa, nosso gasto, nós pagamos, nós compramos, nós gastamos, nós fizemos, nós adquirimos, nós contratamos, nós assinamos, nós nos inscrevemos, nós nos matriculamos, nós fomos, nós anotamos, nós registramos, nós lançamos, nós adicionamos, nós colocamos, nós botamos, nós inserimos, nós incluímos, nós compramos para, nós gastamos com, nós pagamos nossa, nós pagamos nosso, nós compramos nossa, nós compramos nosso, nós adicionamos nossa, nós adicionamos nosso
+   **🚨 REGRA DE RESET DE CONTEXTO (CRÍTICA) 🚨**:
+   - Se receber uma mensagem com VALOR + DESCRIÇÃO + PAGAMENTO completos (ex: "gastei 50 no mercado no crédito"), isso é uma **NOVA DESPESA**, NÃO uma resposta à pergunta anterior!
+   - Exemplos de NOVA DESPESA (resetar contexto):
+     * "Julgastei R$ 11,79 com material elétrico, foi no crédito Latam, à vista" → NOVA DESPESA completa (ignore conversa anterior)
+     * "Comprei pão hoje, foi 11 e 20 no crédito c6" → NOVA DESPESA completa (ignore conversa anterior)
+     * "Gastei 150 no mercado no débito" → NOVA DESPESA completa (ignore conversa anterior)
+   - Se detectar NOVA DESPESA, **DESCONSIDERE** informações coletadas da conversa anterior e processe APENAS esta nova mensagem!
    
    **REGRA DE APLICAÇÃO - CRÍTICA E OBRIGATÓRIA**:
    - Se mensagem mencionar responsável diretamente (PRIORIDADE 1), EXTRAIA o nome e use - NÃO pergunte
@@ -2169,7 +2224,14 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
      * "da família, 250 no restaurante" → responsável="compartilhado" (PRIORIDADE 1 - org) → NÃO perguntar → CHAMAR save_expense DIRETO
      * "comprei um monitor" → responsável="eu" (PRIORIDADE 3 - verbo individual) → NÃO perguntar → CHAMAR save_expense DIRETO
      * "paguei 106,17 impostos" → responsável="eu" (PRIORIDADE 3 - verbo) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "gastei 11,79 com material elétrico" → responsável="eu" (PRIORIDADE 3 - verbo) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "Julgastei R$ 11,79 com material elétrico no crédito Latam" → responsável="eu" (PRIORIDADE 3 - "Julgastei" contém "gastei"!) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "comprei pão hoje, foi 11 e 20 no c6" → responsável="eu" (PRIORIDADE 3 - verbo) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "hoje paguei 50 no mercado" → responsável="eu" (PRIORIDADE 3 - "hoje paguei" contém "paguei") → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "só gastei 20 no lanche" → responsável="eu" (PRIORIDADE 3 - "só gastei" contém "gastei") → NÃO perguntar → CHAMAR save_expense DIRETO
      * "compramos uma máquina de lavar louça" → responsável="compartilhado" (PRIORIDADE 3 - verbo compartilhado) → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "hoje compramos 150 de mercado" → responsável="compartilhado" (PRIORIDADE 3 - "hoje compramos") → NÃO perguntar → CHAMAR save_expense DIRETO
+     * "só gastamos 80 no restaurante" → responsável="compartilhado" (PRIORIDADE 3 - "só gastamos") → NÃO perguntar → CHAMAR save_expense DIRETO
      * "150 mercado" → SEM verbo E SEM menção (PRIORIDADE 2) → PERGUNTAR "Quem paga?"
      * "torradeira 139 no crédito" → SEM verbo E SEM menção (PRIORIDADE 2) → PERGUNTAR "É você?"
    
@@ -2368,7 +2430,7 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             },
             responsible: { 
               type: 'string',
-              description: 'Quem pagou: nome exato (ex: "Felipe", "Letícia") ou "eu" (será mapeado automaticamente para o nome do usuário) ou "compartilhado" (será mapeado automaticamente para o nome da organização). **CRÍTICO**: Se a mensagem do usuário contiver verbos individuais (comprei, paguei, gastei, fiz, etc.), INFIRA automaticamente responsável="eu". Se contiver verbos compartilhados (compramos, pagamos, gastamos, fizemos, etc.), INFIRA automaticamente responsável="compartilhado". NÃO pergunte "quem pagou?" se conseguir inferir pelo verbo.'
+              description: 'Quem pagou: nome exato (ex: "Felipe", "Letícia") ou "eu" (será mapeado automaticamente para o nome do usuário) ou "compartilhado" (será mapeado automaticamente para o nome da organização). **CRÍTICO - PATTERN MATCHING**: Se a mensagem contiver QUALQUER PALAVRA que TERMINE com "gastei", "paguei", "comprei" (ex: "julgastei", "já gastei", "hoje paguei", "só comprei"), INFIRA automaticamente responsável="eu". Se TERMINAR com "gastamos", "pagamos", "compramos" (ex: "hoje compramos", "só gastamos"), INFIRA automaticamente responsável="compartilhado". EXEMPLOS: "Julgastei 11,79 material elétrico" → responsável="eu" (contém "gastei"), "comprei pão hoje" → responsável="eu", "compramos mercado" → responsável="compartilhado". NÃO pergunte "quem pagou?" se conseguir inferir pelo verbo.'
             },
             card_name: { 
               type: 'string',
