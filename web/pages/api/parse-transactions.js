@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 // Desabilitar body parser padrão do Next.js
 export const config = {
@@ -22,6 +21,9 @@ const supabase = createClient(
 async function extractPDFText(pdfBuffer) {
   try {
     console.log('📄 [PDF] Extraindo texto do PDF...');
+    // Importação dinâmica para Next.js
+    const pdfjsLib = await import('pdfjs-dist/build/pdf.js');
+    const getDocument = pdfjsLib.default?.getDocument || pdfjsLib.getDocument;
     const loadingTask = getDocument({
       data: new Uint8Array(pdfBuffer),
       useSystemFonts: true
