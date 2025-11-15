@@ -686,7 +686,7 @@ Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
                   },
                   category: {
                     type: 'string',
-                    description: 'Categoria da despesa. Tente inferir baseado na descrição (Alimentação para comida, Transporte para combustível/uber, Beleza para perfume/salão, Saúde para remédios, Casa para eletrodomésticos, Lazer para cinema/streaming, etc). SE NÃO TIVER CERTEZA ou não souber, use "Outros" - NUNCA force uma categoria incorreta.'
+                    description: 'Categoria da despesa. PRIORIDADE 1: Se o usuário MENCIONAR EXPLICITAMENTE a categoria (ex: "colocar como Caridade", "na categoria Lazer", "é de Educação", "para Beleza", "categoria Doações"), use EXATAMENTE essa categoria mencionada. PRIORIDADE 2: Se não mencionar, tente inferir baseado na descrição (Alimentação para comida, Transporte para combustível/uber, Beleza para perfume/salão, Saúde para remédios, Casa para eletrodomésticos, Lazer para cinema/streaming, etc). PRIORIDADE 3: SE NÃO TIVER CERTEZA ou não souber, use "Outros" - NUNCA force uma categoria incorreta.'
                   }
                 },
                 required: ['amount', 'description', 'payment_method', 'responsible']
@@ -756,12 +756,26 @@ PERSONALIDADE: Sábio Jovem. Seu tom é **calmo, claro, genuinamente prestativo 
 
 8.  **FLUXO DE VALIDAÇÃO**: A ordem de prioridade para coleta é: Valor & Descrição, Pagamento (e se for crédito: cartão/parcelas), Responsável.
 
-9.  **INFERÊNCIA DE CATEGORIA** (CRÍTICO):
-    - Tente inferir a categoria baseado na descrição (mercado→Alimentação, perfume→Beleza, remédio→Saúde, etc).
+9.  **INFERÊNCIA DE CATEGORIA** (CRÍTICO - 3 PRIORIDADES):
+    
+    **PRIORIDADE 1 - CATEGORIA EXPLICITAMENTE MENCIONADA** (SEMPRE TEM PRECEDÊNCIA):
+    - Se o usuário MENCIONAR EXPLICITAMENTE a categoria, use EXATAMENTE essa categoria:
+      * "colocar como Caridade" → category="Caridade"
+      * "na categoria Lazer" → category="Lazer"
+      * "é de Educação" → category="Educação"
+      * "para Beleza" → category="Beleza"
+      * "categoria Doações" → category="Doações"
+      * "comprei carne, colocar como caridade" → category="Caridade" (NÃO "Alimentação"!)
+    - **CRÍTICO**: Mesmo que a descrição sugira outra categoria (ex: "carne"→Alimentação), se o usuário pediu explicitamente "caridade", use "Caridade"!
+    
+    **PRIORIDADE 2 - INFERÊNCIA PELA DESCRIÇÃO** (se categoria não foi mencionada):
+    - Tente inferir baseado na descrição (mercado→Alimentação, perfume→Beleza, remédio→Saúde, etc).
+    - Categorias comuns: Alimentação, Transporte, Saúde, Beleza, Casa, Lazer, Educação, Vestuário, Impostos, Contas, Outros.
+    - Exemplos corretos: perfume→Beleza, torradeira→Casa, sacolão→Alimentação, livelo viagens→Viagem (ou Lazer se não existir).
+    
+    **PRIORIDADE 3 - FALLBACK PARA "OUTROS"** (se não tiver certeza):
     - **SE NÃO TIVER CERTEZA ABSOLUTA, use "Outros"**.
     - NUNCA force uma categoria incorreta (ex: perfume NÃO é Impostos, torradeira NÃO é Contas).
-    - Categorias específicas: Alimentação, Transporte, Saúde, Beleza, Casa, Lazer, Educação, Vestuário, Impostos, Contas, Outros.
-    - Exemplos corretos: perfume→Beleza, torradeira→Casa, sacolão→Alimentação, livelo viagens→Viagem (ou Lazer se não existir).
 
 10. **SALVAMENTO AUTOMÁTICO**: Chame a função save_expense **IMEDIATAMENTE** quando tiver: valor, descrição, pagamento, e responsável.
 
@@ -1139,10 +1153,12 @@ Seja IMPREVISÍVEL, NATURAL e EXTREMAMENTE ATENTO ao contexto. Faça o usuário 
           // Buscar category_id e inferir categoria pela descrição se necessário
           let categoryId = null;
           
-          // Se não veio categoria mas veio descrição, tentar inferir pela descrição usando synonyms
-          const shouldInferFromDescription = !args.category && args.description;
+          // PRIORIDADE: Se veio categoria explícita, buscar EXATAMENTE essa categoria primeiro
+          // APENAS inferir pela descrição se NÃO veio categoria explícita
+          const hasExplicitCategory = Boolean(args.category && args.category.trim());
+          const shouldInferFromDescription = !hasExplicitCategory && args.description;
           
-          if (args.category || shouldInferFromDescription) {
+          if (hasExplicitCategory || shouldInferFromDescription) {
             const normalize = (s) => (s || '')
               .toString()
               .trim()
@@ -1303,16 +1319,47 @@ Seja IMPREVISÍVEL, NATURAL e EXTREMAMENTE ATENTO ao contexto. Faça o usuário 
             let resolvedName = null;
             let searchText = '';
 
-            if (shouldInferFromDescription) {
-              // Se não veio categoria, inferir pela descrição
-              searchText = normalize(args.description);
-            } else if (args.category) {
-              // Se veio categoria, normalizar para busca
+            // FLUXO 1: CATEGORIA EXPLÍCITA (buscar exatamente o que o usuário pediu)
+            if (hasExplicitCategory) {
               searchText = normalize(args.category);
+              
+              // 1.1: Tentar match EXATO normalizado primeiro (ex: "Caridade" → "caridade")
+              if (byNormalizedName.has(searchText)) {
+                const cat = byNormalizedName.get(searchText);
+                categoryId = cat.id;
+                resolvedName = cat.name;
+                console.log(`✅ [CATEGORY] Categoria explícita encontrada: "${args.category}" → "${resolvedName}"`);
+              }
+              
+              // 1.2: Se não achou exato, tentar matching por similaridade
+              if (!categoryId) {
+                const match = allCats.find(c => {
+                  const catNorm = normalize(c.name);
+                  return catNorm.includes(searchText) || searchText.includes(catNorm);
+                });
+                if (match) {
+                  categoryId = match.id;
+                  resolvedName = match.name;
+                  console.log(`✅ [CATEGORY] Categoria explícita similar encontrada: "${args.category}" → "${resolvedName}"`);
+                }
+              }
+              
+              // 1.3: Se ainda não achou, usar "Outros" como fallback
+              if (!categoryId) {
+                const outros = byNormalizedName.get(normalize('Outros'))
+                  || byNormalizedName.get(normalize('Outras'));
+                if (outros) {
+                  categoryId = outros.id;
+                  resolvedName = outros.name;
+                  console.log(`⚠️ [CATEGORY] Categoria explícita "${args.category}" não encontrada, usando fallback: "${resolvedName}"`);
+                }
+              }
             }
-
-            // Tentar encontrar correspondência nos synonyms
-            if (searchText) {
+            // FLUXO 2: INFERÊNCIA PELA DESCRIÇÃO (usar synonyms apenas se não veio categoria explícita)
+            else if (shouldInferFromDescription) {
+              searchText = normalize(args.description);
+              
+              // 2.1: Tentar encontrar correspondência nos synonyms
               for (const group of synonyms) {
                   if (group.keywords.some(k => searchText.includes(k))) {
                     const targetNorm = normalize(group.target);
@@ -1354,7 +1401,7 @@ Seja IMPREVISÍVEL, NATURAL e EXTREMAMENTE ATENTO ao contexto. Faça o usuário 
                   }
                 }
 
-              // Caso específico: "farmacia" sem "Saúde" disponível → cair para "Casa" se existir
+              // 2.2: Caso específico: "farmacia" sem "Saúde" disponível → cair para "Casa" se existir
               if (!categoryId && searchText.includes('farmacia')) {
                 const casa = byNormalizedName.get(normalize('Casa'));
                 if (casa) {
@@ -1363,16 +1410,7 @@ Seja IMPREVISÍVEL, NATURAL e EXTREMAMENTE ATENTO ao contexto. Faça o usuário 
                 }
               }
 
-              // Matching por similaridade simples (substring) entre nomes normalizados
-              if (!categoryId && args.category) {
-                const match = allCats.find(c => normalize(c.name).includes(searchText) || searchText.includes(normalize(c.name)));
-                if (match) {
-                  categoryId = match.id;
-                  resolvedName = match.name;
-                }
-              }
-
-              // Se ainda não achou, usar "Outros" se existir
+              // 2.3: Se ainda não achou, usar "Outros" se existir
               if (!categoryId) {
                 const outros = byNormalizedName.get(normalize('Outros'))
                   || byNormalizedName.get(normalize('Outras'));
@@ -1381,11 +1419,11 @@ Seja IMPREVISÍVEL, NATURAL e EXTREMAMENTE ATENTO ao contexto. Faça o usuário 
                   resolvedName = outros.name;
                 }
               }
+            }
 
-              // Atualizar args.category para refletir a resolução, se houver
-              if (categoryId && resolvedName) {
-                args.category = resolvedName;
-              }
+            // Atualizar args.category para refletir a resolução, se houver
+            if (categoryId && resolvedName) {
+              args.category = resolvedName;
             }
           }
           
