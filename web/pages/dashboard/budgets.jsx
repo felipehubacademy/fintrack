@@ -46,6 +46,25 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 2
   })}`;
 
+// Formata valor para input (1000.5 -> "1.000,50")
+const formatCurrencyInput = (value) => {
+  if (!value && value !== 0) return '';
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(numValue)) return '';
+  return numValue.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
+// Converte input formatado para número ("1.000,50" -> 1000.5)
+const parseCurrencyInput = (formattedValue) => {
+  if (!formattedValue) return 0;
+  const cleaned = formattedValue.replace(/\./g, '').replace(',', '.');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 const formatMonthYear = (value) => {
   if (!value) return null;
   const [year, month] = value.split('-');
@@ -496,30 +515,73 @@ export default function BudgetsDashboard() {
   }, [budgetCategories, editingMacroKey, macroDraft]);
 
   const macroDraftTotal = useMemo(
-    () => macroDraft.reduce((sum, entry) => sum + Number(entry.amount || 0), 0),
+    () => macroDraft.reduce((sum, entry) => {
+      const amount = typeof entry.amount === 'string' ? parseCurrencyInput(entry.amount) : Number(entry.amount) || 0;
+      return sum + amount;
+    }, 0),
     [macroDraft]
   );
-  const macroDraftDiff = macroDraftTarget - macroDraftTotal;
+  const targetValue = typeof macroDraftTarget === 'string' ? parseCurrencyInput(macroDraftTarget) : Number(macroDraftTarget) || 0;
+  const macroDraftDiff = targetValue - macroDraftTotal;
   const macroDraftBalanced = Math.abs(macroDraftDiff) < 0.01;
-  const macroDraftHasOverspend = macroDraft.some((entry) => entry.spent > entry.amount);
+  const macroDraftHasOverspend = macroDraft.some((entry) => {
+    const amount = typeof entry.amount === 'string' ? parseCurrencyInput(entry.amount) : Number(entry.amount) || 0;
+    return entry.spent > amount;
+  });
   const canSaveMacro = editingMacroKey !== null && macroDraftBalanced && !macroDraftHasOverspend && !savingMacro;
 
   const handleMacroTargetChange = (value) => {
-    const next = Number(value);
-    if (Number.isFinite(next) && next >= 0) {
-      setMacroDraftTarget(next);
-    } else {
-      setMacroDraftTarget(0);
+    // Permitir string vazia e qualquer valor durante digitação
+    if (value === '' || value === null || value === undefined) {
+      setMacroDraftTarget('');
+      return;
     }
+    
+    // Permitir digitação livre, limpar apenas formatação
+    const cleaned = value.replace(/[^\d,]/g, '');
+    setMacroDraftTarget(cleaned);
+  };
+
+  const handleMacroTargetBlur = () => {
+    // Ao perder foco, converter para número
+    const parsed = parseCurrencyInput(macroDraftTarget);
+    setMacroDraftTarget(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
   };
 
   const handleMacroAmountChange = (index, value) => {
-    const next = Number(value);
+    // Permitir digitação livre
+    if (value === '' || value === null || value === undefined) {
+      setMacroDraft((prev) => {
+        const draft = [...prev];
+        draft[index] = {
+          ...draft[index],
+          amount: ''
+        };
+        return draft;
+      });
+      return;
+    }
+    
+    // Limpar formatação, manter apenas dígitos e vírgula
+    const cleaned = value.replace(/[^\d,]/g, '');
     setMacroDraft((prev) => {
       const draft = [...prev];
       draft[index] = {
         ...draft[index],
-        amount: Number.isFinite(next) && next >= 0 ? next : 0
+        amount: cleaned
+      };
+      return draft;
+    });
+  };
+
+  const handleMacroAmountBlur = (index) => {
+    // Ao perder foco, converter para número
+    setMacroDraft((prev) => {
+      const draft = [...prev];
+      const parsed = parseCurrencyInput(draft[index].amount);
+      draft[index] = {
+        ...draft[index],
+        amount: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
       };
       return draft;
     });
@@ -783,33 +845,43 @@ export default function BudgetsDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+          <Card className="border border-gray-300 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Total Gasto
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/10">
-                <TrendingDown className="h-4 w-4 text-flight-blue" />
+              <div className="p-2 rounded-lg bg-gray-200">
+                <TrendingDown className="h-4 w-4 text-gray-600" />
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {totalSpentValue.toLocaleString('pt-BR')}
+              <div className="text-2xl font-bold text-gray-700 mb-1">
+                - R$ {totalSpentValue.toLocaleString('pt-BR')}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
+          <Card className={`border shadow-lg hover:shadow-xl transition-all duration-200 ${
+            totalRemainingValue < 0 
+              ? 'border-red-300 bg-red-50' 
+              : 'border-flight-blue/20 bg-flight-blue/5'
+          }`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
                 Restante
               </CardTitle>
-              <div className="p-2 rounded-lg bg-flight-blue/10">
-                <DollarSign className="h-4 w-4 text-flight-blue" />
+              <div className={`p-2 rounded-lg ${
+                totalRemainingValue < 0 ? 'bg-red-100' : 'bg-flight-blue/10'
+              }`}>
+                <DollarSign className={`h-4 w-4 ${
+                  totalRemainingValue < 0 ? 'text-red-600' : 'text-flight-blue'
+                }`} />
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
+              <div className={`text-2xl font-bold mb-1 ${
+                totalRemainingValue < 0 ? 'text-red-600' : 'text-gray-900'
+              }`}>
                 R$ {totalRemainingValue.toLocaleString('pt-BR')}
               </div>
             </CardContent>
@@ -922,12 +994,12 @@ export default function BudgetsDashboard() {
                         <div className="flex items-center gap-2">
                           <span className="text-gray-500">R$</span>
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={macroDraftTarget}
+                            type="text"
+                            value={typeof macroDraftTarget === 'number' ? formatCurrencyInput(macroDraftTarget) : macroDraftTarget}
                             onChange={(event) => handleMacroTargetChange(event.target.value)}
+                            onBlur={handleMacroTargetBlur}
                             className="w-40 rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                            placeholder="0,00"
                           />
                         </div>
                       </div>
@@ -953,12 +1025,12 @@ export default function BudgetsDashboard() {
                             <div className="space-y-3">
                               <label className="text-sm font-medium text-gray-600">Valor planejado</label>
                               <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={entry.amount}
+                                type="text"
+                                value={typeof entry.amount === 'number' ? formatCurrencyInput(entry.amount) : entry.amount}
                                 onChange={(event) => handleMacroAmountChange(index, event.target.value)}
+                                onBlur={() => handleMacroAmountBlur(index)}
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                                placeholder="0,00"
                               />
                               {entry.spent > entry.amount && (
                                 <div className="flex items-start gap-2 text-xs text-red-600">
@@ -1210,12 +1282,12 @@ export default function BudgetsDashboard() {
                   <span className="text-gray-500">R$</span>
                   <input
                     id="macro-total-input"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={macroDraftTarget}
+                    type="text"
+                    value={typeof macroDraftTarget === 'number' ? formatCurrencyInput(macroDraftTarget) : macroDraftTarget}
                     onChange={(event) => handleMacroTargetChange(event.target.value)}
+                    onBlur={handleMacroTargetBlur}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                    placeholder="0,00"
                   />
                 </div>
               </div>
@@ -1242,12 +1314,12 @@ export default function BudgetsDashboard() {
                       <div className="space-y-3">
                         <label className="text-sm font-medium text-gray-600">Valor planejado</label>
                         <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={entry.amount}
+                          type="text"
+                          value={typeof entry.amount === 'number' ? formatCurrencyInput(entry.amount) : entry.amount}
                           onChange={(event) => handleMacroAmountChange(index, event.target.value)}
+                          onBlur={() => handleMacroAmountBlur(index)}
                           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
+                          placeholder="0,00"
                         />
                         {entry.spent > entry.amount && (
                           <div className="flex items-start gap-2 text-xs text-red-600">
@@ -1328,8 +1400,8 @@ export default function BudgetsDashboard() {
                 {macroDraftBalanced
                   ? 'Distribuição fechada em 100% do valor planejado.'
                   : macroDraftDiff > 0
-                  ? `Faltam ${formatCurrency(diffAbs)} para distribuir.`
-                  : `Excedeu ${formatCurrency(diffAbs)} do valor planejado.`}
+                  ? `Faltam ${formatCurrency(Math.abs(macroDraftDiff))} para distribuir.`
+                  : `Excedeu ${formatCurrency(Math.abs(macroDraftDiff))} do valor planejado.`}
               </div>
               {macroDraftHasOverspend && (
                 <div className="flex items-start gap-2 text-sm text-red-600">

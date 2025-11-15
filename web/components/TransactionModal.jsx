@@ -942,7 +942,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
                     <option value="">Selecione...</option>
-                    {incomeCategories.map(cat => (
+                    {[...incomeCategories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(cat => (
                       <option key={cat.id} value={cat.name}>{cat.name}</option>
                     ))}
                   </select>
@@ -994,7 +994,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
                     <option value="">Selecione...</option>
-                    {expenseCategories.map(cat => (
+                    {[...expenseCategories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                   </select>

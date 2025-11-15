@@ -119,7 +119,7 @@ const BudgetModal = ({
                 required
               >
                 <option value="">Selecione uma categoria...</option>
-                {categories.map(category => (
+                {[...categories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(category => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>

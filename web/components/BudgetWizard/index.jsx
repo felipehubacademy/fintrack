@@ -49,6 +49,7 @@ export default function BudgetWizard({
   const [showAnimation, setShowAnimation] = useState(true);
   const [autoRecalculate, setAutoRecalculate] = useState(true);
   const [expandedMacros, setExpandedMacros] = useState(['needs', 'wants', 'investments']);
+  const [fixedMacroTotals, setFixedMacroTotals] = useState({});
 
   const transitionToStep = (step) => {
     setShowAnimation(false);
@@ -95,7 +96,8 @@ export default function BudgetWizard({
     distributions.forEach((dist) => {
       const target = summary.find((item) => item.key === dist.macro_group);
       if (target) {
-        target.amount += dist.amount || 0;
+        const amount = typeof dist.amount === 'string' ? parseCurrencyInput(dist.amount) : Number(dist.amount) || 0;
+        target.amount += amount;
         target.percentage += dist.percentage || 0;
       }
     });
@@ -112,6 +114,16 @@ export default function BudgetWizard({
   const handleNext = () => {
     if (currentStep >= STEPS.SUBCATEGORIES) return;
     const nextStep = Math.min(currentStep + 1, STEPS.SUBCATEGORIES);
+    
+    // Se está avançando para SUBCATEGORIES, salvar os totais FIXOS dos macros
+    if (nextStep === STEPS.SUBCATEGORIES) {
+      const totals = {};
+      aggregatedSummary.forEach(macro => {
+        totals[macro.key] = macro.amount;
+      });
+      setFixedMacroTotals(totals);
+    }
+    
     transitionToStep(nextStep);
   };
 
@@ -156,18 +168,66 @@ export default function BudgetWizard({
     );
   };
 
-  const handleSubcategoryChange = (categoryId, newAmount) => {
+  const handleSubcategoryChange = (categoryId, newAmount, macroKey) => {
+    // Permitir digitação livre
+    if (newAmount === '' || newAmount === null || newAmount === undefined) {
+      setDistributions(prev => prev.map(dist => 
+        dist.categoryId === categoryId 
+          ? { ...dist, amount: '' }
+          : dist
+      ));
+      return;
+    }
+    
+    // Limpar formatação, manter apenas dígitos e vírgula
+    const cleaned = newAmount.replace(/[^\d,]/g, '');
     setDistributions(prev => prev.map(dist => 
-      dist.category_id === categoryId 
-        ? { ...dist, amount: newAmount }
+      dist.categoryId === categoryId 
+        ? { ...dist, amount: cleaned }
         : dist
     ));
+  };
+
+  const handleSubcategoryBlur = (categoryId, macroKey) => {
+    // Ao perder foco, validar e limitar ao disponível
+    const macroTotal = fixedMacroTotals[macroKey] || 0;
+    
+    setDistributions(prev => {
+      // Encontrar a categoria atual
+      const currentDist = prev.find(d => d.categoryId === categoryId);
+      if (!currentDist) return prev;
+      
+      // Converter o valor para número
+      let amount = typeof currentDist.amount === 'string' ? parseCurrencyInput(currentDist.amount) : Number(currentDist.amount) || 0;
+      if (!Number.isFinite(amount)) amount = 0;
+      if (amount < 0) amount = 0;
+      
+      // Calcular quanto as OUTRAS categorias estão usando
+      const otherCategoriesTotal = prev
+        .filter(d => d.macro_group === macroKey && d.categoryId !== categoryId)
+        .reduce((sum, d) => {
+          const val = typeof d.amount === 'string' ? parseCurrencyInput(d.amount) : Number(d.amount) || 0;
+          return sum + val;
+        }, 0);
+      
+      // Quanto está disponível para ESTA categoria
+      const available = Math.max(0, macroTotal - otherCategoriesTotal);
+      
+      // Limitar ao disponível
+      const finalAmount = Math.min(amount, available);
+      
+      return prev.map(dist => 
+        dist.categoryId === categoryId 
+          ? { ...dist, amount: finalAmount }
+          : dist
+      );
+    });
   };
 
   const handleDistributeEvenly = (macroKey) => {
     const income = parseCurrency(monthlyIncome);
     const macroCategories = distributions.filter(d => d.macro_group === macroKey);
-    const macroTotal = aggregatedSummary.find(m => m.key === macroKey)?.amount || 0;
+    const macroTotal = fixedMacroTotals[macroKey] || 0;
     
     if (macroCategories.length === 0 || macroTotal === 0) return;
     
@@ -229,6 +289,7 @@ export default function BudgetWizard({
     }
 
     const finalDistributions = adjustTo100Percent(distributions, income);
+    
     if (!validateDistribution(finalDistributions)) {
       warning('A distribuição precisa somar 100%');
       return;
@@ -241,29 +302,42 @@ export default function BudgetWizard({
     }
 
     const payload = finalDistributions
-      .filter((dist) => dist.categoryId && !dist.isPlaceholder)
-      .map((dist) => ({
-        organization_id: organization.id,
-        category_id: dist.categoryId,
-        limit_amount: dist.amount,
-        month_year: monthYear
-      }));
+      .filter((dist) => {
+        if (!dist.categoryId || dist.isPlaceholder) return false;
+        const amount = typeof dist.amount === 'string' ? parseCurrencyInput(dist.amount) : Number(dist.amount) || 0;
+        return amount > 0;
+      })
+      .map((dist) => {
+        const amount = typeof dist.amount === 'string' ? parseCurrencyInput(dist.amount) : Number(dist.amount) || 0;
+        return {
+          organization_id: organization.id,
+          category_id: dist.categoryId,
+          limit_amount: amount,
+          month_year: monthYear
+        };
+      });
+
+    if (payload.length === 0) {
+      showError('Nenhuma categoria com valor para salvar! Verifique se todas as categorias têm valores.');
+      return;
+    }
 
     setSaving(true);
     try {
+      // Deletar budgets antigos
       await supabase.from('budgets').delete().eq('organization_id', organization.id).eq('month_year', monthYear);
-      if (finalDistributions.length) {
-        const payload = finalDistributions
-          .filter((dist) => dist.categoryId && !dist.isPlaceholder)
-          .map((dist) => ({
-            organization_id: organization.id,
-            category_id: dist.categoryId,
-            limit_amount: dist.amount,
-            month_year: monthYear
-          }));
-        const { error } = await supabase.from('budgets').insert(payload);
-        if (error) throw error;
+      
+      // Inserir novos budgets
+      const { data: newBudgets, error } = await supabase.from('budgets').insert(payload).select();
+      if (error) throw error;
+      
+      // IMPORTANTE: Recalcular current_spent de cada budget
+      if (newBudgets && newBudgets.length > 0) {
+        for (const budget of newBudgets) {
+          await supabase.rpc('recalculate_budget_spent', { p_budget_id: budget.id });
+        }
       }
+      
       success('Planejamento salvo com sucesso!');
       transitionToStep(STEPS.SUCCESS);
     } catch (error) {
@@ -502,11 +576,14 @@ export default function BudgetWizard({
 
             <div className="max-w-[900px] mx-auto space-y-4 px-4 sm:px-6">
               {Object.keys(MACRO_LABELS).map((macroKey) => {
-                const macro = aggregatedSummary.find(m => m.key === macroKey);
+                const macroTotal = fixedMacroTotals[macroKey] || 0;
                 const macroCategories = distributions.filter(d => d.macro_group === macroKey);
                 const isExpanded = expandedMacros.includes(macroKey);
-                const macroSpent = macroCategories.reduce((sum, cat) => sum + (cat.amount || 0), 0);
-                const macroDiff = (macro?.amount || 0) - macroSpent;
+                const macroSpent = macroCategories.reduce((sum, cat) => {
+                  const amount = typeof cat.amount === 'string' ? parseCurrencyInput(cat.amount) : Number(cat.amount) || 0;
+                  return sum + amount;
+                }, 0);
+                const macroDiff = macroTotal - macroSpent;
                 const isBalanced = Math.abs(macroDiff) < 0.01;
 
                 return (
@@ -524,8 +601,7 @@ export default function BudgetWizard({
                           {MACRO_LABELS[macroKey]}
                         </span>
                         <span className="text-gray-600">
-                          · R$ {(macro?.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          {' '}({(macro?.percentage || 0).toFixed(1)}%)
+                          · R$ {macroTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="flex items-center space-x-3">
@@ -556,48 +632,50 @@ export default function BudgetWizard({
                           </Button>
                         </div>
 
-                        {macroCategories.map((category) => {
-                          const percentage = (macro?.amount || 0) > 0 
-                            ? ((category.amount || 0) / (macro?.amount || 1)) * 100 
-                            : 0;
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                          {macroCategories.map((category) => {
+                            const amount = typeof category.amount === 'string' ? parseCurrencyInput(category.amount) : Number(category.amount) || 0;
+                            const percentage = macroTotal > 0 
+                              ? (amount / macroTotal) * 100 
+                              : 0;
 
-                          return (
-                            <div key={category.category_id} className="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-900">
-                                  {category.category_name}
-                                </span>
-                                <span className="text-xs text-gray-600">
-                                  {percentage.toFixed(1)}%
-                                </span>
+                            return (
+                              <div key={category.categoryId} className="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-medium text-gray-900 truncate">
+                                    {category.categoryName}
+                                  </span>
+                                  <span className="text-xs text-gray-600 ml-2">
+                                    {percentage.toFixed(0)}%
+                                  </span>
+                                </div>
+                                <div className="space-y-2">
+                                  <input
+                                    type="text"
+                                    value={typeof category.amount === 'number' ? formatCurrencyInput(category.amount) : (category.amount || '')}
+                                    onChange={(e) => handleSubcategoryChange(category.categoryId, e.target.value, macroKey)}
+                                    onBlur={() => handleSubcategoryBlur(category.categoryId, macroKey)}
+                                    className="w-full px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-1 focus:ring-flight-blue"
+                                    placeholder="0,00"
+                                  />
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max={macroTotal}
+                                    step="1"
+                                    value={amount}
+                                    onChange={(e) => handleSubcategoryChange(category.categoryId, e.target.value, macroKey)}
+                                    className="w-full"
+                                  />
+                                </div>
                               </div>
-                              <div className="flex items-center space-x-3">
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max={macro?.amount || 0}
-                                  step="10"
-                                  value={category.amount || 0}
-                                  onChange={(e) => handleSubcategoryChange(category.category_id, parseFloat(e.target.value))}
-                                  className="flex-1"
-                                />
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max={macro?.amount || 0}
-                                  step="10"
-                                  value={(category.amount || 0).toFixed(2)}
-                                  onChange={(e) => handleSubcategoryChange(category.category_id, parseFloat(e.target.value) || 0)}
-                                  className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-flight-blue"
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
 
                         {!isBalanced && (
                           <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs text-orange-700">
-                            ⚠️ A soma das subcategorias deve totalizar R$ {(macro?.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            ⚠️ A soma das subcategorias deve totalizar R$ {macroTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </div>
                         )}
                       </div>
@@ -635,7 +713,7 @@ export default function BudgetWizard({
             <div className="bg-white border border-flight-blue/30 rounded-3xl px-10 py-10 shadow-lg space-y-5 max-w-3xl">
               <h2 className="text-4xl font-bold text-flight-blue">Parabéns!</h2>
               <p className="text-lg text-flight-blue/80 leading-relaxed">
-                Seu planejamento mensal está definido. Vamos monitorar automaticamente seus gastos e avisar quando as metas estiverem próximas do limite. Ajustes finos podem ser feitos em <strong>Pendências e Alertas</strong>.
+                Seu planejamento mensal está definido! Vamos monitorar automaticamente seus gastos e avisar quando as metas estiverem próximas do limite. Você pode ajustar os valores a qualquer momento clicando em <strong>"Editar macro"</strong> na página de Orçamentos.
               </p>
             </div>
             <Button onClick={handleFinish} className="px-8 py-3 text-lg">
@@ -741,6 +819,25 @@ function parseCurrency(value) {
 function formatCurrency(value) {
   const number = Number(value) || 0;
   return number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Formata valor para input (1000.5 -> "1.000,50")
+function formatCurrencyInput(value) {
+  if (!value && value !== 0) return '';
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(numValue)) return '';
+  return numValue.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+// Converte input formatado para número ("1.000,50" -> 1000.5)
+function parseCurrencyInput(formattedValue) {
+  if (!formattedValue) return 0;
+  const cleaned = formattedValue.replace(/\./g, '').replace(',', '.');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
 }
 
 function formatMonthYear(selectedMonth) {
