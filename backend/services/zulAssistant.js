@@ -139,7 +139,7 @@ class ZulAssistant {
     let normalized = text;
     
     // Erros comuns: "Zul" ou "Zuzu" + verbo (case insensitive)
-    // Padrão: jul/zu/zuzu + verbo → apenas o verbo
+    // Padrão: jul/zu/zuzu/zulga + verbo → apenas o verbo
     normalized = normalized.replace(/\bjulgastei\b/gi, 'gastei');
     normalized = normalized.replace(/\bjulpaguei\b/gi, 'paguei');
     normalized = normalized.replace(/\bjulcomprei\b/gi, 'comprei');
@@ -149,6 +149,27 @@ class ZulAssistant {
     normalized = normalized.replace(/\bzuzugastei\b/gi, 'gastei');
     normalized = normalized.replace(/\bzuzupaguei\b/gi, 'paguei');
     normalized = normalized.replace(/\bzuzucomprei\b/gi, 'comprei');
+    normalized = normalized.replace(/\bzulgastei\b/gi, 'gastei');
+    normalized = normalized.replace(/\bzulpaguei\b/gi, 'paguei');
+    normalized = normalized.replace(/\bzulcomprei\b/gi, 'comprei');
+    normalized = normalized.replace(/\bzulga\b/gi, 'gastei'); // "Zulga" = "Zul" + "ga" (início de "gastei")
+    
+    // Remover "Zul", "Zuzu", "jul" do início da mensagem (se aparecer sozinho)
+    normalized = normalized.replace(/^(zul|zuzu|jul)\s+/gi, '');
+    
+    // Corrigir valores mal transcritos: "C" + número → formato monetário
+    // Ex: "C1179" → "11,79" (C pode ser erro do Whisper para "onze")
+    normalized = normalized.replace(/\bC(\d{3,4})\b/g, (match, num) => {
+      // Se for 3-4 dígitos, provavelmente é centavos mal transcritos
+      if (num.length === 3) {
+        // "C117" → "1,17" (centavos)
+        return num.slice(0, -2) + ',' + num.slice(-2);
+      } else if (num.length === 4) {
+        // "C1179" → "11,79" (reais e centavos)
+        return num.slice(0, -2) + ',' + num.slice(-2);
+      }
+      return match; // Não altera se não for padrão esperado
+    });
     
     // Verbos compartilhados
     normalized = normalized.replace(/\bjulgastamos\b/gi, 'gastamos');
