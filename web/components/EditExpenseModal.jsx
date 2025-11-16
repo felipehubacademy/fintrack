@@ -25,18 +25,22 @@ export default function EditExpenseModal({
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cards, setCards] = useState([]);
   const [editData, setEditData] = useState({
     owner: '',
     description: '',
     category_id: '', // Mudar para category_id ao invés de category (texto)
     payment_method: '',
     amount: '',
-    date: ''
+    date: '',
+    card_id: '',
+    installments: 1
   });
   const [splitDetails, setSplitDetails] = useState([]);
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
   const isShared = !isSoloUser && editData.owner === (finalOrganization?.name || 'Organização');
+  const isCredit = editData.payment_method === 'credit_card';
 
   // Preparar opções de responsável (todos os cost centers ativos + Compartilhado)
   const userCostCenter = useMemo(() => {
@@ -120,7 +124,9 @@ export default function EditExpenseModal({
         category_id: data.category_id || '', // Usar category_id
         payment_method: data.payment_method || '',
         amount: data.amount ? formatCurrencyInput(data.amount) : '',
-        date: data.date || ''
+        date: data.date || '',
+        card_id: data.card_id || '',
+        installments: data.installments || 1
       });
 
       // Se tiver splits, carregar
@@ -148,6 +154,19 @@ export default function EditExpenseModal({
           amount: (parseFloat(data.amount) * parseFloat(cc.split_percentage || 0)) / 100
         }));
         setSplitDetails(defaultSplits);
+      }
+
+      // Carregar cartões ativos da organização
+      if (finalOrganization?.id && finalOrganization.id !== 'default-org') {
+        const { data: cardsData } = await supabase
+          .from('cards')
+          .select('id,name,available_limit,credit_limit')
+          .eq('organization_id', finalOrganization.id)
+          .eq('is_active', true)
+          .order('name');
+        setCards(cardsData || []);
+      } else {
+        setCards([]);
       }
     } catch (error) {
       console.error('Erro ao buscar despesa:', error);
@@ -280,23 +299,83 @@ export default function EditExpenseModal({
       const costCenterId = selectedOption?.isShared ? null : selectedOption?.id;
       const category = categories.find(c => c.id === editData.category_id);
 
-      // Atualizar despesa
-      const { error: updateError } = await supabase
-        .from('expenses')
-        .update({
-          owner: editData.owner.trim(),
-          cost_center_id: costCenterId,
-          is_shared: isShared,
-          description: editData.description.trim(),
-          category_id: editData.category_id || null, // Salvar category_id
-          category: category?.name || null, // Salvar também o nome (legado)
-          payment_method: editData.payment_method,
-          amount: parseCurrencyInput(editData.amount),
-          date: editData.date
-        })
-        .eq('id', expenseId);
+      // Se usuário escolheu crédito, converter em parcelas via RPC
+      if (isCredit) {
+        if (!editData.card_id) {
+          warning('Selecione um cartão de crédito');
+          setSaving(false);
+          return;
+        }
+        if (!editData.installments || editData.installments < 1) {
+          warning('Selecione o número de parcelas');
+          setSaving(false);
+          return;
+        }
 
-      if (updateError) throw updateError;
+        const ownerForRPC = isShared ? 'Compartilhado' : editData.owner;
+
+        // Preparar split template (deduplicado)
+        const splitTemplate = isShared && splitDetails.length > 0
+          ? Object.values(
+              splitDetails.reduce((acc, split) => {
+                const id = split.cost_center_id;
+                if (!id) return acc;
+                if (!acc[id]) {
+                  acc[id] = { cost_center_id: id, percentage: 0, amount: 0 };
+                }
+                acc[id].percentage += Number(split.percentage) || 0;
+                acc[id].amount += Number(split.amount) || 0;
+                return acc;
+              }, {})
+            ).filter(item => (item.percentage || 0) !== 0 || (item.amount || 0) !== 0)
+          : null;
+
+        // Criar novas parcelas
+        const { data: parentExpenseId, error: rpcError } = await supabase.rpc('create_installments', {
+          p_amount: parseCurrencyInput(editData.amount),
+          p_installments: Number(editData.installments),
+          p_description: editData.description.trim(),
+          p_date: editData.date,
+          p_card_id: editData.card_id,
+          p_category_id: category?.id || null,
+          p_cost_center_id: costCenterId || null,
+          p_owner: ownerForRPC,
+          p_organization_id: finalOrganization.id,
+          p_user_id: orgUser.id,
+          p_whatsapp_message_id: null,
+          p_split_template: splitTemplate
+        });
+        if (rpcError) throw rpcError;
+
+        // Se compartilhado, atualizar owner visível para nome da organização
+        if (isShared && ownerForRPC !== editData.owner) {
+          await supabase
+            .from('expenses')
+            .update({ owner: editData.owner.trim(), is_shared: true })
+            .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+        }
+
+        // Deletar a despesa antiga editada (converter para novas parcelas)
+        await supabase.from('expenses').delete().eq('id', expenseId);
+
+      } else {
+        // Atualizar despesa (não cartão de crédito)
+        const { error: updateError } = await supabase
+          .from('expenses')
+          .update({
+            owner: editData.owner.trim(),
+            cost_center_id: costCenterId,
+            is_shared: isShared,
+            description: editData.description.trim(),
+            category_id: editData.category_id || null, // Salvar category_id
+            category: category?.name || null, // Salvar também o nome (legado)
+            payment_method: editData.payment_method,
+            amount: parseCurrencyInput(editData.amount),
+            date: editData.date
+          })
+          .eq('id', expenseId);
+        if (updateError) throw updateError;
+      }
 
       // Se for compartilhado, gerenciar splits
       if (isShared) {
@@ -472,6 +551,42 @@ export default function EditExpenseModal({
                   <option value="other">Outros</option>
                 </select>
               </div>
+
+              {isCredit && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Cartão *</label>
+                    <select
+                      value={editData.card_id}
+                      onChange={(e) => setEditData({ ...editData, card_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                      disabled={cards.length === 0}
+                    >
+                      <option value="">Selecione...</option>
+                      {cards.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    {cards.length === 0 && (
+                      <p className="mt-2 text-sm text-gray-500">
+                        Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Parcelas *</label>
+                    <select
+                      value={editData.installments}
+                      onChange={(e) => setEditData({ ...editData, installments: Number(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                    >
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <option key={i+1} value={i+1}>{i+1}x</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Configuração de Divisão (Despesa Compartilhada) */}

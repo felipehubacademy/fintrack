@@ -351,6 +351,171 @@ Mensagem: "${userMessage}"`;
       return { multiplas: false, despesas: [] };
     }
   }
+
+  /**
+   * 📄 Parse de extrato/fatura de cartão (GPT-4 Vision)
+   * @param {Array<string>} imagesBase64 - Array de imagens em base64
+   * @param {Array} categories - Categorias disponíveis da organização
+   * @returns {Promise<Array>} Array de transações extraídas
+   */
+  async parseStatementPDF(imagesBase64, categories = []) {
+    try {
+      console.log(`📄 [GPT-4 Vision] Analisando ${imagesBase64.length} página(s)...`);
+      
+      // Preparar lista de categorias para o prompt
+      const categoriesText = categories.length > 0
+        ? `\n\nCategorias disponíveis: ${categories.map(c => c.name).join(', ')}`
+        : '';
+      
+      const prompt = `Analise este extrato/fatura de cartão de crédito brasileiro e extraia TODAS as transações.
+
+REGRAS IMPORTANTES:
+1. Data: YYYY-MM-DD (preservar mês original da transação)
+2. Valores:
+   - Compras/débitos: positivos (ex: 147.50)
+   - Estornos/créditos: negativos (ex: -147.50)
+   - Pagamentos parciais: negativos (ex: -2000.00)
+3. Identificação:
+   - is_refund: true se "ESTORNO"/"CRÉDITO"/"DEVOLUÇÃO"/"REEMBOLSO"
+   - is_partial_payment: true se "PAGAMENTO"/"PAGTO FATURA"/"ANTECIPAÇÃO"
+4. Categoria: OBRIGATÓRIA - sugerir baseado no estabelecimento${categoriesText}
+
+Retorne APENAS JSON array (sem markdown, sem comentários):
+[
+  {
+    "date": "2025-10-15",
+    "description": "Supermercado Pão de Açúcar",
+    "amount": 147.50,
+    "is_refund": false,
+    "is_partial_payment": false,
+    "category_suggestion": "Alimentação"
+  }
+]
+
+Extraia TODAS as transações, preservando datas originais.`;
+
+      // Preparar mensagens com imagens
+      const imageMessages = imagesBase64.map((base64) => ({
+        type: 'image_url',
+        image_url: {
+          url: `data:image/png;base64,${base64}`,
+          detail: 'high'
+        }
+      }));
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              ...imageMessages
+            ]
+          }
+        ],
+        max_tokens: 4096,
+        temperature: 0.1
+      });
+
+      const content = response.choices[0].message.content.trim();
+      console.log('📄 [GPT-4 Vision] Resposta recebida');
+      
+      // Extrair JSON da resposta (remover markdown se houver)
+      let jsonText = content;
+      const jsonMatch = content.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[1];
+      } else if (content.startsWith('[') && content.endsWith(']')) {
+        jsonText = content;
+      }
+      
+      const transactions = JSON.parse(jsonText);
+      console.log(`✅ [GPT-4 Vision] ${transactions.length} transações extraídas`);
+      
+      return transactions;
+    } catch (error) {
+      console.error('❌ [GPT-4 Vision] Erro:', error);
+      throw new Error(`Erro ao analisar PDF: ${error.message}`);
+    }
+  }
+
+  /**
+   * 🏷️ Categorizar transações usando GPT-4
+   * @param {Array} transactions - Transações sem categoria
+   * @param {Array} categories - Categorias disponíveis
+   * @returns {Promise<Array>} Transações com category_id
+   */
+  async categorizeTransactions(transactions, categories) {
+    try {
+      console.log(`🏷️ [GPT-4] Categorizando ${transactions.length} transações...`);
+      
+      if (categories.length === 0) {
+        console.warn('⚠️ [GPT-4] Nenhuma categoria disponível');
+        return transactions.map(tx => ({ ...tx, category_id: null }));
+      }
+      
+      // Preparar mapeamento de categorias
+      const categoryMap = categories.map(c => ({
+        id: c.id,
+        name: c.name,
+        keywords: [c.name.toLowerCase()]
+      }));
+      
+      const prompt = `Categorize as seguintes transações brasileiras.
+
+Categorias disponíveis:
+${categoryMap.map(c => `- ${c.name} (id: ${c.id})`).join('\n')}
+
+Transações:
+${transactions.map((tx, i) => `${i + 1}. ${tx.description} - R$ ${tx.amount}`).join('\n')}
+
+Retorne APENAS um JSON array com os IDs das categorias (mesma ordem):
+["category_id_1", "category_id_2", ...]
+
+Se não conseguir categorizar, use null.`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+        temperature: 0.1
+      });
+
+      const content = response.choices[0].message.content.trim();
+      
+      // Extrair JSON
+      let jsonText = content;
+      const jsonMatch = content.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[1];
+      }
+      
+      const categoryIds = JSON.parse(jsonText);
+      
+      // Mapear category_id para cada transação
+      const categorized = transactions.map((tx, i) => ({
+        ...tx,
+        category_id: categoryIds[i] || null
+      }));
+      
+      console.log(`✅ [GPT-4] Transações categorizadas`);
+      return categorized;
+    } catch (error) {
+      console.error('❌ [GPT-4] Erro ao categorizar:', error);
+      // Fallback: tentar match simples por keywords
+      return transactions.map(tx => {
+        const desc = tx.description.toLowerCase();
+        const category = categories.find(c => 
+          desc.includes(c.name.toLowerCase())
+        );
+        return {
+          ...tx,
+          category_id: category?.id || null
+        };
+      });
+    }
+  }
 }
 
 export default OpenAIService;

@@ -305,12 +305,24 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         // Mas salvar o nome da org no owner depois
         const ownerForRPC = willBeShared ? 'Compartilhado' : form.owner_name;
         
+        // Deduplicar por cost_center_id para evitar violar UNIQUE (expense_id, cost_center_id)
         const splitTemplate = willBeShared && splitDetails.length > 0
-          ? splitDetails.map(split => ({
-              cost_center_id: split.cost_center_id,
-              percentage: Number(split.percentage) || 0,
-              amount: Number(split.amount) || 0
-            }))
+          ? Object.values(
+              splitDetails.reduce((acc, split) => {
+                const id = split.cost_center_id;
+                if (!id) return acc;
+                if (!acc[id]) {
+                  acc[id] = {
+                    cost_center_id: id,
+                    percentage: 0,
+                    amount: 0
+                  };
+                }
+                acc[id].percentage += Number(split.percentage) || 0;
+                acc[id].amount += Number(split.amount) || 0;
+                return acc;
+              }, {})
+            ).filter(item => (item.percentage || 0) !== 0 || (item.amount || 0) !== 0)
           : null;
 
         const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {

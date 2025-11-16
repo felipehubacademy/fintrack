@@ -83,3 +83,4 @@ WABA_ID=1305894714600979  # Opcional (usa valor padrão se não configurado)
 - O template é do tipo UTILITY, permitindo envio a qualquer momento (sem janela de 24h)
 
 
+
