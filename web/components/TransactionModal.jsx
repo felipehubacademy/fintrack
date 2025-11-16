@@ -597,9 +597,10 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         if (isCredit) {
           if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
           
-          // Para a RPC, enviar "Compartilhado" se for compartilhado (a função detecta isso)
-          // Mas salvar o nome da org no owner depois
-          const ownerForRPC = willBeShared ? 'Compartilhado' : form.owner_name;
+          // ⚠️ IMPORTANTE: Enviar o nome da organização (não "Compartilhado")
+          // A função SQL detecta compartilhado por: cost_center_id=NULL + owner='Compartilhado'
+          // MAS o Zul envia o nome da org, então vamos fazer igual para evitar duplicação de splits
+          const ownerForRPC = willBeShared ? form.owner_name : form.owner_name;
           
           console.log('💾 [TRANSACTION MODAL] Criando parcelas:', {
             amount: form.amount,
@@ -610,29 +611,10 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             cost_center_id: costCenter?.id || null
           });
           
-          // Deduplicar por cost_center_id para evitar violar UNIQUE (expense_id, cost_center_id)
-          console.log('🔍 [TRANSACTION MODAL] splitDetails ANTES da deduplicação:', JSON.stringify(splitDetails, null, 2));
-          
-          const splitTemplate = willBeShared && splitDetails.length > 0
-            ? Object.values(
-                splitDetails.reduce((acc, split) => {
-                  const id = split.cost_center_id;
-                  if (!id) return acc;
-                  if (!acc[id]) {
-                    acc[id] = {
-                      cost_center_id: id,
-                      percentage: 0,
-                      amount: 0
-                    };
-                  }
-                  acc[id].percentage += Number(split.percentage) || 0;
-                  acc[id].amount += Number(split.amount) || 0;
-                  return acc;
-                }, {})
-              ).filter(item => (item.percentage || 0) !== 0 || (item.amount || 0) !== 0)
-            : null;
-          
-          console.log('🔍 [TRANSACTION MODAL] splitTemplate DEPOIS da deduplicação:', JSON.stringify(splitTemplate, null, 2));
+          // ⚠️ IMPORTANTE: NÃO enviar p_split_template (como o Zul faz)
+          // A função SQL NÃO deve criar splits automaticamente
+          // Os splits serão criados DEPOIS pela lógica do frontend
+          console.log('🔍 [TRANSACTION MODAL] willBeShared:', willBeShared, 'splitDetails:', splitDetails.length);
 
           const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
             p_amount: parseCurrencyInput(form.amount),
@@ -642,11 +624,11 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             p_card_id: form.card_id,
             p_category_id: category?.id || null,
             p_cost_center_id: costCenter?.id || null,
-            p_owner: ownerForRPC, // "Compartilhado" para despesa compartilhada
+            p_owner: ownerForRPC, // Nome da organização (como o Zul)
             p_organization_id: organization.id,
             p_user_id: orgUser.id,
             p_whatsapp_message_id: null,
-            p_split_template: splitTemplate
+            p_split_template: null // ← NÃO enviar splits (como o Zul)
           });
           
           if (error) {
@@ -701,19 +683,62 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             }
           }
 
-          if (!splitTemplate && willBeShared && splitDetails.length > 0) {
-            const splitsToInsert = splitDetails.map(split => ({
-              expense_id: parentExpenseId,
-              cost_center_id: split.cost_center_id,
-              percentage: split.percentage,
-              amount: split.amount
-            }));
+          // Inserir splits manualmente para TODAS as parcelas (não apenas a primeira)
+          if (willBeShared && splitDetails.length > 0) {
+            console.log('🔍 [TRANSACTION MODAL] Inserindo splits para todas as parcelas...');
+            
+            // Buscar todas as parcelas criadas (incluindo a primeira)
+            const { data: allInstallments, error: fetchError } = await supabase
+              .from('expenses')
+              .select('id')
+              .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+            
+            if (fetchError) throw fetchError;
+            
+            console.log('📊 [TRANSACTION MODAL] Parcelas encontradas:', allInstallments.length);
+            
+            // Deduplic ar splitDetails por cost_center_id
+            const uniqueSplits = Object.values(
+              splitDetails.reduce((acc, split) => {
+                const id = split.cost_center_id;
+                if (!id) return acc;
+                if (!acc[id]) {
+                  acc[id] = {
+                    cost_center_id: id,
+                    percentage: 0,
+                    amount: 0
+                  };
+                }
+                acc[id].percentage += Number(split.percentage) || 0;
+                acc[id].amount += Number(split.amount) || 0;
+                return acc;
+              }, {})
+            );
+            
+            console.log('📊 [TRANSACTION MODAL] Splits únicos:', uniqueSplits.length);
+            
+            // Inserir splits para cada parcela
+            const splitsToInsert = allInstallments.flatMap(installment => 
+              uniqueSplits.map(split => ({
+                expense_id: installment.id,
+                cost_center_id: split.cost_center_id,
+                percentage: split.percentage,
+                amount: split.amount / Number(form.installments) // Dividir pelo número de parcelas
+              }))
+            );
+            
+            console.log('📊 [TRANSACTION MODAL] Total de splits a inserir:', splitsToInsert.length);
 
             const { error: splitError } = await supabase
               .from('expense_splits')
               .insert(splitsToInsert);
 
-            if (splitError) throw splitError;
+            if (splitError) {
+              console.error('❌ [TRANSACTION MODAL] Erro ao inserir splits:', splitError);
+              throw splitError;
+            }
+            
+            console.log('✅ [TRANSACTION MODAL] Splits inseridos com sucesso');
           }
         } else {
           const dataToSave = {

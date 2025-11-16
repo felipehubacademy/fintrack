@@ -301,33 +301,10 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
       if (isCredit) {
         if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
         
-        // Para a RPC, enviar "Compartilhado" se for compartilhado (a função detecta isso)
-        // Mas salvar o nome da org no owner depois
-        const ownerForRPC = willBeShared ? 'Compartilhado' : form.owner_name;
+        // ⚠️ IMPORTANTE: Enviar o nome da organização (como o Zul faz)
+        const ownerForRPC = form.owner_name;
         
-        // Deduplicar por cost_center_id para evitar violar UNIQUE (expense_id, cost_center_id)
-        console.log('🔍 [EXPENSE MODAL] splitDetails ANTES da deduplicação:', JSON.stringify(splitDetails, null, 2));
-        
-        const splitTemplate = willBeShared && splitDetails.length > 0
-          ? Object.values(
-              splitDetails.reduce((acc, split) => {
-                const id = split.cost_center_id;
-                if (!id) return acc;
-                if (!acc[id]) {
-                  acc[id] = {
-                    cost_center_id: id,
-                    percentage: 0,
-                    amount: 0
-                  };
-                }
-                acc[id].percentage += Number(split.percentage) || 0;
-                acc[id].amount += Number(split.amount) || 0;
-                return acc;
-              }, {})
-            ).filter(item => (item.percentage || 0) !== 0 || (item.amount || 0) !== 0)
-          : null;
-        
-        console.log('🔍 [EXPENSE MODAL] splitTemplate DEPOIS da deduplicação:', JSON.stringify(splitTemplate, null, 2));
+        console.log('🔍 [EXPENSE MODAL] willBeShared:', willBeShared, 'splitDetails:', splitDetails.length);
 
         const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
           p_amount: parseCurrencyInput(form.amount),
@@ -336,12 +313,12 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           p_date: form.date,
           p_card_id: form.card_id,
           p_category_id: category?.id || null,
-          p_cost_center_id: costCenter?.id || null, // NULL para compartilhado
-          p_owner: ownerForRPC, // "Compartilhado" para despesa compartilhada
+          p_cost_center_id: costCenter?.id || null,
+          p_owner: ownerForRPC, // Nome da organização (como o Zul)
           p_organization_id: organization.id,
           p_user_id: orgUser.id,
           p_whatsapp_message_id: null,
-          p_split_template: splitTemplate
+          p_split_template: null // ← NÃO enviar splits (como o Zul)
         });
         if (error) throw error;
         
@@ -387,6 +364,64 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
             console.error('⚠️ Erro ao atualizar limite disponível do cartão:', cardUpdateError);
             // Não falhar por causa disso
           }
+        }
+
+        // Inserir splits manualmente para TODAS as parcelas
+        if (willBeShared && splitDetails.length > 0) {
+          console.log('🔍 [EXPENSE MODAL] Inserindo splits para todas as parcelas...');
+          
+          // Buscar todas as parcelas criadas
+          const { data: allInstallments, error: fetchError } = await supabase
+            .from('expenses')
+            .select('id')
+            .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+          
+          if (fetchError) throw fetchError;
+          
+          console.log('📊 [EXPENSE MODAL] Parcelas encontradas:', allInstallments.length);
+          
+          // Deduplicar splitDetails por cost_center_id
+          const uniqueSplits = Object.values(
+            splitDetails.reduce((acc, split) => {
+              const id = split.cost_center_id;
+              if (!id) return acc;
+              if (!acc[id]) {
+                acc[id] = {
+                  cost_center_id: id,
+                  percentage: 0,
+                  amount: 0
+                };
+              }
+              acc[id].percentage += Number(split.percentage) || 0;
+              acc[id].amount += Number(split.amount) || 0;
+              return acc;
+            }, {})
+          );
+          
+          console.log('📊 [EXPENSE MODAL] Splits únicos:', uniqueSplits.length);
+          
+          // Inserir splits para cada parcela
+          const splitsToInsert = allInstallments.flatMap(installment => 
+            uniqueSplits.map(split => ({
+              expense_id: installment.id,
+              cost_center_id: split.cost_center_id,
+              percentage: split.percentage,
+              amount: split.amount / Number(form.installments)
+            }))
+          );
+          
+          console.log('📊 [EXPENSE MODAL] Total de splits a inserir:', splitsToInsert.length);
+
+          const { error: splitError } = await supabase
+            .from('expense_splits')
+            .insert(splitsToInsert);
+
+          if (splitError) {
+            console.error('❌ [EXPENSE MODAL] Erro ao inserir splits:', splitError);
+            throw splitError;
+          }
+          
+          console.log('✅ [EXPENSE MODAL] Splits inseridos com sucesso');
         }
 
       } else {
