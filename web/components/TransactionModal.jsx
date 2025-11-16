@@ -611,6 +611,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           });
           
           // Deduplicar por cost_center_id para evitar violar UNIQUE (expense_id, cost_center_id)
+          console.log('🔍 [TRANSACTION MODAL] splitDetails ANTES da deduplicação:', JSON.stringify(splitDetails, null, 2));
+          
           const splitTemplate = willBeShared && splitDetails.length > 0
             ? Object.values(
                 splitDetails.reduce((acc, split) => {
@@ -629,6 +631,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                 }, {})
               ).filter(item => (item.percentage || 0) !== 0 || (item.amount || 0) !== 0)
             : null;
+          
+          console.log('🔍 [TRANSACTION MODAL] splitTemplate DEPOIS da deduplicação:', JSON.stringify(splitTemplate, null, 2));
 
           const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
             p_amount: parseCurrencyInput(form.amount),
