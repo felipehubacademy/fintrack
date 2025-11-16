@@ -9,6 +9,7 @@ import LoadingLogo from '../../components/LoadingLogo';
 import Header from '../../components/Header';
 import NotificationModal from '../../components/NotificationModal';
 import MemberDetailsModal from '../../components/MemberDetailsModal';
+import PaymentAllocationModal from '../../components/PaymentAllocationModal';
 import { 
   Calendar,
   TrendingUp,
@@ -25,6 +26,7 @@ export default function MonthlyClosing() {
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
   const { warning } = useNotificationContext();
+  const [showAllocationModal, setShowAllocationModal] = useState(false);
 
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -58,9 +60,9 @@ export default function MonthlyClosing() {
     }
   };
   const [data, setData] = useState({
-    incomes: [],
+    allocations: [],
     expenses: [],
-    totalIncome: 0,
+    totalAllocations: 0,
     totalExpense: 0,
     cashExpenseTotal: 0,
     creditInvoiceTotal: 0,
@@ -68,7 +70,7 @@ export default function MonthlyClosing() {
     creditInvoices: [],
     individualSummaries: [],
     familySharedTotals: {
-      incomes: 0,
+      allocations: 0,
       cash: 0,
       credit: 0
     },
@@ -123,16 +125,17 @@ export default function MonthlyClosing() {
       const fetchEndStr = formatDate(fetchEnd);
 
       const [
-        { data: incomesData, error: incomesError },
+        { data: allocationsData, error: allocationsError },
         { data: expensesData, error: expensesError },
         { data: cardsData, error: cardsError }
       ] = await Promise.all([
         supabase
-        .from('incomes')
+        .from('payment_allocations')
         .select(`
           *,
             cost_center:cost_centers(id, name, color, default_split_percentage),
-          income_splits(
+          bank_account:bank_accounts(name),
+          payment_allocation_splits(
             id,
             cost_center_id,
               cost_center:cost_centers(id, name, color, default_split_percentage),
@@ -141,7 +144,6 @@ export default function MonthlyClosing() {
           )
         `)
         .eq('organization_id', organization.id)
-        .eq('status', 'confirmed')
           .gte('date', fetchStartStr)
           .lte('date', fetchEndStr),
         supabase
@@ -167,20 +169,20 @@ export default function MonthlyClosing() {
           .eq('organization_id', organization.id)
       ]);
 
-      if (incomesError) throw incomesError;
+      if (allocationsError) throw allocationsError;
       if (expensesError) throw expensesError;
       if (cardsError) throw cardsError;
 
-      const confirmedIncomes = incomesData || [];
+      const confirmedAllocations = allocationsData || [];
       const confirmedExpenses = expensesData || [];
       const activeCreditCards = (cardsData || []).filter(
         (card) => card && card.is_active !== false && card.type === 'credit'
       );
 
-      const monthIncomes = confirmedIncomes.filter(
-        (income) => income.date >= monthStartStr && income.date <= monthEndStr
+      const monthAllocations = confirmedAllocations.filter(
+        (allocation) => allocation.date >= monthStartStr && allocation.date <= monthEndStr
       );
-      const totalIncome = monthIncomes.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
+      const totalAllocations = monthAllocations.reduce((sum, alloc) => sum + Number(alloc.amount || 0), 0);
 
       const monthCashExpenses = confirmedExpenses.filter(
         (expense) =>
@@ -294,7 +296,7 @@ export default function MonthlyClosing() {
       ) * 100) / 100;
 
       const totalExpense = cashExpenseTotal + creditInvoiceTotal;
-      const balance = totalIncome - totalExpense;
+      const balance = totalAllocations - totalExpense;
 
 
       const activeIndividualCenters = (costCenters || []).filter(
@@ -308,7 +310,7 @@ export default function MonthlyClosing() {
             id: cc.id,
             name: cc.name,
             color: cc.color || '#207DFF',
-            incomes: { individual: 0, shared: 0 },
+            allocations: { individual: 0, shared: 0 },
             cash: { individual: 0, shared: 0 },
             credit: { individual: 0, shared: 0 }
           }
@@ -316,7 +318,7 @@ export default function MonthlyClosing() {
       );
 
       const familySharedTotals = {
-        incomes: 0,
+        allocations: 0,
         cash: 0,
         credit: 0
       };
@@ -348,20 +350,26 @@ export default function MonthlyClosing() {
         }
       };
 
-      monthIncomes.forEach((income) => {
-        const amount = Number(income.amount || 0);
-        if (income.is_shared) {
-          if (income.income_splits && income.income_splits.length > 0) {
-            income.income_splits.forEach((split) => {
-              addToSummary(split.cost_center_id, 'incomes', Number(split.amount || 0), 'shared');
+      monthAllocations.forEach((allocation) => {
+        const amount = Number(allocation.amount || 0);
+        
+        // Se é organizacional (ownership_type = 'organization'), usar splits
+        if (allocation.ownership_type === 'organization') {
+          if (allocation.payment_allocation_splits && allocation.payment_allocation_splits.length > 0) {
+            allocation.payment_allocation_splits.forEach((split) => {
+              addToSummary(split.cost_center_id, 'allocations', Number(split.amount || 0), 'shared');
             });
           } else {
-            distributeSharedAmount(amount, 'incomes');
+            distributeSharedAmount(amount, 'allocations');
           }
-        } else if (income.cost_center_id) {
-          addToSummary(income.cost_center_id, 'incomes', amount, 'individual');
+        } 
+        // Se é de membro (ownership_type = 'member')
+        else if (allocation.ownership_type === 'member' && allocation.cost_center_id) {
+          // allocation_target indica se é para despesas individuais ou compartilhadas
+          const allocType = allocation.allocation_target === 'individual' ? 'individual' : 'shared';
+          addToSummary(allocation.cost_center_id, 'allocations', amount, allocType);
         } else {
-          familySharedTotals.incomes = Math.round((familySharedTotals.incomes + amount) * 100) / 100;
+          familySharedTotals.allocations = Math.round((familySharedTotals.allocations + amount) * 100) / 100;
         }
       });
 
@@ -383,29 +391,36 @@ export default function MonthlyClosing() {
       const memberTransactionsMap = new Map();
       activeIndividualCenters.forEach((cc) => {
         memberTransactionsMap.set(cc.id, {
-          incomes: [],
+          allocations: [],
           cashExpenses: [],
           creditExpenses: []
         });
       });
 
-      // Processar incomes
-      monthIncomes.forEach((income) => {
-        const amount = Number(income.amount || 0);
-        if (income.cost_center_id && memberTransactionsMap.has(income.cost_center_id)) {
-          memberTransactionsMap.get(income.cost_center_id).incomes.push({
-            ...income,
-            isIndividual: !income.is_shared,
-            isShared: income.is_shared
+      // Processar allocations
+      monthAllocations.forEach((allocation) => {
+        const amount = Number(allocation.amount || 0);
+        const bank_account_name = allocation.bank_account?.name || 'Conta não informada';
+        
+        // Aporte de membro individual
+        if (allocation.ownership_type === 'member' && allocation.cost_center_id && memberTransactionsMap.has(allocation.cost_center_id)) {
+          memberTransactionsMap.get(allocation.cost_center_id).allocations.push({
+            ...allocation,
+            bank_account_name,
+            isIndividual: allocation.allocation_target === 'individual',
+            isShared: allocation.allocation_target === 'shared'
           });
-        } else if (income.is_shared && income.income_splits && income.income_splits.length > 0) {
-          income.income_splits.forEach((split) => {
+        } 
+        // Aporte organizacional com splits
+        else if (allocation.ownership_type === 'organization' && allocation.payment_allocation_splits && allocation.payment_allocation_splits.length > 0) {
+          allocation.payment_allocation_splits.forEach((split) => {
             if (memberTransactionsMap.has(split.cost_center_id)) {
-              memberTransactionsMap.get(split.cost_center_id).incomes.push({
-                ...income,
+              memberTransactionsMap.get(split.cost_center_id).allocations.push({
+                ...allocation,
+                bank_account_name,
                 amount: split.amount,
                 memberShare: split.amount,
-                totalAmount: income.amount,
+                totalAmount: allocation.amount,
                 isIndividual: false,
                 isShared: true
               });
@@ -478,18 +493,18 @@ export default function MonthlyClosing() {
 
       let individualSummaries = Array.from(summaryMap.values())
         .map((summary) => {
-          const totalIncome = Math.round((
-            summary.incomes.individual + summary.incomes.shared
+          const totalAllocations = Math.round((
+            summary.allocations.individual + summary.allocations.shared
           ) * 100) / 100;
           const cashTotal = Math.round((summary.cash.individual + summary.cash.shared) * 100) / 100;
           const creditTotal = Math.round((summary.credit.individual + summary.credit.shared) * 100) / 100;
           const totalOut = Math.round((cashTotal + creditTotal) * 100) / 100;
-          const finalBalance = Math.round((totalIncome - totalOut) * 100) / 100;
+          const finalBalance = Math.round((totalAllocations - totalOut) * 100) / 100;
 
           return {
             ...summary,
             totals: {
-              income: totalIncome,
+              allocations: totalAllocations,
               cash: cashTotal,
               credit: creditTotal,
               expenses: totalOut,
@@ -511,13 +526,13 @@ export default function MonthlyClosing() {
         if (Math.abs(cashDifference) > 0.01) {
           individualSummaries[0].totals.cash = Math.round((individualSummaries[0].totals.cash + cashDifference) * 100) / 100;
           individualSummaries[0].totals.expenses = Math.round((individualSummaries[0].totals.cash + individualSummaries[0].totals.credit) * 100) / 100;
-          individualSummaries[0].totals.balance = Math.round((individualSummaries[0].totals.income - individualSummaries[0].totals.expenses) * 100) / 100;
+          individualSummaries[0].totals.balance = Math.round((individualSummaries[0].totals.allocations - individualSummaries[0].totals.expenses) * 100) / 100;
         }
         
         if (Math.abs(creditDifference) > 0.01) {
           individualSummaries[0].totals.credit = Math.round((individualSummaries[0].totals.credit + creditDifference) * 100) / 100;
           individualSummaries[0].totals.expenses = Math.round((individualSummaries[0].totals.cash + individualSummaries[0].totals.credit) * 100) / 100;
-          individualSummaries[0].totals.balance = Math.round((individualSummaries[0].totals.income - individualSummaries[0].totals.expenses) * 100) / 100;
+          individualSummaries[0].totals.balance = Math.round((individualSummaries[0].totals.allocations - individualSummaries[0].totals.expenses) * 100) / 100;
         }
       }
 
@@ -532,8 +547,8 @@ export default function MonthlyClosing() {
         const targetEnd = new Date(targetYear, targetMonthIndex + 1, 0);
         const targetEndStr = formatDate(targetEnd);
 
-        const incomesInRange = confirmedIncomes.filter(
-          (income) => income.date >= targetStartStr && income.date <= targetEndStr
+        const allocationsInRange = confirmedAllocations.filter(
+          (allocation) => allocation.date >= targetStartStr && allocation.date <= targetEndStr
         );
         const cashExpensesInRange = confirmedExpenses.filter(
           (expense) =>
@@ -543,8 +558,8 @@ export default function MonthlyClosing() {
         );
         const invoicesInRange = computeCardInvoicesForMonth(targetYear, targetMonthIndex);
 
-        const incomeTotal = incomesInRange.reduce(
-          (sum, income) => sum + Number(income.amount || 0),
+        const allocationsTotal = allocationsInRange.reduce(
+          (sum, allocation) => sum + Number(allocation.amount || 0),
           0
         );
         const cashTotalRange = cashExpensesInRange.reduce(
@@ -563,11 +578,11 @@ export default function MonthlyClosing() {
             month: 'short',
             year: 'numeric'
           }),
-          income: incomeTotal,
+          allocations: allocationsTotal,
           cash: cashTotalRange,
           credit: creditTotalRange,
           totalExpense: expensesTotalRange,
-          balance: incomeTotal - expensesTotalRange,
+          balance: allocationsTotal - expensesTotalRange,
           creditInvoices: invoicesInRange
         };
       }).filter((entry) => {
@@ -589,9 +604,9 @@ export default function MonthlyClosing() {
 
       console.log('🔍 [Closing] Finalizando e setando dados...');
       setData({
-        incomes: monthIncomes,
+        allocations: monthAllocations,
         expenses: monthlyExpenses,
-        totalIncome,
+        totalAllocations,
         totalExpense,
         cashExpenseTotal,
         creditInvoiceTotal,
@@ -621,8 +636,16 @@ export default function MonthlyClosing() {
     return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   };
 
-  const exportToPDF = () => {
-    warning('Funcionalidade de exportação PDF será implementada em breve!');
+  const handleOpenAllocationModal = () => {
+    setShowAllocationModal(true);
+  };
+
+  const handleCloseAllocationModal = () => {
+    setShowAllocationModal(false);
+  };
+
+  const handleAllocationSuccess = () => {
+    fetchMonthlyData();
   };
 
   const handleMemberClick = (summary) => {
@@ -660,7 +683,7 @@ export default function MonthlyClosing() {
   }
 
   const totalBalance = data.balance;
-  const totalIncome = data.totalIncome || 0;
+  const totalAllocations = data.totalAllocations || 0;
   const totalExpense = data.totalExpense || 0;
   const totalCash = data.cashExpenseTotal || 0;
   const totalCredit = data.creditInvoiceTotal || 0;
@@ -672,8 +695,8 @@ export default function MonthlyClosing() {
     return acc;
   }, {});
 
-  const sharedTotals = data.familySharedTotals || { incomes: 0, cash: 0, credit: 0 };
-  const familyIncome = Number(sharedTotals.incomes || 0);
+  const sharedTotals = data.familySharedTotals || { allocations: 0, cash: 0, credit: 0 };
+  const familyAllocations = Number(sharedTotals.allocations || 0);
   const familyCash = Number(sharedTotals.cash || 0);
   const familyCredit = Number(sharedTotals.credit || 0);
 
@@ -735,12 +758,10 @@ export default function MonthlyClosing() {
                 </div>
 
                 <Button 
-                  onClick={exportToPDF}
-                  variant="outline"
-                  className="border-gray-300"
+                  onClick={handleOpenAllocationModal}
+                  className="bg-flight-blue hover:bg-flight-blue/90 text-white"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar
+                  Registrar Aporte
                 </Button>
               </div>
             </div>
@@ -749,15 +770,15 @@ export default function MonthlyClosing() {
 
         {/* Stats Cards - Resumo Geral com Tooltips */}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 w-full">
-          {/* Card Total de Entradas */}
+          {/* Card Total de Aportes */}
           <div className="relative group">
             <Card 
               className="border border-blue-200 bg-blue-50 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
-              onClick={() => setOpenTooltip(openTooltip === 'entradas' ? null : 'entradas')}
+              onClick={() => setOpenTooltip(openTooltip === 'aportes' ? null : 'aportes')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-900">
-                  Total de Entradas
+                  Total de Aportes
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-flight-blue/10">
                   <TrendingUp className="h-4 w-4 text-flight-blue" />
@@ -766,39 +787,39 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  R$ {totalAllocations.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {totalIncome > 0 
-                    ? 'Total de entradas do mês'
-                    : 'Nenhuma entrada neste mês'}
+                  {totalAllocations > 0 
+                    ? 'Total de aportes do mês'
+                    : 'Nenhum aporte neste mês'}
                 </p>
               </CardContent>
             </Card>
             
             {/* Tooltip */}
-            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'entradas' ? 'visible' : 'invisible'}`}>
+            <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'aportes' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-2">
-                {isSoloUser ? 'Entradas Individuais' : 'Divisão por Responsável'}
+                {isSoloUser ? 'Aportes Individuais' : 'Divisão por Responsável'}
               </p>
               <p className="text-xs text-gray-500 mb-3">
                 {isSoloUser
-                  ? 'Suas entradas confirmadas neste mês'
-                  : 'Distribuição das entradas confirmadas por responsável'}
+                  ? 'Seus aportes confirmados neste mês'
+                  : 'Distribuição dos aportes confirmados por responsável'}
               </p>
               {isSoloUser ? (
-                <p className="text-sm text-gray-500">Conta individual - apenas suas entradas.</p>
+                <p className="text-sm text-gray-500">Conta individual - apenas seus aportes.</p>
               ) : (
                 <>
-                  {memberSummaries.filter(summary => summary.totals.income > 0).length > 0 ? (
+                  {memberSummaries.filter(summary => summary.totals.allocations > 0).length > 0 ? (
               <div className="space-y-2">
                       {memberSummaries
-                        .filter(summary => summary.totals.income > 0)
+                        .filter(summary => summary.totals.allocations > 0)
                         .map(summary => {
-                          const individualTotal = Number(summary.incomes.individual || 0);
-                          const sharedTotal = Number(summary.incomes.shared || 0);
+                          const individualTotal = Number(summary.allocations.individual || 0);
+                          const sharedTotal = Number(summary.allocations.shared || 0);
                     const total = individualTotal + sharedTotal;
-                          const percentage = totalIncome > 0 ? ((total / totalIncome) * 100).toFixed(1) : '0.0';
+                          const percentage = totalAllocations > 0 ? ((total / totalAllocations) * 100).toFixed(1) : '0.0';
                     
                           return (
                             <div key={summary.id} className="space-y-1">
@@ -829,11 +850,11 @@ export default function MonthlyClosing() {
                         })}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500">Nenhuma entrada registrada no mês selecionado.</p>
+                    <p className="text-sm text-gray-500">Nenhum aporte registrado no mês selecionado.</p>
                 )}
-                  {!isSoloUser && familyIncome > 0 && (
+                  {!isSoloUser && familyAllocations > 0 && (
                     <div className="pt-2 border-t border-gray-200 text-xs text-gray-500">
-                      {organization?.name || 'Família'}: R$ {familyIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (cota compartilhada não atribuída)
+                      {organization?.name || 'Família'}: R$ {familyAllocations.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (cota compartilhada não atribuída)
                     </div>
                 )}
                 </>
@@ -1017,9 +1038,9 @@ export default function MonthlyClosing() {
               <p className="text-sm font-semibold text-gray-900 mb-3">Composição do Saldo</p>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
-                  <span className="text-gray-700">Total de Entradas</span>
-                  <span className="text-gray-900 font-semibold text-blue-600">
-                    R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className="text-gray-700">Total de Aportes</span>
+                  <span className="text-gray-900 font-semibold text-green-600">
+                    R$ {totalAllocations.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
@@ -1050,7 +1071,7 @@ export default function MonthlyClosing() {
                   Responsabilidade por membro
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Entradas e saídas atribuídas a cada responsável no mês.
+                  Aportes e saídas atribuídas a cada responsável no mês.
                 </p>
               </div>
             </div>
@@ -1061,11 +1082,17 @@ export default function MonthlyClosing() {
               'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
             }`}>
               {memberSummaries.map((summary) => {
-                const totalMemberIncome = Number(summary.totals.income || 0);
+                const allocationsIndividual = Number(summary.allocations?.individual || 0);
+                const allocationsShared = Number(summary.allocations?.shared || 0);
+                const totalMemberAllocations = allocationsIndividual + allocationsShared;
                 const individualOut = Number(summary.cash.individual || 0) + Number(summary.credit.individual || 0);
                 const sharedOut = Number(summary.cash.shared || 0) + Number(summary.credit.shared || 0);
                 const balanceMember = Number(summary.totals.balance || 0);
                 const balancePositive = balanceMember >= 0;
+                
+                // Saldo por tipo (individual e compartilhado)
+                const balanceIndividual = allocationsIndividual - individualOut;
+                const balanceShared = allocationsShared - sharedOut;
 
                 return (
                   <Card
@@ -1087,27 +1114,60 @@ export default function MonthlyClosing() {
                         <span className="text-xs text-gray-400">Clique para detalhes</span>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-0 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs uppercase tracking-wide text-gray-500">Entradas</span>
-                        <span className="text-base font-semibold text-gray-900">
-                          R$ {totalMemberIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
+                    <CardContent className="pt-0 space-y-2">
+                      {/* Individual */}
+                      <div className="bg-blue-50 rounded-lg p-2 space-y-1">
+                        <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Individual</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Aportes</span>
+                          <span className="text-sm font-semibold text-flight-blue">
+                            {allocationsIndividual > 0 ? '+' : ''} R$ {allocationsIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Saídas</span>
+                          <span className="text-sm font-semibold text-red-600">
+                            - R$ {individualOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-blue-200">
+                          <span className="text-xs font-medium text-gray-700">Saldo</span>
+                          <span className={`text-sm font-bold ${balanceIndividual >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {balanceIndividual >= 0 ? '+' : '-'} R$ {Math.abs(balanceIndividual).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs uppercase tracking-wide text-gray-500">Saídas individuais</span>
-                        <span className="text-base font-semibold text-gray-900">
-                          R$ {individualOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
+                      
+                      {/* Compartilhado */}
+                      <div className="bg-gray-50 rounded-lg p-2 space-y-1">
+                        <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Compartilhado</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Aportes</span>
+                          <span className="text-sm font-semibold text-flight-blue">
+                            {allocationsShared > 0 ? '+' : ''} R$ {allocationsShared.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Saídas</span>
+                          <span className="text-sm font-semibold text-red-600">
+                            - R$ {sharedOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-gray-200">
+                          <span className="text-xs font-medium text-gray-700">Saldo</span>
+                          <span className={`text-sm font-bold ${balanceShared >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {balanceShared >= 0 ? '+' : '-'} R$ {Math.abs(balanceShared).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs uppercase tracking-wide text-gray-500">Saídas compartilhadas</span>
-                        <span className="text-base font-semibold text-gray-900">
-                          R$ {sharedOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                        <span className="text-xs uppercase tracking-wide text-gray-500">Saldo</span>
+                      
+                      {/* Total */}
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                        <span className="text-xs uppercase tracking-wide font-semibold text-gray-700">Saldo Total</span>
                         <span className={`text-lg font-bold ${balancePositive ? 'text-green-600' : 'text-red-600'}`}>
                           {balancePositive ? '+' : '-'} R$ {Math.abs(balanceMember).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
@@ -1170,7 +1230,7 @@ export default function MonthlyClosing() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Mês</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Entradas</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Aportes</th>
                       <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">À vista</th>
                       <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Faturas</th>
                       <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
@@ -1191,7 +1251,7 @@ export default function MonthlyClosing() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-700">
-                            R$ {Number(row.income || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            R$ {Number(row.allocations || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-700">
                             R$ {Number(row.cash || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1215,7 +1275,7 @@ export default function MonthlyClosing() {
 
 
         {/* Empty State */}
-        {data.incomes.length === 0 && data.expenses.length === 0 && (
+        {data.allocations.length === 0 && data.expenses.length === 0 && (
           <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
             <CardContent className="p-12 text-center">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -1242,6 +1302,16 @@ export default function MonthlyClosing() {
         onClose={handleCloseMemberModal}
         member={selectedMember}
         transactions={memberTransactions}
+      />
+
+      {/* Payment Allocation Modal */}
+      <PaymentAllocationModal
+        isOpen={showAllocationModal}
+        onClose={handleCloseAllocationModal}
+        onSuccess={handleAllocationSuccess}
+        organization={organization}
+        costCenters={costCenters}
+        currentUser={orgUser}
       />
         
       </Header>

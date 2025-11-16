@@ -282,13 +282,13 @@ export default function Header({
             <button
               onClick={() => setShowTransactionModal(true)}
               className="flex items-center rounded-2xl h-10 w-full bg-flight-blue text-white hover:bg-flight-blue/90 shadow-md hover:shadow-lg transition-colors duration-200 py-2.5 pl-[18px] pr-3"
-              title={isSidebarCollapsed ? 'Nova Transação' : undefined}
+              title={isSidebarCollapsed ? 'Nova Despesa' : undefined}
             >
               <div className="w-5 flex items-center justify-center flex-shrink-0">
               <Plus className="h-5 w-5" />
               </div>
               <span className={`ml-3 text-sm font-medium whitespace-nowrap overflow-hidden transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
-                Nova Transação
+                Nova Despesa
               </span>
             </button>
           </div>

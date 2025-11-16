@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
   if (!isOpen || !member) return null;
 
-  const { incomes = [], cashExpenses = [], creditExpenses = [] } = transactions || {};
+  const { allocations = [], cashExpenses = [], creditExpenses = [] } = transactions || {};
 
   const formatCurrency = (value) => {
     return Number(value || 0).toLocaleString('pt-BR', { 
@@ -62,9 +62,9 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
           {/* Resumo */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <p className="text-sm text-gray-600 mb-1">Entradas</p>
-              <p className="text-xl font-bold text-blue-600">
-                R$ {formatCurrency(member.totals?.income || 0)}
+              <p className="text-sm text-gray-600 mb-1">Aportes</p>
+              <p className="text-xl font-bold text-flight-blue">
+                R$ {formatCurrency(member.totals?.allocations || 0)}
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -79,37 +79,41 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                 - R$ {formatCurrency((member.cash?.shared || 0) + (member.credit?.shared || 0))}
               </p>
             </div>
-            <div className={`p-4 rounded-lg border ${member.totals?.balance >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
+            <div className={`p-4 rounded-lg border ${member.totals?.balance >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
               <p className="text-sm text-gray-600 mb-1">Saldo</p>
-              <p className={`text-xl font-bold ${member.totals?.balance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              <p className={`text-xl font-bold ${member.totals?.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {member.totals?.balance >= 0 ? '+' : '-'} R$ {formatCurrency(Math.abs(member.totals?.balance || 0))}
               </p>
             </div>
           </div>
 
-          {/* Entradas */}
-          {incomes.length > 0 && (
+          {/* Aportes */}
+          {allocations.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                Entradas ({incomes.length})
+                <span className="w-2 h-2 bg-flight-blue rounded-full mr-2"></span>
+                Aportes ({allocations.length})
               </h3>
               <div className="bg-gray-50 rounded-lg overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-100">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Data</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Descrição</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Conta Bancária</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Destino</th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Valor</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {incomes.map((income, idx) => (
+                    {allocations.map((allocation, idx) => (
                       <tr key={idx} className="hover:bg-white transition-colors">
-                        <td className="px-4 py-3 text-sm text-gray-600">{formatDate(income.date)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{income.description || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold text-blue-600">
-                          R$ {formatCurrency(income.amount)}
+                        <td className="px-4 py-3 text-sm text-gray-600">{formatDate(allocation.date)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{allocation.bank_account_name || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {allocation.allocation_target === 'individual' ? 'Individual' : 'Compartilhado'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-semibold text-flight-blue">
+                          R$ {formatCurrency(allocation.amount)}
                         </td>
                       </tr>
                     ))}
@@ -231,7 +235,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
           ) : null}
 
           {/* Mensagem se não houver transações */}
-          {incomes.length === 0 && 
+          {allocations.length === 0 && 
            cashExpenses.length === 0 && 
            creditExpenses.length === 0 && (
             <div className="text-center py-12">

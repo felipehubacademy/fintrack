@@ -1005,7 +1005,7 @@ export default function TransactionsDashboard() {
                   onClick={() => setShowTransactionModal(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Nova Transação
+                  Nova Despesa
                 </Button>
               </div>
             </div>

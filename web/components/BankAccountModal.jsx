@@ -117,8 +117,13 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.bank || !formData.initial_balance) {
+    if (!formData.name || !formData.bank) {
       warning('Preencha todos os campos obrigatórios');
+      return;
+    }
+    
+    if (!account && !formData.initial_balance) {
+      warning('Preencha o saldo inicial');
       return;
     }
 
@@ -295,21 +300,23 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
                 />
               </div>
 
-              {/* Saldo Inicial */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Saldo Inicial (R$) *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.initial_balance}
-                  onChange={(e) => handleChange('initial_balance', e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  required
-                />
-              </div>
+              {/* Saldo Inicial - Só aparece ao criar */}
+              {!account && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Saldo Inicial (R$) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.initial_balance}
+                    onChange={(e) => handleChange('initial_balance', e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             {/* Tipo de Propriedade */}

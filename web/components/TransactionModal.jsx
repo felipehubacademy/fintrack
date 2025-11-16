@@ -12,21 +12,17 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
   const { success, error: showError, warning } = useNotificationContext();
   
   const [cards, setCards] = useState([]);
-  const [bankAccounts, setBankAccounts] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [transactionType, setTransactionType] = useState('expense');
 
   const [form, setForm] = useState({
     description: '',
     amount: '',
     date: getBrazilTodayString(),
     category_id: '',
-    category: '', // Para incomes
     owner_name: '',
     payment_method: 'cash',
     card_id: '',
     installments: 1,
-    bank_account_id: '', // Para incomes
   });
 
   const [splitDetails, setSplitDetails] = useState([]);
@@ -47,72 +43,46 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
   useEffect(() => {
     if (editingTransaction) {
-      setTransactionType(editingTransaction.type || 'expense');
-      if (editingTransaction.type === 'income') {
-        // Se for compartilhado, usar o nome da família
-        const ownerName = editingTransaction.is_shared 
-          ? (organization?.name || 'Família')
-          : (editingTransaction.cost_center?.name || '');
+      // Para expenses, encontrar o nome correspondente em costCenters
+      // para garantir que o valor corresponda exatamente ao dropdown
+      const rawOwnerName = editingTransaction.cost_center?.name 
+        || editingTransaction.owner 
+        || (editingTransaction.is_shared ? (organization?.name || 'Família') : '');
+      
+      // Buscar o nome correspondente usando costCenters diretamente
+      let ownerName = rawOwnerName;
+      if (rawOwnerName) {
+        // Função de normalização
+        const normalize = (str) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         
-        setForm({
-          description: editingTransaction.description || '',
-          amount: editingTransaction.amount?.toString() || '',
-          date: editingTransaction.date || getBrazilTodayString(),
-          category: editingTransaction.category || '',
-          owner_name: ownerName,
-          category_id: '',
-          payment_method: editingTransaction.payment_method || 'cash',
-          card_id: '',
-          installments: 1,
-          bank_account_id: editingTransaction.bank_account_id || '',
+        // Buscar em costCenters
+        const matchingCenter = costCenters?.find(cc => {
+          const normalizedCC = normalize(cc.name);
+          const normalizedRaw = normalize(rawOwnerName);
+          return normalizedCC === normalizedRaw;
         });
-        if (editingTransaction.income_splits) {
-          setSplitDetails(editingTransaction.income_splits);
-          setShowSplitConfig(true);
-        }
-      } else {
-        // Para expenses, encontrar o nome correspondente em costCenters
-        // para garantir que o valor corresponda exatamente ao dropdown
-        const rawOwnerName = editingTransaction.cost_center?.name 
-          || editingTransaction.owner 
-          || (editingTransaction.is_shared ? (organization?.name || 'Família') : '');
         
-        // Buscar o nome correspondente usando costCenters diretamente
-        let ownerName = rawOwnerName;
-        if (rawOwnerName) {
-          // Função de normalização
-          const normalize = (str) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          
-          // Buscar em costCenters
-          const matchingCenter = costCenters?.find(cc => {
-            const normalizedCC = normalize(cc.name);
-            const normalizedRaw = normalize(rawOwnerName);
-            return normalizedCC === normalizedRaw;
-          });
-          
-          if (matchingCenter) {
-            ownerName = matchingCenter.name;
-          } else if (editingTransaction.is_shared || normalize(rawOwnerName) === normalize(organization?.name || 'Família')) {
-            // Se for compartilhado, usar o nome exato da família
-            ownerName = organization?.name || 'Família';
-          }
+        if (matchingCenter) {
+          ownerName = matchingCenter.name;
+        } else if (editingTransaction.is_shared || normalize(rawOwnerName) === normalize(organization?.name || 'Família')) {
+          // Se for compartilhado, usar o nome exato da família
+          ownerName = organization?.name || 'Família';
         }
-        
-        setForm({
-          description: editingTransaction.description || '',
-          amount: editingTransaction.amount?.toString() || '',
-          date: editingTransaction.date || getBrazilTodayString(),
-          category_id: editingTransaction.category_id || '',
-          owner_name: ownerName,
-          payment_method: editingTransaction.payment_method || 'cash',
-          card_id: editingTransaction.card_id || '',
-          installments: editingTransaction.installments || 1,
-          category: '',
-        });
-        if (editingTransaction.expense_splits) {
-          setSplitDetails(editingTransaction.expense_splits);
-          setShowSplitConfig(true);
-        }
+      }
+      
+      setForm({
+        description: editingTransaction.description || '',
+        amount: editingTransaction.amount?.toString() || '',
+        date: editingTransaction.date || getBrazilTodayString(),
+        category_id: editingTransaction.category_id || '',
+        owner_name: ownerName,
+        payment_method: editingTransaction.payment_method || 'cash',
+        card_id: editingTransaction.card_id || '',
+        installments: editingTransaction.installments || 1,
+      });
+      if (editingTransaction.expense_splits) {
+        setSplitDetails(editingTransaction.expense_splits);
+        setShowSplitConfig(true);
       }
     } else {
       resetForm();
@@ -131,18 +101,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           .eq('is_active', true)
           .order('name');
         setCards(cardsData || []);
-        
-        // Carregar contas bancárias
-        const { data: accountsData } = await supabase
-          .from('bank_accounts')
-          .select('id, name, bank')
-          .eq('organization_id', organization.id)
-          .eq('is_active', true)
-          .order('name');
-        setBankAccounts(accountsData || []);
       } else {
         setCards([]);
-        setBankAccounts([]);
       }
     };
     load();
@@ -275,21 +235,15 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       amount: '',
       date: getBrazilTodayString(),
       category_id: '',
-      category: '',
       owner_name:
         isSoloUser && userCostCenter ? userCostCenter.name : '',
       payment_method: 'cash',
       card_id: '',
       installments: 1,
-      bank_account_id: '',
     });
     setSplitDetails([]);
     setShowSplitConfig(false);
-    setTransactionType('expense');
   };
-
-  const isExpense = transactionType === 'expense';
-  const isIncome = transactionType === 'income';
 
   const isFormValid = useMemo(() => {
     const hasBasic = Boolean(
@@ -303,10 +257,6 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
     const amountValue = parseCurrencyInput(form.amount);
     if (amountValue <= 0) return false;
-
-    if (isIncome) {
-      return Boolean(form.category?.trim() && form.bank_account_id);
-    }
 
     if (!form.category_id) return false;
     if (isCredit && (!form.card_id || !form.installments)) return false;
@@ -323,12 +273,9 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     form.date,
     form.owner_name,
     form.payment_method,
-    form.category,
-    form.bank_account_id,
     form.category_id,
     form.card_id,
     form.installments,
-    isIncome,
     isCredit,
     isShared,
     splitDetails,
@@ -349,19 +296,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       return;
     }
     
-    if (isIncome && !form.category?.trim()) {
+    if (!form.category_id) {
       warning('Selecione uma categoria');
-      return;
-    }
-
-    if (isExpense && !form.category_id) {
-      warning('Selecione uma categoria');
-      return;
-    }
-
-    // Validar conta bancária para incomes
-    if (isIncome && !form.bank_account_id) {
-      warning('Selecione uma conta bancária para a entrada');
       return;
     }
 
@@ -370,7 +306,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     
     // Validar splits se for compartilhado
     if (willBeShared && splitDetails.length === 0) {
-      warning('É necessário configurar a divisão da entrada/despesa compartilhada');
+      warning('É necessário configurar a divisão da despesa compartilhada');
       return;
     }
 
@@ -382,194 +318,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     setSaving(true);
     
     try {
-    if (isIncome) {
-        // Salvar como entrada
-        let selectedOption = ownerOptions.find(o => o.name === form.owner_name);
-        if (!selectedOption && isSoloUser && userCostCenter) {
-          selectedOption = {
-            id: userCostCenter.id,
-            name: userCostCenter.name
-          };
-        }
-        const isOptionShared = selectedOption?.isShared || willBeShared;
-        const costCenter = isOptionShared ? null : selectedOption;
-
-        console.log('💾 [TRANSACTION MODAL] Salvando income:', {
-          owner_name: form.owner_name,
-          organization_name: organization?.name,
-          willBeShared,
-          isOptionShared,
-          cost_center_id: costCenter?.id || null,
-          splitDetails_count: splitDetails.length
-        });
-
-        let income;
-        let error;
-
-        if (editingTransaction) {
-          // Editar entrada existente
-          const { data, error: updateError } = await supabase
-            .from('incomes')
-            .update({
-              description: form.description.trim(),
-              amount: parseCurrencyInput(form.amount),
-              date: form.date,
-              category: form.category ? form.category.trim() : null,
-              owner: form.owner_name ? form.owner_name.trim() : (willBeShared ? (organization?.name || 'Compartilhado') : null),
-              payment_method: form.payment_method,
-              bank_account_id: form.bank_account_id,
-              cost_center_id: willBeShared ? null : costCenter?.id,
-              is_shared: willBeShared, // Usar willBeShared calculado acima
-              status: 'confirmed'
-            })
-            .eq('id', editingTransaction.id)
-            .select()
-            .single();
-          
-          income = data;
-          error = updateError;
-        } else {
-          // Criar nova entrada
-          const insertData = {
-            description: form.description.trim(),
-            amount: parseCurrencyInput(form.amount),
-            date: form.date,
-            category: form.category ? form.category.trim() : null,
-            owner: form.owner_name ? form.owner_name.trim() : (willBeShared ? (organization?.name || 'Compartilhado') : null),
-            payment_method: form.payment_method,
-            bank_account_id: form.bank_account_id,
-            cost_center_id: willBeShared ? null : costCenter?.id,
-            is_shared: willBeShared, // Usar willBeShared calculado acima
-            organization_id: organization.id,
-            user_id: orgUser.id,
-            status: 'confirmed'
-          };
-          
-          console.log('💾 [TRANSACTION MODAL] Inserting income:', insertData);
-          
-          const { data, error: insertError } = await supabase
-            .from('incomes')
-            .insert(insertData)
-            .select()
-            .single();
-          
-          income = data;
-          error = insertError;
-        }
-
-        if (error) throw error;
-
-        console.log('✅ [TRANSACTION MODAL] Income saved:', income);
-        
-        // Atualizar saldo da conta bancária usando RPC
-        if (form.bank_account_id) {
-          try {
-            console.log('💾 [TRANSACTION MODAL] Verificando transações bancárias para income:', income.id);
-            
-            // Verificar se já existe transação vinculada ao income
-            const { data: existingTransactions, error: checkError } = await supabase
-              .from('bank_account_transactions')
-              .select('id, bank_account_id, amount')
-              .eq('income_id', income.id);
-            
-            if (checkError) {
-              console.error('⚠️ Erro ao verificar transações existentes:', checkError);
-            }
-            
-            console.log('📋 [TRANSACTION MODAL] Transações existentes:', existingTransactions);
-            
-            // Se existe transação em conta diferente, deletar todas
-            if (existingTransactions && existingTransactions.length > 0) {
-              const differentAccount = existingTransactions.find(t => t.bank_account_id !== form.bank_account_id);
-              if (differentAccount) {
-                console.log('🔄 Conta bancária mudou, removendo transação(ões) antiga(s)...');
-                const { error: deleteError } = await supabase
-                  .from('bank_account_transactions')
-                  .delete()
-                  .eq('income_id', income.id);
-                
-                if (deleteError) {
-                  console.error('⚠️ Erro ao deletar transações antigas:', deleteError);
-                } else {
-                  console.log('✅ Transações antigas removidas');
-                }
-              }
-              
-              // Se já existe transação na mesma conta, verificar se precisa atualizar valor
-              const sameAccount = existingTransactions.find(t => t.bank_account_id === form.bank_account_id);
-              if (sameAccount) {
-                // Se o valor mudou, deletar e recriar
-                if (parseFloat(sameAccount.amount) !== parseCurrencyInput(form.amount)) {
-                  console.log('🔄 Valor mudou, removendo e recriando transação...');
-                  await supabase
-                    .from('bank_account_transactions')
-                    .delete()
-                    .eq('id', sameAccount.id);
-                } else {
-                  console.log('ℹ️ Transação bancária já existe com mesmo valor, mantendo existente');
-                  // O trigger já atualiza o saldo automaticamente, não precisa fazer nada
-                  return; // Não criar nova transação
-                }
-              }
-            }
-            
-            // Criar nova transação bancária
-            console.log('💾 [TRANSACTION MODAL] Criando transação bancária...');
-            const { data: transactionData, error: transError } = await supabase.rpc('create_bank_transaction', {
-              p_bank_account_id: form.bank_account_id,
-              p_transaction_type: 'income_deposit',
-              p_amount: parseCurrencyInput(form.amount),
-              p_description: form.description.trim(),
-              p_date: form.date,
-              p_organization_id: organization.id,
-              p_user_id: orgUser.id,
-              p_expense_id: null,
-              p_bill_id: null,
-              p_income_id: income.id,
-              p_related_account_id: null
-            });
-            
-            if (transError) {
-              console.error('⚠️ Erro ao criar transação bancária:', transError);
-              showError('Erro ao atualizar saldo da conta: ' + (transError.message || 'Erro desconhecido'));
-            } else {
-              console.log('✅ Transação bancária criada e saldo atualizado:', transactionData);
-              // Sucesso será mostrado no final do handleSave
-            }
-          } catch (accountError) {
-            console.error('⚠️ Erro ao atualizar saldo da conta:', accountError);
-            showError('Erro ao atualizar saldo da conta: ' + (accountError.message || 'Erro desconhecido'));
-          }
-        } else {
-          console.warn('⚠️ [TRANSACTION MODAL] bank_account_id não fornecido, não será criada transação bancária');
-        }
-
-        if (willBeShared && splitDetails.length > 0) {
-          // Se está editando, deletar splits antigos primeiro
-          if (editingTransaction) {
-            const { error: deleteError } = await supabase
-              .from('income_splits')
-              .delete()
-              .eq('income_id', editingTransaction.id);
-            
-            if (deleteError) throw deleteError;
-          }
-
-          const splitsToInsert = splitDetails.map(split => ({
-            income_id: income.id,
-            cost_center_id: split.cost_center_id,
-            percentage: split.percentage,
-            amount: split.amount
-          }));
-
-          const { error: splitError } = await supabase
-            .from('income_splits')
-            .insert(splitsToInsert);
-
-          if (splitError) throw splitError;
-        }
-      } else {
-        // Salvar como despesa (lógica existente)
+        // Salvar como despesa
         const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
         const category = expenseCategories.find(c => c.id === form.category_id);
         
@@ -850,11 +599,10 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             if (splitError) throw splitError;
           }
         }
-      }
       
       onClose?.();
       const action = editingTransaction ? 'atualizada' : 'salva';
-      success(transactionType === 'income' ? `Entrada ${action} com sucesso!` : `Despesa ${action} com sucesso!`);
+      success(`Despesa ${action} com sucesso!`);
       onSuccess?.();
     } catch (e) {
       console.error('❌ [TRANSACTION MODAL] Erro ao salvar:', e);
@@ -873,7 +621,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
-            {editingTransaction ? 'Editar Transação' : 'Nova Transação'}
+            {editingTransaction ? 'Editar Despesa' : 'Nova Despesa'}
           </h2>
           <Button 
             variant="ghost" 
@@ -888,39 +636,6 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         {/* Conteúdo com scroll */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-0">
           {/* Toggle de tipo */}
-          {!editingTransaction && (
-            <div className="mb-4 md:mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Tipo de Transação</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setTransactionType('expense')}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    transactionType === 'expense'
-                      ? 'border-gray-400 bg-gray-50'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  <div className="text-sm font-medium text-gray-900">Despesa</div>
-                  <div className="text-xs text-gray-500 mt-1">Gastos e pagamentos</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setTransactionType('income')}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    transactionType === 'income'
-                      ? 'border-flight-blue bg-flight-blue/5'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  <div className="text-sm font-medium text-flight-blue">Entrada</div>
-                  <div className="text-xs text-gray-500 mt-1">Receitas e ganhos</div>
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
@@ -929,7 +644,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                placeholder={transactionType === 'income' ? 'Ex: Salário, Freelance, Venda' : 'Ex: Mercado, Farmácia'}
+                placeholder="Ex: Mercado, Farmácia"
               />
             </div>
 
@@ -972,92 +687,36 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
               />
             </div>
 
-            {/* Categoria - mudar baseado no tipo */}
-            {transactionType === 'income' ? (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                  <select
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  >
-                    <option value="">Selecione...</option>
-                    {[...incomeCategories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(cat => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Recebimento</label>
-                  <select
-                    value={form.payment_method}
-                    onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  >
-                    <option value="cash">Dinheiro</option>
-                    <option value="pix">PIX</option>
-                    <option value="deposit">Depósito</option>
-                    <option value="bank_transfer">Transferência Bancária</option>
-                    <option value="boleto">Boleto</option>
-                    <option value="other">Outros</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Conta Bancária *</label>
-                  <select
-                    value={form.bank_account_id}
-                    onChange={(e) => setForm({ ...form, bank_account_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                    required
-                  >
-                    <option value="">Selecione uma conta...</option>
-                    {bankAccounts.map(account => (
-                      <option key={account.id} value={account.id}>
-                        {account.name} - {account.bank || ''}
-                      </option>
-                    ))}
-                  </select>
-                  {bankAccounts.length === 0 && (
-                    <p className="text-xs text-yellow-600 mt-1">
-                      Nenhuma conta bancária cadastrada. Cadastre uma conta primeiro.
-                    </p>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                  <select
-                    value={form.category_id}
-                    onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  >
-                    <option value="">Selecione...</option>
-                    {[...expenseCategories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
-                  <select
-                    value={form.payment_method}
-                    onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  >
-                    <option value="cash">Dinheiro</option>
-                    <option value="debit_card">Cartão de Débito</option>
-                    <option value="pix">PIX</option>
-                    <option value="credit_card">Cartão de Crédito</option>
-                    <option value="boleto">Boleto</option>
-                    <option value="bank_transfer">Transferência Bancária</option>
-                    <option value="other">Outros</option>
-                  </select>
-                </div>
-              </>
-            )}
+            {/* Categoria */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+              <select
+                value={form.category_id}
+                onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+              >
+                <option value="">Selecione...</option>
+                {[...expenseCategories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+              <select
+                value={form.payment_method}
+                onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+              >
+                <option value="cash">Dinheiro</option>
+                <option value="debit_card">Cartão de Débito</option>
+                <option value="pix">PIX</option>
+                <option value="credit_card">Cartão de Crédito</option>
+                <option value="boleto">Boleto</option>
+                <option value="bank_transfer">Transferência Bancária</option>
+                <option value="other">Outros</option>
+              </select>
+            </div>
 
             {!isSoloUser ? (
               <div>
@@ -1076,43 +735,39 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             ) : null}
 
             {/* Campos específicos de despesa */}
-            {transactionType === 'expense' && (
+            {isCredit && (
               <>
-                {isCredit && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Cartão *</label>
-                      <select
-                        value={form.card_id}
-                        onChange={(e) => setForm({ ...form, card_id: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                        disabled={cards.length === 0}
-                      >
-                        <option value="">Selecione...</option>
-                        {cards.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                      {cards.length === 0 && (
-                        <p className="mt-2 text-sm text-gray-500">
-                          Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Parcelas *</label>
-                      <select
-                        value={form.installments}
-                        onChange={(e) => setForm({ ...form, installments: Number(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                      >
-                        {Array.from({ length: 12 }).map((_, i) => (
-                          <option key={i+1} value={i+1}>{i+1}x</option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Cartão *</label>
+                  <select
+                    value={form.card_id}
+                    onChange={(e) => setForm({ ...form, card_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                    disabled={cards.length === 0}
+                  >
+                    <option value="">Selecione...</option>
+                    {cards.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  {cards.length === 0 && (
+                    <p className="mt-2 text-sm text-gray-500">
+                      Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Parcelas *</label>
+                  <select
+                    value={form.installments}
+                    onChange={(e) => setForm({ ...form, installments: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  >
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <option key={i+1} value={i+1}>{i+1}x</option>
+                    ))}
+                  </select>
+                </div>
               </>
             )}
           </div>

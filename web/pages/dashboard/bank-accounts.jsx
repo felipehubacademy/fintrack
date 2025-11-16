@@ -7,14 +7,17 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import BankAccountModal from '../../components/BankAccountModal';
 import BankTransactionModal from '../../components/BankTransactionModal';
+import BankTransactionsModal from '../../components/BankTransactionsModal';
+import BankIncomeModal from '../../components/BankIncomeModal';
 import Header from '../../components/Header';
 import LoadingLogo from '../../components/LoadingLogo';
-import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2 } from 'lucide-react';
+import Tooltip from '../../components/ui/Tooltip';
+import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2, ArrowRightLeft, List } from 'lucide-react';
 import StatsCard from '../../components/ui/StatsCard';
 
 export default function BankAccounts() {
   const router = useRouter();
-  const { organization, user, costCenters, loading: orgLoading } = useOrganization();
+  const { organization, user, costCenters, incomeCategories, loading: orgLoading } = useOrganization();
   const { showError } = useNotificationContext();
   const [accounts, setAccounts] = useState([]);
   const [stats, setStats] = useState({
@@ -26,8 +29,12 @@ export default function BankAccounts() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [isTransactionsHistoryModalOpen, setIsTransactionsHistoryModalOpen] = useState(false);
+  const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [selectedAccountForTransaction, setSelectedAccountForTransaction] = useState(null);
+  const [selectedAccountForHistory, setSelectedAccountForHistory] = useState(null);
+  const [selectedAccountForIncome, setSelectedAccountForIncome] = useState(null);
 
   useEffect(() => {
     if (organization?.id) {
@@ -218,34 +225,70 @@ export default function BankAccounts() {
                       <p className="text-xs text-gray-500 mb-1">Propriedade</p>
                       <p className="text-sm text-gray-700">{getOwnerLabel(account)}</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 pt-2">
+                    <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
+                      <Tooltip content="Adicionar Entrada" position="top">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedAccountForIncome(account);
+                            setIsIncomeModalOpen(true);
+                          }}
+                          className="text-flight-blue border-flight-blue/20 hover:bg-flight-blue/10"
+                          aria-label="Adicionar entrada"
+                        >
+                          <TrendingUp className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip content="Transferir" position="top">
                       <Button
-                        size="sm"
+                          variant="outline"
+                          size="icon"
                         onClick={() => {
                           setSelectedAccountForTransaction(account);
                           setIsTransactionModalOpen(true);
                         }}
-                        className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          aria-label="Transferir"
                       >
-                        Transferir
+                          <ArrowRightLeft className="h-4 w-4" />
                       </Button>
+                      </Tooltip>
+                      <Tooltip content="Ver histórico" position="top">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedAccountForHistory(account);
+                            setIsTransactionsHistoryModalOpen(true);
+                          }}
+                          className="text-gray-600 border-gray-200 hover:bg-gray-50"
+                          aria-label="Ver histórico"
+                        >
+                          <List className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip content="Editar" position="top">
                       <Button
                         variant="outline"
-                        size="sm"
+                          size="icon"
                         onClick={() => handleOpenModal(account)}
+                          aria-label="Editar conta"
                       >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Editar
+                          <Edit className="h-4 w-4" />
                       </Button>
+                      </Tooltip>
+                      <Tooltip content="Desativar" position="top">
                       <Button
                         variant="outline"
-                        size="sm"
+                          size="icon"
                         onClick={() => handleToggleActive(account)}
                         className="text-red-600 border-red-200 hover:bg-red-50"
+                          aria-label="Desativar conta"
                       >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Desativar
+                          <Trash2 className="h-4 w-4" />
                       </Button>
+                      </Tooltip>
                     </div>
                   </div>
                 </CardContent>
@@ -276,6 +319,30 @@ export default function BankAccounts() {
         account={selectedAccountForTransaction}
         organizationId={organization?.id}
         onSuccess={fetchAccounts}
+      />
+      
+      <BankIncomeModal
+        isOpen={isIncomeModalOpen}
+        onClose={() => {
+          setIsIncomeModalOpen(false);
+          setSelectedAccountForIncome(null);
+        }}
+        organization={organization}
+        costCenters={costCenters}
+        incomeCategories={incomeCategories}
+        selectedAccount={selectedAccountForIncome}
+        currentUser={user}
+        onSuccess={fetchAccounts}
+      />
+      
+      <BankTransactionsModal
+        isOpen={isTransactionsHistoryModalOpen}
+        onClose={() => {
+          setIsTransactionsHistoryModalOpen(false);
+          setSelectedAccountForHistory(null);
+        }}
+        account={selectedAccountForHistory}
+        organization={organization}
       />
     </>
   );
