@@ -145,23 +145,21 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
 
       if (!organizationId) throw new Error('Organização não encontrada');
 
-      const accountData = {
-        name: formData.name,
-        bank: formData.bank,
-        account_type: formData.account_type,
-        account_number: formData.account_number || null,
-        initial_balance: parseFloat(formData.initial_balance),
-        current_balance: parseFloat(formData.initial_balance),
-        owner_type: ownerType,
-        cost_center_id: ownerType === 'individual' ? resolvedCostCenterId : null,
-        organization_id: organizationId,
-        user_id: user.id
-      };
-
-      let accountId;
+      let accountData;
       
       if (account) {
-        // Editar conta existente
+        // Editar conta existente - NÃO atualizar saldos
+        accountData = {
+          name: formData.name,
+          bank: formData.bank,
+          account_type: formData.account_type,
+          account_number: formData.account_number || null,
+          owner_type: ownerType,
+          cost_center_id: ownerType === 'individual' ? resolvedCostCenterId : null,
+          organization_id: organizationId,
+          user_id: user.id
+        };
+        
         const { error } = await supabase
           .from('bank_accounts')
           .update(accountData)
@@ -170,7 +168,20 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
         if (error) throw error;
         accountId = account.id;
       } else {
-        // Criar nova conta
+        // Criar nova conta - incluir saldos iniciais
+        accountData = {
+          name: formData.name,
+          bank: formData.bank,
+          account_type: formData.account_type,
+          account_number: formData.account_number || null,
+          initial_balance: parseFloat(formData.initial_balance),
+          current_balance: parseFloat(formData.initial_balance),
+          owner_type: ownerType,
+          cost_center_id: ownerType === 'individual' ? resolvedCostCenterId : null,
+          organization_id: organizationId,
+          user_id: user.id
+        };
+        
         const { data, error } = await supabase
           .from('bank_accounts')
           .insert(accountData)
