@@ -5,14 +5,35 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Validar variáveis de ambiente
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Variáveis de ambiente faltando:', {
+    NEXT_PUBLIC_SUPABASE_URL: !!supabaseUrl,
+    SUPABASE_SERVICE_ROLE_KEY: !!supabaseServiceKey
+  });
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Método não permitido' });
+  }
+
+  // Verificar configuração do Supabase
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('❌ API notifications/list: Supabase não configurado');
+    return res.status(500).json({
+      success: false,
+      error: 'Configuração do Supabase incompleta',
+      details: {
+        url: !!supabaseUrl,
+        key: !!supabaseServiceKey
+      }
+    });
   }
 
   try {
