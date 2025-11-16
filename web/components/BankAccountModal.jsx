@@ -146,6 +146,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
       if (!organizationId) throw new Error('Organização não encontrada');
 
       let accountData;
+      let accountId;
       
       if (account) {
         // Editar conta existente - NÃO atualizar saldos
