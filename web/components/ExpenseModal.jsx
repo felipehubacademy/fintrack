@@ -7,6 +7,7 @@ import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import HelpTooltip from './ui/HelpTooltip';
 import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { filterManualInputsAllowed, isBelvoSynced } from '../lib/belvoValidation';
 
 export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = [] }) {
   
@@ -56,7 +57,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
 
   useEffect(() => {
     if (!isOpen) return;
-    // Load cards for org
+    // Load cards for org (filter out Belvo cards that don't allow manual input)
     const load = async () => {
       if (organization?.id && organization.id !== 'default-org') {
         const { data: cardsData } = await supabase
@@ -65,7 +66,8 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
           .eq('organization_id', organization.id)
           .eq('is_active', true)
           .order('name');
-        setCards(cardsData || []);
+        // Filter to only show cards that allow manual inputs
+        setCards(filterManualInputsAllowed(cardsData || []));
       } else {
         setCards([]);
       }
