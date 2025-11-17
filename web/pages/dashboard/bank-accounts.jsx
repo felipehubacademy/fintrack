@@ -9,11 +9,13 @@ import BankAccountModal from '../../components/BankAccountModal';
 import BankTransactionModal from '../../components/BankTransactionModal';
 import BankTransactionsModal from '../../components/BankTransactionsModal';
 import BankIncomeModal from '../../components/BankIncomeModal';
+import BelvoConnectionsManager from '../../components/BelvoConnectionsManager';
 import Header from '../../components/Header';
 import LoadingLogo from '../../components/LoadingLogo';
 import Tooltip from '../../components/ui/Tooltip';
-import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2, ArrowRightLeft, List } from 'lucide-react';
+import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2, ArrowRightLeft, List, Link as LinkIcon } from 'lucide-react';
 import StatsCard from '../../components/ui/StatsCard';
+import { isBelvoSynced, allowsManualInput } from '../../lib/belvoValidation';
 
 export default function BankAccounts() {
   const router = useRouter();
@@ -172,6 +174,15 @@ export default function BankAccounts() {
           />
         </div>
 
+        {/* Belvo Connections */}
+        <div className="mb-6">
+          <BelvoConnectionsManager
+            organizationId={organization?.id}
+            userId={user?.id}
+            onConnectionsChange={fetchAccounts}
+          />
+        </div>
+
         {/* Accounts Grid */}
         {accounts.length === 0 ? (
           <Card>
@@ -195,11 +206,19 @@ export default function BankAccounts() {
                 <CardContent className="bg-flight-blue/5 p-6">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      {!account.is_active && (
-                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
-                          Inativa
-                        </span>
-                      )}
+                      <div className="flex gap-2">
+                        {!account.is_active && (
+                          <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                            Inativa
+                          </span>
+                        )}
+                        {isBelvoSynced(account) && (
+                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded flex items-center gap-1">
+                            <LinkIcon className="h-3 w-3" />
+                            Belvo
+                          </span>
+                        )}
+                      </div>
                       <div className="text-right ml-auto">
                         <h3 className="font-semibold text-gray-900">{account.name}</h3>
                         <p className="text-sm text-gray-500">{account.bank}</p>
@@ -226,7 +245,7 @@ export default function BankAccounts() {
                       <p className="text-sm text-gray-700">{getOwnerLabel(account)}</p>
                     </div>
                     <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
-                      <Tooltip content="Adicionar Entrada" position="top">
+                      <Tooltip content={allowsManualInput(account) ? "Adicionar Entrada" : "Conta Belvo - Somente Leitura"} position="top">
                         <Button
                           variant="outline"
                           size="icon"
@@ -234,13 +253,14 @@ export default function BankAccounts() {
                             setSelectedAccountForIncome(account);
                             setIsIncomeModalOpen(true);
                           }}
-                          className="text-flight-blue border-flight-blue/20 hover:bg-flight-blue/10"
+                          disabled={!allowsManualInput(account)}
+                          className="text-flight-blue border-flight-blue/20 hover:bg-flight-blue/10 disabled:opacity-50 disabled:cursor-not-allowed"
                           aria-label="Adicionar entrada"
                         >
                           <TrendingUp className="h-4 w-4" />
                         </Button>
                       </Tooltip>
-                      <Tooltip content="Transferir" position="top">
+                      <Tooltip content={allowsManualInput(account) ? "Transferir" : "Conta Belvo - Somente Leitura"} position="top">
                       <Button
                           variant="outline"
                           size="icon"
@@ -248,7 +268,8 @@ export default function BankAccounts() {
                           setSelectedAccountForTransaction(account);
                           setIsTransactionModalOpen(true);
                         }}
-                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          disabled={!allowsManualInput(account)}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
                           aria-label="Transferir"
                       >
                           <ArrowRightLeft className="h-4 w-4" />

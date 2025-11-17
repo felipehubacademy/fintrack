@@ -33,9 +33,11 @@ import {
   HelpCircle,
   Wifi,
   Shield,
-  Eye
+  Eye,
+  Link as LinkIcon
 } from 'lucide-react';
 import Link from 'next/link';
+import { isBelvoSynced, allowsManualInput } from '../../lib/belvoValidation';
 
 export default function CardsDashboard() {
   const router = useRouter();
