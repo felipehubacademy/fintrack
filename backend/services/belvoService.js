@@ -17,8 +17,6 @@ const belvoAuth = {
 
 /**
  * Create a widget access token for user
- * @param {string} externalId - Unique user identifier (CPF or user_id)
- * @returns {Promise<object>} { access_token, widget_url }
  */
 export async function createWidgetToken(externalId) {
   try {
@@ -26,7 +24,7 @@ export async function createWidgetToken(externalId) {
       `${BELVO_API_URL}/api/token/`,
       {
         id: externalId,
-        password: externalId, // Using same ID as password for simplicity
+        password: externalId,
         scopes: 'read_accounts,read_transactions,read_balances',
         widget: {
           branding: {
@@ -48,11 +46,6 @@ export async function createWidgetToken(externalId) {
   }
 }
 
-/**
- * Get all links for an institution
- * @param {string} linkId - Belvo link ID
- * @returns {Promise<object>} Link details
- */
 export async function getLink(linkId) {
   try {
     const response = await axios.get(
@@ -66,11 +59,6 @@ export async function getLink(linkId) {
   }
 }
 
-/**
- * Trigger manual sync for a link
- * @param {string} linkId - Belvo link ID
- * @returns {Promise<object>} Updated link
- */
 export async function triggerSync(linkId) {
   try {
     const response = await axios.patch(
@@ -85,11 +73,6 @@ export async function triggerSync(linkId) {
   }
 }
 
-/**
- * Delete a link (revoke consent)
- * @param {string} linkId - Belvo link ID
- * @returns {Promise<void>}
- */
 export async function deleteLink(linkId) {
   try {
     await axios.delete(
@@ -102,11 +85,6 @@ export async function deleteLink(linkId) {
   }
 }
 
-/**
- * Fetch accounts for a link
- * @param {string} linkId - Belvo link ID
- * @returns {Promise<array>} Array of accounts
- */
 export async function fetchAccounts(linkId) {
   try {
     const response = await axios.get(
@@ -123,13 +101,6 @@ export async function fetchAccounts(linkId) {
   }
 }
 
-/**
- * Fetch transactions for a link
- * @param {string} linkId - Belvo link ID
- * @param {string} dateFrom - Start date (YYYY-MM-DD)
- * @param {string} dateTo - End date (YYYY-MM-DD)
- * @returns {Promise<array>} Array of transactions
- */
 export async function fetchTransactions(linkId, dateFrom, dateTo) {
   try {
     const response = await axios.get(
