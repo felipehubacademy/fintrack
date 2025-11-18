@@ -195,8 +195,8 @@ async function saveAccounts(belvoLink, accounts) {
         const cardData = {
           organization_id: belvoLink.organization_id,
           user_id: belvoLink.user_id,
-          name: account.name || `${account.institution?.name} - ${account.number?.slice(-4)}`,
-          bank: account.institution?.name || 'Unknown',
+          name: account.name || `Cartão - ${account.number?.replace(/\D/g, '').slice(-4)}`,
+          bank: account.institution?.display_name || account.institution?.name || belvoLink.institution_name || 'Banco',
           holder_name: belvoLink.user_id, // We'll use user_id as placeholder
           last_four_digits: account.number?.replace(/\D/g, '').slice(-4) || '0000',
           credit_limit: account.credit_data?.limit || account.credit_limit || 0,
@@ -251,8 +251,8 @@ async function saveAccounts(belvoLink, accounts) {
         const accountData = {
           organization_id: belvoLink.organization_id,
           user_id: belvoLink.user_id,
-          name: account.name || `${account.institution?.name || 'Unknown'} - ${account.number?.slice(-4) || '0000'}`,
-          bank: account.institution?.name || 'Unknown',
+          name: account.name || `Conta - ${account.number?.slice(-4) || '0000'}`,
+          bank: account.institution?.display_name || account.institution?.name || belvoLink.institution_name || 'Banco',
           account_type: mapAccountType(account.type, account.category),
           account_number: account.number || null,
           initial_balance: 0,
