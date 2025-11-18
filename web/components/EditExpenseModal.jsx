@@ -422,8 +422,9 @@ export default function EditExpenseModal({
         if (updateError) throw updateError;
       }
 
-      // Se for compartilhado, gerenciar splits
-      if (isShared) {
+      // Se for compartilhado E NÃO foi convertido para cartão, gerenciar splits da despesa
+      // (Se foi convertido para cartão, os splits já foram inseridos nas parcelas acima)
+      if (isShared && editData.payment_method !== 'credit_card') {
         // Deletar splits antigos
         const { error: deleteError } = await supabase
           .from('expense_splits')
