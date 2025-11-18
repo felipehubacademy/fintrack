@@ -65,12 +65,7 @@ NEXT_PUBLIC_BELVO_APP_ID=meuazulao-sandbox
 
 **Webhook URL:**
 ```
-https://SEU-DOMINIO.vercel.app/api/belvo/webhooks
-```
-
-**Exemplo:**
-```
-https://meuazulao.vercel.app/api/belvo/webhooks
+https://meuazulao.com.br/api/belvo/webhooks
 ```
 
 ### D. Selecionar Eventos
@@ -97,7 +92,7 @@ BELVO_WEBHOOK_SECRET=seu_secret_aqui
 
 ### A. Acesse seu app deployado
 ```
-https://SEU-DOMINIO.vercel.app/dashboard/bank-accounts
+https://meuazulao.com.br/dashboard/bank-accounts
 ```
 
 ### B. Clique em "Conectar Banco"
@@ -135,7 +130,7 @@ Settings → Webhooks → Delivery History
 Use a ferramenta de teste da Belvo ou curl:
 
 ```bash
-curl -X POST https://SEU-DOMINIO.vercel.app/api/belvo/webhooks \
+curl -X POST https://meuazulao.com.br/api/belvo/webhooks \
   -H "Content-Type: application/json" \
   -d '{
     "webhook_id": "test-123",
