@@ -1,4 +1,15 @@
-import { supabase } from '../../../lib/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+
+// Use service role for webhook (bypasses RLS)
+// IMPORTANTE: Adicione SUPABASE_SERVICE_ROLE_KEY no Vercel!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseKey) {
+  console.error('❌ SUPABASE_SERVICE_ROLE_KEY não configurado! Webhook não funcionará.');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -201,7 +212,7 @@ async function saveAccounts(belvoLink, accounts) {
           last_four_digits: account.number?.replace(/\D/g, '').slice(-4) || '0000',
           credit_limit: account.credit_data?.limit || account.credit_limit || 0,
           closing_day: account.closing_day || 1,
-          due_day: account.payment_day || 10,
+          billing_day: account.payment_day || account.due_day || 10,
           provider: 'belvo',
           belvo_link_id: belvoLink.link_id,
           belvo_account_id: account.id,
