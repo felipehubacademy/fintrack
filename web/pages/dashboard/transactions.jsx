@@ -1838,7 +1838,7 @@ export default function TransactionsDashboard() {
                       <div className={`text-sm ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
                         <div className="max-w-xs truncate" title={transaction.description}>
                           {transaction.description}
-                          {transaction.installment_info && (
+                          {transaction.installment_info && transaction.installment_info.total_installments > 1 && (
                             <span className="text-gray-500 ml-1">
                               ({transaction.installment_info.current_installment}/{transaction.installment_info.total_installments})
                             </span>
@@ -1852,7 +1852,7 @@ export default function TransactionsDashboard() {
                     return (
                       <div>
                         {transaction.description}
-                        {transaction.installment_info && (
+                        {transaction.installment_info && transaction.installment_info.total_installments > 1 && (
                           <span className="text-gray-500 ml-1">
                             ({transaction.installment_info.current_installment}/{transaction.installment_info.total_installments})
                           </span>

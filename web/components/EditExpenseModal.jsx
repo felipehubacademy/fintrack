@@ -403,6 +403,9 @@ export default function EditExpenseModal({
           console.log('✅ [EDIT EXPENSE MODAL] Splits inseridos com sucesso');
         }
 
+        // ⚠️ IMPORTANTE: Se foi convertido para cartão, NÃO executar código de splits abaixo
+        // (os splits já foram inseridos nas parcelas acima)
+        // Continuar para atualizar limite do cartão
       } else {
         // Atualizar despesa (não cartão de crédito)
         const { error: updateError } = await supabase
@@ -424,7 +427,10 @@ export default function EditExpenseModal({
 
       // Se for compartilhado E NÃO foi convertido para cartão, gerenciar splits da despesa
       // (Se foi convertido para cartão, os splits já foram inseridos nas parcelas acima)
-      if (isShared && editData.payment_method !== 'credit_card') {
+      // ⚠️ IMPORTANTE: Se foi convertido para cartão (isCredit), a despesa antiga foi deletada,
+      // então NÃO devemos tentar inserir splits nela!
+      console.log('🔍 [EDIT EXPENSE MODAL] Verificando splits antigos - isCredit:', isCredit, 'isShared:', isShared);
+      if (isShared && !isCredit) {
         // Deletar splits antigos
         const { error: deleteError } = await supabase
           .from('expense_splits')
