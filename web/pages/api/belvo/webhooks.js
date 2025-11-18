@@ -213,12 +213,32 @@ async function saveAccounts(belvoLink, accounts) {
 
         console.log('💾 Card data:', cardData);
 
-        const { error, data } = await supabase
+        // Check if card already exists
+        const { data: existingCard } = await supabase
           .from('cards')
-          .upsert(cardData, {
-            onConflict: 'belvo_account_id'
-          })
-          .select();
+          .select('id')
+          .eq('belvo_account_id', account.id)
+          .eq('organization_id', belvoLink.organization_id)
+          .single();
+
+        let error;
+        if (existingCard) {
+          // Update existing
+          const { error: updateError } = await supabase
+            .from('cards')
+            .update(cardData)
+            .eq('id', existingCard.id);
+          error = updateError;
+          console.log('🔄 Updating existing card:', existingCard.id);
+        } else {
+          // Insert new
+          const { error: insertError } = await supabase
+            .from('cards')
+            .insert(cardData)
+            .select();
+          error = insertError;
+          console.log('➕ Inserting new card');
+        }
 
         if (!error) {
           savedCount++;
@@ -247,16 +267,39 @@ async function saveAccounts(belvoLink, accounts) {
 
         console.log('💾 Bank account data:', accountData);
 
-        const { error, data } = await supabase
+        // Check if account already exists
+        const { data: existingAccount } = await supabase
           .from('bank_accounts')
-          .upsert(accountData, {
-            onConflict: 'belvo_account_id'
-          })
-          .select();
+          .select('id')
+          .eq('belvo_account_id', account.id)
+          .eq('organization_id', belvoLink.organization_id)
+          .single();
+
+        let error;
+        if (existingAccount) {
+          // Update existing
+          const { error: updateError } = await supabase
+            .from('bank_accounts')
+            .update({
+              ...accountData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingAccount.id);
+          error = updateError;
+          console.log('🔄 Updating existing account:', existingAccount.id);
+        } else {
+          // Insert new
+          const { error: insertError, data } = await supabase
+            .from('bank_accounts')
+            .insert(accountData)
+            .select();
+          error = insertError;
+          console.log('➕ Inserting new account', data);
+        }
 
         if (!error) {
           savedCount++;
-          console.log('✅ Bank account saved:', account.id, data);
+          console.log('✅ Bank account saved:', account.id);
         } else {
           console.error('❌ Error saving bank account:', error);
         }
