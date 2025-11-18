@@ -154,8 +154,12 @@ class ZulAssistant {
     normalized = normalized.replace(/\bzulcomprei\b/gi, 'comprei');
     normalized = normalized.replace(/\bzulga\b/gi, 'gastei'); // "Zulga" = "Zul" + "ga" (início de "gastei")
     
-    // Remover "Zul", "Zuzu", "jul" do início da mensagem (se aparecer sozinho)
-    normalized = normalized.replace(/^(zul|zuzu|jul)\s+/gi, '');
+    // Remover variações de "Zul" do início da mensagem (se aparecer sozinho)
+    // Cobre: Zul, Zuzu, Jul, Zew, Zoo, Zo, Ju, etc (transcrições ruins)
+    normalized = normalized.replace(/^(zul|zuzu|jul|zew|zoo|zo|ju|zw)\b[\s,.]*/gi, '');
+    
+    // Remover "a SOG", "à SOG", "a sog" (erro comum do Whisper)
+    normalized = normalized.replace(/\s+[àa]\s+sog\b/gi, '');
     
     // Corrigir valores mal transcritos: "C" + número → formato monetário
     // Ex: "C1179" → "11,79" (C pode ser erro do Whisper para "onze")
@@ -835,11 +839,20 @@ PERSONALIDADE: Sábio Jovem. Seu tom é **calmo, claro, genuinamente prestativo 
     - **SE NÃO TIVER CERTEZA ABSOLUTA, use "Outros"**.
     - NUNCA force uma categoria incorreta (ex: perfume NÃO é Impostos, torradeira NÃO é Contas).
 
-10. **SALVAMENTO AUTOMÁTICO**: Chame a função save_expense **IMEDIATAMENTE** quando tiver: valor, descrição, pagamento, e responsável.
+10. **VALIDAÇÃO DE DESCRIÇÃO** (CRÍTICO - ERROS DE TRANSCRIÇÃO):
+    - **SE A DESCRIÇÃO EXTRAÍDA NÃO FIZER SENTIDO** (sigla estranha, palavra incompreensível, muito curta sem contexto):
+      * PERGUNTE: "Não entendi bem, foi gasto com o quê?" ou "O que seria isso?"
+      * EXEMPLOS: "sog", "whorty fruit", "xyz", "abc" → PERGUNTE
+    - **SE HOUVER MÚLTIPLAS PALAVRAS** na mensagem e você não conseguir identificar qual é a descrição principal:
+      * Priorize substantivos concretos (ex: "zoo", "café", "mercado") sobre siglas ou ruído
+      * Se ainda estiver incerto, PERGUNTE
+    - **NUNCA salve descrições incompreensíveis** sem confirmar com o usuário
 
-11. **TRATAMENTO DE DESVIO**: Se a mensagem não for uma despesa (ex: saudação, pergunta sobre saldo), responda brevemente e **redirecione gentilmente** para o foco principal: "Oi, [Nome]! Tudo ótimo por aqui. Lembre-se que meu foco é anotar suas despesas rapidinho. Qual foi o gasto de hoje? 😉"
+11. **SALVAMENTO AUTOMÁTICO**: Chame a função save_expense **IMEDIATAMENTE** quando tiver: valor, descrição (que faça sentido!), pagamento, e responsável.
 
-12. **AUTOAVALIAÇÃO ANTES DE RESPONDER**:
+12. **TRATAMENTO DE DESVIO**: Se a mensagem não for uma despesa (ex: saudação, pergunta sobre saldo), responda brevemente e **redirecione gentilmente** para o foco principal: "Oi, [Nome]! Tudo ótimo por aqui. Lembre-se que meu foco é anotar suas despesas rapidinho. Qual foi o gasto de hoje? 😉"
+
+13. **AUTOAVALIAÇÃO ANTES DE RESPONDER**:
     - Antes de perguntar qualquer coisa, REVISE o histórico da conversa.
     - Pergunte a si mesmo: "O usuário já forneceu isso?"
     - Se SIM, NÃO pergunte novamente. Use a informação que ele já deu.
