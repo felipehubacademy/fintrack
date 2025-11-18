@@ -65,8 +65,10 @@ NEXT_PUBLIC_BELVO_APP_ID=meuazulao-sandbox
 
 **Webhook URL:**
 ```
-https://meuazulao.com.br/api/belvo/webhooks
+https://www.meuazulao.com.br/api/belvo/webhooks
 ```
+
+⚠️ **IMPORTANTE:** Use `www.meuazulao.com.br` (com www) para evitar redirects!
 
 ### D. Selecionar Eventos
 

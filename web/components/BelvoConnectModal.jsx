@@ -352,7 +352,12 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
               disabled={loading}
               className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
             >
-              {loading ? 'Conectando...' : 'Continuar'}
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Conectando...
+                </div>
+              ) : 'Continuar'}
             </Button>
           </div>
         )}
