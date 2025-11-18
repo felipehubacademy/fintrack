@@ -130,58 +130,22 @@ class ZulAssistant {
     return t.charAt(0).toUpperCase() + t.slice(1);
   }
 
-  // Normalizar erros comuns de transcrição do Whisper (aplicar APENAS em mensagens de áudio)
-  // Remove erros onde "Zul" ou "Zuzu" se junta com verbos
+  // SIMPLIFICADO: Normalização minimalista de erros críticos de transcrição
+  // Aplicar APENAS em mensagens de áudio, com foco em correções de alta confiança
   normalizeTranscriptionErrors(text) {
     if (!text || typeof text !== 'string') return text;
     
     const original = text;
     let normalized = text;
     
-    // Erros comuns: "Zul" ou "Zuzu" + verbo (case insensitive)
-    // Padrão: jul/zu/zuzu/zulga + verbo → apenas o verbo
-    normalized = normalized.replace(/\bjulgastei\b/gi, 'gastei');
-    normalized = normalized.replace(/\bjulpaguei\b/gi, 'paguei');
-    normalized = normalized.replace(/\bjulcomprei\b/gi, 'comprei');
-    normalized = normalized.replace(/\bzugastei\b/gi, 'gastei');
-    normalized = normalized.replace(/\bzupaguei\b/gi, 'paguei');
-    normalized = normalized.replace(/\bzucomprei\b/gi, 'comprei');
-    normalized = normalized.replace(/\bzuzugastei\b/gi, 'gastei');
-    normalized = normalized.replace(/\bzuzupaguei\b/gi, 'paguei');
-    normalized = normalized.replace(/\bzuzucomprei\b/gi, 'comprei');
-    normalized = normalized.replace(/\bzulgastei\b/gi, 'gastei');
-    normalized = normalized.replace(/\bzulpaguei\b/gi, 'paguei');
-    normalized = normalized.replace(/\bzulcomprei\b/gi, 'comprei');
-    normalized = normalized.replace(/\bzulga\b/gi, 'gastei'); // "Zulga" = "Zul" + "ga" (início de "gastei")
+    // ========== REGRA 1: Remover vocativo "Zul" do início ==========
+    // Padrão: Qualquer variação de 2-4 letras começando com Z/J no início
+    // Ex: "Zu,", "Zul,", "Jul,", "Zew," → remove
+    normalized = normalized.replace(/^[zj][a-z]{0,3}[,\s]+/i, '');
     
-    // Remover variações de "Zul" do início da mensagem (se aparecer sozinho)
-    // Cobre: Zul, Zuzu, Jul, Zew, Zoo, Zo, Ju, etc (transcrições ruins)
-    normalized = normalized.replace(/^(zul|zuzu|jul|zew|zoo|zo|ju|zw)\b[\s,.]*/gi, '');
-    
-    // Remover "a SOG", "à SOG", "a sog" (erro comum do Whisper)
-    normalized = normalized.replace(/\s+[àa]\s+sog\b/gi, '');
-    
-    // Corrigir valores mal transcritos: "C" + número → formato monetário
-    // Ex: "C1179" → "11,79" (C pode ser erro do Whisper para "onze")
-    normalized = normalized.replace(/\bC(\d{3,4})\b/g, (match, num) => {
-      // Se for 3-4 dígitos, provavelmente é centavos mal transcritos
-      if (num.length === 3) {
-        // "C117" → "1,17" (centavos)
-        return num.slice(0, -2) + ',' + num.slice(-2);
-      } else if (num.length === 4) {
-        // "C1179" → "11,79" (reais e centavos)
-        return num.slice(0, -2) + ',' + num.slice(-2);
-      }
-      return match; // Não altera se não for padrão esperado
-    });
-    
-    // Verbos compartilhados
-    normalized = normalized.replace(/\bjulgastamos\b/gi, 'gastamos');
-    normalized = normalized.replace(/\bjulpagamos\b/gi, 'pagamos');
-    normalized = normalized.replace(/\bjulcompramos\b/gi, 'compramos');
-    normalized = normalized.replace(/\bzugastamos\b/gi, 'gastamos');
-    normalized = normalized.replace(/\bzupagamos\b/gi, 'pagamos');
-    normalized = normalized.replace(/\bzucompramos\b/gi, 'compramos');
+    // ========== REGRA 2: Corrigir verbos concatenados (alta confiança) ==========
+    // Ex: "julgastei" → "gastei", "zugastei" → "gastei"
+    normalized = normalized.replace(/\b[zj][a-z]{0,3}(gastei|paguei|comprei|gastamos|pagamos|compramos)\b/gi, '$1');
     
     // Log apenas se houve mudança
     if (normalized !== original) {
@@ -740,7 +704,7 @@ Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
                   },
                   card_name: {
                     type: 'string',
-                    description: 'Nome do cartão (apenas se payment_method for credit_card)'
+                    description: 'Nome ESPECÍFICO do cartão mencionado pelo usuário (ex: "Nubank", "C6", "Latam", "Roxinho"). CRÍTICO: APENAS preencha se o usuário MENCIONAR UM CARTÃO ESPECÍFICO. Se ele apenas disser "crédito" ou "cartão de crédito" SEM especificar qual cartão, NÃO preencha este campo e PERGUNTE qual cartão usar. Palavras como "credit", "crédito", "cartão" NÃO são nomes de cartões.'
                   },
                   installments: {
                     type: 'number',
@@ -810,15 +774,25 @@ PERSONALIDADE: Sábio Jovem. Seu tom é **calmo, claro, genuinamente prestativo 
       * Zul: "Quantas parcelas?" → User: "3x" → installments=3
       * Zul: "Em quantas?" → User: "uma só" → installments=1
 
-5.  **VARIAÇÃO RADICAL**: Mude o estilo de cada resposta (direto, casual, formal, contextual). NUNCA repita a mesma frase ou estrutura de pergunta.
+5.  **DETECÇÃO DE CARTÃO ESPECÍFICO** (CRÍTICO):
+    - **CARTÃO ESPECÍFICO** (pode salvar): "Nubank", "C6", "Latam", "Roxinho", "Inter", "MP", "XP", etc.
+    - **GENÉRICO** (NÃO é nome de cartão, PERGUNTE): "crédito", "cartão de crédito", "no crédito", "credit"
+    - **EXEMPLOS**:
+      * "foi no crédito Latam" → card_name="Latam" ✅ (Latam é específico)
+      * "foi no cartão de crédito" → card_name=??? PERGUNTE ❌ (não especificou qual cartão)
+      * "paguei no crédito" → card_name=??? PERGUNTE ❌ (não especificou qual cartão)
+      * "foi no C6" → card_name="C6" ✅ (C6 é específico)
+    - **REGRA**: Se usuário mencionar método (crédito/débito) mas NÃO mencionar QUAL cartão, PERGUNTE antes de salvar.
 
-6.  **CONCISÃO MÁXIMA**: Responda com **1 linha** sempre que possível. Use no máximo 2 linhas em casos de confirmação ou contexto. O WhatsApp exige rapidez.
+6.  **VARIAÇÃO RADICAL**: Mude o estilo de cada resposta (direto, casual, formal, contextual). NUNCA repita a mesma frase ou estrutura de pergunta.
 
-7.  **HUMANIZAÇÃO LEVE**: Use emojis leves (🤔, ❓, 💰) com moderação e apenas para humanizar a pergunta ou confirmação. Não use emojis em excesso.
+7.  **CONCISÃO MÁXIMA**: Responda com **1 linha** sempre que possível. Use no máximo 2 linhas em casos de confirmação ou contexto. O WhatsApp exige rapidez.
 
-8.  **FLUXO DE VALIDAÇÃO**: A ordem de prioridade para coleta é: Valor & Descrição, Pagamento (e se for crédito: cartão/parcelas), Responsável.
+8.  **HUMANIZAÇÃO LEVE**: Use emojis leves (🤔, ❓, 💰) com moderação e apenas para humanizar a pergunta ou confirmação. Não use emojis em excesso.
 
-9.  **INFERÊNCIA DE CATEGORIA** (CRÍTICO - 3 PRIORIDADES):
+9.  **FLUXO DE VALIDAÇÃO**: A ordem de prioridade para coleta é: Valor & Descrição, Pagamento (e se for crédito: cartão/parcelas), Responsável.
+
+10. **INFERÊNCIA DE CATEGORIA** (CRÍTICO - 3 PRIORIDADES):
     
     **PRIORIDADE 1 - CATEGORIA EXPLICITAMENTE MENCIONADA** (SEMPRE TEM PRECEDÊNCIA):
     - Se o usuário MENCIONAR EXPLICITAMENTE a categoria, use EXATAMENTE essa categoria:
@@ -839,7 +813,7 @@ PERSONALIDADE: Sábio Jovem. Seu tom é **calmo, claro, genuinamente prestativo 
     - **SE NÃO TIVER CERTEZA ABSOLUTA, use "Outros"**.
     - NUNCA force uma categoria incorreta (ex: perfume NÃO é Impostos, torradeira NÃO é Contas).
 
-10. **VALIDAÇÃO DE DESCRIÇÃO** (CRÍTICO - ERROS DE TRANSCRIÇÃO):
+11. **VALIDAÇÃO DE DESCRIÇÃO** (CRÍTICO - ERROS DE TRANSCRIÇÃO):
     - **SE A DESCRIÇÃO EXTRAÍDA NÃO FIZER SENTIDO** (sigla estranha, palavra incompreensível, muito curta sem contexto):
       * PERGUNTE: "Não entendi bem, foi gasto com o quê?" ou "O que seria isso?"
       * EXEMPLOS: "sog", "whorty fruit", "xyz", "abc" → PERGUNTE
@@ -848,11 +822,11 @@ PERSONALIDADE: Sábio Jovem. Seu tom é **calmo, claro, genuinamente prestativo 
       * Se ainda estiver incerto, PERGUNTE
     - **NUNCA salve descrições incompreensíveis** sem confirmar com o usuário
 
-11. **SALVAMENTO AUTOMÁTICO**: Chame a função save_expense **IMEDIATAMENTE** quando tiver: valor, descrição (que faça sentido!), pagamento, e responsável.
+12. **SALVAMENTO AUTOMÁTICO**: Chame a função save_expense **IMEDIATAMENTE** quando tiver: valor, descrição (que faça sentido!), pagamento, responsável E (se crédito) cartão específico.
 
-12. **TRATAMENTO DE DESVIO**: Se a mensagem não for uma despesa (ex: saudação, pergunta sobre saldo), responda brevemente e **redirecione gentilmente** para o foco principal: "Oi, [Nome]! Tudo ótimo por aqui. Lembre-se que meu foco é anotar suas despesas rapidinho. Qual foi o gasto de hoje? 😉"
+13. **TRATAMENTO DE DESVIO**: Se a mensagem não for uma despesa (ex: saudação, pergunta sobre saldo), responda brevemente e **redirecione gentilmente** para o foco principal: "Oi, [Nome]! Tudo ótimo por aqui. Lembre-se que meu foco é anotar suas despesas rapidinho. Qual foi o gasto de hoje? 😉"
 
-13. **AUTOAVALIAÇÃO ANTES DE RESPONDER**:
+14. **AUTOAVALIAÇÃO ANTES DE RESPONDER**:
     - Antes de perguntar qualquer coisa, REVISE o histórico da conversa.
     - Pergunte a si mesmo: "O usuário já forneceu isso?"
     - Se SIM, NÃO pergunte novamente. Use a informação que ele já deu.
