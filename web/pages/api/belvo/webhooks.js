@@ -253,7 +253,7 @@ async function saveAccounts(belvoLink, accounts) {
           user_id: belvoLink.user_id,
           name: account.name || `${account.institution?.name || 'Unknown'} - ${account.number?.slice(-4) || '0000'}`,
           bank: account.institution?.name || 'Unknown',
-          account_type: mapAccountType(account.type),
+          account_type: mapAccountType(account.type, account.category),
           account_number: account.number || null,
           initial_balance: 0,
           current_balance: account.balance?.current || account.balance?.available || 0,
@@ -313,16 +313,29 @@ async function saveAccounts(belvoLink, accounts) {
   return savedCount;
 }
 
-// Map Belvo account type to FinTrack type
-function mapAccountType(belvoType) {
-  const typeMap = {
-    'checking': 'checking',
-    'savings': 'savings',
-    'credit_card': 'credit',
-    'investment': 'investment',
-    'loan': 'loan'
-  };
-  return typeMap[belvoType] || 'checking';
+// Map Belvo account type/category to FinTrack type
+function mapAccountType(belvoType, category) {
+  // Use category if available (more reliable)
+  if (category) {
+    if (category === 'CHECKING_ACCOUNT' || category === 'SAVINGS_ACCOUNT') {
+      return category === 'SAVINGS_ACCOUNT' ? 'savings' : 'checking';
+    }
+    if (category === 'CREDIT_CARD' || category === 'LOAN_ACCOUNT') {
+      return 'checking'; // Will be handled as card separately
+    }
+  }
+
+  // Fallback to type
+  const typeLower = (belvoType || '').toLowerCase();
+  if (typeLower.includes('corrente') || typeLower.includes('checking')) {
+    return 'checking';
+  }
+  if (typeLower.includes('poupança') || typeLower.includes('savings')) {
+    return 'savings';
+  }
+
+  // Default to checking
+  return 'checking';
 }
 
 // Save transactions to database
