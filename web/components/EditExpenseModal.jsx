@@ -312,25 +312,12 @@ export default function EditExpenseModal({
           return;
         }
 
-        const ownerForRPC = isShared ? 'Compartilhado' : editData.owner;
+        // ⚠️ IMPORTANTE: Enviar o nome da organização (como o Zul faz)
+        const ownerForRPC = editData.owner;
 
-        // Preparar split template (deduplicado)
-        const splitTemplate = isShared && splitDetails.length > 0
-          ? Object.values(
-              splitDetails.reduce((acc, split) => {
-                const id = split.cost_center_id;
-                if (!id) return acc;
-                if (!acc[id]) {
-                  acc[id] = { cost_center_id: id, percentage: 0, amount: 0 };
-                }
-                acc[id].percentage += Number(split.percentage) || 0;
-                acc[id].amount += Number(split.amount) || 0;
-                return acc;
-              }, {})
-            ).filter(item => (item.percentage || 0) !== 0 || (item.amount || 0) !== 0)
-          : null;
+        console.log('🔍 [EDIT EXPENSE MODAL] isShared:', isShared, 'splitDetails:', splitDetails.length);
 
-        // Criar novas parcelas
+        // Criar novas parcelas (SEM enviar splits - como o Zul faz)
         const { data: parentExpenseId, error: rpcError } = await supabase.rpc('create_installments', {
           p_amount: parseCurrencyInput(editData.amount),
           p_installments: Number(editData.installments),
@@ -339,11 +326,11 @@ export default function EditExpenseModal({
           p_card_id: editData.card_id,
           p_category_id: category?.id || null,
           p_cost_center_id: costCenterId || null,
-          p_owner: ownerForRPC,
+          p_owner: ownerForRPC, // Nome da organização (como o Zul)
           p_organization_id: finalOrganization.id,
           p_user_id: orgUser.id,
           p_whatsapp_message_id: null,
-          p_split_template: splitTemplate
+          p_split_template: null // ← NÃO enviar splits (como o Zul)
         });
         if (rpcError) throw rpcError;
 
@@ -357,6 +344,64 @@ export default function EditExpenseModal({
 
         // Deletar a despesa antiga editada (converter para novas parcelas)
         await supabase.from('expenses').delete().eq('id', expenseId);
+
+        // Inserir splits manualmente para TODAS as parcelas (se for compartilhado)
+        if (isShared && splitDetails.length > 0) {
+          console.log('🔍 [EDIT EXPENSE MODAL] Inserindo splits para todas as parcelas...');
+          
+          // Buscar todas as parcelas criadas
+          const { data: allInstallments, error: fetchError } = await supabase
+            .from('expenses')
+            .select('id')
+            .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+          
+          if (fetchError) throw fetchError;
+          
+          console.log('📊 [EDIT EXPENSE MODAL] Parcelas encontradas:', allInstallments.length);
+          
+          // Deduplicar splitDetails por cost_center_id
+          const uniqueSplits = Object.values(
+            splitDetails.reduce((acc, split) => {
+              const id = split.cost_center_id;
+              if (!id) return acc;
+              if (!acc[id]) {
+                acc[id] = {
+                  cost_center_id: id,
+                  percentage: 0,
+                  amount: 0
+                };
+              }
+              acc[id].percentage += Number(split.percentage) || 0;
+              acc[id].amount += Number(split.amount) || 0;
+              return acc;
+            }, {})
+          );
+          
+          console.log('📊 [EDIT EXPENSE MODAL] Splits únicos:', uniqueSplits.length);
+          
+          // Inserir splits para cada parcela
+          const splitsToInsert = allInstallments.flatMap(installment => 
+            uniqueSplits.map(split => ({
+              expense_id: installment.id,
+              cost_center_id: split.cost_center_id,
+              percentage: split.percentage,
+              amount: split.amount / Number(editData.installments)
+            }))
+          );
+          
+          console.log('📊 [EDIT EXPENSE MODAL] Total de splits a inserir:', splitsToInsert.length);
+
+          const { error: splitError } = await supabase
+            .from('expense_splits')
+            .insert(splitsToInsert);
+
+          if (splitError) {
+            console.error('❌ [EDIT EXPENSE MODAL] Erro ao inserir splits:', splitError);
+            throw splitError;
+          }
+          
+          console.log('✅ [EDIT EXPENSE MODAL] Splits inseridos com sucesso');
+        }
 
       } else {
         // Atualizar despesa (não cartão de crédito)
