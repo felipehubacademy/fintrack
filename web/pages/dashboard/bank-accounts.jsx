@@ -9,10 +9,11 @@ import BankAccountModal from '../../components/BankAccountModal';
 import BankTransactionModal from '../../components/BankTransactionModal';
 import BankTransactionsModal from '../../components/BankTransactionsModal';
 import BankIncomeModal from '../../components/BankIncomeModal';
+import BelvoConnectModal from '../../components/BelvoConnectModal';
 import Header from '../../components/Header';
 import LoadingLogo from '../../components/LoadingLogo';
 import Tooltip from '../../components/ui/Tooltip';
-import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2, ArrowRightLeft, List } from 'lucide-react';
+import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2, ArrowRightLeft, List, Link2, ExternalLink } from 'lucide-react';
 import StatsCard from '../../components/ui/StatsCard';
 
 export default function BankAccounts() {
@@ -28,6 +29,7 @@ export default function BankAccounts() {
   });
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBelvoModalOpen, setIsBelvoModalOpen] = useState(false);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [isTransactionsHistoryModalOpen, setIsTransactionsHistoryModalOpen] = useState(false);
   const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
@@ -141,14 +143,52 @@ export default function BankAccounts() {
             <h1 className="text-2xl font-bold text-gray-900">Contas Bancárias</h1>
             <p className="text-gray-600 mt-1">Gerencie suas contas corrente e poupança</p>
           </div>
-          <Button 
-            onClick={() => handleOpenModal()} 
-            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Nova Conta
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              onClick={() => setIsBelvoModalOpen(true)}
+              variant="outline"
+              className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50"
+            >
+              <Link2 className="h-5 w-5 mr-2" />
+              Conectar Banco
+            </Button>
+            <Button 
+              onClick={() => handleOpenModal()} 
+              className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Nova Conta Manual
+            </Button>
+          </div>
         </div>
+
+        {/* My Belvo Portal Link */}
+        {accounts.some(acc => acc.provider === 'belvo') && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Link2 className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">
+                    Contas conectadas via Open Finance
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Gerencie seus consentimentos e dados compartilhados
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`https://meuportal.belvo.com/?mode=custom&app_id=${process.env.NEXT_PUBLIC_BELVO_APP_ID || ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded-lg transition-colors"
+              >
+                Gerenciar Consentimentos
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -195,11 +235,21 @@ export default function BankAccounts() {
                 <CardContent className="bg-flight-blue/5 p-6">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      {!account.is_active && (
-                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
-                          Inativa
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {!account.is_active && (
+                          <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                            Inativa
+                          </span>
+                        )}
+                        {account.provider === 'belvo' && (
+                          <Tooltip content="Conectada via Open Finance" position="top">
+                            <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded flex items-center gap-1">
+                              <Link2 className="w-3 h-3" />
+                              Belvo
+                            </span>
+                          </Tooltip>
+                        )}
+                      </div>
                       <div className="text-right ml-auto">
                         <h3 className="font-semibold text-gray-900">{account.name}</h3>
                         <p className="text-sm text-gray-500">{account.bank}</p>
@@ -225,71 +275,98 @@ export default function BankAccounts() {
                       <p className="text-xs text-gray-500 mb-1">Propriedade</p>
                       <p className="text-sm text-gray-700">{getOwnerLabel(account)}</p>
                     </div>
-                    <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
-                      <Tooltip content="Adicionar Entrada" position="top">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => {
-                            setSelectedAccountForIncome(account);
-                            setIsIncomeModalOpen(true);
-                          }}
-                          className="text-flight-blue border-flight-blue/20 hover:bg-flight-blue/10"
-                          aria-label="Adicionar entrada"
-                        >
-                          <TrendingUp className="h-4 w-4" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip content="Transferir" position="top">
-                      <Button
-                          variant="outline"
-                          size="icon"
-                        onClick={() => {
-                          setSelectedAccountForTransaction(account);
-                          setIsTransactionModalOpen(true);
-                        }}
-                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                          aria-label="Transferir"
-                      >
-                          <ArrowRightLeft className="h-4 w-4" />
-                      </Button>
-                      </Tooltip>
-                      <Tooltip content="Ver histórico" position="top">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => {
-                            setSelectedAccountForHistory(account);
-                            setIsTransactionsHistoryModalOpen(true);
-                          }}
-                          className="text-gray-600 border-gray-200 hover:bg-gray-50"
-                          aria-label="Ver histórico"
-                        >
-                          <List className="h-4 w-4" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip content="Editar" position="top">
-                      <Button
-                        variant="outline"
-                          size="icon"
-                        onClick={() => handleOpenModal(account)}
-                          aria-label="Editar conta"
-                      >
-                          <Edit className="h-4 w-4" />
-                      </Button>
-                      </Tooltip>
-                      <Tooltip content="Desativar" position="top">
-                      <Button
-                        variant="outline"
-                          size="icon"
-                        onClick={() => handleToggleActive(account)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                          aria-label="Desativar conta"
-                      >
-                          <Trash2 className="h-4 w-4" />
-                      </Button>
-                      </Tooltip>
-                    </div>
+                    {account.provider === 'belvo' ? (
+                      /* Belvo accounts: Read-only, show only history */
+                      <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
+                        <Tooltip content="Ver histórico" position="top">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedAccountForHistory(account);
+                              setIsTransactionsHistoryModalOpen(true);
+                            }}
+                            className="text-gray-600 border-gray-200 hover:bg-gray-50"
+                            aria-label="Ver histórico"
+                          >
+                            <List className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Sincronizada automaticamente via Open Finance" position="top">
+                          <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-2">
+                            <Link2 className="w-3 h-3" />
+                            Somente leitura
+                          </div>
+                        </Tooltip>
+                      </div>
+                    ) : (
+                      /* Manual accounts: Full control */
+                      <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
+                        <Tooltip content="Adicionar Entrada" position="top">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedAccountForIncome(account);
+                              setIsIncomeModalOpen(true);
+                            }}
+                            className="text-flight-blue border-flight-blue/20 hover:bg-flight-blue/10"
+                            aria-label="Adicionar entrada"
+                          >
+                            <TrendingUp className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Transferir" position="top">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedAccountForTransaction(account);
+                              setIsTransactionModalOpen(true);
+                            }}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            aria-label="Transferir"
+                          >
+                            <ArrowRightLeft className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Ver histórico" position="top">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedAccountForHistory(account);
+                              setIsTransactionsHistoryModalOpen(true);
+                            }}
+                            className="text-gray-600 border-gray-200 hover:bg-gray-50"
+                            aria-label="Ver histórico"
+                          >
+                            <List className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Editar" position="top">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleOpenModal(account)}
+                            aria-label="Editar conta"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Desativar" position="top">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleToggleActive(account)}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            aria-label="Desativar conta"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -343,6 +420,13 @@ export default function BankAccounts() {
         }}
         account={selectedAccountForHistory}
         organization={organization}
+      />
+      
+      <BelvoConnectModal
+        isOpen={isBelvoModalOpen}
+        onClose={() => setIsBelvoModalOpen(false)}
+        onSuccess={fetchAccounts}
+        accountType="bank_account"
       />
     </>
   );

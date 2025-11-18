@@ -167,11 +167,51 @@ export function formatCurrencyInput(value) {
 export function parseCurrencyInput(formattedValue) {
   if (!formattedValue) return 0;
   
+  // Remover tudo que não for número, vírgula, ponto ou sinal
+  const sanitized = formattedValue.replace(/[^\d,.-]/g, '');
+  
+  // Remover múltiplos sinais e manter apenas o primeiro
+  const normalized = sanitized.replace(/(?!^)-/g, '');
+  
   // Remover pontos (separadores de milhar) e substituir vírgula por ponto
-  const cleaned = formattedValue.replace(/\./g, '').replace(',', '.');
+  const cleaned = normalized.replace(/\./g, '').replace(',', '.');
   const parsed = parseFloat(cleaned);
   
   return isNaN(parsed) ? 0 : parsed;
+}
+
+/**
+ * Processa valor de moeda diretamente (sem evento)
+ * Remove formatação e mantém apenas números e vírgula
+ * @param {string} value - Valor do input
+ * @returns {string} Valor processado (sem R$)
+ */
+export function processCurrencyInput(value) {
+  if (value === '') {
+    return '';
+  }
+
+  // Remover qualquer coisa que não seja número, vírgula, ponto ou sinal
+  let cleaned = value.replace(/[^\d,.-]/g, '');
+
+  if (!cleaned) {
+    return '';
+  }
+
+  // Normalizar múltiplos sinais
+  cleaned = cleaned.replace(/(?!^)-/g, '');
+
+  // Garantir apenas um separador decimal
+  const parts = cleaned.split(/[,.]/);
+  if (parts.length > 2) {
+    const integerPart = parts.slice(0, -1).join('');
+    const decimalPart = parts[parts.length - 1];
+    cleaned = integerPart + ',' + decimalPart.slice(0, 2);
+  } else if (parts.length === 2) {
+    cleaned = parts[0] + ',' + parts[1].slice(0, 2);
+  }
+
+  return cleaned;
 }
 
 /**

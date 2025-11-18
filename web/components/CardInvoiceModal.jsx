@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X, Calendar, CreditCard, ArrowRight, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import MarkInvoiceAsPaidModal from './MarkInvoiceAsPaidModal';
+import RolloverInvoiceModal from './RolloverInvoiceModal';
 import { useOrganization } from '../hooks/useOrganization';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { getBrazilToday, createBrazilDate, isDateBeforeOrEqualToday } from '../lib/utils';
+import { getBrazilToday, getBrazilTodayString, createBrazilDate, isDateBeforeOrEqualToday } from '../lib/utils';
 
 export default function CardInvoiceModal({ isOpen, onClose, card }) {
   const { organization, user, costCenters } = useOrganization();
@@ -15,6 +16,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
   const [loading, setLoading] = useState(true);
   const [currentCycle, setCurrentCycle] = useState(null);
   const [showMarkAsPaidModal, setShowMarkAsPaidModal] = useState(false);
+  const [showRolloverModal, setShowRolloverModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [expandedInvoices, setExpandedInvoices] = useState(new Set());
 
@@ -249,6 +251,32 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
       console.log(`✅ Faturas agrupadas:`, Object.keys(invoicesMap).length);
       console.log(`📋 Detalhes das faturas:`, invoicesMap);
 
+      // Buscar status e paid_amount de card_invoices para cada fatura
+      console.log('🔍 Buscando registros de card_invoices...');
+      const { data: invoiceRecords, error: invoiceRecordsError } = await supabase
+        .from('card_invoices')
+        .select('cycle_start_date, status, paid_amount, total_amount')
+        .eq('card_id', card.id);
+
+      if (invoiceRecordsError) {
+        console.error('⚠️ Erro ao buscar registros de faturas:', invoiceRecordsError);
+      } else {
+        console.log(`✅ Encontrados ${invoiceRecords?.length || 0} registros de faturas:`, invoiceRecords);
+      }
+
+      // Mapear status e paid_amount para as faturas
+      for (const cycleKey in invoicesMap) {
+        const invoiceRecord = invoiceRecords?.find(rec => rec.cycle_start_date === cycleKey);
+        console.log(`📋 Mapeando fatura ${cycleKey}:`, invoiceRecord || 'sem registro');
+        if (invoiceRecord) {
+          invoicesMap[cycleKey].status = invoiceRecord.status;
+          invoicesMap[cycleKey].paid_amount = invoiceRecord.paid_amount;
+        } else {
+          invoicesMap[cycleKey].status = 'pending';
+          invoicesMap[cycleKey].paid_amount = 0;
+        }
+      }
+
       // Converter para array e ordenar por data
       const invoicesArray = Object.values(invoicesMap).sort((a, b) => 
         new Date(a.startDate) - new Date(b.startDate)
@@ -279,138 +307,301 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
     }).format(value);
   };
 
-  const handleMarkInvoiceAsPaid = async (ownerData) => {
+  const handleMarkInvoiceAsPaid = async (paymentData) => {
     if (!selectedInvoice || !card) return;
 
     try {
-      const { cost_center_id, is_shared } = ownerData;
+      const { bank_account_id, amount } = paymentData;
       
-      // Buscar o nome do cost center ou organização
-      let ownerName = null;
-      if (cost_center_id) {
-        const costCenter = costCenters?.find(cc => cc.id === cost_center_id);
-        ownerName = costCenter?.name || null;
-      } else if (is_shared) {
-        ownerName = organization?.name || 'Família';
+      console.log('💳 [PAYMENT] Iniciando pagamento:', {
+        bank_account_id,
+        amount,
+        card_name: card.name,
+        invoice_total: selectedInvoice.total,
+        invoice_start: selectedInvoice.startDate
+      });
+      
+      // Determinar o status da fatura após o pagamento
+      const totalInvoice = selectedInvoice.total;
+      const isFullPayment = amount >= totalInvoice;
+      const newStatus = isFullPayment ? 'paid' : 'paid_partial';
+
+      console.log('💳 [PAYMENT] Status calculado:', { isFullPayment, newStatus });
+
+      // 1. Criar transação bancária (débito na conta) usando a função RPC
+      console.log('💳 [PAYMENT] Criando transação bancária...');
+      const { data: transactionId, error: bankError } = await supabase
+        .rpc('create_bank_transaction', {
+          p_bank_account_id: bank_account_id,
+          p_transaction_type: 'manual_debit',
+          p_amount: amount,
+          p_description: `Pagamento Fatura ${card.name} - ${formatDate(selectedInvoice.startDate)}`,
+          p_date: getBrazilTodayString(),
+          p_organization_id: organization.id,
+          p_user_id: user?.id
+        });
+
+      if (bankError) {
+        console.error('❌ [PAYMENT] Erro ao criar transação bancária:', bankError);
+        throw bankError;
       }
 
-      // Buscar categoria "Contas" ou usar primeira disponível
+      console.log('✅ [PAYMENT] Transação bancária criada:', transactionId);
+
+      // Buscar a transação criada para pegar o ID
+      const { data: bankTransaction } = await supabase
+        .from('bank_account_transactions')
+        .select('*')
+        .eq('id', transactionId)
+        .single();
+
+      if (!bankTransaction) {
+        throw new Error('Transação bancária não encontrada após criação');
+      }
+
+      console.log('✅ [PAYMENT] Transação bancária confirmada:', bankTransaction.id);
+
+      // 2. Buscar ou criar registro da fatura em card_invoices
+      console.log('💳 [PAYMENT] Buscando registro da fatura...');
+      let invoiceRecord;
+      const { data: existingInvoice, error: fetchError } = await supabase
+        .from('card_invoices')
+        .select('*')
+        .eq('card_id', card.id)
+        .eq('cycle_start_date', selectedInvoice.startDate)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('❌ [PAYMENT] Erro ao buscar fatura:', fetchError);
+        throw fetchError;
+      }
+
+      if (existingInvoice) {
+        console.log('📋 [PAYMENT] Fatura existente encontrada:', existingInvoice);
+        // Atualizar registro existente
+        const newPaidAmount = Number(existingInvoice.paid_amount || 0) + amount;
+        const finalStatus = newPaidAmount >= totalInvoice ? 'paid' : 'paid_partial';
+        
+        console.log('💳 [PAYMENT] Atualizando fatura:', {
+          old_paid: existingInvoice.paid_amount,
+          new_paid: newPaidAmount,
+          total: totalInvoice,
+          new_status: finalStatus
+        });
+
+        const { data: updated, error: updateError } = await supabase
+          .from('card_invoices')
+          .update({
+            paid_amount: newPaidAmount,
+            status: finalStatus,
+            first_payment_at: existingInvoice.first_payment_at || new Date().toISOString(),
+            fully_paid_at: finalStatus === 'paid' ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingInvoice.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('❌ [PAYMENT] Erro ao atualizar fatura:', updateError);
+          throw updateError;
+        }
+        
+        console.log('✅ [PAYMENT] Fatura atualizada:', updated);
+        invoiceRecord = updated;
+      } else {
+        console.log('📋 [PAYMENT] Criando nova fatura');
+        // Criar novo registro
+        const { data: created, error: createError } = await supabase
+          .from('card_invoices')
+          .insert({
+            card_id: card.id,
+            cycle_start_date: selectedInvoice.startDate,
+            cycle_end_date: selectedInvoice.endDate,
+            total_amount: totalInvoice,
+            paid_amount: amount,
+            status: newStatus,
+            first_payment_at: new Date().toISOString(),
+            fully_paid_at: isFullPayment ? new Date().toISOString() : null,
+            organization_id: organization.id,
+            user_id: user?.id
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('❌ [PAYMENT] Erro ao criar fatura:', createError);
+          throw createError;
+        }
+        
+        console.log('✅ [PAYMENT] Fatura criada:', created);
+        invoiceRecord = created;
+      }
+
+      // 3. Registrar pagamento em card_invoice_payments
+      console.log('💳 [PAYMENT] Registrando pagamento...');
+      const { error: paymentError } = await supabase
+        .from('card_invoice_payments')
+        .insert({
+          invoice_id: invoiceRecord.id,
+          bank_transaction_id: bankTransaction.id,
+          amount,
+          payment_date: getBrazilTodayString()
+        });
+
+      if (paymentError) {
+        console.error('❌ [PAYMENT] Erro ao registrar pagamento:', paymentError);
+        throw paymentError;
+      }
+
+      console.log('✅ [PAYMENT] Pagamento registrado');
+
+      // 4. Atualizar limite do cartão (despesas permanecem 'confirmed')
+      const currentAvailableLimit = Number(card.available_limit || 0);
+      const creditLimit = Number(card.credit_limit || 0);
+      
+      console.log('💳 [PAYMENT] Atualizando limite do cartão:', {
+        current_limit: currentAvailableLimit,
+        credit_limit: creditLimit,
+        amount_paid: amount
+      });
+      
+      // Adicionar o valor pago ao limite disponível
+      const newAvailableLimit = Math.min(creditLimit, currentAvailableLimit + amount);
+      
+      console.log('💳 [PAYMENT] Novo limite calculado:', newAvailableLimit);
+
+      const { error: limitError } = await supabase
+        .from('cards')
+        .update({ available_limit: newAvailableLimit })
+        .eq('id', card.id);
+
+      if (limitError) {
+        console.error('❌ [PAYMENT] Erro ao atualizar limite:', limitError);
+        throw limitError;
+      }
+
+      console.log('✅ [PAYMENT] Limite do cartão atualizado');
+
+      if (isFullPayment) {
+        success(`Fatura de ${formatCurrency(totalInvoice)} paga! Limite do cartão liberado.`);
+      } else {
+        success(`Pagamento parcial de ${formatCurrency(amount)} registrado. Limite de ${formatCurrency(amount)} liberado. Saldo restante: ${formatCurrency(totalInvoice - amount)}`);
+      }
+      
+      console.log('💳 [PAYMENT] Recarregando faturas...');
+      // Recarregar faturas
+      await fetchInvoices();
+      
+      console.log('💳 [PAYMENT] Fechando modais...');
+      // Fechar modal de confirmação
+      setShowMarkAsPaidModal(false);
+      setSelectedInvoice(null);
+      
+      // Fechar modal de faturas também
+      onClose();
+      
+      console.log('✅ [PAYMENT] Processo concluído com sucesso!');
+    } catch (error) {
+      console.error('❌ [PAYMENT] Erro ao processar pagamento:', error);
+      showError('Erro ao processar pagamento. Tente novamente.');
+    }
+  };
+
+  const handleRolloverInvoice = async () => {
+    if (!selectedInvoice || !card) return;
+
+    try {
+      // Buscar dados da fatura em card_invoices
+      const { data: invoiceRecord } = await supabase
+        .from('card_invoices')
+        .select('*')
+        .eq('card_id', card.id)
+        .eq('cycle_start_date', selectedInvoice.startDate)
+        .single();
+
+      if (!invoiceRecord) {
+        throw new Error('Registro da fatura não encontrado.');
+      }
+
+      const remainingAmount = invoiceRecord.total_amount - invoiceRecord.paid_amount;
+
+      if (remainingAmount <= 0) {
+        showError('Não há saldo restante para transferir.');
+        return;
+      }
+
+      // Calcular data para a próxima fatura (primeiro dia do próximo ciclo)
+      const nextCycleStartDate = new Date(selectedInvoice.endDate);
+      nextCycleStartDate.setDate(nextCycleStartDate.getDate() + 1);
+      const nextCycleDateStr = nextCycleStartDate.toISOString().split('T')[0];
+
+      // Buscar categoria padrão para a despesa fantasma
       const { data: categories } = await supabase
         .from('budget_categories')
         .select('*')
         .eq('organization_id', organization.id)
         .or('type.eq.expense,type.eq.both')
         .order('name');
-      
-      // Tentar encontrar categoria "Contas"
-      let category = categories?.find(cat => 
-        cat.name.toLowerCase() === 'contas'
-      );
-      
-      // Se não encontrar, usar primeira disponível
-      if (!category && categories && categories.length > 0) {
-        category = categories[0];
-      }
 
-      // 1. Criar despesa representando o pagamento da fatura
-      const invoiceDescription = `Fatura ${card.name} - ${formatDate(selectedInvoice.startDate)}`;
-      
-      const expenseData = {
-        description: invoiceDescription,
-        amount: selectedInvoice.total,
-        date: getBrazilTodayString(),
-        category_id: category?.id || null,
-        category: category?.name || null,
-        cost_center_id: cost_center_id || null,
-        owner: ownerName,
-        is_shared: is_shared,
-        payment_method: 'bank_transfer', // Pagamento da fatura geralmente é por transferência/PIX
-        card_id: null, // Não é mais despesa no cartão, é pagamento
-        status: 'confirmed',
-        organization_id: organization.id,
-        user_id: user?.id,
-        source: 'manual'
-      };
+      const category = categories?.find(cat => cat.name.toLowerCase() === 'contas') || categories?.[0];
 
-      const { data: expense, error: expenseError } = await supabase
+      // Criar despesa fantasma marcada com pending_next_invoice
+      const { error: expenseError } = await supabase
         .from('expenses')
-        .insert(expenseData)
-        .select()
-        .single();
+        .insert({
+          description: `Saldo anterior - ${card.name}`,
+          amount: remainingAmount,
+          date: nextCycleDateStr,
+          category_id: category?.id || null,
+          category: category?.name || 'Saldo Anterior',
+          payment_method: 'credit_card',
+          card_id: card.id,
+          status: 'confirmed',
+          pending_next_invoice: true,
+          organization_id: organization.id,
+          user_id: user?.id,
+          source: 'manual'
+        });
 
       if (expenseError) {
-        console.error('❌ Erro ao criar expense da fatura:', expenseError);
+        console.error('❌ Erro ao criar despesa fantasma:', expenseError);
         throw expenseError;
       }
 
-      // 2. Se for compartilhado, criar splits
-      if (is_shared && costCenters) {
-        const activeCenters = costCenters.filter(cc => cc.is_active !== false && cc.user_id);
-        const splitsToInsert = activeCenters.map(cc => ({
-          expense_id: expense.id,
-          cost_center_id: cc.id,
-          percentage: parseFloat(cc.default_split_percentage || 50),
-          amount: (selectedInvoice.total * parseFloat(cc.default_split_percentage || 50)) / 100
-        }));
-
-        if (splitsToInsert.length > 0) {
-          const { error: splitError } = await supabase
-            .from('expense_splits')
-            .insert(splitsToInsert);
-
-          if (splitError) {
-            console.error('❌ Erro ao criar splits:', splitError);
-            throw splitError;
-          }
-        }
-      }
-
-      // 3. Atualizar status de todas as despesas que compõem a fatura de 'confirmed' para 'paid'
-      // Isso libera o limite do cartão porque o cálculo só considera despesas 'confirmed'
-      const expenseIds = selectedInvoice.expenses.map(exp => exp.id);
-      
-      if (expenseIds.length > 0) {
-        const { error: updateError } = await supabase
-          .from('expenses')
-          .update({ 
-            status: 'paid',
-            paid_at: new Date().toISOString()
-          })
-          .in('id', expenseIds);
-
-        if (updateError) {
-          console.error('❌ Erro ao atualizar status das despesas:', updateError);
-          throw updateError;
-        }
-      }
-
-      // 4. Recalcular available_limit do cartão (remover despesas pagas do cálculo)
-      const { data: remainingExpenses } = await supabase
-        .from('expenses')
-        .select('amount')
-        .eq('payment_method', 'credit_card')
-        .eq('card_id', card.id)
-        .eq('status', 'confirmed');
-
-      const remainingUsed = (remainingExpenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
-      const newAvailableLimit = Math.max(0, Number(card.credit_limit) - remainingUsed);
-
+      // Atualizar status da fatura atual para 'paid' (mesmo que parcial, foi "resolvida")
       await supabase
-        .from('cards')
-        .update({ available_limit: newAvailableLimit })
-        .eq('id', card.id);
+        .from('card_invoices')
+        .update({
+          status: 'paid',
+          fully_paid_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', invoiceRecord.id);
 
-      success(`Fatura de ${formatCurrency(selectedInvoice.total)} marcada como paga! Limite do cartão liberado.`);
+      // Recalcular limite disponível (a despesa fantasma já impacta o limite)
+      // As despesas da fatura atual permanecem 'confirmed' (não temos status 'paid')
+      const { data: newLimit, error: limitError } = await supabase
+        .rpc('calculate_card_available_limit', { p_card_id: card.id });
+
+      if (!limitError && newLimit !== null) {
+        await supabase
+          .from('cards')
+          .update({ available_limit: newLimit })
+          .eq('id', card.id);
+      }
+
+      success(`Saldo de ${formatCurrency(remainingAmount)} transferido para a próxima fatura!`);
       
       // Recarregar faturas
       await fetchInvoices();
       
       // Fechar modal
-      setShowMarkAsPaidModal(false);
+      setShowRolloverModal(false);
       setSelectedInvoice(null);
     } catch (error) {
-      console.error('❌ Erro ao marcar fatura como paga:', error);
-      showError('Erro ao marcar fatura como paga. Tente novamente.');
+      console.error('❌ Erro ao transferir saldo:', error);
+      showError('Erro ao transferir saldo. Tente novamente.');
     }
   };
 
@@ -607,7 +798,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                       )}
 
                       {canMarkAsPaid && (
-                        <div className="flex justify-end mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-gray-200">
                           <Button
                             variant="outline"
                             size="sm"
@@ -619,6 +810,24 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Marcar como Paga
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Botão para transferir saldo restante (somente para paid_partial) */}
+                      {invoice.status === 'paid_partial' && (
+                        <div className="flex justify-end mt-3 pt-3 border-t border-amber-200">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedInvoice(invoice);
+                              setShowRolloverModal(true);
+                            }}
+                            className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                          >
+                            <ArrowRight className="h-4 w-4 mr-2" />
+                            Lançar saldo na próxima fatura
                           </Button>
                         </div>
                       )}
@@ -651,8 +860,20 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
         onConfirm={handleMarkInvoiceAsPaid}
         invoice={selectedInvoice}
         card={card}
-        costCenters={costCenters || []}
         organization={organization}
+      />
+
+      {/* Modal para transferir saldo restante */}
+      <RolloverInvoiceModal
+        isOpen={showRolloverModal}
+        onClose={() => {
+          setShowRolloverModal(false);
+          setSelectedInvoice(null);
+        }}
+        onConfirm={handleRolloverInvoice}
+        invoice={selectedInvoice}
+        card={card}
+        remainingAmount={selectedInvoice ? (selectedInvoice.total - (selectedInvoice.paid_amount || 0)) : 0}
       />
     </div>
   );
