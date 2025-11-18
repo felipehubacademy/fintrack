@@ -102,7 +102,7 @@ export default async function handler(req, res) {
 
 // Process historical update webhook
 async function processHistoricalUpdate(belvoLink, data) {
-  console.log('📊 Processing historical update');
+  console.log('📊 Processing historical update for link:', belvoLink.link_id);
   
   const results = {
     accounts: 0,
@@ -118,6 +118,7 @@ async function processHistoricalUpdate(belvoLink, data) {
 
   // 1. Fetch and save accounts
   try {
+    console.log('🔍 Fetching accounts from Belvo API...');
     const accountsResponse = await fetch(
       `${apiUrl}/api/accounts/?link=${belvoLink.link_id}`,
       {
@@ -128,12 +129,21 @@ async function processHistoricalUpdate(belvoLink, data) {
       }
     );
 
+    console.log('📥 Accounts response status:', accountsResponse.status);
+
     if (accountsResponse.ok) {
       const accountsData = await accountsResponse.json();
-      results.accounts = await saveAccounts(belvoLink, accountsData.results || accountsData);
+      console.log('📦 Accounts data received:', accountsData);
+      const accountsArray = Array.isArray(accountsData) ? accountsData : (accountsData.results || []);
+      console.log(`💾 Saving ${accountsArray.length} accounts...`);
+      results.accounts = await saveAccounts(belvoLink, accountsArray);
+      console.log(`✅ Saved ${results.accounts} accounts`);
+    } else {
+      const errorText = await accountsResponse.text();
+      console.error('❌ Error fetching accounts:', accountsResponse.status, errorText);
     }
   } catch (error) {
-    console.error('Error fetching accounts:', error);
+    console.error('❌ Error fetching accounts:', error);
   }
 
   // 2. Fetch and save transactions
@@ -163,8 +173,17 @@ async function processHistoricalUpdate(belvoLink, data) {
 async function saveAccounts(belvoLink, accounts) {
   let savedCount = 0;
 
+  if (!accounts || accounts.length === 0) {
+    console.log('⚠️ No accounts to save');
+    return 0;
+  }
+
+  console.log(`💾 Processing ${accounts.length} accounts...`);
+
   for (const account of accounts) {
     try {
+      console.log('💾 Saving account:', account.id, account.type, account.name);
+      
       // Determine if it's a bank account or credit card
       const isCard = account.type === 'credit_card' || account.category === 'CREDIT_CARD';
 
@@ -192,36 +211,51 @@ async function saveAccounts(belvoLink, accounts) {
             onConflict: 'belvo_account_id'
           });
 
-        if (!error) savedCount++;
+        if (!error) {
+          savedCount++;
+          console.log('✅ Card saved:', account.id);
+        } else {
+          console.error('❌ Error saving card:', error);
+        }
       } else {
         // Save as bank account
-        const { error } = await supabase
-          .from('bank_accounts')
-          .upsert({
-            organization_id: belvoLink.organization_id,
-            user_id: belvoLink.user_id,
-            name: account.name || `${account.institution?.name} - ${account.number?.slice(-4)}`,
-            bank: account.institution?.name || 'Unknown',
-            account_type: mapAccountType(account.type),
-            balance: account.balance?.current || 0,
-            provider: 'belvo',
-            belvo_link_id: belvoLink.link_id,
-            belvo_account_id: account.id,
-            data_source: 'belvo',
-            manual_inputs_allowed: false,
-            is_active: true
-          }, {
-            onConflict: 'belvo_account_id'
-          });
+        const accountData = {
+          organization_id: belvoLink.organization_id,
+          user_id: belvoLink.user_id,
+          name: account.name || `${account.institution?.name || 'Unknown'} - ${account.number?.slice(-4) || '0000'}`,
+          bank: account.institution?.name || 'Unknown',
+          account_type: mapAccountType(account.type),
+          balance: account.balance?.current || 0,
+          provider: 'belvo',
+          belvo_link_id: belvoLink.link_id,
+          belvo_account_id: account.id,
+          data_source: 'belvo',
+          manual_inputs_allowed: false,
+          is_active: true
+        };
 
-        if (!error) savedCount++;
+        console.log('💾 Bank account data:', accountData);
+
+        const { error, data } = await supabase
+          .from('bank_accounts')
+          .upsert(accountData, {
+            onConflict: 'belvo_account_id'
+          })
+          .select();
+
+        if (!error) {
+          savedCount++;
+          console.log('✅ Bank account saved:', account.id, data);
+        } else {
+          console.error('❌ Error saving bank account:', error);
+        }
       }
     } catch (error) {
-      console.error('Error saving account:', error);
+      console.error('❌ Exception saving account:', error);
     }
   }
 
-  console.log(`✅ Saved ${savedCount} accounts`);
+  console.log(`✅ Total saved: ${savedCount}/${accounts.length} accounts`);
   return savedCount;
 }
 
