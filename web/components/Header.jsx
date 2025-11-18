@@ -56,6 +56,7 @@ export default function Header({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
   );
@@ -210,6 +211,9 @@ export default function Header({
     };
   }, []);
 
+  // Determina se o sidebar deve estar expandido (por estado ou hover)
+  const isSidebarExpanded = !isSidebarCollapsed || isSidebarHovered;
+
   const renderNavItem = (item) => {
     const Icon = item.icon;
     const active = isActive(item.href);
@@ -222,12 +226,12 @@ export default function Header({
         key={item.id}
         href={getDynamicUrl(item.href)}
         className={`${baseClasses} ${active ? activeClasses : inactiveClasses}`}
-        title={isSidebarCollapsed ? item.label : undefined}
+        title={!isSidebarExpanded ? item.label : undefined}
       >
         <div className="w-5 flex items-center justify-center flex-shrink-0">
           <Icon className="h-5 w-5" />
         </div>
-        <span className={`ml-3 whitespace-nowrap overflow-hidden transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
+        <span className={`ml-3 whitespace-nowrap overflow-hidden transition-all duration-200 ${!isSidebarExpanded ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
           {item.label}
         </span>
       </Link>
@@ -235,7 +239,7 @@ export default function Header({
   };
 
   const sidebarWidth = isDesktop
-    ? (isSidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH)
+    ? (isSidebarExpanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH)
     : 0;
 
   return (
@@ -244,6 +248,8 @@ export default function Header({
         className="hidden lg:flex fixed inset-y-0 left-0 z-50 flex-col border-r border-gray-100/80 bg-white shadow-sm transition-all duration-200 ease-in-out"
         style={{ width: `${sidebarWidth}px` }}
         aria-label="Menu principal"
+        onMouseEnter={() => isSidebarCollapsed && setIsSidebarHovered(true)}
+        onMouseLeave={() => setIsSidebarHovered(false)}
       >
         <button
           type="button"
@@ -266,7 +272,7 @@ export default function Header({
                 className="w-14 h-14"
               />
             </div>
-            <div className={`ml-3 flex-1 min-w-0 overflow-hidden transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
+            <div className={`ml-3 flex-1 min-w-0 overflow-hidden transition-all duration-200 ${!isSidebarExpanded ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
               <p className="text-sm font-semibold text-deep-sky truncate whitespace-nowrap">
                     {organization?.name || 'MeuAzulão'}
                   </p>
@@ -282,12 +288,12 @@ export default function Header({
             <button
               onClick={() => setShowTransactionModal(true)}
               className="flex items-center rounded-2xl h-10 w-full bg-flight-blue text-white hover:bg-flight-blue/90 shadow-md hover:shadow-lg transition-colors duration-200 py-2.5 pl-[18px] pr-3"
-              title={isSidebarCollapsed ? 'Nova Despesa' : undefined}
+              title={!isSidebarExpanded ? 'Nova Despesa' : undefined}
             >
               <div className="w-5 flex items-center justify-center flex-shrink-0">
               <Plus className="h-5 w-5" />
               </div>
-              <span className={`ml-3 text-sm font-medium whitespace-nowrap overflow-hidden transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
+              <span className={`ml-3 text-sm font-medium whitespace-nowrap overflow-hidden transition-all duration-200 ${!isSidebarExpanded ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
                 Nova Despesa
               </span>
             </button>
@@ -299,7 +305,7 @@ export default function Header({
                 <div key={section.id}>
                   {section.title && (
                     <div className="h-5 flex items-center mb-3">
-                      <div className={`px-3 overflow-hidden transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 w-0' : 'opacity-100 w-full'}`}>
+                      <div className={`px-3 overflow-hidden transition-all duration-200 ${!isSidebarExpanded ? 'opacity-0 w-0' : 'opacity-100 w-full'}`}>
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap">
                       {section.title}
                     </p>
@@ -315,7 +321,7 @@ export default function Header({
           </nav>
 
           <div className="mt-auto pt-6 text-center">
-            <p className={`text-xs text-gray-400 leading-relaxed px-2 transition-all duration-200 ${isSidebarCollapsed ? 'h-0 overflow-hidden opacity-0' : 'opacity-100'}`}>
+            <p className={`text-xs text-gray-400 leading-relaxed px-2 transition-all duration-200 ${!isSidebarExpanded ? 'h-0 overflow-hidden opacity-0' : 'opacity-100'}`}>
               © 2025 MeuAzulão.<br />
               Todos os direitos reservados.
             </p>
