@@ -50,6 +50,7 @@ export default async function handler(req, res) {
         result = await processHistoricalUpdate(belvoLink, data);
         break;
       case 'NEW_TRANSACTIONS_AVAILABLE':
+      case 'TRANSACTIONS': // Belvo também envia este tipo
         result = await processNewTransactions(belvoLink, data);
         break;
       case 'CONSENT_EXPIRED':
@@ -57,7 +58,12 @@ export default async function handler(req, res) {
         break;
       default:
         console.log('Unknown webhook type:', webhook_type);
-        result = { success: true, message: 'Webhook type not handled' };
+        // Para tipos desconhecidos, tentar processar como histórico
+        if (webhook_type.includes('TRANSACTION') || webhook_type.includes('ACCOUNT')) {
+          result = await processHistoricalUpdate(belvoLink, data);
+        } else {
+          result = { success: true, message: 'Webhook type not handled' };
+        }
     }
 
     // Mark webhook as processed

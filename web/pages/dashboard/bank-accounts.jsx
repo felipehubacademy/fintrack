@@ -152,13 +152,13 @@ export default function BankAccounts() {
               <Link2 className="h-5 w-5 mr-2" />
               Conectar Banco
             </Button>
-            <Button 
-              onClick={() => handleOpenModal()} 
-              className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
-            >
-              <Plus className="h-5 w-5 mr-2" />
+          <Button 
+            onClick={() => handleOpenModal()} 
+            className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
+          >
+            <Plus className="h-5 w-5 mr-2" />
               Nova Conta Manual
-            </Button>
+          </Button>
           </div>
         </div>
 
@@ -236,11 +236,11 @@ export default function BankAccounts() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {!account.is_active && (
-                          <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
-                            Inativa
-                          </span>
-                        )}
+                      {!account.is_active && (
+                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                          Inativa
+                        </span>
+                      )}
                         {account.provider === 'belvo' && (
                           <Tooltip content="Conectada via Open Finance" position="top">
                             <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded flex items-center gap-1">
@@ -301,71 +301,71 @@ export default function BankAccounts() {
                       </div>
                     ) : (
                       /* Manual accounts: Full control */
-                      <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
-                        <Tooltip content="Adicionar Entrada" position="top">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedAccountForIncome(account);
-                              setIsIncomeModalOpen(true);
-                            }}
-                            className="text-flight-blue border-flight-blue/20 hover:bg-flight-blue/10"
-                            aria-label="Adicionar entrada"
-                          >
-                            <TrendingUp className="h-4 w-4" />
-                          </Button>
-                        </Tooltip>
-                        <Tooltip content="Transferir" position="top">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedAccountForTransaction(account);
-                              setIsTransactionModalOpen(true);
-                            }}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            aria-label="Transferir"
-                          >
-                            <ArrowRightLeft className="h-4 w-4" />
-                          </Button>
-                        </Tooltip>
-                        <Tooltip content="Ver histórico" position="top">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedAccountForHistory(account);
-                              setIsTransactionsHistoryModalOpen(true);
-                            }}
-                            className="text-gray-600 border-gray-200 hover:bg-gray-50"
-                            aria-label="Ver histórico"
-                          >
-                            <List className="h-4 w-4" />
-                          </Button>
-                        </Tooltip>
-                        <Tooltip content="Editar" position="top">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleOpenModal(account)}
-                            aria-label="Editar conta"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </Tooltip>
-                        <Tooltip content="Desativar" position="top">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleToggleActive(account)}
-                            className="text-red-600 border-red-200 hover:bg-red-50"
-                            aria-label="Desativar conta"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </Tooltip>
-                      </div>
+                    <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
+                      <Tooltip content="Adicionar Entrada" position="top">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedAccountForIncome(account);
+                            setIsIncomeModalOpen(true);
+                          }}
+                          className="text-flight-blue border-flight-blue/20 hover:bg-flight-blue/10"
+                          aria-label="Adicionar entrada"
+                        >
+                          <TrendingUp className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip content="Transferir" position="top">
+                      <Button
+                          variant="outline"
+                          size="icon"
+                        onClick={() => {
+                          setSelectedAccountForTransaction(account);
+                          setIsTransactionModalOpen(true);
+                        }}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          aria-label="Transferir"
+                      >
+                          <ArrowRightLeft className="h-4 w-4" />
+                      </Button>
+                      </Tooltip>
+                      <Tooltip content="Ver histórico" position="top">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedAccountForHistory(account);
+                            setIsTransactionsHistoryModalOpen(true);
+                          }}
+                          className="text-gray-600 border-gray-200 hover:bg-gray-50"
+                          aria-label="Ver histórico"
+                        >
+                          <List className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip content="Editar" position="top">
+                      <Button
+                        variant="outline"
+                          size="icon"
+                        onClick={() => handleOpenModal(account)}
+                          aria-label="Editar conta"
+                      >
+                          <Edit className="h-4 w-4" />
+                      </Button>
+                      </Tooltip>
+                      <Tooltip content="Desativar" position="top">
+                      <Button
+                        variant="outline"
+                          size="icon"
+                        onClick={() => handleToggleActive(account)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                          aria-label="Desativar conta"
+                      >
+                          <Trash2 className="h-4 w-4" />
+                      </Button>
+                      </Tooltip>
+                    </div>
                     )}
                   </div>
                 </CardContent>

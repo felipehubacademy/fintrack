@@ -4,6 +4,7 @@ import { X, Link2, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useOrganization } from '../hooks/useOrganization';
+import LoadingLogo from './LoadingLogo';
 
 export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountType = 'bank_account' }) {
   const { organization, user } = useOrganization();
@@ -302,15 +303,12 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
 
           {step === 'syncing' && (
             <div className="py-12 text-center space-y-6">
-              <div className="flex justify-center">
-                <div className="w-16 h-16 border-4 border-[#207DFF]/30 border-t-[#207DFF] rounded-full animate-spin"></div>
-              </div>
+              <LoadingLogo size="medium" message="Sincronizando sua conta..." />
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Sincronizando sua conta
+                  Aguarde enquanto importamos suas transações
                 </h3>
                 <p className="text-gray-600">
-                  Aguarde enquanto importamos suas transações dos últimos 12 meses.
                   Isso pode levar até 1 minuto.
                 </p>
               </div>
@@ -352,12 +350,7 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
               disabled={loading}
               className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
             >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Conectando...
-                </div>
-              ) : 'Continuar'}
+              {loading ? 'Conectando...' : 'Continuar'}
             </Button>
           </div>
         )}
