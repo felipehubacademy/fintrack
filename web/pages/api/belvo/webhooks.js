@@ -53,6 +53,9 @@ export default async function handler(req, res) {
       case 'TRANSACTIONS': // Belvo também envia este tipo
         result = await processNewTransactions(belvoLink, data);
         break;
+      case 'ACCOUNTS': // Belvo também envia este tipo separado
+        result = await processHistoricalUpdate(belvoLink, data);
+        break;
       case 'CONSENT_EXPIRED':
         result = await processConsentExpired(belvoLink);
         break;
@@ -189,27 +192,33 @@ async function saveAccounts(belvoLink, accounts) {
 
       if (isCard) {
         // Save as credit card
-        const { error } = await supabase
+        const cardData = {
+          organization_id: belvoLink.organization_id,
+          user_id: belvoLink.user_id,
+          name: account.name || `${account.institution?.name} - ${account.number?.slice(-4)}`,
+          bank: account.institution?.name || 'Unknown',
+          holder_name: belvoLink.user_id, // We'll use user_id as placeholder
+          last_four_digits: account.number?.replace(/\D/g, '').slice(-4) || '0000',
+          credit_limit: account.credit_data?.limit || account.credit_limit || 0,
+          closing_day: account.closing_day || 1,
+          due_day: account.payment_day || 10,
+          provider: 'belvo',
+          belvo_link_id: belvoLink.link_id,
+          belvo_account_id: account.id,
+          belvo_credit_limit: account.credit_data?.limit || account.credit_limit || 0,
+          belvo_current_bill: account.balance?.current || 0,
+          manual_inputs_allowed: false,
+          is_active: true
+        };
+
+        console.log('💾 Card data:', cardData);
+
+        const { error, data } = await supabase
           .from('cards')
-          .upsert({
-            organization_id: belvoLink.organization_id,
-            user_id: belvoLink.user_id,
-            name: account.name || `${account.institution?.name} - ${account.number?.slice(-4)}`,
-            bank: account.institution?.name || 'Unknown',
-            holder_name: belvoLink.user_id, // We'll use user_id as placeholder
-            last_four_digits: account.number?.slice(-4) || '0000',
-            credit_limit: account.credit_limit || 0,
-            closing_day: account.closing_day || 1,
-            due_day: account.payment_day || 10,
-            provider: 'belvo',
-            belvo_link_id: belvoLink.link_id,
-            belvo_account_id: account.id,
-            data_source: 'belvo',
-            manual_inputs_allowed: false,
-            is_active: true
-          }, {
+          .upsert(cardData, {
             onConflict: 'belvo_account_id'
-          });
+          })
+          .select();
 
         if (!error) {
           savedCount++;
@@ -225,13 +234,15 @@ async function saveAccounts(belvoLink, accounts) {
           name: account.name || `${account.institution?.name || 'Unknown'} - ${account.number?.slice(-4) || '0000'}`,
           bank: account.institution?.name || 'Unknown',
           account_type: mapAccountType(account.type),
-          balance: account.balance?.current || 0,
+          account_number: account.number || null,
+          initial_balance: 0,
+          current_balance: account.balance?.current || account.balance?.available || 0,
           provider: 'belvo',
           belvo_link_id: belvoLink.link_id,
           belvo_account_id: account.id,
-          data_source: 'belvo',
           manual_inputs_allowed: false,
-          is_active: true
+          is_active: true,
+          owner_type: 'individual'
         };
 
         console.log('💾 Bank account data:', accountData);
