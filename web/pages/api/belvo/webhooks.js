@@ -162,6 +162,7 @@ async function processHistoricalUpdate(belvoLink, data) {
 
   // 2. Fetch and save transactions
   try {
+    console.log('🔍 Fetching transactions from Belvo API...');
     const transactionsResponse = await fetch(
       `${apiUrl}/api/transactions/?link=${belvoLink.link_id}`,
       {
@@ -172,12 +173,21 @@ async function processHistoricalUpdate(belvoLink, data) {
       }
     );
 
+    console.log('📥 Transactions response status:', transactionsResponse.status);
+
     if (transactionsResponse.ok) {
       const transactionsData = await transactionsResponse.json();
-      results.transactions = await saveTransactions(belvoLink, transactionsData.results || transactionsData);
+      console.log('📦 Transactions data received:', transactionsData);
+      const transactionsArray = Array.isArray(transactionsData) ? transactionsData : (transactionsData.results || []);
+      console.log(`💾 Saving ${transactionsArray.length} transactions...`);
+      results.transactions = await saveTransactions(belvoLink, transactionsArray);
+      console.log(`✅ Saved ${results.transactions} transactions`);
+    } else {
+      const errorText = await transactionsResponse.text();
+      console.error('❌ Error fetching transactions:', transactionsResponse.status, errorText);
     }
   } catch (error) {
-    console.error('Error fetching transactions:', error);
+    console.error('❌ Error fetching transactions:', error);
   }
 
   return results;
@@ -354,8 +364,17 @@ function mapAccountType(belvoType, category) {
 async function saveTransactions(belvoLink, transactions) {
   let savedCount = 0;
 
+  if (!transactions || transactions.length === 0) {
+    console.log('⚠️ No transactions to save');
+    return 0;
+  }
+
+  console.log(`💾 Processing ${transactions.length} transactions...`);
+
   for (const transaction of transactions) {
     try {
+      console.log('💾 Processing transaction:', transaction.id, transaction.type, transaction.amount);
+
       // Check if already exists
       const { data: existing } = await supabase
         .from('expenses')
@@ -363,7 +382,10 @@ async function saveTransactions(belvoLink, transactions) {
         .eq('belvo_transaction_id', transaction.id)
         .single();
 
-      if (existing) continue; // Skip duplicates
+      if (existing) {
+        console.log('⏭️ Transaction already exists, skipping:', transaction.id);
+        continue; // Skip duplicates
+      }
 
       // Determine transaction type
       const isOutflow = transaction.type === 'OUTFLOW' || transaction.amount < 0;
@@ -373,13 +395,21 @@ async function saveTransactions(belvoLink, transactions) {
       const category = mapBelvoCategory(transaction.category);
 
       // Get the account this transaction belongs to
-      const { data: account } = await supabase
+      // transaction.account is the Belvo account ID
+      console.log('🔍 Looking for account with belvo_account_id:', transaction.account);
+      const { data: account, error: accountError } = await supabase
         .from('bank_accounts')
         .select('id')
         .eq('belvo_account_id', transaction.account)
+        .eq('organization_id', belvoLink.organization_id)
         .single();
 
-      if (!account) continue; // Skip if account not found
+      if (!account || accountError) {
+        console.log('⚠️ Account not found for transaction:', transaction.account, accountError);
+        continue; // Skip if account not found
+      }
+
+      console.log('✅ Found account:', account.id);
 
       if (isOutflow) {
         // Save as expense
