@@ -203,22 +203,22 @@ async function saveAccounts(belvoLink, accounts) {
 
       if (isCard) {
         // Save as credit card
+        // Estrutura exata da tabela cards (sem user_id, sem last_four_digits)
         const cardData = {
           organization_id: belvoLink.organization_id,
-          user_id: belvoLink.user_id,
           name: account.name || `Cartão - ${account.number?.replace(/\D/g, '').slice(-4)}`,
           bank: account.institution?.display_name || account.institution?.name || belvoLink.institution_name || 'Banco',
-          holder_name: belvoLink.user_id, // We'll use user_id as placeholder
-          last_four_digits: account.number?.replace(/\D/g, '').slice(-4) || '0000',
-          credit_limit: account.credit_data?.limit || account.credit_limit || 0,
+          type: 'credit',
           closing_day: account.closing_day || 1,
           billing_day: account.payment_day || account.due_day || 10,
+          holder_name: belvoLink.user_id, // Store user_id as text
+          credit_limit: account.credit_data?.limit || account.credit_limit || 0,
           provider: 'belvo',
           belvo_link_id: belvoLink.link_id,
           belvo_account_id: account.id,
+          manual_inputs_allowed: false,
           belvo_credit_limit: account.credit_data?.limit || account.credit_limit || 0,
           belvo_current_bill: account.balance?.current || 0,
-          manual_inputs_allowed: false,
           is_active: true
         };
 
@@ -259,6 +259,7 @@ async function saveAccounts(belvoLink, accounts) {
         }
       } else {
         // Save as bank account
+        // Estrutura exata da tabela bank_accounts
         const accountData = {
           organization_id: belvoLink.organization_id,
           user_id: belvoLink.user_id,
@@ -268,12 +269,12 @@ async function saveAccounts(belvoLink, accounts) {
           account_number: account.number || null,
           initial_balance: 0,
           current_balance: account.balance?.current || account.balance?.available || 0,
+          is_active: true,
+          owner_type: 'individual',
           provider: 'belvo',
           belvo_link_id: belvoLink.link_id,
           belvo_account_id: account.id,
-          manual_inputs_allowed: false,
-          is_active: true,
-          owner_type: 'individual'
+          manual_inputs_allowed: false
         };
 
         console.log('💾 Bank account data:', accountData);
