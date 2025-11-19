@@ -337,26 +337,51 @@ async function saveAccounts(belvoLink, accounts) {
 
 // Map Belvo account type/category to FinTrack type
 function mapAccountType(belvoType, category) {
-  // Use category if available (more reliable)
+  console.log('🔍 Mapping account type:', { belvoType, category });
+  
+  // Use category if available (most reliable)
   if (category) {
-    if (category === 'CHECKING_ACCOUNT' || category === 'SAVINGS_ACCOUNT') {
-      return category === 'SAVINGS_ACCOUNT' ? 'savings' : 'checking';
-    }
-    if (category === 'CREDIT_CARD' || category === 'LOAN_ACCOUNT') {
-      return 'checking'; // Will be handled as card separately
+    const categoryMap = {
+      'CHECKING_ACCOUNT': 'checking',
+      'SAVINGS_ACCOUNT': 'savings',
+      'PENSION_FUND_ACCOUNT': 'pension',      // PGBL, VGBL, Previdência
+      'LOAN_ACCOUNT': 'loan',                  // Empréstimos, Financiamentos
+      'INVESTMENT_ACCOUNT': 'investment',      // Investimentos (se vier)
+      'CREDIT_CARD': 'checking'               // Cartões são tratados separadamente
+    };
+    
+    if (categoryMap[category]) {
+      console.log('✅ Mapped via category:', category, '→', categoryMap[category]);
+      return categoryMap[category];
     }
   }
 
-  // Fallback to type
+  // Fallback to type name analysis
   const typeLower = (belvoType || '').toLowerCase();
-  if (typeLower.includes('corrente') || typeLower.includes('checking')) {
-    return 'checking';
-  }
-  if (typeLower.includes('poupança') || typeLower.includes('savings')) {
+  
+  if (typeLower.includes('poupança') || typeLower.includes('savings') || typeLower.includes('poupanca')) {
     return 'savings';
   }
+  
+  if (typeLower.includes('pgbl') || typeLower.includes('vgbl') || 
+      typeLower.includes('previdência') || typeLower.includes('previdencia') ||
+      typeLower.includes('prev') || typeLower.includes('pension')) {
+    return 'pension';
+  }
+  
+  if (typeLower.includes('empréstimo') || typeLower.includes('emprestimo') ||
+      typeLower.includes('financiamento') || typeLower.includes('crédito pessoal') ||
+      typeLower.includes('loan')) {
+    return 'loan';
+  }
+  
+  if (typeLower.includes('investimento') || typeLower.includes('investment') ||
+      typeLower.includes('renda fixa') || typeLower.includes('renda variável')) {
+    return 'investment';
+  }
 
-  // Default to checking
+  // Default to checking for unknown types
+  console.log('⚠️ Unknown type, defaulting to checking:', { belvoType, category });
   return 'checking';
 }
 

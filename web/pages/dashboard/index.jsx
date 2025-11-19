@@ -90,9 +90,7 @@ export default function DashboardHome() {
 
 
   useEffect(() => {
-    console.log('🔍 [Dashboard] useEffect triggered:', { orgLoading, orgError, organization: !!organization });
     if (!orgLoading && !orgError && organization) {
-      console.log('🔍 [Dashboard] Checking onboarding status...');
       checkOnboardingStatus();
       fetchAllExpenses();
       fetchAllIncomes();
@@ -106,11 +104,9 @@ export default function DashboardHome() {
 
   const checkOnboardingStatus = async () => {
     if (!organization || !orgUser) {
-      console.log('🔍 [Dashboard] Missing organization or user:', { organization: !!organization, orgUser: !!orgUser });
       return;
     }
 
-    console.log('🔍 [Dashboard] Checking onboarding for user:', orgUser.id, 'org:', organization.id);
 
     try {
       const { data, error } = await supabase
@@ -120,7 +116,6 @@ export default function DashboardHome() {
         .eq('organization_id', organization.id)
         .single();
 
-      console.log('🔍 [Dashboard] Onboarding query result:', { data, error });
 
       if (error && error.code !== 'PGRST116') {
         console.error('❌ Erro ao verificar onboarding:', error);
@@ -130,18 +125,15 @@ export default function DashboardHome() {
       // If no onboarding record exists or it's not completed, redirect to onboarding
       // MAS não redirecionar se foi pulado (skipped)
       if ((!data || !data.is_completed) && !data?.skipped) {
-        console.log('🔍 [Dashboard] Onboarding not completed, redirecting to onboarding');
         router.push('/onboarding/welcome');
         return;
       }
       
       // Se foi pulado, deixar usar o dashboard normalmente
       if (data?.skipped) {
-        console.log('✅ [Dashboard] Onboarding skipped, allowing access to dashboard');
         return;
       }
 
-      console.log('✅ [Dashboard] Onboarding completed, staying on dashboard');
     } catch (error) {
       console.error('❌ Erro ao verificar status do onboarding:', error);
     }
@@ -237,7 +229,6 @@ export default function DashboardHome() {
 
       // Se não houver expenses, deixar vazio (não buscar de outras organizações!)
       if (expensesData.length === 0) {
-        console.log('✅ [DASHBOARD] No expenses found for this organization in the selected month.');
       }
 
       // Dados sem filtro de privacidade (tudo visível)
@@ -346,6 +337,26 @@ export default function DashboardHome() {
       const { data, error } = await query;
       if (error) throw error;
 
+      // FORÇAR recálculo do available_limit de todos os cartões de crédito
+      if (data && data.length) {
+        await Promise.all(
+          data.map(async (card) => {
+            const { data: newLimit } = await supabase
+              .rpc('calculate_card_available_limit_v2', { p_card_id: card.id });
+            
+            if (newLimit !== null) {
+              await supabase
+                .from('cards')
+                .update({ available_limit: newLimit })
+                .eq('id', card.id);
+              
+              // Atualizar o card localmente
+              card.available_limit = newLimit;
+            }
+          })
+        );
+      }
+
       setCards(data || []);
       
       // Calcular uso de cada cartão
@@ -388,25 +399,10 @@ export default function DashboardHome() {
         }
 
         const limit = Number(card.credit_limit || 0);
+        const availableLimit = Number(card.available_limit || limit);
         
-        // Sempre calcular uso baseado nas despesas confirmadas
-        const { data: expenses } = await supabase
-          .from('expenses')
-          .select('amount')
-          .eq('payment_method', 'credit_card')
-          .eq('card_id', card.id)
-          .eq('status', 'confirmed');
-        
-        const used = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
-        
-        // Atualizar available_limit automaticamente baseado nas despesas
-        const newAvailable = Math.max(0, limit - used);
-        supabase
-          .from('cards')
-          .update({ available_limit: newAvailable })
-          .eq('id', card.id)
-          .then(() => {})
-          .catch(err => console.warn('⚠️ Failed to update available_limit:', err));
+        // Calcular limite usado baseado no available_limit do banco (já considera faturas pagas)
+        const used = Math.max(0, limit - availableLimit);
         
         return [card.id, { used, limit }];
       })
@@ -592,16 +588,7 @@ export default function DashboardHome() {
   });
   
   if (expensesWithoutMethod.length > 0) {
-    console.log('⚠️ [DASHBOARD] Despesas sem método de pagamento ou com método desconhecido:', {
-      count: expensesWithoutMethod.length,
-      total: expensesWithoutMethod.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
-      expenses: expensesWithoutMethod.map(e => ({
-        id: e.id,
-        description: e.description,
-        amount: e.amount,
-        payment_method: e.payment_method
-      }))
-    });
+    // Despesas sem método de pagamento válido encontradas
   }
   
   const cardTotal = confirmedMonthExpenses
@@ -626,39 +613,11 @@ export default function DashboardHome() {
   
   // Debug: log dos totais
   const totalAllExpensesRaw = confirmedMonthExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-  console.log('📊 [DASHBOARD] Totais de despesas:', {
-    cardTotal,
-    cashTotal,
-    unknownMethodTotal,
-    grandTotal,
-    totalAllExpensesRaw,
-    expensesCount: confirmedMonthExpenses.length,
-    selectedMonth,
-    expensesByMethod: confirmedMonthExpenses.reduce((acc, e) => {
-      const method = e.payment_method || 'NULL';
-      acc[method] = (acc[method] || 0) + parseFloat(e.amount || 0);
-      return acc;
-    }, {})
-  });
   
   // Debug: verificar se há parcelas sendo contadas
   const installmentExpenses = confirmedMonthExpenses.filter(e => 
     e.parent_expense_id || (e.installment_info && e.installment_info.total_installments > 1)
   );
-  if (installmentExpenses.length > 0) {
-    console.log('📦 [DASHBOARD] Despesas parceladas encontradas:', {
-      count: installmentExpenses.length,
-      total: installmentExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0),
-      expenses: installmentExpenses.map(e => ({
-        id: e.id,
-        description: e.description,
-        amount: e.amount,
-        date: e.date,
-        parent_expense_id: e.parent_expense_id,
-        installment_info: e.installment_info
-      }))
-    });
-  }
 
   // Recalcular dados do mês anterior baseado no mês selecionado
   const [previousMonthIncomes, setPreviousMonthIncomes] = useState(0);

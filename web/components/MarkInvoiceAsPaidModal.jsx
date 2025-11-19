@@ -18,6 +18,7 @@ export default function MarkInvoiceAsPaidModal({
   organization = null
 }) {
   const { error: showError } = useNotificationContext();
+  const [paymentMethod, setPaymentMethod] = useState('bank_account'); // 'bank_account' ou 'other'
   const [bankAccounts, setBankAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState('');
   const [amountInput, setAmountInput] = useState('');
@@ -27,6 +28,8 @@ export default function MarkInvoiceAsPaidModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const invoiceTotal = useMemo(() => Number(invoice?.total || 0), [invoice?.total]);
+  const invoicePaidAmount = useMemo(() => Number(invoice?.paid_amount || 0), [invoice?.paid_amount]);
+  const remainingAmount = useMemo(() => invoiceTotal - invoicePaidAmount, [invoiceTotal, invoicePaidAmount]);
 
   const normalizeCurrencyValue = (value) => {
     if (!value && value !== 0) return 0;
@@ -39,12 +42,12 @@ export default function MarkInvoiceAsPaidModal({
 
   useEffect(() => {
     if (isOpen && invoice) {
-      // Formatar com R$ (ex: "9881.06" -> "R$ 9.881,06")
-      const value = normalizeCurrencyValue(invoice?.total || 0);
+      // Usar o saldo restante ao invés do total
+      const value = normalizeCurrencyValue(remainingAmount);
       setRawAmount(value);
       setAmountInput(formatCurrencyInput(value));
     }
-  }, [isOpen, invoice]);
+  }, [isOpen, invoice, remainingAmount]);
 
   useEffect(() => {
     if (isOpen && organization?.id) {
@@ -83,14 +86,17 @@ export default function MarkInvoiceAsPaidModal({
     if (isSubmitting) return; // Prevenir cliques duplos
     
     const normalizedRaw = normalizeCurrencyValue(rawAmount);
-    const normalizedTotal = normalizeCurrencyValue(invoiceTotal);
+    const normalizedRemainingAmount = normalizeCurrencyValue(remainingAmount);
 
-    if (!selectedAccount || normalizedRaw <= 0 || !isLessOrEqualWithTolerance(normalizedRaw, normalizedTotal)) return;
+    // Validações
+    if (normalizedRaw <= 0 || !isLessOrEqualWithTolerance(normalizedRaw, normalizedRemainingAmount)) return;
+    if (paymentMethod === 'bank_account' && !selectedAccount) return;
 
     setIsSubmitting(true);
     try {
       await onConfirm({
-        bank_account_id: selectedAccount,
+        payment_method: paymentMethod,
+        bank_account_id: paymentMethod === 'bank_account' ? selectedAccount : null,
         amount: normalizedRaw
       });
     } finally {
@@ -101,12 +107,13 @@ export default function MarkInvoiceAsPaidModal({
   if (!isOpen || !invoice || !card) return null;
 
   const normalizedRawAmount = normalizeCurrencyValue(rawAmount);
-  const normalizedInvoiceTotal = normalizeCurrencyValue(invoiceTotal);
+  const normalizedRemainingAmount = normalizeCurrencyValue(remainingAmount);
 
   const isAmountValid =
-    normalizedRawAmount > 0 && isLessOrEqualWithTolerance(normalizedRawAmount, normalizedInvoiceTotal);
-  const canConfirm = !!selectedAccount && isAmountValid && !loadingAccounts && !isSubmitting;
-  const remainingAfterPayment = Math.max(normalizedInvoiceTotal - normalizedRawAmount, 0);
+    normalizedRawAmount > 0 && isLessOrEqualWithTolerance(normalizedRawAmount, normalizedRemainingAmount);
+  const isPaymentMethodValid = paymentMethod === 'other' || (paymentMethod === 'bank_account' && !!selectedAccount);
+  const canConfirm = isPaymentMethodValid && isAmountValid && !loadingAccounts && !isSubmitting;
+  const remainingAfterPayment = Math.max(normalizedRemainingAmount - normalizedRawAmount, 0);
 
   const formatCurrency = (value) => {
     if (Number.isNaN(value)) return 'R$ 0,00';
@@ -147,11 +154,16 @@ export default function MarkInvoiceAsPaidModal({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
               <p className="text-xs uppercase text-gray-500 font-semibold tracking-wide">
-                Valor total da fatura
+                {invoicePaidAmount > 0 ? 'Saldo restante' : 'Valor total da fatura'}
               </p>
               <p className="text-2xl font-semibold text-gray-900 mt-1">
-                {formatCurrency(invoice.total)}
+                {formatCurrency(remainingAmount)}
               </p>
+              {invoicePaidAmount > 0 && (
+                <p className="text-xs text-green-600 font-medium mt-1">
+                  Já pago: {formatCurrency(invoicePaidAmount)}
+                </p>
+              )}
               <p className="text-xs text-gray-500 mt-2">
                 Ao confirmar, uma transação bancária será criada e o limite do cartão será atualizado.
               </p>
@@ -188,7 +200,7 @@ export default function MarkInvoiceAsPaidModal({
               </div>
               {!isAmountValid && (
                 <p className="text-xs text-red-500 mt-1">
-                  Informe um valor entre R$ 0,01 e {formatCurrency(invoice.total)}.
+                  Informe um valor entre R$ 0,01 e {formatCurrency(remainingAmount)}.
                 </p>
               )}
               <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
@@ -202,29 +214,51 @@ export default function MarkInvoiceAsPaidModal({
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-              Debitar da conta bancária
+              Forma de pagamento
             </label>
-            {loadingAccounts ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Carregando contas ativas...
-              </div>
-            ) : bankAccounts.length > 0 ? (
-              <select
-                value={selectedAccount}
-                onChange={(e) => setSelectedAccount(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-gray-900"
-              >
-                {bankAccounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} • {account.bank}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                {fetchError || 'Nenhuma conta bancária ativa encontrada. Cadastre uma conta para continuar.'}
-              </div>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-gray-900 mb-3"
+            >
+              <option value="bank_account">Conta bancária</option>
+              <option value="other">Outros (dinheiro, pix externo, etc.)</option>
+            </select>
+
+            {paymentMethod === 'bank_account' && (
+              <>
+                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                  Debitar da conta
+                </label>
+                {loadingAccounts ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Carregando contas ativas...
+                  </div>
+                ) : bankAccounts.length > 0 ? (
+                  <select
+                    value={selectedAccount}
+                    onChange={(e) => setSelectedAccount(e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-gray-900"
+                  >
+                    {bankAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} • {account.bank}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    {fetchError || 'Nenhuma conta bancária ativa encontrada. Cadastre uma conta para continuar.'}
+                  </div>
+                )}
+              </>
+            )}
+
+            {paymentMethod === 'other' && (
+              <p className="text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                ℹ️ O pagamento será registrado na fatura, mas nenhuma transação bancária será criada.
+              </p>
             )}
           </div>
         </div>

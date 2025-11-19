@@ -96,7 +96,6 @@ export default function ZulFloatingButton() {
   
   // Debug: Log quando tour está ativo
   useEffect(() => {
-    console.log('🔍 ZulFloatingButton - Tour state:', {
       isTourActive,
       currentStep,
       totalSteps: tourSteps?.length || 0,
@@ -715,7 +714,6 @@ export default function ZulFloatingButton() {
       }
     }
     
-    console.log('🔍 ZulFloatingButton - Verificando tour:', {
       path,
       tourType,
       isCompleted,
@@ -732,7 +730,6 @@ export default function ZulFloatingButton() {
     
     // Se o tour foi fechado nesta sessão, não iniciar (aparecerá no próximo login)
     if (isSkippedInSession) {
-      console.log('⏭️ Tour fechado nesta sessão, não iniciar (aparecerá no próximo login):', tourType);
       return;
     }
     

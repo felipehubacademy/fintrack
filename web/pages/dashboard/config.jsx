@@ -15,7 +15,8 @@ import {
   LogOut,
   FileText,
   MessageCircle,
-  ChevronRight
+  ChevronRight,
+  Link2
 } from 'lucide-react';
 import Header from '../../components/Header';
 import MemberManagementModal from '../../components/MemberManagementModal';
@@ -23,6 +24,7 @@ import CategoryManagementModal from '../../components/CategoryManagementModal';
 import NotificationSettingsModal from '../../components/NotificationSettingsModal';
 import NotificationModal from '../../components/NotificationModal';
 import DeleteAccountModal from '../../components/DeleteAccountModal';
+import OpenFinanceManagementModal from '../../components/OpenFinanceManagementModal';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 
 export default function ConfigPage() {
@@ -34,6 +36,7 @@ export default function ConfigPage() {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [showOpenFinanceModal, setShowOpenFinanceModal] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
@@ -355,6 +358,24 @@ export default function ConfigPage() {
                   className="bg-flight-blue hover:bg-flight-blue/90 text-white min-w-[120px]"
                 >
                   <Tag className="h-4 w-4 mr-2" />
+                  Gerenciar
+                </Button>
+              </div>
+
+              {/* Open Finance */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                <div className="flex items-center space-x-3">
+                  <Link2 className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="font-medium text-gray-900">Open Finance</p>
+                    <p className="text-sm text-gray-500">Gerenciar conexões bancárias e desconectar instituições</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowOpenFinanceModal(true)}
+                  className="bg-flight-blue hover:bg-flight-blue/90 text-white min-w-[120px]"
+                >
+                  <Link2 className="h-4 w-4 mr-2" />
                   Gerenciar
                 </Button>
               </div>

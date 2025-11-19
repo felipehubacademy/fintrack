@@ -88,6 +88,28 @@ export default function CardsDashboard() {
 
       const { data, error } = await query;
       if (!error) {
+        // FORÇAR recálculo do available_limit de todos os cartões de crédito
+        if (data && data.length) {
+          await Promise.all(
+            data
+              .filter(c => c.type === 'credit')
+              .map(async (card) => {
+                const { data: newLimit } = await supabase
+                  .rpc('calculate_card_available_limit_v2', { p_card_id: card.id });
+                
+                if (newLimit !== null) {
+                  await supabase
+                    .from('cards')
+                    .update({ available_limit: newLimit })
+                    .eq('id', card.id);
+                  
+                  // Atualizar o card localmente
+                  card.available_limit = newLimit;
+                }
+              })
+          );
+        }
+        
         setCards(data || []);
         // calcular uso após carregar
         if (data && data.length) {
@@ -145,51 +167,40 @@ export default function CardsDashboard() {
         }
 
         const limit = Number(card.credit_limit || 0);
+        const availableLimit = Number(card.available_limit || limit);
         
-        // Sempre calcular uso baseado nas despesas confirmadas
-        // Incluir todas as despesas confirmadas do cartão (não filtrar por ciclo ainda)
+        // Calcular limite usado baseado no available_limit do banco (já considera faturas pagas)
+        const finalUsed = Math.max(0, limit - availableLimit);
+        
+        // Buscar despesas do ciclo atual para calcular a fatura atual
         const { data: expenses } = await supabase
           .from('expenses')
           .select('amount, date, installment_info')
           .eq('payment_method', 'credit_card')
           .eq('card_id', card.id)
-          .eq('status', 'confirmed');
-        
-        const finalUsed = (expenses || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
+          .eq('status', 'confirmed')
+          .gte('date', startDate)
+          .lte('date', endDate);
         
         // Calcular fatura atual (despesas do ciclo atual)
         let currentInvoiceTotal = 0;
-        if (startDate && endDate && expenses) {
+        if (expenses) {
           for (const expense of expenses) {
             // Verificar se é parcela
             if (expense.installment_info && 
                 expense.installment_info.total_installments > 1) {
-              // Para parcelas, verificar se a data da parcela está no ciclo atual
-              const parcelDate = expense.date;
-              if (parcelDate >= startDate && parcelDate <= endDate) {
-                const installmentAmount = expense.installment_info.installment_amount || expense.amount || 0;
-                currentInvoiceTotal += Number(installmentAmount);
-              }
+              const installmentAmount = expense.installment_info.installment_amount || expense.amount || 0;
+              currentInvoiceTotal += Number(installmentAmount);
             } else {
-              // Despesa à vista: verificar se está no ciclo atual
-              if (expense.date >= startDate && expense.date <= endDate) {
-                currentInvoiceTotal += Number(expense.amount || 0);
-              }
+              // Despesa à vista
+              currentInvoiceTotal += Number(expense.amount || 0);
             }
           }
         }
         
-        // Atualizar available_limit no banco automaticamente baseado nas despesas
-        const newAvailable = Math.max(0, limit - finalUsed);
-        supabase
-          .from('cards')
-          .update({ available_limit: newAvailable })
-          .eq('id', card.id)
-          .then(() => console.log('✅ Updated available_limit for card:', card.id, 'to', newAvailable))
-          .catch(err => console.warn('⚠️ Failed to update available_limit:', err));
-        
         const percentage = limit > 0 ? (finalUsed / limit) * 100 : 0;
         const status = percentage >= 90 ? 'danger' : percentage >= 70 ? 'warning' : 'ok';
+        
         return [card.id, { used: finalUsed, percentage, status, currentInvoice: currentInvoiceTotal }];
       })
     );
@@ -401,8 +412,34 @@ export default function CardsDashboard() {
     setShowModal(true);
   };
 
+  // Remover cartão Open Finance individual (apenas marca como inativo)
+  const handleRemoveBelvoCard = (card) => {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: 'Remover cartão do app',
+      message: `Deseja remover "${card.name}" do MeuAzulão?\n\nO cartão será ocultado, mas a sincronização Open Finance com o banco continuará ativa.\n\nVocê pode adicionar este cartão novamente em Configurações > Open Finance.`,
+      onConfirm: async () => {
+        try {
+          setConfirmModalConfig({ isOpen: false });
 
-  
+          const { error } = await supabase
+            .from('cards')
+            .update({ is_active: false })
+            .eq('id', card.id);
+
+          if (error) throw error;
+
+          success('Cartão removido com sucesso');
+          await fetchCards();
+        } catch (error) {
+          console.error('Error removing card:', error);
+          showError('Erro ao remover cartão');
+        }
+      },
+      onCancel: () => setConfirmModalConfig({ isOpen: false }),
+      type: 'warning'
+    });
+  };
 
   if (orgLoading || !isDataLoaded) {
     return (
@@ -723,59 +760,93 @@ export default function CardsDashboard() {
 
 
                   {/* Actions */}
-                  <div className="flex justify-center space-x-2 pt-4 border-t">
-                    {card.type === 'credit' && (
-                      <Tooltip content="Ver faturas" position="right">
+                  {card.provider === 'belvo' ? (
+                    /* Open Finance cards: Read-only, show only invoices and remove */
+                    <div className="flex justify-center space-x-2 pt-4 border-t">
+                      {card.type === 'credit' && (
+                        <Tooltip content="Ver faturas" position="top">
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => {
+                              setSelectedCardForInvoice(card);
+                              setShowInvoiceModal(true);
+                            }}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            aria-label="Ver faturas"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                      )}
+                      <Tooltip content="Remover do app" position="top">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleRemoveBelvoCard(card)}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          aria-label="Remover do app"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
+                    </div>
+                  ) : (
+                    /* Manual cards: Full control */
+                    <div className="flex justify-center space-x-2 pt-4 border-t">
+                      {card.type === 'credit' && (
+                        <Tooltip content="Ver faturas" position="right">
+                        <Button 
+                          variant="outline" 
+                            size="icon"
+                          onClick={() => {
+                            setSelectedCardForInvoice(card);
+                            setShowInvoiceModal(true);
+                          }}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            aria-label="Ver faturas"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                      )}
+                      <Tooltip content="Editar" position="top">
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => openEditModal(card)}
+                          aria-label="Editar cartão"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip content="Lançar em massa" position="top">
                       <Button 
                         variant="outline" 
                           size="icon"
-                        onClick={() => {
-                          setSelectedCardForInvoice(card);
-                          setShowInvoiceModal(true);
-                        }}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                          aria-label="Ver faturas"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                          onClick={() => {
+                            setSelectedCardForBulk(card);
+                            setShowBulkModal(true);
+                          }}
+                          className="text-green-600 border-green-200 hover:bg-green-50"
+                          aria-label="Adicionar transações em massa"
+                      >
+                          <Plus className="h-4 w-4" />
+                      </Button>
                       </Tooltip>
-                    )}
-                    <Tooltip content="Editar" position="top">
+                      <Tooltip content="Excluir" position="left">
                       <Button 
                         variant="outline" 
-                        size="icon"
-                        onClick={() => openEditModal(card)}
-                        aria-label="Editar cartão"
+                          size="icon"
+                        onClick={() => handleDeleteCard(card.id)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                          aria-label="Excluir cartão"
                       >
-                        <Edit className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                       </Button>
-                    </Tooltip>
-                    <Tooltip content="Lançar em massa" position="top">
-                    <Button 
-                      variant="outline" 
-                        size="icon"
-                        onClick={() => {
-                          setSelectedCardForBulk(card);
-                          setShowBulkModal(true);
-                        }}
-                        className="text-green-600 border-green-200 hover:bg-green-50"
-                        aria-label="Adicionar transações em massa"
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
-                    </Tooltip>
-                    <Tooltip content="Excluir" position="left">
-                    <Button 
-                      variant="outline" 
-                        size="icon"
-                      onClick={() => handleDeleteCard(card.id)}
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                        aria-label="Excluir cartão"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                    </Tooltip>
-                  </div>
+                      </Tooltip>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );

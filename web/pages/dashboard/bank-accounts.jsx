@@ -10,6 +10,8 @@ import BankTransactionModal from '../../components/BankTransactionModal';
 import BankTransactionsModal from '../../components/BankTransactionsModal';
 import BankIncomeModal from '../../components/BankIncomeModal';
 import BelvoConnectModal from '../../components/BelvoConnectModal';
+import ConfirmationModal from '../../components/ConfirmationModal';
+import AccountTypeSelectionModal from '../../components/AccountTypeSelectionModal';
 import Header from '../../components/Header';
 import LoadingLogo from '../../components/LoadingLogo';
 import Tooltip from '../../components/ui/Tooltip';
@@ -28,6 +30,7 @@ export default function BankAccounts() {
     totalAccounts: 0
   });
   const [loading, setLoading] = useState(true);
+  const [isAccountTypeModalOpen, setIsAccountTypeModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBelvoModalOpen, setIsBelvoModalOpen] = useState(false);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -37,10 +40,20 @@ export default function BankAccounts() {
   const [selectedAccountForTransaction, setSelectedAccountForTransaction] = useState(null);
   const [selectedAccountForHistory, setSelectedAccountForHistory] = useState(null);
   const [selectedAccountForIncome, setSelectedAccountForIncome] = useState(null);
+  const [belvoLinks, setBelvoLinks] = useState([]);
+  const [disconnectingLinkId, setDisconnectingLinkId] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    type: 'warning'
+  });
 
   useEffect(() => {
     if (organization?.id) {
       fetchAccounts();
+      fetchBelvoLinks();
     }
   }, [organization?.id]);
 
@@ -72,6 +85,49 @@ export default function BankAccounts() {
     }
   };
 
+  const fetchBelvoLinks = async () => {
+    try {
+      const response = await fetch(`/api/belvo/links?organization_id=${organization.id}`);
+      const result = await response.json();
+      
+      if (result.success && result.links) {
+        // Filter only active links (not deleted)
+        const activeLinks = result.links.filter(link => link.status !== 'deleted');
+        setBelvoLinks(activeLinks);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar links Belvo:', error);
+    }
+  };
+
+  // Remover conta Open Finance individual (apenas marca como inativa)
+  const handleRemoveBelvoAccount = async (account) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remover conta do app',
+      message: `Deseja remover "${account.name}" do MeuAzulão?\n\nA conta será ocultada, mas a sincronização Open Finance com o banco continuará ativa.\n\nVocê pode adicionar esta conta novamente em Configurações > Open Finance.`,
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          setConfirmModal({ ...confirmModal, isOpen: false });
+
+          const { error } = await supabase
+            .from('bank_accounts')
+            .update({ is_active: false })
+            .eq('id', account.id);
+
+          if (error) throw error;
+
+          success('Conta removida com sucesso');
+          await fetchAccounts();
+        } catch (error) {
+          console.error('Error removing account:', error);
+          showError('Erro ao remover conta');
+        }
+      }
+    });
+  };
+
   const calculateStats = (accountsData) => {
     const totalBalance = accountsData.reduce((sum, acc) => sum + parseFloat(acc.current_balance || 0), 0);
     const positiveBalance = accountsData.filter(acc => parseFloat(acc.current_balance || 0) > 0)
@@ -98,22 +154,42 @@ export default function BankAccounts() {
   };
 
   const handleToggleActive = async (account) => {
-    try {
-      const { error } = await supabase
-        .from('bank_accounts')
-        .update({ is_active: !account.is_active })
-        .eq('id', account.id);
+    // Only for manual accounts
+    const action = account.is_active ? 'desativar' : 'reativar';
+    
+    setConfirmModal({
+      isOpen: true,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} conta`,
+      message: `Tem certeza que deseja ${action} a conta "${account.name}"?`,
+      type: account.is_active ? 'warning' : 'info',
+      onConfirm: async () => {
+        try {
+          setConfirmModal({ ...confirmModal, isOpen: false });
+          
+          const { error } = await supabase
+            .from('bank_accounts')
+            .update({ is_active: !account.is_active })
+            .eq('id', account.id);
 
-      if (error) throw error;
-      await fetchAccounts();
-    } catch (error) {
-      console.error('Erro ao atualizar status da conta:', error);
-      showError('Erro ao atualizar status da conta: ' + (error.message || 'Erro desconhecido'));
-    }
+          if (error) throw error;
+          await fetchAccounts();
+        } catch (error) {
+          console.error('Erro ao atualizar status da conta:', error);
+          showError('Erro ao atualizar status da conta: ' + (error.message || 'Erro desconhecido'));
+        }
+      }
+    });
   };
 
   const getAccountTypeLabel = (type) => {
-    return type === 'checking' ? 'Conta Corrente' : 'Poupança';
+    const typeLabels = {
+      'checking': 'Conta Corrente',
+      'savings': 'Poupança',
+      'pension': 'Previdência',
+      'investment': 'Investimento',
+      'loan': 'Empréstimo'
+    };
+    return typeLabels[type] || 'Conta';
   };
 
   const getOwnerLabel = (account) => {
@@ -143,52 +219,15 @@ export default function BankAccounts() {
             <h1 className="text-2xl font-bold text-gray-900">Contas Bancárias</h1>
             <p className="text-gray-600 mt-1">Gerencie suas contas corrente e poupança</p>
           </div>
-          <div className="flex gap-3">
-            <Button 
-              onClick={() => setIsBelvoModalOpen(true)}
-              variant="outline"
-              className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50"
-            >
-              <Link2 className="h-5 w-5 mr-2" />
-              Conectar Banco
-            </Button>
           <Button 
-            onClick={() => handleOpenModal()} 
+            onClick={() => setIsAccountTypeModalOpen(true)} 
             className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
           >
             <Plus className="h-5 w-5 mr-2" />
-              Nova Conta Manual
+            Adicionar Conta
           </Button>
-          </div>
         </div>
 
-        {/* My Belvo Portal Link */}
-        {accounts.some(acc => acc.provider === 'belvo') && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Link2 className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-sm font-medium text-blue-900">
-                    Contas conectadas via Open Finance
-                  </p>
-                  <p className="text-xs text-blue-700 mt-1">
-                    Gerencie seus consentimentos e dados compartilhados
-                  </p>
-                </div>
-              </div>
-              <a
-                href={`https://meuportal.belvo.com/?mode=custom&app_id=${process.env.NEXT_PUBLIC_BELVO_APP_ID || ''}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded-lg transition-colors"
-              >
-                Gerenciar Consentimentos
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            </div>
-          </div>
-        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -231,7 +270,7 @@ export default function BankAccounts() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {accounts.map(account => (
-              <Card key={account.id} className="border border-flight-blue/20 bg-white shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden">
+              <Card key={account.id} className="border border-flight-blue/20 bg-white shadow-lg hover:shadow-xl transition-all duration-200">
                 <CardContent className="bg-flight-blue/5 p-6">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -242,10 +281,10 @@ export default function BankAccounts() {
                         </span>
                       )}
                         {account.provider === 'belvo' && (
-                          <Tooltip content="Conectada via Open Finance" position="top">
+                          <Tooltip content="Conectada via Open Finance - Sincronização automática (somente leitura)" position="top">
                             <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded flex items-center gap-1">
                               <Link2 className="w-3 h-3" />
-                              Belvo
+                              Open Finance
                             </span>
                           </Tooltip>
                         )}
@@ -276,9 +315,9 @@ export default function BankAccounts() {
                       <p className="text-sm text-gray-700">{getOwnerLabel(account)}</p>
                     </div>
                     {account.provider === 'belvo' ? (
-                      /* Belvo accounts: Read-only, show only history */
+                      /* Open Finance accounts: Read-only, show only history and remove */
                       <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
-                        <Tooltip content="Ver histórico" position="top">
+                        <Tooltip content="Ver histórico de transações" position="top">
                           <Button
                             variant="outline"
                             size="icon"
@@ -292,11 +331,16 @@ export default function BankAccounts() {
                             <List className="h-4 w-4" />
                           </Button>
                         </Tooltip>
-                        <Tooltip content="Sincronizada automaticamente via Open Finance" position="top">
-                          <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-2">
-                            <Link2 className="w-3 h-3" />
-                            Somente leitura
-                          </div>
+                        <Tooltip content="Remover do app" position="top">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleRemoveBelvoAccount(account)}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            aria-label="Remover do app"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </Tooltip>
                       </div>
                     ) : (
@@ -376,6 +420,19 @@ export default function BankAccounts() {
       </main>
       </Header>
 
+      <AccountTypeSelectionModal
+        isOpen={isAccountTypeModalOpen}
+        onClose={() => setIsAccountTypeModalOpen(false)}
+        onSelectOpenFinance={() => {
+          setIsAccountTypeModalOpen(false);
+          setIsBelvoModalOpen(true);
+        }}
+        onSelectManual={() => {
+          setIsAccountTypeModalOpen(false);
+          handleOpenModal();
+        }}
+      />
+
       <BankAccountModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -427,6 +484,17 @@ export default function BankAccounts() {
         onClose={() => setIsBelvoModalOpen(false)}
         onSuccess={fetchAccounts}
         accountType="bank_account"
+      />
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText="Confirmar"
+        cancelText="Cancelar"
       />
     </>
   );

@@ -20,7 +20,6 @@ const supabase = createClient(
 // Helper: Extrair texto do PDF
 async function extractPDFText(pdfBuffer) {
   try {
-    console.log('📄 [PDF] Extraindo texto do PDF...');
     // Importação dinâmica para Next.js
     const pdfjsLib = await import('pdfjs-dist/build/pdf.js');
     const getDocument = pdfjsLib.default?.getDocument || pdfjsLib.getDocument;
@@ -261,7 +260,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('📤 [PARSE] Recebendo upload...');
 
     // Parse do form data
     const form = formidable({
@@ -319,16 +317,13 @@ export default async function handler(req, res) {
 
     // Parse baseado no tipo
     if (file.mimetype === 'application/pdf') {
-      console.log('📄 [PARSE] Processando PDF...');
       const pdfText = await extractPDFText(fileBuffer);
       transactions = await parseStatementText(pdfText, categories || [], openai);
       
     } else if (file.mimetype === 'text/csv') {
-      console.log('📄 [PARSE] Processando CSV...');
       transactions = await parseCSV(fileBuffer);
       
     } else {
-      console.log('📄 [PARSE] Processando Excel...');
       transactions = await parseExcel(fileBuffer);
     }
 

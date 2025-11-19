@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useOrganization } from '../hooks/useOrganization';
 import LoadingLogo from './LoadingLogo';
+import BelvoAccountSelectionModal from './BelvoAccountSelectionModal';
 
 export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountType = 'bank_account' }) {
   const { organization, user } = useOrganization();
@@ -14,18 +15,21 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState('');
   const [linkId, setLinkId] = useState(null);
+  const [availableAccounts, setAvailableAccounts] = useState([]);
+  const [showAccountSelection, setShowAccountSelection] = useState(false);
   
   const [formData, setFormData] = useState({
-    cpf: '',
-    fullName: ''
+    cpf: ''
   });
 
   useEffect(() => {
     if (isOpen) {
       setStep('form');
-      setFormData({ cpf: '', fullName: '' });
+      setFormData({ cpf: '' });
       setAccessToken('');
       setLinkId(null);
+      setAvailableAccounts([]);
+      setShowAccountSelection(false);
     }
   }, [isOpen]);
 
@@ -66,11 +70,6 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
       return;
     }
 
-    if (!formData.fullName.trim()) {
-      showError('Nome completo é obrigatório');
-      return;
-    }
-
     if (!organization?.id || !user?.id) {
       showError('Organização não encontrada');
       return;
@@ -84,7 +83,6 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cpf: cleanCPF,
-          full_name: formData.fullName,
           organization_id: organization.id,
           user_id: user.id
         })
@@ -164,20 +162,72 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
     }
   };
 
-  const pollSyncStatus = async (linkId) => {
-    // Por enquanto, consideramos sucesso imediato
-    // O webhook da Belvo vai sincronizar os dados em background
-    console.log('✅ Link saved, Belvo will sync in background via webhook');
+  const pollSyncStatus = async (savedLinkId) => {
+    console.log('✅ Link saved, fetching accounts for selection...');
+    setStep('syncing');
+    setLinkId(savedLinkId);
     
-    setTimeout(() => {
+    try {
+      // Fetch accounts from Belvo for this link
+      const response = await fetch(`/api/belvo/accounts/${savedLinkId}`);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to fetch accounts');
+      }
+
+      console.log(`✅ Fetched ${data.accounts.length} accounts`);
+      setAvailableAccounts(data.accounts);
+      setShowAccountSelection(true);
+      setStep('form'); // Close the main modal to show selection modal
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      showError('Erro ao buscar contas. Tente novamente.');
+      setStep('form');
+    }
+  };
+
+  const handleAccountSelection = async (selectedAccountIds) => {
+    if (selectedAccountIds.length === 0) {
+      showError('Selecione pelo menos uma conta');
+      return;
+    }
+
+    setShowAccountSelection(false);
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/belvo/accounts/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          linkId: linkId,
+          accountIds: selectedAccountIds,
+          organizationId: organization.id,
+          userId: user.id
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to save accounts');
+      }
+
+      console.log(`✅ Saved ${data.savedCount} accounts`);
+      
       setStep('success');
-      showSuccess('Conta conectada com sucesso! Os dados serão sincronizados em breve');
+      showSuccess(`${data.savedCount} ${data.savedCount === 1 ? 'conta adicionada' : 'contas adicionadas'} com sucesso!`);
       
       setTimeout(() => {
         onSuccess?.();
         onClose();
       }, 2000);
-    }, 1500);
+    } catch (error) {
+      console.error('Error saving accounts:', error);
+      showError('Erro ao salvar contas. Tente novamente.');
+      setLoading(false);
+    }
   };
 
   const handleClose = () => {
@@ -190,21 +240,32 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !showAccountSelection) return null;
 
-  return createPortal(
+  return (
+    <>
+      {showAccountSelection && (
+        <BelvoAccountSelectionModal
+          isOpen={showAccountSelection}
+          onClose={() => {
+            setShowAccountSelection(false);
+            onClose();
+          }}
+          accounts={availableAccounts}
+          onConfirm={handleAccountSelection}
+        />
+      )}
+      
+      {isOpen && !showAccountSelection && createPortal(
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
-      style={{ 
-        zIndex: 999999,
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-2 sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
       }}
     >
-      <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-3xl xl:max-w-4xl max-h-[90vh] sm:max-h-[95vh] bg-white rounded-xl shadow-xl border border-flight-blue/20 flex flex-col">
+      <div 
+        className="bg-white rounded-xl shadow-xl border border-flight-blue/20 w-full max-w-3xl md:max-w-4xl lg:max-w-5xl max-h-[90vh] flex flex-col relative z-[10000]"
+      >
         {/* Header */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -227,19 +288,6 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-4">
           {step === 'form' && (
             <div className="space-y-4 md:space-y-6">
-              <div className="bg-flight-blue/5 border border-flight-blue/20 rounded-lg p-4">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-flight-blue flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-gray-700">
-                    <p className="font-medium text-gray-900 mb-1">Sincronização Automática</p>
-                    <p>
-                      Conecte sua conta bancária de forma segura. Suas transações serão 
-                      sincronizadas automaticamente via Open Finance.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   CPF
@@ -255,19 +303,6 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
                 <p className="mt-1 text-xs text-gray-500">
                   Necessário para identificação no Open Finance
                 </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome Completo
-                </label>
-                <input
-                  type="text"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  placeholder="Seu nome completo"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                />
               </div>
 
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
@@ -357,5 +392,7 @@ export default function BelvoConnectModal({ isOpen, onClose, onSuccess, accountT
       </div>
     </div>,
     document.body
+  )}
+    </>
   );
 }
