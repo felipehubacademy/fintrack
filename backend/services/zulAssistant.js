@@ -2004,7 +2004,10 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       ];
       
       console.log('💬 [GPT-4] Histórico carregado:', history.length, 'mensagens');
-      console.log('💬 [GPT-4] Histórico completo:', JSON.stringify(history, null, 2));
+      if (history.length > 0) {
+        console.log('💬 [GPT-4] Últimas 3 mensagens:', JSON.stringify(history.slice(-3), null, 2));
+      }
+      console.log('💬 [GPT-4] Total de mensagens sendo enviadas ao GPT:', messages.length);
       
       // Chamar GPT-4 com function calling
       const completion = await openai.chat.completions.create({
@@ -2079,20 +2082,32 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
   extractCollectedInfo(history) {
     const info = {};
     
-    // Considerar apenas a última mensagem do usuário, para evitar inferências antigas
-    const lastUserMsg = [...history].reverse().find(m => m.role === 'user');
-    const conversationText = (lastUserMsg?.content || '').toLowerCase();
+    // 🔧 FIX: Considerar TODAS as mensagens do usuário, não apenas a última
+    // Isso permite capturar informações fornecidas em mensagens separadas
+    const userMessages = history.filter(m => m.role === 'user');
+    const conversationText = userMessages.map(m => m.content).join(' ').toLowerCase();
     
-    // Extrair valor
-    const amountMatch = conversationText.match(/(?:gastei|paguei|foi|valor)?\s*(?:r\$)?\s*(\d+(?:[.,]\d{1,2})?)/i);
+    console.log(`📝 [extractCollectedInfo] Analisando ${userMessages.length} mensagens do usuário`);
+    
+    // Extrair valor - procurar em todas as mensagens
+    const amountMatch = conversationText.match(/(?:gastei|paguei|foi|valor|paguei|gastamos|compramos|comprei)?\s*(?:r\$)?\s*(\d+(?:[.,]\d{1,2})?)/i);
     if (amountMatch) {
       info.amount = parseFloat(amountMatch[1].replace(',', '.'));
+      console.log(`  💰 Valor encontrado: ${info.amount}`);
     }
     
-    // Extrair descrição: usar núcleo descritivo da última mensagem
-    const core = this.extractCoreDescription(conversationText);
-    if (core) {
-      info.description = this.capitalizeDescription(core);
+    // Extrair descrição - procurar a descrição mais significativa
+    let bestDescription = null;
+    for (const msg of userMessages) {
+      const core = this.extractCoreDescription(msg.content.toLowerCase());
+      if (core && core.length > 3) { // Priorizar descrições mais substanciais
+        bestDescription = core;
+        break; // Usar a primeira descrição significativa encontrada
+      }
+    }
+    if (bestDescription) {
+      info.description = this.capitalizeDescription(bestDescription);
+      console.log(`  📄 Descrição encontrada: ${info.description}`);
     }
     
     // Extrair forma de pagamento
@@ -2101,11 +2116,32 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
     else if (conversationText.includes('débito') || conversationText.includes('debito')) info.payment_method = 'débito';
     else if (conversationText.includes('crédito') || conversationText.includes('credito')) info.payment_method = 'crédito';
     
-    // Extrair responsável apenas se explicitamente citado na última mensagem
-    if (conversationText.match(/\b(eu|eu mesmo|fui eu)\b/)) {
+    if (info.payment_method) {
+      console.log(`  💳 Pagamento encontrado: ${info.payment_method}`);
+    }
+    
+    // Extrair responsável
+    if (conversationText.match(/\b(eu|eu mesmo|fui eu|comprei|gastei|paguei)\b/)) {
       info.responsible = 'eu';
-    } else if (conversationText.includes('compartilhado')) {
+      console.log(`  👤 Responsável: eu`);
+    } else if (conversationText.match(/\b(compartilhado|compramos|gastamos|pagamos|família|familia|org)\b/)) {
       info.responsible = 'Compartilhado';
+      console.log(`  👥 Responsável: Compartilhado`);
+    }
+    
+    // Extrair cartão mencionado
+    const cardMatch = conversationText.match(/\b(latam|c6|neon|roxinho|hub|xp|mercado\s?pago|nubank)\b/i);
+    if (cardMatch) {
+      info.card = cardMatch[1];
+      console.log(`  💳 Cartão mencionado: ${info.card}`);
+    }
+    
+    // Extrair parcelas
+    const installmentsMatch = conversationText.match(/(\d+)\s*(?:x|vezes|parcelas)/i) || 
+                             conversationText.match(/\b(?:à vista|a vista|uma vez)\b/i);
+    if (installmentsMatch) {
+      info.installments = installmentsMatch[1] ? parseInt(installmentsMatch[1]) : 1;
+      console.log(`  🔢 Parcelas encontradas: ${info.installments}`);
     }
     
     return info;
@@ -2118,19 +2154,29 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
     try {
       const normalizedPhone = this.normalizePhone(userPhone);
       
-      const { data } = await supabase
+      // 🔧 FIX: Usar maybeSingle() e remover filtro de state para ser mais resiliente
+      // Se state='idle', temp_data já estará vazio de qualquer forma (limpo pelo clearConversationHistory)
+      const { data, error } = await supabase
         .from('conversation_state')
-        .select('temp_data')
+        .select('temp_data, state')
         .eq('user_phone', normalizedPhone)
-        .neq('state', 'idle')
-        .single();
+        .maybeSingle();
       
-      if (data?.temp_data?.messages) {
+      if (error) {
+        console.error('❌ [loadConversationHistory] Erro ao carregar:', error);
+        return [];
+      }
+      
+      // Se encontrou e tem mensagens, retornar
+      if (data?.temp_data?.messages && Array.isArray(data.temp_data.messages)) {
+        console.log(`✅ [loadConversationHistory] Carregado: ${data.temp_data.messages.length} mensagens (state: ${data.state})`);
         return data.temp_data.messages;
       }
       
+      console.log('📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio');
       return [];
     } catch (error) {
+      console.error('❌ [loadConversationHistory] Exceção:', error);
       return [];
     }
   }

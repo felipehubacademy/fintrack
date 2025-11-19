@@ -812,7 +812,7 @@ export default function BudgetsDashboard() {
                   className="border-flight-blue text-flight-blue hover:bg-flight-blue/10"
                 >
                   <Target className="h-4 w-4 mr-2" />
-                  Planejamento Guiado
+                  Criar Orçamento
                 </Button>
                 <Button 
                   onClick={handleCopyPreviousMonth}
@@ -1236,7 +1236,7 @@ export default function BudgetsDashboard() {
                 className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <Target className="h-4 w-4 mr-2" />
-                Criar Planejamento Guiado
+                Criar Orçamento
               </Button>
             </CardContent>
           </Card>

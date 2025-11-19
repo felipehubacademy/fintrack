@@ -1,9 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { supabase } from '../lib/supabaseClient';
 
 class TourService {
 
@@ -319,6 +314,32 @@ class TourService {
       return true;
     } catch (error) {
       console.error('Erro ao marcar onboarding:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Verificar se onboarding foi completado
+   */
+  async isOnboardingCompleted(onboardingType, userId, organizationId) {
+    try {
+      const { data, error } = await supabase
+        .from('user_tours')
+        .select('completed_onboarding')
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId)
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao verificar onboarding:', error);
+        return false;
+      }
+
+      const completedOnboarding = data?.completed_onboarding || {};
+      return completedOnboarding[onboardingType] === true;
+    } catch (error) {
+      console.error('Erro ao verificar onboarding:', error);
       return false;
     }
   }

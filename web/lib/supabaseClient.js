@@ -13,8 +13,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Expor no window para debug
-if (typeof window !== 'undefined') {
+// Expor no window para debug (apenas em desenvolvimento)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   window.supabase = supabase;
   console.log('🔧 Supabase exposto no window para debug');
 }

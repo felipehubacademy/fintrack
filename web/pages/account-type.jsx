@@ -3,16 +3,17 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { ArrowLeft, User, Users, ChevronRight } from 'lucide-react';
+import InterestListModal from '../components/InterestListModal';
 
 export default function AccountType() {
   const router = useRouter();
   const [selectedType, setSelectedType] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   const handleContinue = () => {
-    if (selectedType === 'solo') {
-      router.push('/create-account');
-    } else if (selectedType === 'family') {
-      router.push('/create-organization');
+    if (selectedType) {
+      // Abrir modal ao invés de redirecionar
+      setShowModal(true);
     }
   };
 
@@ -159,6 +160,13 @@ export default function AccountType() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Lista de Interessados */}
+      <InterestListModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        accountType={selectedType}
+      />
     </>
   );
 }

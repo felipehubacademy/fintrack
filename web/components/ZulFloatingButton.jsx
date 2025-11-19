@@ -711,7 +711,6 @@ export default function ZulFloatingButton() {
     
     // Se o tour foi completado no banco, não iniciar
     if (isCompleted) {
-      console.log('✅ Tour já completado no banco, não iniciar:', tourType);
       return;
     }
     
@@ -748,7 +747,6 @@ export default function ZulFloatingButton() {
             }
             
             if (!currentIsCompleted && !currentIsSkipped) {
-              console.log('🎯 ZulFloatingButton - Iniciando tour automático:', currentTourType);
               const currentTourSteps = getTourForRoute(router.asPath, userName);
               if (currentTourSteps && currentTourSteps.length > 0) {
                 startTour(currentTourSteps, currentTourType);
@@ -778,7 +776,6 @@ export default function ZulFloatingButton() {
         }
         
         if (!currentIsCompleted && !currentIsSkipped) {
-          console.log('🎯 ZulFloatingButton - Iniciando tour automático (timeout):', currentTourType);
           const currentTourSteps = getTourForRoute(router.asPath, userName);
           if (currentTourSteps && currentTourSteps.length > 0) {
             startTour(currentTourSteps, currentTourType);

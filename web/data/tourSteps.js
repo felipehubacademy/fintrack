@@ -51,32 +51,32 @@ export const transactionsTourSteps = [
     totalSteps: 4,
     target: 'body',
     title: 'Transações 💰',
-    description: 'Aqui você registra TODAS as suas despesas e receitas: dinheiro, PIX, débito, crédito à vista ou parcelado.',
+    description: 'Aqui você registra TODAS as suas despesas: dinheiro, PIX, débito, crédito à vista ou parcelado.',
     tip: 'Registre tudo para ter controle total do seu dinheiro!'
   },
   {
     stepNumber: 2,
     totalSteps: 4,
     target: 'body',
-    title: 'Nova Transação ➕',
-    description: 'Clique em "Nova Transação" no canto superior direito. Escolha tipo (despesa/receita), valor, categoria, forma de pagamento e responsável.',
-    tip: 'Transações no crédito podem ser parceladas automaticamente!'
+    title: 'Nova Despesa ➕',
+    description: 'Clique em "Nova Despesa" no canto superior direito. Escolha valor, categoria, forma de pagamento e responsável.',
+    tip: 'Despesas no crédito podem ser parceladas automaticamente!'
   },
   {
     stepNumber: 3,
     totalSteps: 4,
     target: 'body',
     title: 'Resumo em Cards 📊',
-    description: 'Os cards no topo mostram: Total de Entradas, Total de Despesas, Gastos em Crédito e Comparativo com mês anterior.',
-    tip: 'Clique nos cards para ver detalhes por responsável (mãe, pai, etc)!'
+    description: 'Os cards no topo mostram: Total de Despesas, Gastos em Crédito e Gastos em Dinheiro do mês.',
+    tip: 'Clique nos cards para ver detalhes por responsável!'
   },
   {
     stepNumber: 4,
     totalSteps: 4,
     target: 'body',
     title: 'Tabela Completa 📋',
-    description: 'A tabela mostra TODAS as transações: data, descrição, categoria, valor, forma de pagamento e responsável. Clique em qualquer linha para editar ou excluir!',
-    tip: 'Use os filtros acima da tabela para buscar transações específicas!'
+    description: 'A tabela mostra TODAS as despesas: data, descrição, categoria, valor, forma de pagamento e responsável. Clique em qualquer linha para editar ou excluir!',
+    tip: 'Use os filtros acima da tabela para buscar despesas específicas!'
   }
 ];
 
@@ -86,7 +86,7 @@ export const cardsTourSteps = [
     totalSteps: 4,
     target: 'body',
     title: 'Cartões 💳',
-    description: 'Gerencie seus cartões de crédito e débito: acompanhe gastos, limites, datas de fechamento e vencimento de faturas.',
+    description: 'Gerencie seus cartões de crédito: acompanhe gastos, limites, datas de fechamento e vencimento de faturas.',
     tip: 'Cadastre TODOS os seus cartões para ter controle total!'
   },
   {
@@ -94,7 +94,7 @@ export const cardsTourSteps = [
     totalSteps: 4,
     target: 'body',
     title: 'Novo Cartão ➕',
-    description: 'Clique em "Novo Cartão" para adicionar. Informe: nome do cartão, bandeira (Visa, Master, etc), limite, dia de fechamento e dia de vencimento.',
+    description: 'Clique em "Novo Cartão" para adicionar. Informe: nome do cartão, limite, dia de fechamento e dia de vencimento.',
     tip: 'O sistema usa as datas para calcular qual fatura a compra vai cair!'
   },
   {
@@ -102,7 +102,7 @@ export const cardsTourSteps = [
     totalSteps: 4,
     target: 'body',
     title: 'Resumo Geral 📊',
-    description: 'Os cards no topo mostram: Total Gasto no mês, Limite Total Disponível, Próximas Faturas e Comparativo com mês anterior.',
+    description: 'Os cards no topo mostram: Total Gasto no mês, Limite Total Disponível e Próximas Faturas.',
     tip: 'Monitore o limite disponível para não estourar!'
   },
   {
@@ -110,7 +110,7 @@ export const cardsTourSteps = [
     totalSteps: 4,
     target: 'body',
     title: 'Lista de Cartões 💰',
-    description: 'Todos os seus cartões aparecem em cards individuais mostrando: nome, bandeira, limite usado, limite total e ações rápidas (editar, ver fatura).',
+    description: 'Todos os seus cartões aparecem em cards individuais mostrando: nome, limite usado, limite total e ações rápidas (editar, ver fatura).',
     tip: 'Clique em "Ver Fatura" para detalhar as compras de cada cartão!'
   }
 ];
@@ -188,27 +188,35 @@ export const billsTourSteps = [
 export const budgetsTourSteps = [
   {
     stepNumber: 1,
-    totalSteps: 3,
+    totalSteps: 4,
     target: 'body',
     title: 'Orçamentos 🎯',
-    description: 'Defina metas de gastos por categoria e acompanhe em tempo real quanto já gastou vs. quanto planejou. Evite estourar o orçamento!',
-    tip: 'Orçamentos te ajudam a ter disciplina financeira!'
+    description: 'Defina metas de gastos organizadas em 3 macrocategorias (Necessidades, Desejos, Investimentos) com suas categorias específicas. Acompanhe em tempo real quanto gastou vs. quanto planejou!',
+    tip: 'Orçamentos te ajudam a ter disciplina financeira e priorizar o que realmente importa!'
   },
   {
     stepNumber: 2,
-    totalSteps: 3,
+    totalSteps: 4,
     target: 'body',
-    title: 'Criar Orçamento ➕',
-    description: 'Clique em "Criar Orçamento" para definir. Escolha a categoria (alimentação, transporte, lazer, etc) e o valor máximo mensal.',
-    tip: 'Analise seus gastos dos últimos meses para definir valores realistas!'
+    title: 'Criar Orçamento Guiado 📝',
+    description: 'Clique em "Criar Orçamento" para iniciar o processo guiado. Você definirá valores para cada macrocategoria e depois distribuirá entre as categorias específicas (ex: Necessidades → Alimentação, Moradia, Transporte).',
+    tip: 'O processo guiado facilita a criação de um orçamento completo e equilibrado!'
   },
   {
     stepNumber: 3,
-    totalSteps: 3,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Estrutura em Macros 🏗️',
+    description: 'Seus orçamentos são organizados em 3 grupos: Necessidades (alimentação, transporte, saúde, moradia), Desejos (lazer, educação, viagens), Investimentos (poupança e aplicações). Cada macro agrupa categorias relacionadas.',
+    tip: 'Essa organização te ajuda a entender para onde seu dinheiro está indo!'
+  },
+  {
+    stepNumber: 4,
+    totalSteps: 4,
     target: 'body',
     title: 'Acompanhamento Visual 📊',
-    description: 'Cada orçamento aparece em um card com barra de progresso: verde (dentro do limite), amarelo (próximo do limite), vermelho (estourou!).',
-    tip: 'O sistema alerta automaticamente quando você se aproxima do limite!'
+    description: 'Cada categoria aparece com barra de progresso: verde (dentro do limite), amarelo (próximo do limite), vermelho (estourou!). Veja também o progresso de cada macro e do orçamento total.',
+    tip: 'O sistema alerta automaticamente quando você se aproxima do limite de qualquer categoria!'
   }
 ];
 
@@ -242,27 +250,35 @@ export const investmentsTourSteps = [
 export const closingTourSteps = [
   {
     stepNumber: 1,
-    totalSteps: 3,
+    totalSteps: 4,
     target: 'body',
     title: 'Fechamento do Mês 📊',
-    description: 'Análise COMPLETA do mês: veja quanto entrou, quanto saiu, onde gastou mais e compare com meses anteriores. Entenda para onde seu dinheiro está indo!',
-    tip: 'Revise todo mês para ajustar seus hábitos financeiros!'
+    description: 'Análise COMPLETA do mês: veja aportes necessários, total de saídas, faturas de cartão e saldo final. Planeje quanto cada responsável precisa contribuir para quitar o mês!',
+    tip: 'Use esta página para calcular quanto cada um deve aportar no início do mês!'
   },
   {
     stepNumber: 2,
-    totalSteps: 3,
+    totalSteps: 4,
     target: 'body',
-    title: 'Resumo Geral 💰',
-    description: 'Cards mostram: Total de Receitas, Total de Despesas, Saldo Final (sobrou ou faltou?) e Taxa de Economia. Veja se seu mês foi positivo ou negativo!',
-    tip: 'Meta ideal: economizar pelo menos 10-20% das receitas!'
+    title: 'Cards de Resumo 💰',
+    description: 'Os 4 cards principais mostram: Total de Aportes Necessários (quanto precisa entrar), Total de Saídas (despesas + contas), Faturas de Cartão (a pagar) e Saldo Final (sobrou ou faltou?).',
+    tip: 'O card de Aportes mostra quanto cada responsável precisa contribuir!'
   },
   {
     stepNumber: 3,
-    totalSteps: 3,
+    totalSteps: 4,
     target: 'body',
-    title: 'Gráficos e Análises 📈',
-    description: 'Gráficos mostram: Gastos por Categoria (onde gastou mais?), Evolução Mensal (últimos 6 meses), Despesas por Responsável e Top 5 Maiores Gastos.',
-    tip: 'Use os insights para cortar gastos desnecessários no próximo mês!'
+    title: 'Detalhamento por Responsável 👥',
+    description: 'Veja cards individuais de cada responsável mostrando: despesas pessoais, despesas compartilhadas (splits), total gasto e quanto deve aportar para cobrir suas despesas.',
+    tip: 'Isso facilita a divisão justa das despesas entre os responsáveis!'
+  },
+  {
+    stepNumber: 4,
+    totalSteps: 4,
+    target: 'body',
+    title: 'Consolidado e Histórico 📈',
+    description: 'Abaixo dos cards, veja o consolidado detalhado do mês com todas as despesas, faturas e contas. Compare com meses anteriores através do gráfico de evolução anual.',
+    tip: 'Use o histórico para identificar padrões e planejar os próximos meses!'
   }
 ];
 
