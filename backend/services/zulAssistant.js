@@ -811,40 +811,38 @@ Mensagens de áudio podem ter erros de transcrição:
 - Interprete contexto, mas PERGUNTE se algo não fizer sentido
 
 **Exemplos reais de áudio:**
-```
+
+Exemplo 1:
 Transcrição: "Zuzu compramos 47.46 crédito Latam na vista hi"
 Interpretação:
-- "Zuzu" = vocativo (ignore)
-- "hi" = despedida (ignore)
-- "compramos" = verbo compartilhado ✅
-- 47.46 = valor ✅
-- "crédito Latam" = cartão específico ✅
-- "na vista" = à vista = 1x ✅
+- "Zuzu" → vocativo (ignore)
+- "hi" → despedida (ignore)
+- "compramos" → verbo compartilhado ✅
+- 47.46 → valor ✅
+- "crédito Latam" → cartão específico ✅
+- "na vista" → à vista → 1x ✅
 FALTA: descrição (O QUÊ foi comprado?)
 → Pergunte: "O que vocês compraram?"
-```
 
-```
+Exemplo 2:
 Transcrição: "Zu gastamos 25.84 no crédito Ternavista portefruti"
 Interpretação:
-- "Zu" = vocativo (ignore)
-- "gastamos" = compartilhado ✅
-- 25.84 = valor ✅
-- "Ternavista" = não existe nos cartões disponíveis ❌
-- "portefruti" = incompreensível (pode ser "hortifruti"?) ❌
+- "Zu" → vocativo (ignore)
+- "gastamos" → compartilhado ✅
+- 25.84 → valor ✅
+- "Ternavista" → não existe nos cartões disponíveis ❌
+- "portefruti" → incompreensível (pode ser "hortifruti"?) ❌
 → Pergunte: "Qual cartão você usou? E o que seria 'portefruti'?"
-```
 
-```
+Exemplo 3:
 Transcrição: "Gastei 80 no barbeiro coloca na categoria beleza"
 Interpretação:
-- "gastei" = eu ✅
-- 80 = valor ✅
-- "barbeiro" = descrição específica ✅
-- categoria explícita = Beleza ✅
+- "gastei" → eu ✅
+- 80 → valor ✅
+- "barbeiro" → descrição específica ✅
+- categoria explícita → Beleza ✅
 FALTA: forma de pagamento
 → Pergunte: "Como você pagou?"
-```
 
 ---
 
@@ -878,17 +876,14 @@ FALTA: forma de pagamento
 ## EXEMPLOS COMPLETOS
 
 **Caso 1: Informação completa**
-```
 Usuário: "gastei 50 em café no pix"
 ✅ Valor: 50
 ✅ Descrição: café
 ✅ Pagamento: pix
 ✅ Responsável: eu (verbo "gastei")
 → save_expense direto
-```
 
 **Caso 2: Falta descrição**
-```
 Usuário: "compramos 47 no crédito Latam"
 ✅ Valor: 47
 ❌ Descrição: FALTA
@@ -897,20 +892,16 @@ Usuário: "compramos 47 no crédito Latam"
 ✅ Responsável: compartilhado (verbo "compramos")
 ❌ Parcelas: FALTA
 → Pergunte: "O que vocês compraram e em quantas vezes?"
-```
 
 **Caso 3: Falta pagamento**
-```
 Usuário: "gastei 80 no barbeiro"
 ✅ Valor: 80
 ✅ Descrição: barbeiro
 ❌ Pagamento: FALTA
 ✅ Responsável: eu
 → Pergunte: "Como você pagou?"
-```
 
 **Caso 4: Cartão inválido**
-```
 Usuário: "gastamos 25 no crédito Ternavista"
 ✅ Valor: 25
 ❌ Descrição: FALTA
@@ -918,7 +909,6 @@ Usuário: "gastamos 25 no crédito Ternavista"
 ❌ Cartão: "Ternavista" não existe
 ✅ Responsável: compartilhado
 → Pergunte: "O que foi e qual cartão você usou? (Latam, C6, Roxinho...)"
-```
 
 ---
 
