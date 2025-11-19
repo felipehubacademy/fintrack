@@ -169,14 +169,8 @@ async function processMessageDirect(userPhone, messageText, messageType = 'text'
       return;
     }
     
-    // 🔧 PRÉ-PROCESSAMENTO: Normalizar erros de transcrição APENAS para mensagens de ÁUDIO
-    // Não afeta texto digitado - MUITO RÁPIDO (< 0.01ms)
-    let processedMessage = messageText;
-    if (messageType && messageType.includes('audio')) {
-      const { default: ZulAssistant } = await import('../services/zulAssistant.js');
-      const zul = new ZulAssistant();
-      processedMessage = zul.normalizeTranscriptionErrors(messageText);
-    }
+    // REMOVIDO: Pré-processamento removido - confiamos no GPT-4 para lidar com ruído
+    const processedMessage = messageText;
     
     // Buscar cartões
     const { data: cards } = await supabase

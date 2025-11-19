@@ -96,12 +96,7 @@ export default function ZulFloatingButton() {
   
   // Debug: Log quando tour está ativo
   useEffect(() => {
-      isTourActive,
-      currentStep,
-      totalSteps: tourSteps?.length || 0,
-      tourSteps: tourSteps,
-      stepData: getCurrentStep?.()
-    });
+    // Tour state tracking
   }, [isTourActive, currentStep, tourSteps, getCurrentStep]);
   const { currentTip, showTip, hasNewTip, dismissTip, setHasNewTip } = useZulTips(isTourActive);
 
@@ -713,14 +708,6 @@ export default function ZulFloatingButton() {
         console.error('Erro ao verificar tour fechado na sessão:', error);
       }
     }
-    
-      path,
-      tourType,
-      isCompleted,
-      isSkippedInSession,
-      hasSteps: tourSteps.length > 0,
-      isTourActive
-    });
     
     // Se o tour foi completado no banco, não iniciar
     if (isCompleted) {

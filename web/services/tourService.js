@@ -9,45 +9,36 @@ class TourService {
 
   /**
    * Marcar tour como completado
-   * Usa a tabela user_tours com completed_tours (JSONB)
+   * Estrutura: um registro por tour (user_id, organization_id, tour_name)
    */
-  async markTourCompleted(tourType, userId, organizationId) {
+  async markTourCompleted(tourName, userId, organizationId) {
     try {
-      console.log('💾 Salvando tour no banco:', { tourType, userId, organizationId });
-
-      // Verificar se já existe um registro para este usuário
+      // Buscar registro existente para este tour específico
       const { data: existingRecord, error: fetchError } = await supabase
         .from('user_tours')
-        .select('completed_tours')
+        .select('*')
         .eq('user_id', userId)
+        .eq('organization_id', organizationId)
+        .eq('tour_name', tourName)
         .maybeSingle();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Erro ao buscar registro existente:', fetchError);
-        // Se a tabela não existir, tentar criar via SQL direto
+        console.error('Erro ao buscar tour:', fetchError);
         return false;
       }
-
-      const currentTours = existingRecord?.completed_tours || {};
-      const updatedTours = {
-        ...currentTours,
-        [tourType]: true
-      };
 
       if (existingRecord) {
         // Atualizar registro existente
         const { error } = await supabase
           .from('user_tours')
           .update({
-            completed_tours: updatedTours,
-            last_tour_viewed: tourType,
-            last_tour_at: new Date().toISOString(),
+            is_completed: true,
             updated_at: new Date().toISOString()
           })
-          .eq('user_id', userId);
+          .eq('id', existingRecord.id);
 
         if (error) {
-          console.error('Erro ao atualizar tour completado:', error);
+          console.error('Erro ao atualizar tour:', error);
           return false;
         }
       } else {
@@ -56,19 +47,18 @@ class TourService {
           .from('user_tours')
           .insert({
             user_id: userId,
-            completed_tours: updatedTours,
-            last_tour_viewed: tourType,
-            last_tour_at: new Date().toISOString()
+            organization_id: organizationId,
+            tour_name: tourName,
+            is_completed: true,
+            completed_steps: []
           });
 
         if (error) {
-          console.error('Erro ao criar registro de tour:', error);
-          // Se a tabela não existir, retornar false mas não bloquear
+          console.error('Erro ao criar tour:', error);
           return false;
         }
       }
 
-      console.log('✅ Tour salvo com sucesso:', tourType);
       return true;
     } catch (error) {
       console.error('Erro no serviço de tour:', error);
@@ -77,25 +67,93 @@ class TourService {
   }
 
   /**
+   * Marcar step de um tour como completado
+   */
+  async markStepCompleted(tourName, stepId, userId, organizationId) {
+    try {
+      // Buscar registro existente
+      const { data: existingRecord, error: fetchError } = await supabase
+        .from('user_tours')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId)
+        .eq('tour_name', tourName)
+        .maybeSingle();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Erro ao buscar tour:', fetchError);
+        return false;
+      }
+
+      const currentSteps = existingRecord?.completed_steps || [];
+      
+      // Adicionar step se não existir
+      if (!currentSteps.includes(stepId)) {
+        currentSteps.push(stepId);
+      }
+
+      if (existingRecord) {
+        // Atualizar
+        const { error } = await supabase
+          .from('user_tours')
+          .update({
+            completed_steps: currentSteps,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingRecord.id);
+
+        if (error) {
+          console.error('Erro ao atualizar steps:', error);
+          return false;
+        }
+      } else {
+        // Criar novo
+        const { error } = await supabase
+          .from('user_tours')
+          .insert({
+            user_id: userId,
+            organization_id: organizationId,
+            tour_name: tourName,
+            completed_steps: currentSteps,
+            is_completed: false
+          });
+
+        if (error) {
+          console.error('Erro ao criar tour com step:', error);
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao marcar step:', error);
+      return false;
+    }
+  }
+
+  /**
    * Obter todos os tours completados pelo usuário
-   * Usa a tabela user_tours com completed_tours (JSONB)
+   * Retorna um objeto: { tourName: true/false }
    */
   async getCompletedTours(userId, organizationId) {
     try {
       const { data, error } = await supabase
         .from('user_tours')
-        .select('completed_tours')
+        .select('tour_name, is_completed')
         .eq('user_id', userId)
-        .maybeSingle();
+        .eq('organization_id', organizationId);
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Erro ao obter tours completados:', error);
         return {};
       }
 
-      // Retornar completed_tours diretamente (já é um objeto JSONB)
-      const completedTours = data?.completed_tours || {};
-      console.log('📊 Tours completados encontrados:', completedTours);
+      // Converter array para objeto { tourName: isCompleted }
+      const completedTours = {};
+      data?.forEach(tour => {
+        completedTours[tour.tour_name] = tour.is_completed;
+      });
+
       return completedTours;
     } catch (error) {
       console.error('Erro no serviço de tour:', error);
@@ -104,20 +162,89 @@ class TourService {
   }
 
   /**
-   * Resetar todos os tours (para admin ou teste)
-   * Limpa completed_tours mas mantém o registro
+   * Obter steps completados de um tour específico
    */
-  async resetTours(userId) {
+  async getCompletedSteps(tourName, userId, organizationId) {
+    try {
+      const { data, error } = await supabase
+        .from('user_tours')
+        .select('completed_steps')
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId)
+        .eq('tour_name', tourName)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao obter steps:', error);
+        return [];
+      }
+
+      return data?.completed_steps || [];
+    } catch (error) {
+      console.error('Erro ao obter steps:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Verificar se um tour foi completado
+   */
+  async isTourCompleted(tourName, userId, organizationId) {
+    try {
+      const { data, error } = await supabase
+        .from('user_tours')
+        .select('is_completed')
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId)
+        .eq('tour_name', tourName)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao verificar tour:', error);
+        return false;
+      }
+
+      return data?.is_completed || false;
+    } catch (error) {
+      console.error('Erro ao verificar tour:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Resetar um tour específico
+   */
+  async resetTour(tourName, userId, organizationId) {
     try {
       const { error } = await supabase
         .from('user_tours')
-        .update({
-          completed_tours: {},
-          last_tour_viewed: null,
-          last_tour_at: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
+        .delete()
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId)
+        .eq('tour_name', tourName);
+
+      if (error) {
+        console.error('Erro ao resetar tour:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao resetar tour:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Resetar todos os tours de um usuário
+   */
+  async resetAllTours(userId, organizationId) {
+    try {
+      const { error } = await supabase
+        .from('user_tours')
+        .delete()
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId);
 
       if (error) {
         console.error('Erro ao resetar tours:', error);
@@ -126,28 +253,28 @@ class TourService {
 
       return true;
     } catch (error) {
-      console.error('Erro no serviço de tour:', error);
+      console.error('Erro ao resetar tours:', error);
       return false;
     }
   }
 
   /**
-   * Marcar onboarding como completado
-   * Usa a tabela user_tours com completed_onboarding (JSONB)
+   * Marcar onboarding como completado (usa completed_onboarding JSONB)
+   * Onboarding é diferente de tours - é um JSONB único por usuário
    */
-  async markOnboardingCompleted(onboardingType, userId) {
+  async markOnboardingCompleted(onboardingType, userId, organizationId) {
     try {
-      console.log('💾 Salvando onboarding no banco:', { onboardingType, userId });
-
-      // Verificar se já existe um registro para este usuário
+      // Buscar qualquer registro do usuário para pegar o completed_onboarding
       const { data: existingRecord, error: fetchError } = await supabase
         .from('user_tours')
-        .select('completed_onboarding')
+        .select('id, completed_onboarding')
         .eq('user_id', userId)
+        .eq('organization_id', organizationId)
+        .limit(1)
         .maybeSingle();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Erro ao buscar registro existente:', fetchError);
+        console.error('Erro ao buscar onboarding:', fetchError);
         return false;
       }
 
@@ -165,80 +292,58 @@ class TourService {
             completed_onboarding: updatedOnboarding,
             updated_at: new Date().toISOString()
           })
-          .eq('user_id', userId);
+          .eq('id', existingRecord.id);
 
         if (error) {
-          console.error('Erro ao atualizar onboarding completado:', error);
+          console.error('Erro ao atualizar onboarding:', error);
           return false;
         }
       } else {
-        // Criar novo registro
+        // Criar novo registro genérico para armazenar onboarding
         const { error } = await supabase
           .from('user_tours')
           .insert({
             user_id: userId,
-            completed_onboarding: updatedOnboarding
+            organization_id: organizationId,
+            tour_name: '_onboarding_', // Tour especial para onboarding
+            completed_onboarding: updatedOnboarding,
+            is_completed: false
           });
 
         if (error) {
-          console.error('Erro ao criar registro de onboarding:', error);
+          console.error('Erro ao criar onboarding:', error);
           return false;
         }
       }
 
-      console.log('✅ Onboarding salvo com sucesso:', onboardingType);
       return true;
     } catch (error) {
-      console.error('Erro no serviço de onboarding:', error);
+      console.error('Erro ao marcar onboarding:', error);
       return false;
     }
   }
 
   /**
-   * Verificar se onboarding foi completado
-   * Usa a tabela user_tours com completed_onboarding (JSONB)
+   * Obter onboarding completado
    */
-  async isOnboardingCompleted(onboardingType, userId) {
+  async getCompletedOnboarding(userId, organizationId) {
     try {
       const { data, error } = await supabase
         .from('user_tours')
         .select('completed_onboarding')
         .eq('user_id', userId)
+        .eq('organization_id', organizationId)
+        .limit(1)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao verificar onboarding:', error);
-        return false;
-      }
-
-      const completedOnboarding = data?.completed_onboarding || {};
-      return completedOnboarding[onboardingType] === true;
-    } catch (error) {
-      console.error('Erro ao verificar onboarding:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Obter todos os onboarding completados
-   * Usa a tabela user_tours com completed_onboarding (JSONB)
-   */
-  async getCompletedOnboarding(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('user_tours')
-        .select('completed_onboarding')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao obter onboarding completado:', error);
+        console.error('Erro ao obter onboarding:', error);
         return {};
       }
 
       return data?.completed_onboarding || {};
     } catch (error) {
-      console.error('Erro ao obter onboarding completado:', error);
+      console.error('Erro ao obter onboarding:', error);
       return {};
     }
   }
