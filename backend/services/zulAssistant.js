@@ -684,7 +684,7 @@ Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
                   },
                   installments: {
                     type: 'number',
-                    description: 'Número de parcelas (apenas se payment_method for credit_card)'
+                    description: 'Número de parcelas. **REGRA OBRIGATÓRIA**: Se payment_method for "credit_card" e o usuário NÃO mencionou o número de parcelas (ex: "crédito Latam", "no Roxinho", "cartão MercadoPago" SEM mencionar "3x", "5x", "10x", etc), SEMPRE use 1 (à vista). Se mencionar "à vista", "a vista", "uma vez", "1x" → use 1. Se mencionar "em Nx", "Nx", "X vezes" → use X. NUNCA deixe este campo vazio se payment_method for credit_card - SEMPRE envie um valor (padrão: 1).'
                   },
                   category: {
                     type: 'string',
