@@ -2352,14 +2352,37 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    **REGRA CRÍTICA**: Se a mensagem mencionar "crédito", "crédito X", "no crédito", "cartão X", "X em Yx" (parcelas), EXTRAIA essas informações automaticamente. NÃO pergunte novamente informações que já estão na mensagem.
    
    **🚨 DETECÇÃO AUTOMÁTICA DE PAGAMENTO POR NOME DE CARTÃO - REGRA OBRIGATÓRIA 🚨**:
-   **SE A MENSAGEM MENCIONAR O NOME DE UM CARTÃO QUE ESTÁ NA LISTA DE CARTÕES DISPONÍVEIS (${cardsList}), INFIRA AUTOMATICAMENTE QUE É PAGAMENTO NO CRÉDITO (payment_method="credit_card").**
-   - Se mencionar "MercadoPago", "Mercado Pago", "Latam", "Roxinho", "Neon", "Nubank", "C6", ou qualquer outro cartão da lista disponível → INFIRA automaticamente payment_method="credit_card"
-   - Exemplos:
-     * "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" → payment_method="credit_card", card_name="MercadoPago", installments=10
-     * "1500 no Latam em 5x" → payment_method="credit_card", card_name="Latam", installments=5
-     * "100 no Roxinho" → payment_method="credit_card", card_name="Roxinho", installments=1 (default)
-     * "paguei 200 no Neon" → payment_method="credit_card", card_name="Neon", installments=1 (default)
+   **SE A MENSAGEM MENCIONAR O NOME DE UM CARTÃO QUE ESTÁ NA LISTA DE CARTÕES DISPONÍVEIS (${cardsList}), INFIRA AUTOMATICAMENTE QUE É PAGAMENTO NO CRÉDITO (payment_method="credit_card") E EXTRAIA O NOME DO CARTÃO.**
+   
+   **⚠️ CARTÕES DISPONÍVEIS PARA ESTE USUÁRIO: ${cardsList}**
+   
+   **SEMPRE VERIFIQUE SE A MENSAGEM CONTÉM ALGUM DESTES NOMES (case-insensitive):**
+   - Se a mensagem contém "Latam", "LATAM", ou "latam" → card_name="Latam"
+   - Se a mensagem contém "Roxinho", "ROXINHO", ou "roxinho" → card_name="Roxinho"
+   - Se a mensagem contém "MercadoPago", "Mercado Pago", "mercadopago" → card_name="MercadoPago"
+   - Se a mensagem contém "C6", "c6", "C6Bank" → card_name="C6"
+   - Se a mensagem contém "Neon", "NEON", "neon" → card_name="Neon"
+   - Se a mensagem contém "Hub", "HUB", "hub" → card_name="Hub"
+   - Se a mensagem contém "XP", "xp" → card_name="XP"
+   - Se a mensagem contém "Nubank", "nubank" → card_name="Nubank"
+   
+   **Exemplos de EXTRAÇÃO CORRETA:**
+   - "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" → payment_method="credit_card", card_name="MercadoPago", installments=10
+   - "gasto do Felipe, 150 mercado no crédito Latam" → payment_method="credit_card", card_name="Latam", installments=1 (default), responsible="Felipe", description="mercado", amount=150 → CHAMAR save_expense DIRETO
+   - "gasto da família, 200 no supermercado crédito Roxinho" → payment_method="credit_card", card_name="Roxinho", installments=1 (default), responsible="compartilhado", description="supermercado", amount=200 → CHAMAR save_expense DIRETO
+   - "1500 no Latam em 5x" → payment_method="credit_card", card_name="Latam", installments=5
+   - "100 no Roxinho" → payment_method="credit_card", card_name="Roxinho", installments=1 (default)
+   - "paguei 200 no Neon" → payment_method="credit_card", card_name="Neon", installments=1 (default), responsible="eu"
+   
+   - **NUNCA PERGUNTE "QUAL CARTÃO?" SE A MENSAGEM JÁ MENCIONA UM CARTÃO DA LISTA** - isso é uma violação grave das regras
    - **NUNCA PERGUNTE "PAGOU COMO?" SE A MENSAGEM MENCIONAR UM CARTÃO DA LISTA** - isso é uma violação grave das regras
+   - **NUNCA PERGUNTE "FOI À VISTA OU PARCELADO?" SE A MENSAGEM MENCIONA CARTÃO SEM PARCELAS** - assuma 1 parcela (à vista) como padrão
+   
+   **🚨 PARCELAS E "À VISTA" - REGRA OBRIGATÓRIA 🚨**:
+   - Se mencionar "à vista", "a vista", "uma vez", "1x" → installments=1
+   - Se mencionar "crédito [Nome Cartão]" SEM mencionar parcelas → installments=1 (padrão)
+   - Se mencionar "em Nx", "Nx", "X vezes", "dividido em X" → installments=X
+   - **NUNCA PERGUNTE SOBRE PARCELAS SE A MENSAGEM JÁ TEM CARTÃO E NÃO MENCIONA PARCELAMENTO** - assuma 1 parcela
    
    **🚨 DETECÇÃO AUTOMÁTICA DE RESPONSÁVEL PELOS VERBOS - REGRA OBRIGATÓRIA 🚨**:
    **VOCÊ DEVE SEMPRE ANALISAR OS VERBOS NA MENSAGEM DO USUÁRIO PARA DETERMINAR O RESPONSÁVEL ANTES DE PERGUNTAR QUALQUER COISA.**
@@ -2435,12 +2458,12 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    **🚨 EXEMPLOS PRÁTICOS OBRIGATÓRIOS - SIGA EXATAMENTE 🚨**:
    
    **CASO 1**: Mensagem: "gasto do Felipe, 150 mercado no crédito Latam"
-   ✅ CORRETO: responsável="Felipe" (PRIORIDADE 1 - menção direta "gasto do Felipe") → Perguntar APENAS: "Qual cartão?" (crédito precisa cartão) - NÃO perguntar "quem pagou"
-   ❌ ERRADO: Perguntar "Quem pagou?" ou "Foi você ou compartilhado?"
+   ✅ CORRETO: EXTRAIR → amount=150, description="mercado", payment_method="credit_card", card_name="Latam" (cartão mencionado!), installments=1 (padrão), responsible="Felipe" (menção direta) → CHAMAR save_expense DIRETO (TODAS informações presentes!)
+   ❌ ERRADO: Perguntar "Qual cartão?" (Latam já foi mencionado!) ou "Quem pagou?" (Felipe já foi mencionado!)
    
    **CASO 2**: Mensagem: "gasto da família, 200 no supermercado crédito Roxinho"
-   ✅ CORRETO: responsável="compartilhado" (PRIORIDADE 1 - menção direta "gasto da família") → CHAMAR save_expense DIRETO (todas as informações presentes) - NÃO perguntar "quem pagou"
-   ❌ ERRADO: Perguntar "Quem pagou?" ou "É compartilhado?"
+   ✅ CORRETO: EXTRAIR → amount=200, description="supermercado", payment_method="credit_card", card_name="Roxinho" (cartão mencionado!), installments=1 (padrão), responsible="compartilhado" (menção direta "família") → CHAMAR save_expense DIRETO (TODAS informações presentes!)
+   ❌ ERRADO: Perguntar "Foi à vista ou parcelado?" (assume 1 parcela se não mencionar!) ou "Quem pagou?" (família = compartilhado!)
    
    **CASO 3**: Mensagem: "hoje gastei 50 no mercado no débito"
    ✅ CORRETO: responsável="eu" (PRIORIDADE 3 - verbo "gastei" indica individual) → Perguntar APENAS: "Qual cartão?" (débito precisa cartão) - NÃO perguntar "quem pagou"
