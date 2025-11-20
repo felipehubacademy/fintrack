@@ -2433,11 +2433,26 @@ REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
    
   **PRIORIDADE 3 - VERBOS INDIVIDUAIS** (responsável = "eu" - será mapeado automaticamente para o nome do usuário):
     
-    **REGRA CRÍTICA DE PATTERN MATCHING**: Se a mensagem contém QUALQUER PALAVRA que TERMINE com "gastei", "paguei", "comprei" (ex: "julgastei", "já gastei", "hoje paguei", "só comprei"), deve ser considerado verbo individual!
+    **🚨 REGRA CRÍTICA DE PATTERN MATCHING - ABSOLUTAMENTE OBRIGATÓRIA 🚨**:
+    **Se a mensagem contém QUALQUER PALAVRA que TERMINE com "gastei", "paguei", "comprei" (ex: "julgastei", "já gastei", "hoje paguei", "só comprei", "Zul, gastei", "hoje gastei"), deve ser considerado verbo individual e responsável="eu" - SEMPRE, MESMO QUE A MENSAGEM ESTEJA INCOMPLETA!**
+    
+    **⚠️ EXEMPLOS CRÍTICOS - NUNCA PERGUNTE "QUEM PAGOU?" NESTES CASOS:**
+    - "gastei" → responsável="eu" ✅
+    - "hoje gastei" → responsável="eu" ✅ (mesmo com palavra antes!)
+    - "Zul, gastei" → responsável="eu" ✅ (mesmo com nome do bot antes!)
+    - "julgastei" → responsável="eu" ✅ (erro de transcrição, mas ainda é "gastei"!)
+    - "gastei com pão" → responsável="eu" ✅ (mesmo sem valor completo!)
+    - "hoje gastei 50" → responsável="eu" ✅ (mesmo com palavra antes!)
+    - "só gastei" → responsável="eu" ✅ (mesmo com palavra antes!)
+    - "já paguei" → responsável="eu" ✅
+    - "comprei hoje" → responsável="eu" ✅
+    
+    **REGRA DE OURO**: Se você vê "gastei", "paguei", "comprei" (ou variações) em QUALQUER lugar da mensagem, independente do que vem antes ou depois, o responsável É "eu" - NÃO pergunte "Quem pagou?"!
     
     **LISTA COMPLETA**:
     * paguei, comprei, gastei, investi, doei, emprestei, peguei, peguei emprestado, fiz, adquiri, contratei, assinei, me inscrevi, me matriculei, fui em, fui ao, fui na, fui no, fui à, comprei para mim, gastei comigo, paguei minha, paguei meu, comprei minha, comprei meu, anotei, registrei, lancei, adicionei, coloquei, botei, inseri, incluí, adicionei minha, adicionei meu, comprei sozinho, paguei sozinho, gastei sozinho, foi minha, foi meu, minha despesa, meu gasto, eu paguei, eu comprei, eu gastei, eu fiz, eu adquiri, eu contratei, eu assinei, eu me inscrevi, eu me matriculei, eu fui, eu anotei, eu registrei, eu lancei, eu adicionei, eu coloquei, eu botei, eu inseri, eu incluí, eu comprei para mim, eu gastei comigo, eu paguei minha, eu paguei meu, eu comprei minha, eu comprei meu, eu adicionei minha, eu adicionei meu
     * **VARIAÇÕES COM ERROS DE TRANSCRIÇÃO** (áudio pode ter ruído): julgastei (já gastei), jupaguei (já paguei), jocomprei (já comprei), hoje gastei, hoje paguei, hoje comprei, só gastei, só paguei, só comprei, apenas gastei, apenas paguei, apenas comprei
+    * **VARIAÇÕES COM NOME DO BOT OU OUTRAS PALAVRAS ANTES**: Zul gastei, Zuzu gastei, Zul, gastei, Zuzu, gastei, hoje gastei, só gastei, já gastei, acabei de gastar, ontem gastei
   
   **VERBOS COMPARTILHADOS** (responsável = "compartilhado" - será mapeado automaticamente para o nome da organização): 
     
