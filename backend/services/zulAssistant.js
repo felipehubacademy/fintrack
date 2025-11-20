@@ -3061,21 +3061,19 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
               if (hasNonsense) {
                 console.log(`❌ [SAVE_EXPENSE] Descrição incompreensível detectada: "${args.description}"`);
                 const firstName = context?.userName?.split(' ')[0] || 'você';
-                output = {
+                return {
                   success: false,
                   message: `Não entendi "${args.description}". Seria "hortifruti"? Pode esclarecer?`
                 };
-                break;
               }
               
               // Verificar se é muito curta e genérica (apenas 1-2 letras)
               if (descLower.length <= 2 && !/^\d+$/.test(descLower)) {
                 console.log(`❌ [SAVE_EXPENSE] Descrição muito curta: "${args.description}"`);
-                output = {
+                return {
                   success: false,
                   message: `A descrição "${args.description}" é muito curta. O que você comprou?`
                 };
-                break;
               }
             }
             
