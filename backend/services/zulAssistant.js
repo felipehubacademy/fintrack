@@ -1654,29 +1654,11 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
               };
             }
 
-            // Se não informou parcelas, perguntar em seguida
+            // 🔧 CORREÇÃO: Se não informou parcelas, assumir 1 (à vista) automaticamente
+            // Isso resolve o problema do GPT não enviar installments mesmo com a descrição atualizada
             if (!args.installments || Number(args.installments) < 1) {
-              const firstName = this.getFirstName(context);
-              const namePart = firstName ? ` ${firstName}` : '';
-              
-              const installmentQuestions = [
-                `E em quantas parcelas${namePart}?`,
-                `Quantas vezes${namePart}?`,
-                `Foi parcelado${namePart}? Quantas vezes?`,
-                `Me diz quantas parcelas${namePart}?`,
-                `Quantas parcelas foram${namePart}?`,
-                `Foi à vista ou parcelado${namePart}?`,
-                `Me fala quantas vezes${namePart}?`,
-                `Quantas parcelas${namePart}?`,
-                `Foi parcelado em quantas vezes${namePart}?`,
-                `Preciso saber quantas parcelas${namePart}`,
-                `Quantas vezes você parcelou${namePart}?`,
-                `Foi em quantas vezes${namePart}?`
-              ];
-              return {
-                success: false,
-                message: this.pickVariation(installmentQuestions, args.card_name || 'parcelas')
-              };
+              console.log('⚙️ [SAVE] Parcelas não fornecidas, assumindo 1 (à vista) automaticamente');
+              args.installments = 1;
             }
 
             const { data: cards } = await supabase
