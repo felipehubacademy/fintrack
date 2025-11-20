@@ -656,7 +656,7 @@ Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
               },
               category: {
                 type: 'string',
-                description: 'Categoria da despesa. PRIORIDADE 1: Se o usuário MENCIONAR EXPLICITAMENTE a categoria (ex: "colocar como Caridade", "na categoria Lazer", "é de Educação", "para Beleza", "categoria Doações"), use EXATAMENTE essa categoria mencionada. PRIORIDADE 2: Se não mencionar, tente inferir baseado na descrição (Alimentação para comida, Transporte para combustível/uber, Beleza para perfume/salão, Saúde para remédios, Casa para eletrodomésticos, Lazer para cinema/streaming, etc). PRIORIDADE 3: SE NÃO TIVER CERTEZA ou não souber, use "Outros" - NUNCA force uma categoria incorreta.'
+                description: 'Categoria da despesa. PRIORIDADE 1: Se o usuário MENCIONAR EXPLICITAMENTE a categoria (ex: "colocar como Caridade", "na categoria Lazer", "é de Educação", "para Beleza", "categoria Doações"), use EXATAMENTE essa categoria mencionada. PRIORIDADE 2: Se não mencionar, tente inferir baseado na descrição com EXEMPLOS OBRIGATÓRIOS: "pão/mercado/sacolão" → Alimentação, "gasolina/uber/posto" → Transporte, "perfume/salão/barbearia" → Beleza, "remédio/farmácia" → Saúde, "torradeira/geladeira/tv/notebook/móveis/material construção" → Casa, "imposto/taxa/multa/ipva/iptu" → Impostos, "cinema/streaming" → Lazer. PRIORIDADE 3: SE NÃO TIVER CERTEZA ou não souber, use "Outros" - NUNCA force uma categoria incorreta.'
               }
             },
             required: ['amount', 'description', 'payment_method', 'responsible']
