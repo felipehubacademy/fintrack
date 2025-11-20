@@ -3048,6 +3048,37 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             if (!args.payment_method) missingFields.push('forma de pagamento');
             if (!args.responsible) missingFields.push('responsável');
             
+            // 🔍 VALIDAÇÃO ADICIONAL: Detectar descrições incompreensíveis/nonsense
+            if (args.description) {
+              const descLower = args.description.toLowerCase().trim();
+              
+              // Lista de palavras nonsense conhecidas (erros de transcrição comuns)
+              const nonsenseWords = ['furuti', 'portefruti', 'ternavista', 'xpto', 'abc', 'teste'];
+              
+              // Verificar se contém palavra nonsense
+              const hasNonsense = nonsenseWords.some(word => descLower.includes(word));
+              
+              if (hasNonsense) {
+                console.log(`❌ [SAVE_EXPENSE] Descrição incompreensível detectada: "${args.description}"`);
+                const firstName = context?.userName?.split(' ')[0] || 'você';
+                output = {
+                  success: false,
+                  message: `Não entendi "${args.description}". Seria "hortifruti"? Pode esclarecer?`
+                };
+                break;
+              }
+              
+              // Verificar se é muito curta e genérica (apenas 1-2 letras)
+              if (descLower.length <= 2 && !/^\d+$/.test(descLower)) {
+                console.log(`❌ [SAVE_EXPENSE] Descrição muito curta: "${args.description}"`);
+                output = {
+                  success: false,
+                  message: `A descrição "${args.description}" é muito curta. O que você comprou?`
+                };
+                break;
+              }
+            }
+            
             if (missingFields.length > 0) {
               console.log(`❌ [SAVE_EXPENSE] Tentativa de salvar com campos obrigatórios faltando: ${missingFields.join(', ')}`);
               console.log(`❌ [SAVE_EXPENSE] Args recebidos:`, JSON.stringify(args, null, 2));
