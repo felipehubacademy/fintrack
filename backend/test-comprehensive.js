@@ -39,7 +39,7 @@ const testCases = [
     id: 1,
     category: 'Inferência de Categoria',
     name: 'Perfume → Beleza (não Impostos)',
-    message: 'gastei 250 em perfume no crédito Latam',
+    message: 'gastei 250 em perfume no crédito Latam em 5x',
     expected: {
       shouldSave: true,
       category: 'beleza',

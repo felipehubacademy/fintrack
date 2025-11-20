@@ -751,9 +751,9 @@ Se FALTAR qualquer item obrigatório → PERGUNTE. NUNCA assuma.
 ## REGRA 1: DESCRIÇÃO RIGOROSA
 
 **O QUE ACEITAR (substantivos claros e específicos):**
-- ✅ Lugares/serviços: "mercado", "farmácia", "barbeiro", "posto", "Netflix", "Spotify"
-- ✅ Produtos: "café", "pizza", "gasolina", "livro", "pão"
-- ✅ Com detalhes: "2 pizzas", "corte de cabelo", "feira do hortifruti"
+- ✅ Lugares/serviços: "mercado", "sacolão", "farmácia", "barbeiro", "posto", "Netflix", "Spotify"
+- ✅ Produtos: "café", "pizza", "gasolina", "livro", "pão", "perfume"
+- ✅ Com detalhes: "2 pizzas", "corte de cabelo", "feira do hortifruti", "compras do sacolão"
 
 **O QUE NÃO ACEITAR (pergunte para esclarecer):**
 - ❌ Genéricos: "compras", "coisas", "aquilo", "negócio"
@@ -1514,12 +1514,10 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
               for (const group of synonyms) {
                   const matchedKeyword = group.keywords.find(k => searchText.includes(k));
                   if (matchedKeyword) {
-                    console.log(`🔍 [CATEGORY-MATCH] "${args.description}" deu match com keyword "${matchedKeyword}" → target: "${group.target}"`);
                     const targetNorm = normalize(group.target);
                     if (byNormalizedName.has(targetNorm)) {
                       resolvedName = byNormalizedName.get(targetNorm).name;
                       categoryId = byNormalizedName.get(targetNorm).id;
-                      console.log(`✅ [CATEGORY-FINAL] Categoria encontrada: "${resolvedName}"`);
                       break;
                     } else if (group.fallback) {
                       // Tentar fallback recursivamente se a categoria principal não existir
@@ -3065,8 +3063,6 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
 
         } else if (functionName === 'save_expense') {
             // 🔧 CORREÇÃO OBRIGATÓRIA: Corrigir categorias obviamente incorretas do GPT ANTES de tudo
-            console.log(`🔍 [DEBUG] save_expense args ANTES correção:`, JSON.stringify({ description: args.description, category: args.category }));
-            
             const descriptionLower = (args.description || '').toLowerCase();
             const categoryLower = (args.category || '').toLowerCase();
             
@@ -3079,15 +3075,12 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             
             for (const correction of mandatoryCorrections) {
               const hasKeyword = correction.descKeywords.some(kw => descriptionLower.includes(kw));
-              console.log(`🔍 [DEBUG] Verificando correção: hasKeyword=${hasKeyword}, categoryLower="${categoryLower}", wrongCategory="${correction.wrongCategory}"`);
               if (hasKeyword && categoryLower.includes(correction.wrongCategory)) {
                 console.log(`🔧 [CORREÇÃO] Categoria incorreta detectada! "${args.description}" estava como "${args.category}", corrigindo para "${correction.correctCategory}"`);
                 args.category = correction.correctCategory;
                 break;
               }
             }
-            
-            console.log(`🔍 [DEBUG] save_expense args DEPOIS correção:`, JSON.stringify({ description: args.description, category: args.category }));
             
             // 🚨 VALIDAÇÃO CRÍTICA: NÃO permitir salvar despesa sem informações obrigatórias
             const missingFields = [];
