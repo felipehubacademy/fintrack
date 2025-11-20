@@ -552,6 +552,121 @@ Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
   }
 
   /**
+   * Definições de ferramentas (functions) do Assistant
+   */
+  getFunctionTools() {
+    return [
+      {
+        type: 'function',
+        function: {
+          name: 'validate_payment_method',
+          description: 'Validar se o método de pagamento informado pelo usuário é válido',
+          parameters: {
+            type: 'object',
+            properties: {
+              user_input: {
+                type: 'string',
+                description: 'O que o usuário digitou (ex: "débito", "crédito", "pix", "dinheiro")'
+              }
+            },
+            required: ['user_input']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'validate_card',
+          description: 'Validar se o cartão e parcelas informados são válidos',
+          parameters: {
+            type: 'object',
+            properties: {
+              card_name: {
+                type: 'string',
+                description: 'Nome do cartão informado pelo usuário'
+              },
+              installments: {
+                type: 'number',
+                description: 'Número de parcelas (1 para à vista)'
+              },
+              available_cards: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Lista de cartões disponíveis para o usuário'
+              }
+            },
+            required: ['card_name', 'installments', 'available_cards']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'validate_responsible',
+          description: 'Validar se o responsável informado existe',
+          parameters: {
+            type: 'object',
+            properties: {
+              responsible_name: {
+                type: 'string',
+                description: 'Nome do responsável informado pelo usuário'
+              },
+              available_responsibles: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Lista de responsáveis disponíveis (cost centers + Compartilhado)'
+              }
+            },
+            required: ['responsible_name', 'available_responsibles']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'save_expense',
+          description: 'Salvar a despesa no banco de dados quando todas as informações estiverem completas e validadas',
+          parameters: {
+            type: 'object',
+            properties: {
+              amount: {
+                type: 'number',
+                description: 'Valor da despesa em reais'
+              },
+              description: {
+                type: 'string',
+                description: 'Descrição da despesa SEM o valor monetário. Exemplos: "mercado" (não "150 mercado"), "farmácia", "2 televisões", "5kg de carne". Permita números de quantidade, mas NUNCA inclua valor monetário.'
+              },
+              payment_method: {
+                type: 'string',
+                enum: ['credit_card', 'debit_card', 'pix', 'cash', 'bank_transfer', 'boleto', 'other'],
+                description: 'Método de pagamento validado'
+              },
+              responsible: {
+                type: 'string',
+                description: 'Nome do responsável validado'
+              },
+              card_name: {
+                type: 'string',
+                description: 'Nome ESPECÍFICO do cartão mencionado pelo usuário (ex: "Nubank", "C6", "Latam", "Roxinho"). CRÍTICO: APENAS preencha se o usuário MENCIONAR UM CARTÃO ESPECÍFICO. Se ele apenas disser "crédito" ou "cartão de crédito" SEM especificar qual cartão, NÃO preencha este campo e PERGUNTE qual cartão usar. Palavras como "credit", "crédito", "cartão" NÃO são nomes de cartões.'
+              },
+              installments: {
+                type: 'number',
+                description: 'Número de parcelas. **REGRA OBRIGATÓRIA**: Se payment_method for "credit_card" e o usuário NÃO mencionou o número de parcelas (ex: "crédito Latam", "no Roxinho", "cartão MercadoPago" SEM mencionar "3x", "5x", "10x", etc), SEMPRE use 1 (à vista). Se mencionar "à vista", "a vista", "uma vez", "1x" → use 1. Se mencionar "em Nx", "Nx", "X vezes" → use X. NUNCA deixe este campo vazio se payment_method for credit_card - SEMPRE envie um valor (padrão: 1).'
+              },
+              category: {
+                type: 'string',
+                description: 'Categoria da despesa. PRIORIDADE 1: Se o usuário MENCIONAR EXPLICITAMENTE a categoria (ex: "colocar como Caridade", "na categoria Lazer", "é de Educação", "para Beleza", "categoria Doações"), use EXATAMENTE essa categoria mencionada. PRIORIDADE 2: Se não mencionar, tente inferir baseado na descrição (Alimentação para comida, Transporte para combustível/uber, Beleza para perfume/salão, Saúde para remédios, Casa para eletrodomésticos, Lazer para cinema/streaming, etc). PRIORIDADE 3: SE NÃO TIVER CERTEZA ou não souber, use "Outros" - NUNCA force uma categoria incorreta.'
+              }
+            },
+            required: ['amount', 'description', 'payment_method', 'responsible']
+          }
+        }
+      }
+    ];
+  }
+
+  /**
    * Obter o Assistant ZUL (usando ID fixo da env var)
    */
   async getOrCreateAssistant() {
@@ -576,6 +691,19 @@ Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
 
       if (existingAssistant) {
         console.log('✅ Assistant ZUL encontrado:', existingAssistant.id);
+        
+        // 🔄 ATUALIZAR o Assistant com as novas definições de função (para pegar mudanças no código)
+        try {
+          console.log('🔄 Atualizando Assistant com novas definições de função...');
+          await openai.beta.assistants.update(existingAssistant.id, {
+            instructions: this.getInstructions(),
+            tools: this.getFunctionTools()
+          });
+          console.log('✅ Assistant atualizado com sucesso!');
+        } catch (updateError) {
+          console.error('⚠️ Erro ao atualizar Assistant (continuando com versão existente):', updateError.message);
+        }
+        
         this.assistantId = existingAssistant.id;
         return this.assistantId;
       }
@@ -586,116 +714,7 @@ Retorne APENAS a mensagem, sem aspas, sem explicações, sem prefixos.`;
         name: 'ZUL - MeuAzulão',
         instructions: this.getInstructions(),
         model: 'gpt-4o-mini',
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'validate_payment_method',
-              description: 'Validar se o método de pagamento informado pelo usuário é válido',
-              parameters: {
-                type: 'object',
-                properties: {
-                  user_input: {
-                    type: 'string',
-                    description: 'O que o usuário digitou (ex: "débito", "crédito", "pix", "dinheiro")'
-                  }
-                },
-                required: ['user_input']
-              }
-            }
-          },
-          {
-            type: 'function',
-            function: {
-              name: 'validate_card',
-              description: 'Validar se o cartão e parcelas informados são válidos',
-              parameters: {
-                type: 'object',
-                properties: {
-                  card_name: {
-                    type: 'string',
-                    description: 'Nome do cartão informado pelo usuário'
-                  },
-                  installments: {
-                    type: 'number',
-                    description: 'Número de parcelas (1 para à vista)'
-                  },
-                  available_cards: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Lista de cartões disponíveis para o usuário'
-                  }
-                },
-                required: ['card_name', 'installments', 'available_cards']
-              }
-            }
-          },
-          {
-            type: 'function',
-            function: {
-              name: 'validate_responsible',
-              description: 'Validar se o responsável informado existe',
-              parameters: {
-                type: 'object',
-                properties: {
-                  responsible_name: {
-                    type: 'string',
-                    description: 'Nome do responsável informado pelo usuário'
-                  },
-                  available_responsibles: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Lista de responsáveis disponíveis (cost centers + Compartilhado)'
-                  }
-                },
-                required: ['responsible_name', 'available_responsibles']
-              }
-            }
-          },
-
-          {
-            type: 'function',
-            function: {
-              name: 'save_expense',
-              description: 'Salvar a despesa no banco de dados quando todas as informações estiverem completas e validadas',
-              parameters: {
-                type: 'object',
-                properties: {
-                  amount: {
-                    type: 'number',
-                    description: 'Valor da despesa em reais'
-                  },
-                  description: {
-                    type: 'string',
-                    description: 'Descrição da despesa SEM o valor monetário. Exemplos: "mercado" (não "150 mercado"), "farmácia", "2 televisões", "5kg de carne". Permita números de quantidade, mas NUNCA inclua valor monetário.'
-                  },
-                  payment_method: {
-                    type: 'string',
-                    enum: ['credit_card', 'debit_card', 'pix', 'cash', 'bank_transfer', 'boleto', 'other'],
-                    description: 'Método de pagamento validado'
-                  },
-                  responsible: {
-                    type: 'string',
-                    description: 'Nome do responsável validado'
-                  },
-                  card_name: {
-                    type: 'string',
-                    description: 'Nome ESPECÍFICO do cartão mencionado pelo usuário (ex: "Nubank", "C6", "Latam", "Roxinho"). CRÍTICO: APENAS preencha se o usuário MENCIONAR UM CARTÃO ESPECÍFICO. Se ele apenas disser "crédito" ou "cartão de crédito" SEM especificar qual cartão, NÃO preencha este campo e PERGUNTE qual cartão usar. Palavras como "credit", "crédito", "cartão" NÃO são nomes de cartões.'
-                  },
-                  installments: {
-                    type: 'number',
-                    description: 'Número de parcelas. **REGRA OBRIGATÓRIA**: Se payment_method for "credit_card" e o usuário NÃO mencionou o número de parcelas (ex: "crédito Latam", "no Roxinho", "cartão MercadoPago" SEM mencionar "3x", "5x", "10x", etc), SEMPRE use 1 (à vista). Se mencionar "à vista", "a vista", "uma vez", "1x" → use 1. Se mencionar "em Nx", "Nx", "X vezes" → use X. NUNCA deixe este campo vazio se payment_method for credit_card - SEMPRE envie um valor (padrão: 1).'
-                  },
-                  category: {
-                    type: 'string',
-                    description: 'Categoria da despesa. PRIORIDADE 1: Se o usuário MENCIONAR EXPLICITAMENTE a categoria (ex: "colocar como Caridade", "na categoria Lazer", "é de Educação", "para Beleza", "categoria Doações"), use EXATAMENTE essa categoria mencionada. PRIORIDADE 2: Se não mencionar, tente inferir baseado na descrição (Alimentação para comida, Transporte para combustível/uber, Beleza para perfume/salão, Saúde para remédios, Casa para eletrodomésticos, Lazer para cinema/streaming, etc). PRIORIDADE 3: SE NÃO TIVER CERTEZA ou não souber, use "Outros" - NUNCA force uma categoria incorreta.'
-                  }
-                },
-                required: ['amount', 'description', 'payment_method', 'responsible']
-              }
-            }
-          }
-        ]
+        tools: this.getFunctionTools()
       });
 
       console.log('✅ Assistant ZUL criado:', assistant.id);
