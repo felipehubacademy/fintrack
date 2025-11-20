@@ -1383,7 +1383,7 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
                   },
                   // Impostos (primeiro tentar "Impostos", se não existir, fallback para "Casa") - ANTES de Transporte para ter prioridade
                   { 
-                    keywords: ['imposto', 'impostos', 'receita federal', 'receita', 'irpf', 'ir', 'imposto de renda', 'imposto sobre renda', 'declaracao', 'declaração', 'declaracao de imposto', 'declaração de imposto', 'dar', 'dar imposto', 'taxa', 'taxas', 'taxa de', 'multa', 'multas', 'multa de transito', 'multa de trânsito', 'detran', 'ipva', 'iptu', 'iss', 'icms', 'ipi', 'cofins', 'pis', 'csll', 'irpj', 'simples nacional', 'mei', 'darf', 'guia de recolhimento', 'guia de imposto', 'recolhimento de imposto', 'pagamento de imposto', 'paguei imposto', 'paguei impostos', 'pagamos imposto', 'pagamos impostos', 'imposto pago', 'impostos pagos', 'declaracao anual', 'declaração anual', 'imposto anual', 'impostos anuais', 'receita federal do brasil', 'rf', 'fazenda', 'fazenda publica', 'fazenda pública', 'secretaria da fazenda', 'sefaz', 'prefeitura', 'prefeitura municipal', 'municipio', 'município', 'governo', 'governo federal', 'governo estadual', 'governo municipal', 'tributo', 'tributos', 'contribuicao', 'contribuição', 'contribuicao social', 'contribuição social'], 
+                    keywords: ['imposto', 'impostos', 'receita federal', 'receita', 'irpf', 'imposto de renda', 'imposto sobre renda', 'declaracao', 'declaração', 'declaracao de imposto', 'declaração de imposto', 'taxa', 'taxas', 'taxa de', 'multa', 'multas', 'multa de transito', 'multa de trânsito', 'detran', 'ipva', 'iptu', 'iss', 'icms', 'ipi', 'cofins', 'pis', 'csll', 'irpj', 'simples nacional', 'mei', 'darf', 'guia de recolhimento', 'guia de imposto', 'recolhimento de imposto', 'pagamento de imposto', 'paguei imposto', 'paguei impostos', 'pagamos imposto', 'pagamos impostos', 'imposto pago', 'impostos pagos', 'declaracao anual', 'declaração anual', 'imposto anual', 'impostos anuais', 'receita federal do brasil', 'rf', 'fazenda', 'fazenda publica', 'fazenda pública', 'secretaria da fazenda', 'sefaz', 'prefeitura', 'prefeitura municipal', 'municipio', 'município', 'governo', 'governo federal', 'governo estadual', 'governo municipal', 'tributo', 'tributos', 'contribuicao', 'contribuição', 'contribuicao social', 'contribuição social'], 
                     target: 'Impostos',
                     fallback: 'Casa'
                   },
@@ -1512,11 +1512,14 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
               
               // 2.1: Tentar encontrar correspondência nos synonyms
               for (const group of synonyms) {
-                  if (group.keywords.some(k => searchText.includes(k))) {
+                  const matchedKeyword = group.keywords.find(k => searchText.includes(k));
+                  if (matchedKeyword) {
+                    console.log(`🔍 [CATEGORY-MATCH] "${args.description}" deu match com keyword "${matchedKeyword}" → target: "${group.target}"`);
                     const targetNorm = normalize(group.target);
                     if (byNormalizedName.has(targetNorm)) {
                       resolvedName = byNormalizedName.get(targetNorm).name;
                       categoryId = byNormalizedName.get(targetNorm).id;
+                      console.log(`✅ [CATEGORY-FINAL] Categoria encontrada: "${resolvedName}"`);
                       break;
                     } else if (group.fallback) {
                       // Tentar fallback recursivamente se a categoria principal não existir
@@ -3062,6 +3065,8 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
 
         } else if (functionName === 'save_expense') {
             // 🔧 CORREÇÃO OBRIGATÓRIA: Corrigir categorias obviamente incorretas do GPT ANTES de tudo
+            console.log(`🔍 [DEBUG] save_expense args ANTES correção:`, JSON.stringify({ description: args.description, category: args.category }));
+            
             const descriptionLower = (args.description || '').toLowerCase();
             const categoryLower = (args.category || '').toLowerCase();
             
@@ -3074,12 +3079,15 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             
             for (const correction of mandatoryCorrections) {
               const hasKeyword = correction.descKeywords.some(kw => descriptionLower.includes(kw));
+              console.log(`🔍 [DEBUG] Verificando correção: hasKeyword=${hasKeyword}, categoryLower="${categoryLower}", wrongCategory="${correction.wrongCategory}"`);
               if (hasKeyword && categoryLower.includes(correction.wrongCategory)) {
                 console.log(`🔧 [CORREÇÃO] Categoria incorreta detectada! "${args.description}" estava como "${args.category}", corrigindo para "${correction.correctCategory}"`);
                 args.category = correction.correctCategory;
                 break;
               }
             }
+            
+            console.log(`🔍 [DEBUG] save_expense args DEPOIS correção:`, JSON.stringify({ description: args.description, category: args.category }));
             
             // 🚨 VALIDAÇÃO CRÍTICA: NÃO permitir salvar despesa sem informações obrigatórias
             const missingFields = [];
