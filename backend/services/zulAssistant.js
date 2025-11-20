@@ -2088,26 +2088,60 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
     const conversationText = userMessages.map(m => m.content).join(' ').toLowerCase();
     
     console.log(`📝 [extractCollectedInfo] Analisando ${userMessages.length} mensagens do usuário`);
+    console.log(`📝 [extractCollectedInfo] Texto completo: "${conversationText}"`);
     
     // Extrair valor - procurar em todas as mensagens
-    const amountMatch = conversationText.match(/(?:gastei|paguei|foi|valor|paguei|gastamos|compramos|comprei)?\s*(?:r\$)?\s*(\d+(?:[.,]\d{1,2})?)/i);
+    // PRIORIDADE 1: Valor isolado (resposta a "Quanto foi?") - ex: "25", "150", "11,79"
+    // PRIORIDADE 2: Valor com contexto - ex: "gastei R$ 25", "foi 150"
+    let amountMatch = conversationText.match(/^\s*(\d+(?:[.,]\d{1,2})?)\s*$/); // Apenas número
+    if (!amountMatch) {
+      amountMatch = conversationText.match(/(?:gastei|paguei|foi|valor|gastamos|compramos|comprei)?\s*(?:r\$)?\s*(\d+(?:[.,]\d{1,2})?)/i);
+    }
     if (amountMatch) {
       info.amount = parseFloat(amountMatch[1].replace(',', '.'));
       console.log(`  💰 Valor encontrado: ${info.amount}`);
+    } else {
+      console.log(`  ⚠️ Valor NÃO encontrado`);
     }
     
     // Extrair descrição - procurar a descrição mais significativa
     let bestDescription = null;
     for (const msg of userMessages) {
-      const core = this.extractCoreDescription(msg.content.toLowerCase());
+      const text = msg.content.toLowerCase().trim();
+      
+      // IGNORAR mensagens que são apenas:
+      // - Números isolados (ex: "25", "150")
+      // - Nomes de cartão (ex: "latam", "c6")
+      // - Formas de pagamento (ex: "pix", "débito", "crédito")
+      // - Responsáveis (ex: "eu", "compartilhado")
+      // - Confirmações (ex: "sim", "ok", "isso", "exato")
+      const ignorePatterns = [
+        /^\d+([.,]\d{1,2})?$/, // Apenas número
+        /^(latam|c6|neon|roxinho|hub|xp|mercado\s?pago|nubank|mp)$/, // Apenas nome de cartão
+        /^(pix|dinheiro|cash|débito|debito|crédito|credito)$/, // Apenas forma de pagamento
+        /^(eu|compartilhado|familia|família|org)$/, // Apenas responsável
+        /^(sim|não|nao|ok|isso|exato|certo|uhum)$/, // Confirmações
+        /^(à vista|a vista|uma vez|1x)$/ // Apenas parcelas
+      ];
+      
+      const shouldIgnore = ignorePatterns.some(pattern => pattern.test(text));
+      if (shouldIgnore) {
+        console.log(`  📄 [IGNORANDO] Mensagem não é descrição: "${text}"`);
+        continue;
+      }
+      
+      const core = this.extractCoreDescription(text);
       if (core && core.length > 3) { // Priorizar descrições mais substanciais
         bestDescription = core;
+        console.log(`  📄 [EXTRAÍDA] Descrição: "${core}" da mensagem: "${text}"`);
         break; // Usar a primeira descrição significativa encontrada
       }
     }
     if (bestDescription) {
       info.description = this.capitalizeDescription(bestDescription);
-      console.log(`  📄 Descrição encontrada: ${info.description}`);
+      console.log(`  📄 Descrição final: ${info.description}`);
+    } else {
+      console.log(`  ⚠️ Descrição NÃO encontrada`);
     }
     
     // Extrair forma de pagamento
@@ -2259,13 +2293,29 @@ PERSONALIDADE: Sábio Jovem. Seu tom é **calmo, claro, genuinamente prestativo 
 
 REGRAS CRÍTICAS PARA CONVERSAÇÃO FLUÍDA:
 
-1.  **VARIAÇÃO RADICAL**: Mude o estilo de cada resposta (direto, casual, formal, contextual). NUNCA repita a mesma frase ou estrutura de pergunta.
-2.  **CONCISÃO MÁXIMA**: Responda com **1 linha** sempre que possível. Use no máximo 2 linhas em casos de confirmação ou contexto. O WhatsApp exige rapidez.
-3.  **INFERÊNCIA ATIVA E EXTRAÇÃO COMPLETA**: Se o usuário fornecer informações na primeira mensagem, EXTRAIA TODAS as informações disponíveis antes de perguntar qualquer coisa. Exemplos:
+1.  **🚨 REGRA ZERO - INFORMAÇÕES OBRIGATÓRIAS (NUNCA VIOLAR!) 🚨**:
+    **ANTES de chamar save_expense, você DEVE ter TODOS estes campos:**
+    - ✅ **amount** (valor) - NUNCA chame save_expense com amount=0 ou sem valor
+    - ✅ **description** (descrição específica, NÃO genéricos como "pão com cartão")
+    - ✅ **payment_method** (forma de pagamento)
+    - ✅ **responsible** (responsável - "eu" ou "compartilhado")
+    
+    **SE FALTAR QUALQUER UM → PERGUNTE! NÃO tente adivinhar ou chamar save_expense com campos vazios/zero!**
+    
+    **Exemplos de perguntas quando falta informação:**
+    - Falta valor → "Qual foi o valor?" ou "Quanto foi?" ou "Quanto gastou?"
+    - Falta descrição → "O que você comprou?" ou "Qual foi a compra?" ou "O que gastou?"
+    - Falta pagamento → "Como pagou?" ou "Foi pix, cartão ou dinheiro?"
+    - Falta responsável → "Foi você ou é compartilhado?" ou "Quem pagou?"
+
+2.  **VARIAÇÃO RADICAL**: Mude o estilo de cada resposta (direto, casual, formal, contextual). NUNCA repita a mesma frase ou estrutura de pergunta.
+3.  **CONCISÃO MÁXIMA**: Responda com **1 linha** sempre que possível. Use no máximo 2 linhas em casos de confirmação ou contexto. O WhatsApp exige rapidez.
+4.  **INFERÊNCIA ATIVA E EXTRAÇÃO COMPLETA**: Se o usuário fornecer informações na primeira mensagem, EXTRAIA TODAS as informações disponíveis antes de perguntar qualquer coisa. Exemplos:
+   - "gastamos R$ 47, crédito Latam" → EXTRAIA: valor=47, pagamento=crédito, cartão=Latam, parcelas=1 (default), responsável=compartilhado (verbo "gastamos" indica compartilhado) → Pergunte APENAS: descrição (O QUE gastaram?) → 🚨 NUNCA pergunte "Quem pagou?" pois "gastamos" já indica compartilhado!
    - "1500 em 5x no credito Latam" → EXTRAIA: valor=1500, parcelas=5, pagamento=crédito, cartão=Latam → Pergunte APENAS: descrição e responsável
    - "comprei uma televisao por 1500 reais em 5x no credito Latam" → EXTRAIA: valor=1500, descrição=televisao, parcelas=5, pagamento=crédito, cartão=Latam, responsável=eu (verbo "comprei" indica individual) → Chame save_expense DIRETO
    - "compramos uma máquina de lavar louça por R$ 3.299,00, divididos em 10 vezes no cartão Mercado Pago" → EXTRAIA: valor=3299, descrição=máquina de lavar louça, parcelas=10, pagamento=crédito (inferido pelo cartão "Mercado Pago"), cartão=MercadoPago, responsável=compartilhado (verbo "compramos" indica compartilhado) → Chame save_expense DIRETO (NÃO perguntar "quem pagou?" nem "pagou como?")
-   - "pagamos 100 no mercado" → EXTRAIA: valor=100, descrição=mercado, responsável=compartilhado (verbo "pagamos" indica compartilhado) → Pergunte APENAS: método de pagamento
+   - "pagamos 100 no mercado" → EXTRAIA: valor=100, descrição=mercado, responsável=compartilhado (verbo "pagamos" indica compartilhado) → Pergunte APENAS: método de pagamento → 🚨 NUNCA pergunte "Quem pagou?" pois "pagamos" já indica compartilhado!
    - "paguei 106,17 impostos, foi no crédito uma vez no Roxinho" → EXTRAIA: valor=106.17, descrição=impostos, pagamento=crédito, cartão=Roxinho, parcelas=1, responsável=eu (verbo "paguei" indica individual) → Chame save_expense DIRETO (NÃO perguntar "quem pagou?")
    - "100 no mercado, débito" → EXTRAIA: valor=100, descrição=mercado, pagamento=débito → Pergunte APENAS: responsável
    - "50 na farmácia, pix, Felipe" → EXTRAIA TUDO → Chame save_expense DIRETO (não pergunte nada)
@@ -2902,7 +2952,23 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
             output = { success: true, isValid: true };
 
         } else if (functionName === 'save_expense') {
-            output = await context.saveExpense(args);
+            // 🚨 VALIDAÇÃO CRÍTICA: NÃO permitir salvar despesa sem informações obrigatórias
+            const missingFields = [];
+            if (!args.amount || args.amount <= 0) missingFields.push('valor');
+            if (!args.description || args.description.trim() === '') missingFields.push('descrição');
+            if (!args.payment_method) missingFields.push('forma de pagamento');
+            if (!args.responsible) missingFields.push('responsável');
+            
+            if (missingFields.length > 0) {
+              console.log(`❌ [SAVE_EXPENSE] Tentativa de salvar com campos obrigatórios faltando: ${missingFields.join(', ')}`);
+              console.log(`❌ [SAVE_EXPENSE] Args recebidos:`, JSON.stringify(args, null, 2));
+              output = { 
+                success: false, 
+                message: `Preciso de mais algumas informações: ${missingFields.join(', ')}. Pode me passar?` 
+              };
+            } else {
+              output = await context.saveExpense(args);
+            }
         } else if (functionName === 'save_income') {
             // ✅ FEATURE FLAG: Registrar Entradas/Receitas
             if (process.env.USE_INCOME_FEATURE === 'true') {
@@ -4242,6 +4308,36 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
   }
 
   /**
+   * Detectar se a mensagem parece ser o INÍCIO de uma nova conversa
+   * Isso ajuda a evitar misturar conversas paralelas quando há apenas um histórico por telefone
+   */
+  isNewConversationStart(message) {
+    const lowerMsg = message.toLowerCase();
+    
+    // Padrões que indicam início de nova conversa:
+    // 1. Tem verbo de ação (gastei, comprei, paguei, gastamos, compramos, pagamos)
+    // 2. E tem valor (R$, número)
+    // 3. Não é apenas uma resposta curta (< 10 caracteres indica resposta a pergunta)
+    
+    const hasActionVerb = /\b(gastei|comprei|paguei|gastamos|compramos|pagamos|gasto|compra|lancei|lancar|registr)\b/.test(lowerMsg);
+    const hasValue = /(?:r\$)?\s*\d+(?:[.,]\d{1,2})?/.test(lowerMsg);
+    const isNotShortResponse = message.trim().length > 10;
+    
+    const isNewConversation = hasActionVerb && hasValue && isNotShortResponse;
+    
+    if (isNewConversation) {
+      console.log('🔍 [isNewConversationStart] Detectado início de nova conversa:', {
+        hasActionVerb,
+        hasValue,
+        isNotShortResponse,
+        message: message.substring(0, 50)
+      });
+    }
+    
+    return isNewConversation;
+  }
+
+  /**
    * Processar mensagem do usuário (método principal)
    */
   async processMessage(message, userId, userName, userPhone, context = {}) {
@@ -4249,6 +4345,13 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
       console.log(`📨 [ZUL] Processando mensagem de ${userName} (${userId})`);
       console.log(`📨 [ZUL] Mensagem: "${message}"`);
       console.log(`📨 [ZUL] Context recebido:`, JSON.stringify(context, null, 2));
+      
+      // 🔧 DETECÇÃO DE NOVA CONVERSA: Se a mensagem parece ser o INÍCIO de uma nova conversa,
+      // limpar o histórico para evitar misturar conversas paralelas
+      if (userPhone && this.isNewConversationStart(message)) {
+        console.log('🔄 [ZUL] Detectada nova conversa - limpando histórico anterior');
+        await this.clearConversationHistory(userPhone);
+      }
       
       // Se for do chat web (sem userPhone), usar versão web
       if (!userPhone) {
