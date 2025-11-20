@@ -12,6 +12,7 @@ import {
   Play
 } from 'lucide-react';
 import LandingHeader from '../components/LandingHeader';
+import LandingFooter from '../components/LandingFooter';
 import ZulFloatingButton from '../components/ZulFloatingButton';
 
 export default function LandingPage() {
@@ -538,6 +539,8 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Footer */}
+      <LandingFooter />
 
       {/* Floating Button */}
       <ZulFloatingButton />
