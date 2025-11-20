@@ -1301,6 +1301,28 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
             }
           }
 
+          // 🔧 CORREÇÃO OBRIGATÓRIA: Corrigir categorias obviamente incorretas do GPT
+          // (GPT às vezes aprende padrões incorretos de conversas anteriores)
+          const descriptionLower = (args.description || '').toLowerCase();
+          const categoryLower = (args.category || '').toLowerCase();
+          
+          // Lista de correções obrigatórias: se descrição contém X e categoria é Y, forçar Z
+          const mandatoryCorrections = [
+            // Eletrodomésticos/Eletrônicos NUNCA são Impostos
+            { descKeywords: ['torradeira', 'geladeira', 'freezer', 'fogao', 'fogão', 'microondas', 'tv', 'televisao', 'televisão', 'notebook', 'computador', 'monitor', 'liquidificador', 'batedeira', 'ar condicionado', 'ventilador'], wrongCategory: 'impostos', correctCategory: 'Casa' },
+            // Impostos NUNCA são Casa
+            { descKeywords: ['imposto', 'impostos', 'taxa', 'multa', 'ipva', 'iptu', 'irpf', 'declaracao', 'declaração'], wrongCategory: 'casa', correctCategory: 'Impostos' }
+          ];
+          
+          for (const correction of mandatoryCorrections) {
+            const hasKeyword = correction.descKeywords.some(kw => descriptionLower.includes(kw));
+            if (hasKeyword && categoryLower.includes(correction.wrongCategory)) {
+              console.log(`🔧 [CORREÇÃO] Categoria incorreta detectada! "${args.description}" estava como "${args.category}", corrigindo para "${correction.correctCategory}"`);
+              args.category = correction.correctCategory;
+              break;
+            }
+          }
+
           // Buscar category_id e inferir categoria pela descrição se necessário
           let categoryId = null;
           
