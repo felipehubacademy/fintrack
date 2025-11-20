@@ -1381,9 +1381,15 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
                     target: 'Fitness',
                     fallback: 'Saúde'
                   },
-                  // Transporte (expandido, fallback para Outros)
+                  // Impostos (primeiro tentar "Impostos", se não existir, fallback para "Casa") - ANTES de Transporte para ter prioridade
                   { 
-                    keywords: ['gasolina', 'combustivel', 'combustível', 'combustivel', 'posto', 'postos', 'etanol', 'diesel', 'gnv', 'gás natural veicular', 'gas natural veicular', 'uber', 'uber eats', 'uberx', 'uber black', '99', '99pop', '99taxi', 'taxi', 'táxi', 'taxis', 'táxis', 'onibus', 'ônibus', 'onibus', 'metro', 'metrô', 'metro', 'trem', 'trens', 'estacionamento', 'estacionamentos', 'parking', 'zona azul', 'zona vermelha', 'ipva', 'rodizio', 'rodízio', 'manutencao', 'manutenção', 'manutencao carro', 'manutenção carro', 'manutencao moto', 'manutenção moto', 'lava rapido', 'lava-rápido', 'lava jato', 'lavajato', 'oficina', 'oficinas', 'seguro carro', 'seguro moto', 'seguro veiculo', 'seguro veículo', 'pedagio', 'pedágio', 'pedagios', 'pedágios', 'mecanico', 'mecânico', 'mecanicos', 'mecânicos', 'guincho', 'reboque', 'guinchos', 'reboques', 'combustivel', 'abasteci', 'abastecimento', 'abastecer', 'enchi o tanque', 'enche o tanque', 'abasteceu', 'abastecimento', 'combustível', 'abastecimento', 'tanque', 'tanque cheio', 'tanque cheio'], 
+                    keywords: ['imposto', 'impostos', 'receita federal', 'receita', 'irpf', 'ir', 'imposto de renda', 'imposto sobre renda', 'declaracao', 'declaração', 'declaracao de imposto', 'declaração de imposto', 'dar', 'dar imposto', 'taxa', 'taxas', 'taxa de', 'multa', 'multas', 'multa de transito', 'multa de trânsito', 'detran', 'ipva', 'iptu', 'iss', 'icms', 'ipi', 'cofins', 'pis', 'csll', 'irpj', 'simples nacional', 'mei', 'darf', 'guia de recolhimento', 'guia de imposto', 'recolhimento de imposto', 'pagamento de imposto', 'paguei imposto', 'paguei impostos', 'pagamos imposto', 'pagamos impostos', 'imposto pago', 'impostos pagos', 'declaracao anual', 'declaração anual', 'imposto anual', 'impostos anuais', 'receita federal do brasil', 'rf', 'fazenda', 'fazenda publica', 'fazenda pública', 'secretaria da fazenda', 'sefaz', 'prefeitura', 'prefeitura municipal', 'municipio', 'município', 'governo', 'governo federal', 'governo estadual', 'governo municipal', 'tributo', 'tributos', 'contribuicao', 'contribuição', 'contribuicao social', 'contribuição social'], 
+                    target: 'Impostos',
+                    fallback: 'Casa'
+                  },
+                  // Transporte (expandido, fallback para Outros) - ipva removido pois está em Impostos
+                  { 
+                    keywords: ['gasolina', 'combustivel', 'combustível', 'combustivel', 'posto', 'postos', 'etanol', 'diesel', 'gnv', 'gás natural veicular', 'gas natural veicular', 'uber', 'uber eats', 'uberx', 'uber black', '99', '99pop', '99taxi', 'taxi', 'táxi', 'taxis', 'táxis', 'onibus', 'ônibus', 'onibus', 'metro', 'metrô', 'metro', 'trem', 'trens', 'estacionamento', 'estacionamentos', 'parking', 'zona azul', 'zona vermelha', 'rodizio', 'rodízio', 'manutencao', 'manutenção', 'manutencao carro', 'manutenção carro', 'manutencao moto', 'manutenção moto', 'lava rapido', 'lava-rápido', 'lava jato', 'lavajato', 'oficina', 'oficinas', 'seguro carro', 'seguro moto', 'seguro veiculo', 'seguro veículo', 'pedagio', 'pedágio', 'pedagios', 'pedágios', 'mecanico', 'mecânico', 'mecanicos', 'mecânicos', 'guincho', 'reboque', 'guinchos', 'reboques', 'combustivel', 'abasteci', 'abastecimento', 'abastecer', 'enchi o tanque', 'enche o tanque', 'abasteceu', 'abastecimento', 'combustível', 'abastecimento', 'tanque', 'tanque cheio', 'tanque cheio'], 
                     target: 'Transporte',
                     fallback: 'Outros'
                   },
@@ -1446,12 +1452,6 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
                     keywords: ['petshop', 'pet shop', 'ração', 'racao', 'veterinario', 'veterinario', 'banho tosa', 'banho e tosa', 'pet', 'gato', 'cachorro', 'animal'], 
                     target: 'Pets',
                     fallback: 'Outros'
-                  },
-                  // Impostos (primeiro tentar "Impostos", se não existir, fallback para "Casa")
-                  { 
-                    keywords: ['imposto', 'impostos', 'receita federal', 'receita', 'irpf', 'ir', 'imposto de renda', 'imposto sobre renda', 'declaracao', 'declaração', 'declaracao de imposto', 'declaração de imposto', 'dar', 'dar imposto', 'taxa', 'taxas', 'taxa de', 'multa', 'multas', 'multa de transito', 'multa de trânsito', 'detran', 'ipva', 'iptu', 'iss', 'icms', 'ipi', 'cofins', 'pis', 'csll', 'irpj', 'simples nacional', 'mei', 'darf', 'guia de recolhimento', 'guia de imposto', 'recolhimento de imposto', 'pagamento de imposto', 'paguei imposto', 'paguei impostos', 'pagamos imposto', 'pagamos impostos', 'imposto pago', 'impostos pagos', 'declaracao anual', 'declaração anual', 'imposto anual', 'impostos anuais', 'receita federal do brasil', 'rf', 'fazenda', 'fazenda publica', 'fazenda pública', 'secretaria da fazenda', 'sefaz', 'prefeitura', 'prefeitura municipal', 'municipio', 'município', 'governo', 'governo federal', 'governo estadual', 'governo municipal', 'tributo', 'tributos', 'contribuicao', 'contribuição', 'contribuicao social', 'contribuição social'], 
-                    target: 'Impostos',
-                    fallback: 'Casa'
                   },
                   // Alimentação (categoria genérica para qualquer comida/bebida não categorizada, fallback para Outros)
                   { 
@@ -1827,9 +1827,12 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
             var data = { id: parentExpenseId };
           } else {
             // Despesa simples (não parcelada) ou não é cartão de crédito
+            // Capitalizar descrição ANTES de usar
+            const capitalizedDescription = this.capitalizeDescription(args.description);
+            
             const expenseData = {
               amount: amount,
-              description: this.capitalizeDescription(args.description),
+              description: capitalizedDescription,
               date: this.getBrazilDate(),
               category: args.category,
               category_id: categoryId,
@@ -1920,7 +1923,9 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
           }
           
           // Criar mensagem mais natural e legível (com quebras de linha)
-          let confirmationMsg = `${greeting}\nR$ ${amountFormatted} - ${args.description}\n${args.category || 'Sem categoria'}\n${paymentDisplay}\n${owner}\n${dateDisplay}`;
+          // Usar capitalizedDescription se disponível (despesas simples), senão usar args.description
+          const displayDescription = this.capitalizeDescription(args.description);
+          let confirmationMsg = `${greeting}\nR$ ${amountFormatted} - ${displayDescription}\n${args.category || 'Sem categoria'}\n${paymentDisplay}\n${owner}\n${dateDisplay}`;
           
           // Adicionar mensagem contextual se houver
           if (contextualMessage) {
