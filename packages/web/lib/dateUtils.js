@@ -5,6 +5,5 @@ export {
   getBrazilTodayString,
   getBrazilTomorrowString,
   createBrazilDate,
-  formatDateBR,
-  formatCurrency
+  formatDateBR
 } from '@fintrack/shared/utils';
