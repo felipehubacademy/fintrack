@@ -1,43 +1,5 @@
 {
-  "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "meuazulao.com.br"
-        }
-      ],
-      "destination": "https://www.meuazulao.com.br/:path*",
-      "permanent": true
-    },
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "meuazulao.com"
-        }
-      ],
-      "destination": "https://www.meuazulao.com.br/:path*",
-      "permanent": true
-    },
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "www.meuazulao.com"
-        }
-      ],
-      "destination": "https://www.meuazulao.com.br/:path*",
-      "permanent": true
-    }
-  ]
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": null
 }

@@ -13,6 +13,7 @@
     "dev:web": "npm run dev --workspace=packages/web",
     "dev:backend": "npm run dev --workspace=packages/backend",
     "dev:mobile": "cd packages/mobile && npm start",
+    "build": "cd packages/web && npm run build",
     "build:web": "npm run build --workspace=packages/web",
     "build:backend": "npm run build --workspace=packages/backend",
     "build:mobile": "cd packages/mobile && npm run build",
