@@ -1,0 +1,1222 @@
+🧪 TESTES ABRANGENTES DO ZUL ASSISTANT
+
+================================================================================
+
+📝 Teste 1: Perfume → Beleza (não Impostos)
+   Mensagem: "gastei 250 em perfume no crédito Latam"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "gastei 250 em perfume no crédito Latam"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'gastei 250 em perfume no crédito Latam'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+💾 [GPT-4] Salvando no histórico: user="gastei 250 em perfume no crédito Latam", assistant="Qual foi o número de parcelas?"
+💾 [saveToHistory] Phone: 5511999888777
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+💾 [saveToHistory] Histórico atual: 0 mensagens
+💾 [saveToHistory] Histórico após push: 2 mensagens
+💾 [saveToHistory] Upsert result: {"error":null,"data":null,"count":null,"status":200,"statusText":"OK"}
+💾 [GPT-4] Histórico salvo com 2 mensagens
+   Resposta: "Qual foi o número de parcelas?"
+   Validações: Save esperado: ❌, Categoria "beleza": ❌, NÃO contém proibido: ✅
+   Resultado: ❌ FALHOU
+
+📝 Teste 2: Torradeira → Casa (não Contas)
+   Mensagem: "comprei uma torradeira por 139 no crédito C6"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "comprei uma torradeira por 139 no crédito C6"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'comprei uma torradeira por 139 no crédito C6'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 139,
+  description: 'torradeira',
+  payment_method: 'credit_card',
+  responsible: 'eu',
+  card_name: 'C6'
+}
+⚙️ [SAVE] Parcelas não fornecidas, assumindo 1 (à vista) automaticamente
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 139,
+  "description": "Torradeira",
+  "date": "2025-11-19",
+  "category": "Impostos",
+  "category_id": "b46aa62b-03d7-4ff3-a33e-483b43a2a635",
+  "owner": "Felipe Xavier",
+  "cost_center_id": "6b44926c-1b79-4cac-9a82-9f0bc7f15c9e",
+  "payment_method": "credit_card",
+  "card_id": "4ff726f6-0fee-4067-9ea8-e19cb38e49d8",
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": false,
+  "confirmed_at": "2025-11-20T02:10:38.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604638331"
+}
+✅ Despesa salva: 1355
+✨ [GPT] Mensagem contextual gerada: Impostos pagos, agora é só torrar na sua torradeira! 🔥
+  -> Result for save_expense: {
+  success: true,
+  message: 'Pronto! ✅\n' +
+    'R$ 139,00 - Torradeira\n' +
+    'Impostos\n' +
+    'Crédito • C6\n' +
+    'Felipe Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Impostos pagos, agora é só torrar na sua torradeira! 🔥',
+  expense_id: 1355
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Pronto! ✅
+R$ 139,00 - Torradeira
+Impostos
+Crédito • C6
+Felipe Xavier
+Hoje
+
+Impostos pagos, agora é só torrar na sua torradeira! 🔥"
+   Validações: Save esperado: ✅, Categoria "casa": ❌, NÃO contém proibido: ✅
+   Resultado: ❌ FALHOU
+
+📝 Teste 3: Sacolão → Mercado (não Outros)
+   Mensagem: "gastamos 50 no sacolão no dinheiro"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "gastamos 50 no sacolão no dinheiro"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'gastamos 50 no sacolão no dinheiro'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 50,
+  description: 'sacolão',
+  payment_method: 'cash',
+  responsible: 'compartilhado'
+}
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 50,
+  "description": "Sacolão",
+  "date": "2025-11-19",
+  "category": "Alimentação",
+  "category_id": "7f0ce431-63f4-48e0-ac39-27179ecc72e4",
+  "owner": "Família Xavier",
+  "cost_center_id": null,
+  "payment_method": "cash",
+  "card_id": null,
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": true,
+  "confirmed_at": "2025-11-20T02:10:42.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604642459"
+}
+✅ Despesa salva: 1356
+✨ [GPT] Mensagem contextual gerada: Sacolão na mão, saúde na mesa! 🥦
+  -> Result for save_expense: {
+  success: true,
+  message: 'Beleza, anotei! ✅\n' +
+    'R$ 50,00 - Sacolão\n' +
+    'Alimentação\n' +
+    'Dinheiro\n' +
+    'Família Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Sacolão na mão, saúde na mesa! 🥦',
+  expense_id: 1356
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Beleza, anotei! ✅
+R$ 50,00 - Sacolão
+Alimentação
+Dinheiro
+Família Xavier
+Hoje
+
+Sacolão na mão, saúde na mesa! 🥦"
+   Validações: Save esperado: ✅, Categoria "mercado": ❌, NÃO contém proibido: ✅
+   Resultado: ❌ FALHOU
+
+📝 Teste 4: Impostos → Impostos (correto)
+   Mensagem: "paguei 106,17 impostos no crédito Roxinho"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "paguei 106,17 impostos no crédito Roxinho"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'paguei 106,17 impostos no crédito Roxinho'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 106.17,
+  description: 'impostos',
+  payment_method: 'credit_card',
+  responsible: 'eu',
+  card_name: 'Roxinho',
+  installments: 1
+}
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 106.17,
+  "description": "Impostos",
+  "date": "2025-11-19",
+  "category": "Impostos",
+  "category_id": "b46aa62b-03d7-4ff3-a33e-483b43a2a635",
+  "owner": "Felipe Xavier",
+  "cost_center_id": "6b44926c-1b79-4cac-9a82-9f0bc7f15c9e",
+  "payment_method": "credit_card",
+  "card_id": "0c8a77e6-e822-4fd0-a426-883366f1de7b",
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": false,
+  "confirmed_at": "2025-11-20T02:10:45.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604645742"
+}
+✅ Despesa salva: 1357
+✨ [GPT] Mensagem contextual gerada: Impostos pagos, rumo ao progresso! 💪
+  -> Result for save_expense: {
+  success: true,
+  message: 'Joia, tá salvo! ✅\n' +
+    'R$ 106,17 - Impostos\n' +
+    'Impostos\n' +
+    'Crédito • Roxinho\n' +
+    'Felipe Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Impostos pagos, rumo ao progresso! 💪',
+  expense_id: 1357
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Joia, tá salvo! ✅
+R$ 106,17 - Impostos
+Impostos
+Crédito • Roxinho
+Felipe Xavier
+Hoje
+
+Impostos pagos, rumo ao progresso! 💪"
+   Validações: Save esperado: ✅, Categoria "impostos": ✅, NÃO contém proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 5: Gasto do Felipe → responsável=Felipe
+   Mensagem: "gasto do Felipe, 150 mercado no crédito Latam"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "gasto do Felipe, 150 mercado no crédito Latam"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'gasto do Felipe, 150 mercado no crédito Latam'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 150,
+  description: 'mercado',
+  payment_method: 'credit_card',
+  responsible: 'Felipe',
+  card_name: 'Latam'
+}
+⚙️ [SAVE] Parcelas não fornecidas, assumindo 1 (à vista) automaticamente
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 150,
+  "description": "Mercado",
+  "date": "2025-11-19",
+  "category": "Alimentação",
+  "category_id": "7f0ce431-63f4-48e0-ac39-27179ecc72e4",
+  "owner": "Felipe Xavier",
+  "cost_center_id": "6b44926c-1b79-4cac-9a82-9f0bc7f15c9e",
+  "payment_method": "credit_card",
+  "card_id": "eeb7d97a-99a0-4ed5-b7ae-b5d1a2e0735e",
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": false,
+  "confirmed_at": "2025-11-20T02:10:49.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604649275"
+}
+✅ Despesa salva: 1358
+✨ [GPT] Mensagem contextual gerada: Mercado abastecido! Hora de cozinhar delícias! 🍽️
+  -> Result for save_expense: {
+  success: true,
+  message: 'Show, registrei! ✅\n' +
+    'R$ 150,00 - Mercado\n' +
+    'Alimentação\n' +
+    'Crédito • Latam\n' +
+    'Felipe Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Mercado abastecido! Hora de cozinhar delícias! 🍽️',
+  expense_id: 1358
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Show, registrei! ✅
+R$ 150,00 - Mercado
+Alimentação
+Crédito • Latam
+Felipe Xavier
+Hoje
+
+Mercado abastecido! Hora de cozinhar delícias! 🍽️"
+   Validações: Save esperado: ✅, Responsável "felipe": ✅, NÃO perguntou proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 6: Gasto da família → compartilhado
+   Mensagem: "gasto da família, 200 no supermercado crédito Roxinho"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "gasto da família, 200 no supermercado crédito Roxinho"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'gasto da família, 200 no supermercado crédito Roxi'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 200,
+  description: 'supermercado',
+  payment_method: 'credit_card',
+  responsible: 'compartilhado',
+  card_name: 'Roxinho'
+}
+⚙️ [SAVE] Parcelas não fornecidas, assumindo 1 (à vista) automaticamente
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 200,
+  "description": "Supermercado",
+  "date": "2025-11-19",
+  "category": "Alimentação",
+  "category_id": "7f0ce431-63f4-48e0-ac39-27179ecc72e4",
+  "owner": "Família Xavier",
+  "cost_center_id": null,
+  "payment_method": "credit_card",
+  "card_id": "0c8a77e6-e822-4fd0-a426-883366f1de7b",
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": true,
+  "confirmed_at": "2025-11-20T02:10:52.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604652578"
+}
+✅ Despesa salva: 1359
+✨ [GPT] Mensagem contextual gerada: Compras no mercado feitas! Agora é hora de saborear! 🍽️
+  -> Result for save_expense: {
+  success: true,
+  message: 'Pronto! ✅\n' +
+    'R$ 200,00 - Supermercado\n' +
+    'Alimentação\n' +
+    'Crédito • Roxinho\n' +
+    'Família Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Compras no mercado feitas! Agora é hora de saborear! 🍽️',
+  expense_id: 1359
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Pronto! ✅
+R$ 200,00 - Supermercado
+Alimentação
+Crédito • Roxinho
+Família Xavier
+Hoje
+
+Compras no mercado feitas! Agora é hora de saborear! 🍽️"
+   Validações: Save esperado: ✅, Responsável "compartilhado": ✅, NÃO perguntou proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 7: Compra da Letícia → responsável=Letícia
+   Mensagem: "compra da Letícia, 50 farmácia no pix"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "compra da Letícia, 50 farmácia no pix"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'compra da Letícia, 50 farmácia no pix'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 50,
+  description: 'farmácia',
+  payment_method: 'pix',
+  responsible: 'Letícia'
+}
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 50,
+  "description": "Farmácia",
+  "date": "2025-11-19",
+  "category": "Saúde",
+  "category_id": "46fce20b-cef3-423b-81a3-6f3c086def53",
+  "owner": "Letícia Wonsowski",
+  "cost_center_id": "2c7436af-9ff6-4811-b401-94e0648c4d59",
+  "payment_method": "pix",
+  "card_id": null,
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": false,
+  "confirmed_at": "2025-11-20T02:10:55.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604655484"
+}
+✅ Despesa salva: 1360
+✨ [GPT] Mensagem contextual gerada: Remédios na mão, saúde em dia! 💊
+  -> Result for save_expense: {
+  success: true,
+  message: 'Beleza, anotei! ✅\n' +
+    'R$ 50,00 - Farmácia\n' +
+    'Saúde\n' +
+    'Pix\n' +
+    'Letícia Wonsowski\n' +
+    'Hoje\n' +
+    '\n' +
+    'Remédios na mão, saúde em dia! 💊',
+  expense_id: 1360
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Beleza, anotei! ✅
+R$ 50,00 - Farmácia
+Saúde
+Pix
+Letícia Wonsowski
+Hoje
+
+Remédios na mão, saúde em dia! 💊"
+   Validações: Save esperado: ✅, Responsável "letícia": ✅, NÃO perguntou proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 8: Latam mencionado → crédito inferido
+   Mensagem: "gastei 100 em café no Latam"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "gastei 100 em café no Latam"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'gastei 100 em café no Latam'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 100,
+  description: 'café',
+  payment_method: 'credit_card',
+  responsible: 'eu',
+  card_name: 'Latam'
+}
+⚙️ [SAVE] Parcelas não fornecidas, assumindo 1 (à vista) automaticamente
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 100,
+  "description": "Cafe",
+  "date": "2025-11-19",
+  "category": "Alimentação",
+  "category_id": "7f0ce431-63f4-48e0-ac39-27179ecc72e4",
+  "owner": "Felipe Xavier",
+  "cost_center_id": "6b44926c-1b79-4cac-9a82-9f0bc7f15c9e",
+  "payment_method": "credit_card",
+  "card_id": "eeb7d97a-99a0-4ed5-b7ae-b5d1a2e0735e",
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": false,
+  "confirmed_at": "2025-11-20T02:10:58.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604658646"
+}
+✅ Despesa salva: 1361
+✨ [GPT] Mensagem contextual gerada: Café quentinho para animar seu dia! ☕
+  -> Result for save_expense: {
+  success: true,
+  message: 'Registrado! ✅\n' +
+    'R$ 100,00 - Cafe\n' +
+    'Alimentação\n' +
+    'Crédito • Latam\n' +
+    'Felipe Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Café quentinho para animar seu dia! ☕',
+  expense_id: 1361
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Registrado! ✅
+R$ 100,00 - Cafe
+Alimentação
+Crédito • Latam
+Felipe Xavier
+Hoje
+
+Café quentinho para animar seu dia! ☕"
+   Validações: Save esperado: ✅, Pagamento "crédito": ✅, Cartão "latam": ✅, NÃO perguntou proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 9: MercadoPago → crédito automático + 10x
+   Mensagem: "compramos uma máquina de lavar por 3299 em 10x no MercadoPago"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "compramos uma máquina de lavar por 3299 em 10x no MercadoPago"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'compramos uma máquina de lavar por 3299 em 10x no '
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 3299,
+  description: 'máquina de lavar',
+  payment_method: 'credit_card',
+  responsible: 'compartilhado',
+  card_name: 'MercadoPago',
+  installments: 10
+}
+💳 [SAVE] Criando parcelas usando RPC create_installments
+💾 [SAVE] Chamando RPC create_installments com: {
+  p_amount: 3299,
+  p_installments: 10,
+  p_description: 'Maquina lavar',
+  p_date: '2025-11-19',
+  p_card_id: '411c12e8-8801-454d-b38b-b337ee11c831',
+  p_category_id: 'dde8065c-5a81-436c-9c9e-f8c86da953be',
+  p_cost_center_id: null,
+  p_owner: 'Família Xavier',
+  p_organization_id: '9fad4881-65a9-4e38-ad75-b707ddff473f',
+  p_user_id: '7ae77718-a4a2-4a3c-8f99-e537f2c5ff92',
+  p_whatsapp_message_id: 'msg_1763604661983'
+}
+✅ [SAVE] Parcelas criadas com sucesso. Parent ID: 1362
+✅ [SAVE] Metadados atualizados (source=whatsapp)
+✅ [SAVE] Updated card available_limit: 1602
+✨ [GPT] Mensagem contextual gerada: Lavadora nova, casa limpa e vida leve! 🧺
+  -> Result for save_expense: {
+  success: true,
+  message: 'Show, registrei! ✅\n' +
+    'R$ 3.299,00 - Maquina lavar\n' +
+    'Outros\n' +
+    'Crédito • MercadoPago 10x\n' +
+    'Família Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Lavadora nova, casa limpa e vida leve! 🧺',
+  expense_id: 1362
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Show, registrei! ✅
+R$ 3.299,00 - Maquina lavar
+Outros
+Crédito • MercadoPago 10x
+Família Xavier
+Hoje
+
+Lavadora nova, casa limpa e vida leve! 🧺"
+   Validações: Save esperado: ✅, Pagamento "crédito": ✅, Cartão "mercadopago": ✅, NÃO perguntou proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 10: "À vista" → 1 parcela
+   Mensagem: "comprei pão por 11,20 no crédito C6, à vista"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "comprei pão por 11,20 no crédito C6, à vista"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'comprei pão por 11,20 no crédito C6, à vista'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 11.2,
+  description: 'pão',
+  payment_method: 'credit_card',
+  responsible: 'eu',
+  card_name: 'C6',
+  installments: 1
+}
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 11.2,
+  "description": "Pão",
+  "date": "2025-11-19",
+  "category": "Alimentação",
+  "category_id": "7f0ce431-63f4-48e0-ac39-27179ecc72e4",
+  "owner": "Felipe Xavier",
+  "cost_center_id": "6b44926c-1b79-4cac-9a82-9f0bc7f15c9e",
+  "payment_method": "credit_card",
+  "card_id": "4ff726f6-0fee-4067-9ea8-e19cb38e49d8",
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": false,
+  "confirmed_at": "2025-11-20T02:11:06.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604666150"
+}
+✅ Despesa salva: 1372
+✨ [GPT] Mensagem contextual gerada: Pão quentinho na mesa! Vamos saborear! 🥖
+  -> Result for save_expense: {
+  success: true,
+  message: 'Anotado! ✅\n' +
+    'R$ 11,20 - Pão\n' +
+    'Alimentação\n' +
+    'Crédito • C6\n' +
+    'Felipe Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Pão quentinho na mesa! Vamos saborear! 🥖',
+  expense_id: 1372
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Anotado! ✅
+R$ 11,20 - Pão
+Alimentação
+Crédito • C6
+Felipe Xavier
+Hoje
+
+Pão quentinho na mesa! Vamos saborear! 🥖"
+   Validações: Save esperado: ✅, Parcelas não perguntadas: ✅, NÃO perguntou proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 11: "sacolao" → "Sacolão" com acento
+   Mensagem: "gastamos 80 no sacolao no dinheiro"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "gastamos 80 no sacolao no dinheiro"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'gastamos 80 no sacolao no dinheiro'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 80,
+  description: 'sacolão',
+  payment_method: 'cash',
+  responsible: 'compartilhado'
+}
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 80,
+  "description": "Sacolão",
+  "date": "2025-11-19",
+  "category": "Alimentação",
+  "category_id": "7f0ce431-63f4-48e0-ac39-27179ecc72e4",
+  "owner": "Família Xavier",
+  "cost_center_id": null,
+  "payment_method": "cash",
+  "card_id": null,
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": true,
+  "confirmed_at": "2025-11-20T02:11:09.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604669474"
+}
+✅ Despesa salva: 1373
+✨ [GPT] Mensagem contextual gerada: Alimento fresquinho na área! Bom apetite! 🥦
+  -> Result for save_expense: {
+  success: true,
+  message: 'Registrado! ✅\n' +
+    'R$ 80,00 - Sacolão\n' +
+    'Alimentação\n' +
+    'Dinheiro\n' +
+    'Família Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Alimento fresquinho na área! Bom apetite! 🥦',
+  expense_id: 1373
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Registrado! ✅
+R$ 80,00 - Sacolão
+Alimentação
+Dinheiro
+Família Xavier
+Hoje
+
+Alimento fresquinho na área! Bom apetite! 🥦"
+   Validações: Save esperado: ✅, Descrição "sacolão": ✅, NÃO contém proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 12: "hoje gastei" → responsável=eu
+   Mensagem: "hoje gastei 50 no mercado no débito"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "hoje gastei 50 no mercado no débito"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+🔍 [isNewConversationStart] Detectado início de nova conversa: {
+  hasActionVerb: true,
+  hasValue: true,
+  isNotShortResponse: true,
+  message: 'hoje gastei 50 no mercado no débito'
+}
+🔄 [ZUL] Detectada nova conversa - limpando histórico anterior
+🗑️ [GPT-4] Histórico limpo
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+📝 [extractCollectedInfo] Analisando 0 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: ""
+  ⚠️ Valor NÃO encontrado
+  ⚠️ Descrição NÃO encontrada
+📊 [GPT-4] Informações coletadas: {}
+💬 [GPT-4] Histórico carregado: 0 mensagens
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 2
+💾 [GPT-4] Salvando no histórico: user="hoje gastei 50 no mercado no débito", assistant="Qual cartão você usou para o pagamento?"
+💾 [saveToHistory] Phone: 5511999888777
+📭 [loadConversationHistory] Nenhum histórico encontrado ou está vazio
+💾 [saveToHistory] Histórico atual: 0 mensagens
+💾 [saveToHistory] Histórico após push: 2 mensagens
+💾 [saveToHistory] Upsert result: {"error":null,"data":null,"count":null,"status":200,"statusText":"OK"}
+💾 [GPT-4] Histórico salvo com 2 mensagens
+   Resposta: "Qual cartão você usou para o pagamento?"
+   Validações: Save não esperado: ✅, Perguntou algo esperado: ✅, NÃO perguntou proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 13: "Zul, gastei" → responsável=eu
+   Mensagem: "Zul, gastei com pão no crédito"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "Zul, gastei com pão no crédito"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+✅ [loadConversationHistory] Carregado: 2 mensagens (state: awaiting_confirmation)
+📝 [extractCollectedInfo] Analisando 1 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: "hoje gastei 50 no mercado no débito"
+  💰 Valor encontrado: 50
+  📄 [EXTRAÍDA] Descrição: "hoje 50 mercado" da mensagem: "hoje gastei 50 no mercado no débito"
+  📄 Descrição final: Hoje 50 mercado
+  💳 Pagamento encontrado: débito
+  👤 Responsável: eu
+📊 [GPT-4] Informações coletadas: {"amount":50,"description":"Hoje 50 mercado","payment_method":"débito","responsible":"eu"}
+💬 [GPT-4] Histórico carregado: 2 mensagens
+💬 [GPT-4] Últimas 3 mensagens: [
+  {
+    "role": "user",
+    "content": "hoje gastei 50 no mercado no débito"
+  },
+  {
+    "role": "assistant",
+    "content": "Qual cartão você usou para o pagamento?"
+  }
+]
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 4
+💾 [GPT-4] Salvando no histórico: user="Zul, gastei com pão no crédito", assistant="Quanto foi o valor da despesa?"
+💾 [saveToHistory] Phone: 5511999888777
+✅ [loadConversationHistory] Carregado: 2 mensagens (state: awaiting_confirmation)
+💾 [saveToHistory] Histórico atual: 2 mensagens
+💾 [saveToHistory] Histórico após push: 4 mensagens
+💾 [saveToHistory] Upsert result: {"error":null,"data":null,"count":null,"status":200,"statusText":"OK"}
+💾 [GPT-4] Histórico salvo com 4 mensagens
+   Resposta: "Quanto foi o valor da despesa?"
+   Validações: Save não esperado: ✅, Perguntou algo esperado: ✅, NÃO perguntou proibido: ✅
+   Resultado: ✅ PASSOU
+
+📝 Teste 14: Erro transcrição "julgastei"
+   Mensagem: "julgastei 11,79 com material elétrico no crédito Latam à vista"
+📨 [ZUL] Processando mensagem de Felipe Xavier (7ae77718-a4a2-4a3c-8f99-e537f2c5ff92)
+📨 [ZUL] Mensagem: "julgastei 11,79 com material elétrico no crédito Latam à vista"
+📨 [ZUL] Context recebido: {
+  "userName": "Felipe Xavier",
+  "userId": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "organizationId": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "organizationType": "family",
+  "organizationName": "Família Xavier",
+  "isSoloUser": false,
+  "availableCards": [
+    "Latam",
+    "C6",
+    "Neon",
+    "Roxinho",
+    "Hub",
+    "MercadoPago",
+    "XP"
+  ]
+}
+📱 [ZUL] WhatsApp detectado - usando registrador de despesas
+⚠️ Context sem saveExpense, adicionando implementação completa
+💬 [GPT-4] Iniciando conversa...
+✅ [loadConversationHistory] Carregado: 4 mensagens (state: awaiting_confirmation)
+📝 [extractCollectedInfo] Analisando 2 mensagens do usuário
+📝 [extractCollectedInfo] Texto completo: "hoje gastei 50 no mercado no débito zul, gastei com pão no crédito"
+  💰 Valor encontrado: 50
+  📄 [EXTRAÍDA] Descrição: "hoje 50 mercado" da mensagem: "hoje gastei 50 no mercado no débito"
+  📄 Descrição final: Hoje 50 mercado
+  💳 Pagamento encontrado: débito
+  👤 Responsável: eu
+📊 [GPT-4] Informações coletadas: {"amount":50,"description":"Hoje 50 mercado","payment_method":"débito","responsible":"eu"}
+💬 [GPT-4] Histórico carregado: 4 mensagens
+💬 [GPT-4] Últimas 3 mensagens: [
+  {
+    "role": "assistant",
+    "content": "Qual cartão você usou para o pagamento?"
+  },
+  {
+    "role": "user",
+    "content": "Zul, gastei com pão no crédito"
+  },
+  {
+    "role": "assistant",
+    "content": "Quanto foi o valor da despesa?"
+  }
+]
+💬 [GPT-4] Total de mensagens sendo enviadas ao GPT: 6
+🔧 [GPT-4] Function call: save_expense
+🔧 [FUNCTION_CALL] Executing: save_expense
+💾 [SAVE] Salvando despesa com args: {
+  amount: 11.79,
+  description: 'material elétrico',
+  payment_method: 'credit_card',
+  responsible: 'eu',
+  card_name: 'Latam',
+  installments: 1
+}
+💾 [SAVE] Salvando despesa simples com dados: {
+  "amount": 11.79,
+  "description": "Material eletrico",
+  "date": "2025-11-19",
+  "category": "Casa",
+  "category_id": "e9cb28bc-4247-4d4e-bb33-a2bdd5928511",
+  "owner": "Felipe Xavier",
+  "cost_center_id": "6b44926c-1b79-4cac-9a82-9f0bc7f15c9e",
+  "payment_method": "credit_card",
+  "card_id": "eeb7d97a-99a0-4ed5-b7ae-b5d1a2e0735e",
+  "organization_id": "9fad4881-65a9-4e38-ad75-b707ddff473f",
+  "user_id": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "status": "confirmed",
+  "is_shared": false,
+  "confirmed_at": "2025-11-20T02:11:16.000Z",
+  "confirmed_by": "7ae77718-a4a2-4a3c-8f99-e537f2c5ff92",
+  "source": "whatsapp",
+  "whatsapp_message_id": "msg_1763604676008"
+}
+✅ Despesa salva: 1374
+✨ [GPT] Mensagem contextual gerada: Agora sua casa tá mais conectada! ⚡️
+  -> Result for save_expense: {
+  success: true,
+  message: 'Joia, tá salvo! ✅\n' +
+    'R$ 11,79 - Material eletrico\n' +
+    'Casa\n' +
+    'Crédito • Latam\n' +
+    'Felipe Xavier\n' +
+    'Hoje\n' +
+    '\n' +
+    'Agora sua casa tá mais conectada! ⚡️',
+  expense_id: 1374
+}
+🗑️ [GPT-4] Histórico limpo
+   Resposta: "Joia, tá salvo! ✅
+R$ 11,79 - Material eletrico
+Casa
+Crédito • Latam
+Felipe Xavier
+Hoje
+
+Agora sua casa tá mais conectada! ⚡️"
+   Validações: Save esperado: ✅, Responsável "felipe": ✅, NÃO perguntou proibido: ✅
+   Resultado: ✅ PASSOU
+
+================================================================================
+
+📊 RESULTADO GERAL:
+
+❌ Inferência de Categoria   25% (1/4)
+✅ Menções Diretas           100% (3/3)
+✅ Cartão → Crédito          100% (2/2)
+✅ À Vista                   100% (1/1)
+✅ Accentuação               100% (1/1)
+✅ Verbos Individuais        100% (3/3)
+
+--------------------------------------------------------------------------------
+🎯 TOTAL: 79% (11/14) 
+================================================================================
+

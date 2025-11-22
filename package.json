@@ -1,22 +1,26 @@
 {
-  "name": "meuazulao",
+  "name": "fintrack-monorepo",
   "version": "1.0.0",
-  "type": "module",
-  "description": "MeuAzulão - Gestão Financeira Familiar Inteligente com WhatsApp",
+  "description": "FinTrack - Gestão Financeira Familiar Inteligente (Web + Mobile)",
   "private": true,
+  "workspaces": [
+    "packages/backend",
+    "packages/web",
+    "packages/shared"
+  ],
   "scripts": {
-    "test:ai": "node test-openai-integration.js"
+    "dev": "npm-run-all --parallel dev:backend dev:web",
+    "dev:web": "npm run dev --workspace=packages/web",
+    "dev:backend": "npm run dev --workspace=packages/backend",
+    "dev:mobile": "cd packages/mobile && npm start",
+    "build:web": "npm run build --workspace=packages/web",
+    "build:backend": "npm run build --workspace=packages/backend",
+    "build:mobile": "cd packages/mobile && npm run build",
+    "test": "npm run test --workspaces --if-present",
+    "clean": "rm -rf node_modules packages/*/node_modules",
+    "install:all": "npm install && cd packages/mobile && npm install"
   },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "axios": "^1.6.2",
-    "canvas": "^3.2.0",
-    "dotenv": "^16.3.1",
-    "formidable": "^3.5.4",
-    "openai": "^4.20.1",
-    "papaparse": "^5.5.3",
-    "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^5.4.394",
-    "xlsx": "^0.18.5"
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
   }
 }

@@ -15,6 +15,19 @@ web/.next/
 web/out/
 web/build/
 
+# Expo / React Native
+packages/mobile/.expo/
+packages/mobile/.expo-shared/
+packages/mobile/android/
+packages/mobile/ios/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+
 # Production
 dist/
 build/

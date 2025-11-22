@@ -1,0 +1,1096 @@
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { useOrganization } from '../hooks/useOrganization';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
+import { Button } from './ui/Button';
+import { X, Users, User } from 'lucide-react';
+import { useNotificationContext } from '../contexts/NotificationContext';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
+
+export default function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction = null, categories = [] }) {
+  const { organization, user: orgUser, costCenters, incomeCategories, budgetCategories, isSoloUser, loading: orgLoading } = useOrganization();
+  const { success, error: showError, warning } = useNotificationContext();
+  
+  const [cards, setCards] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  const [form, setForm] = useState({
+    description: '',
+    amount: '',
+    date: getBrazilTodayString(),
+    category_id: '',
+    owner_name: '',
+    payment_method: 'cash',
+    card_id: '',
+    installments: 1,
+  });
+
+  const [splitDetails, setSplitDetails] = useState([]);
+  const [showSplitConfig, setShowSplitConfig] = useState(false);
+
+  const userCostCenter = useMemo(() => {
+    if (!costCenters || !orgUser) return null;
+    return (
+      costCenters.find(
+        (cc) => cc.user_id === orgUser.id && cc.is_active !== false
+      ) || null
+    );
+  }, [costCenters, orgUser]);
+
+  const isCredit = form.payment_method === 'credit_card';
+  // Verificar se é compartilhado: se owner_name for o nome da família
+  const isShared = !isSoloUser && form.owner_name === (organization?.name || 'Família');
+
+  useEffect(() => {
+    if (editingTransaction) {
+      // Para expenses, encontrar o nome correspondente em costCenters
+      // para garantir que o valor corresponda exatamente ao dropdown
+      const rawOwnerName = editingTransaction.cost_center?.name 
+        || editingTransaction.owner 
+        || (editingTransaction.is_shared ? (organization?.name || 'Família') : '');
+      
+      // Buscar o nome correspondente usando costCenters diretamente
+      let ownerName = rawOwnerName;
+      if (rawOwnerName) {
+        // Função de normalização
+        const normalize = (str) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        
+        // Buscar em costCenters
+        const matchingCenter = costCenters?.find(cc => {
+          const normalizedCC = normalize(cc.name);
+          const normalizedRaw = normalize(rawOwnerName);
+          return normalizedCC === normalizedRaw;
+        });
+        
+        if (matchingCenter) {
+          ownerName = matchingCenter.name;
+        } else if (editingTransaction.is_shared || normalize(rawOwnerName) === normalize(organization?.name || 'Família')) {
+          // Se for compartilhado, usar o nome exato da família
+          ownerName = organization?.name || 'Família';
+        }
+      }
+      
+      // Se for parcela de cartão, usar o valor total da compra e número total de parcelas
+      let amountToShow = editingTransaction.amount;
+      let installmentsToShow = 1;
+      let dateToShow = editingTransaction.date;
+      
+      if (editingTransaction.installment_info) {
+        if (editingTransaction.installment_info.total_amount) {
+          amountToShow = editingTransaction.installment_info.total_amount;
+        }
+        if (editingTransaction.installment_info.total_installments) {
+          installmentsToShow = editingTransaction.installment_info.total_installments;
+        }
+      }
+      
+      // Se for parcela, buscar a data da primeira parcela
+      const fetchFirstDate = async () => {
+        if (editingTransaction.parent_expense_id || editingTransaction.installment_info) {
+          const parentId = editingTransaction.parent_expense_id === editingTransaction.id 
+            ? editingTransaction.id 
+            : editingTransaction.parent_expense_id;
+          
+          const { data: allInstallments, error: fetchInstallmentsError } = await supabase
+            .from('expenses')
+            .select('id, date')
+            .or(`id.eq.${parentId},parent_expense_id.eq.${parentId}`)
+            .order('id', { ascending: true })
+            .limit(1);
+          
+          if (!fetchInstallmentsError && allInstallments && allInstallments.length > 0) {
+            return allInstallments[0].date;
+          }
+        }
+        return dateToShow;
+      };
+      
+      fetchFirstDate().then(firstDate => {
+        setForm({
+          description: editingTransaction.description || '',
+          amount: amountToShow?.toString() || '',
+          date: firstDate || getBrazilTodayString(),
+          category_id: editingTransaction.category_id || '',
+          owner_name: ownerName,
+          payment_method: editingTransaction.payment_method || 'cash',
+          card_id: editingTransaction.card_id || '',
+          installments: installmentsToShow,
+        });
+      });
+      if (editingTransaction.expense_splits) {
+        setSplitDetails(editingTransaction.expense_splits);
+        setShowSplitConfig(true);
+      }
+    } else {
+      resetForm();
+    }
+  }, [editingTransaction, isOpen, costCenters, organization]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const load = async () => {
+      if (organization?.id && organization.id !== 'default-org') {
+        // Carregar cartões
+        const { data: cardsData } = await supabase
+          .from('cards')
+          .select('*')
+          .eq('organization_id', organization.id)
+          .eq('is_active', true)
+          .order('name');
+        setCards(cardsData || []);
+      } else {
+        setCards([]);
+      }
+    };
+    load();
+  }, [isOpen, organization]);
+
+  useEffect(() => {
+    if (!isSoloUser || !userCostCenter) return;
+    setForm((prev) => {
+      if (prev.owner_name === userCostCenter.name) {
+        return prev;
+      }
+      return {
+        ...prev,
+        owner_name: userCostCenter.name || prev.owner_name
+      };
+    });
+  }, [isSoloUser, userCostCenter, userCostCenter?.name, isOpen]);
+
+  const expenseCategories = useMemo(() => {
+    if (categories && categories.length > 0) {
+      return categories;
+    }
+    return (budgetCategories || []).filter(cat => cat.type === 'expense' || cat.type === 'both');
+  }, [categories, budgetCategories]);
+
+  const ownerOptions = useMemo(() => {
+    if (isSoloUser) {
+      return userCostCenter
+        ? [
+            {
+              id: userCostCenter.id,
+              name: userCostCenter.name,
+              default_split_percentage: userCostCenter.default_split_percentage,
+              color: userCostCenter.color,
+              user_id: userCostCenter.user_id,
+              linked_email: userCostCenter.linked_email
+            }
+          ]
+        : [];
+    }
+
+    const allCenters = (costCenters || [])
+      .filter((cc) => cc.is_active !== false)
+      .map((cc) => ({
+        id: cc.id,
+        name: cc.name,
+        default_split_percentage: cc.default_split_percentage,
+        color: cc.color,
+        user_id: cc.user_id,
+        linked_email: cc.linked_email
+      }));
+
+    allCenters.push({
+      id: null,
+      name: organization?.name || 'Família',
+      default_split_percentage: 0,
+      color: '#8B5CF6',
+      isShared: true
+    });
+
+    return allCenters;
+  }, [costCenters, organization, isSoloUser, userCostCenter]);
+
+  // Inicializar splits quando selecionar organização/compartilhado
+  useEffect(() => {
+    if (isShared && splitDetails.length === 0 && costCenters && costCenters.length > 0) {
+      const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
+      if (activeCenters.length > 0) {
+        const defaultSplits = activeCenters.map(cc => ({
+          cost_center_id: cc.id,
+          name: cc.name,
+          color: cc.color,
+          percentage: parseFloat(cc.default_split_percentage || 0),
+          amount: 0
+        }));
+        setSplitDetails(defaultSplits);
+        console.log('🔍 [TRANSACTION MODAL] Organização/compartilhado selecionado, splits inicializados:', defaultSplits.length);
+      }
+    } else if (!isShared) {
+      setSplitDetails([]);
+      setShowSplitConfig(false);
+    }
+  }, [isShared, costCenters, form.owner_name, organization?.name]);
+
+  useEffect(() => {
+    if (isShared && form.amount && splitDetails.length > 0) {
+      const totalAmount = parseCurrencyInput(form.amount) || 0;
+      const updatedSplits = splitDetails.map(split => ({
+        ...split,
+        amount: (totalAmount * split.percentage) / 100
+      }));
+      setSplitDetails(updatedSplits);
+    }
+  }, [form.amount, isShared, splitDetails.length]);
+
+  const totalPercentage = useMemo(() => {
+    return splitDetails.reduce((sum, split) => sum + (parseFloat(split.percentage) || 0), 0);
+  }, [splitDetails]);
+
+  const updateSplitPercentage = (index, newPercentage) => {
+    const totalAmount = parseFloat(form.amount) || 0;
+    setSplitDetails(prev => prev.map((split, i) => 
+      i === index 
+        ? { 
+            ...split, 
+            percentage: newPercentage,
+            amount: (totalAmount * newPercentage) / 100
+          }
+        : split
+    ));
+  };
+
+  const resetToDefaultSplit = () => {
+    const totalAmount = parseFloat(form.amount) || 0;
+    const activeCenters = (costCenters || []).filter(cc => cc.is_active !== false && cc.user_id);
+    const defaultSplits = activeCenters.map(cc => ({
+      cost_center_id: cc.id,
+      name: cc.name,
+      color: cc.color,
+      percentage: parseFloat(cc.default_split_percentage || 0),
+      amount: (totalAmount * parseFloat(cc.default_split_percentage || 0)) / 100
+    }));
+    setSplitDetails(defaultSplits);
+    setShowSplitConfig(false);
+  };
+
+  const resetForm = () => {
+    setForm({
+      description: '',
+      amount: '',
+      date: getBrazilTodayString(),
+      category_id: '',
+      owner_name:
+        isSoloUser && userCostCenter ? userCostCenter.name : '',
+      payment_method: 'cash',
+      card_id: '',
+      installments: 1,
+    });
+    setSplitDetails([]);
+    setShowSplitConfig(false);
+  };
+
+  const isFormValid = useMemo(() => {
+    const hasBasic = Boolean(
+      form.description?.trim() &&
+      form.amount &&
+      form.date &&
+      form.owner_name &&
+      form.payment_method
+    );
+    if (!hasBasic) return false;
+
+    const amountValue = parseCurrencyInput(form.amount);
+    if (amountValue <= 0) return false;
+
+    if (!form.category_id) return false;
+    if (isCredit && (!form.card_id || !form.installments)) return false;
+
+    if (isShared) {
+      if (!splitDetails.length) return false;
+      if (Math.abs(totalPercentage - 100) > 0.01) return false;
+    }
+
+    return true;
+  }, [
+    form.description,
+    form.amount,
+    form.date,
+    form.owner_name,
+    form.payment_method,
+    form.category_id,
+    form.card_id,
+    form.installments,
+    isCredit,
+    isShared,
+    splitDetails,
+    totalPercentage
+  ]);
+
+  const handleSave = async () => {
+    if (!organization?.id || !orgUser?.id) {
+      showError('Família ou usuário não encontrados');
+      return;
+    }
+    if (!form.description || !form.amount || !form.date) {
+      warning('Preencha todos os campos obrigatórios');
+      return;
+    }
+    if (!form.owner_name) {
+      warning('Selecione um responsável');
+      return;
+    }
+    
+    if (!form.category_id) {
+      warning('Selecione uma categoria');
+      return;
+    }
+
+    // Recalcular isShared antes de salvar (pode ter mudado)
+    const willBeShared = !isSoloUser && form.owner_name === (organization?.name || 'Família');
+    
+    // Validar splits se for compartilhado
+    if (willBeShared && splitDetails.length === 0) {
+      warning('É necessário configurar a divisão da despesa compartilhada');
+      return;
+    }
+
+    if (willBeShared && totalPercentage !== 100) {
+      warning(`A divisão deve somar exatamente 100%. Atual: ${totalPercentage}%`);
+      return;
+    }
+    
+    setSaving(true);
+    
+    try {
+        // Salvar como despesa
+        const selectedOption = ownerOptions.find(o => o.name === form.owner_name);
+        const category = expenseCategories.find(c => c.id === form.category_id);
+        
+        if (!category) {
+          warning('Categoria inválida. Atualize a página e tente novamente.');
+          return;
+        }
+        
+        if (!selectedOption) {
+          throw new Error('Responsável inválido');
+        }
+        
+        const isOptionShared = selectedOption.isShared || willBeShared;
+        const costCenter = isOptionShared ? null : selectedOption;
+        
+        console.log('💾 [TRANSACTION MODAL] Salvando expense:', {
+          owner_name: form.owner_name,
+          organization_name: organization?.name,
+          willBeShared,
+          isOptionShared,
+          cost_center_id: costCenter?.id || null,
+          splitDetails_count: splitDetails.length,
+          editingTransaction: !!editingTransaction
+        });
+
+        // Verificar se está editando uma parcela existente
+        const isExistingInstallment = editingTransaction && (editingTransaction.parent_expense_id || editingTransaction.installment_info);
+        const wasCredit = editingTransaction?.payment_method === 'credit_card';
+
+        if (isCredit && wasCredit && isExistingInstallment) {
+          // Atualizar parcelas existentes
+          if (!form.card_id) throw new Error('Cartão de crédito é obrigatório');
+
+          // Buscar o parent_expense_id correto
+          const parentId = editingTransaction.parent_expense_id === editingTransaction.id 
+            ? editingTransaction.id 
+            : editingTransaction.parent_expense_id;
+
+          // Verificar quantas parcelas existem atualmente
+          const { data: currentInstallments, error: countError } = await supabase
+            .from('expenses')
+            .select('id')
+            .or(`id.eq.${parentId},parent_expense_id.eq.${parentId}`);
+
+          if (countError) throw countError;
+
+          const currentInstallmentCount = currentInstallments?.length || 0;
+          const newInstallmentCount = Number(form.installments);
+
+          // Buscar a data da primeira parcela original para comparar
+          const firstInstallment = currentInstallments.reduce((min, curr) => 
+            curr.id < min.id ? curr : min
+          , currentInstallments[0]);
+
+          const { data: firstInstallmentData, error: fetchFirstError } = await supabase
+            .from('expenses')
+            .select('date')
+            .eq('id', firstInstallment.id)
+            .single();
+
+          if (fetchFirstError) throw fetchFirstError;
+
+          const originalFirstDate = firstInstallmentData.date;
+          const dateChanged = originalFirstDate !== form.date;
+
+          console.log('🔍 [TRANSACTION MODAL] Parcelas atuais:', currentInstallmentCount, 'Novas:', newInstallmentCount);
+          console.log('📅 [TRANSACTION MODAL] Data original:', originalFirstDate, 'Nova:', form.date, 'Mudou?', dateChanged);
+
+          // Se o número de parcelas mudou OU a data mudou, recriar o grupo
+          if (currentInstallmentCount !== newInstallmentCount || dateChanged) {
+            const reason = dateChanged && currentInstallmentCount !== newInstallmentCount 
+              ? 'Número de parcelas E data mudaram' 
+              : dateChanged 
+                ? 'Data mudou' 
+                : 'Número de parcelas mudou';
+            console.log(`🔄 [TRANSACTION MODAL] ${reason}! Recriando grupo...`);
+
+            // Deletar todas as parcelas antigas
+            const { error: deleteError } = await supabase
+              .from('expenses')
+              .delete()
+              .or(`id.eq.${parentId},parent_expense_id.eq.${parentId}`);
+
+            if (deleteError) {
+              console.error('❌ [TRANSACTION MODAL] Erro ao deletar parcelas antigas:', deleteError);
+              throw deleteError;
+            }
+
+            // Criar novas parcelas via RPC usando a data escolhida pelo usuário
+            const ownerForRPC = willBeShared ? form.owner_name : form.owner_name;
+
+            const { data: parentExpenseId, error: rpcError } = await supabase.rpc('create_installments', {
+              p_amount: parseCurrencyInput(form.amount),
+              p_installments: newInstallmentCount,
+              p_description: form.description.trim(),
+              p_date: form.date, // Usar a data escolhida pelo usuário
+              p_card_id: form.card_id,
+              p_category_id: category?.id || null,
+              p_cost_center_id: costCenter?.id || null,
+              p_owner: ownerForRPC,
+              p_organization_id: organization.id,
+              p_user_id: orgUser.id,
+              p_whatsapp_message_id: null,
+              p_split_template: null
+            });
+
+            if (rpcError) {
+              console.error('❌ [TRANSACTION MODAL] Erro ao criar novas parcelas:', rpcError);
+              throw rpcError;
+            }
+
+            console.log('✅ [TRANSACTION MODAL] Novas parcelas criadas:', parentExpenseId);
+
+            // Inserir splits se necessário
+            if (willBeShared && splitDetails.length > 0) {
+              const { data: newInstallments, error: fetchError } = await supabase
+                .from('expenses')
+                .select('id')
+                .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+              
+              if (fetchError) throw fetchError;
+
+              const splitsToInsert = newInstallments.flatMap(installment => 
+                splitDetails.map(split => ({
+                  expense_id: installment.id,
+                  cost_center_id: split.cost_center_id,
+                  percentage: split.percentage,
+                  amount: split.amount / newInstallmentCount
+                }))
+              );
+
+              const { error: splitError } = await supabase
+                .from('expense_splits')
+                .insert(splitsToInsert);
+
+              if (splitError) {
+                console.error('❌ [TRANSACTION MODAL] Erro ao inserir splits:', splitError);
+                throw splitError;
+              }
+            }
+
+            console.log('✅ [TRANSACTION MODAL] Grupo de parcelas recriado com sucesso');
+
+          } else {
+            // Número de parcelas não mudou, apenas atualizar
+            console.log('🔄 [TRANSACTION MODAL] Atualizando parcelas existentes do grupo');
+
+            // Usar função RPC para atualizar parcelas (bypassa RLS)
+            const { data: updateResult, error: updateError } = await supabase.rpc('update_installment_group', {
+              p_parent_expense_id: parentId,
+              p_description: form.description.trim(),
+              p_category_id: category?.id || null,
+              p_card_id: form.card_id,
+              p_owner: form.owner_name.trim(),
+              p_cost_center_id: costCenter?.id || null,
+              p_is_shared: willBeShared,
+              p_total_amount: parseCurrencyInput(form.amount),
+              p_organization_id: organization.id,
+              p_user_id: orgUser.id
+            });
+
+            if (updateError) {
+              console.error('❌ [TRANSACTION MODAL] Erro ao atualizar parcelas:', updateError);
+              throw updateError;
+            }
+
+            console.log('✅ [TRANSACTION MODAL] Parcelas atualizadas via RPC:', updateResult);
+
+            // Atualizar splits se necessário
+            if (willBeShared) {
+              const installmentIds = updateResult[0]?.installment_ids || [];
+              
+              if (installmentIds.length > 0) {
+                // Deletar splits antigos
+                const { error: deleteSplitsError } = await supabase
+                  .from('expense_splits')
+                  .delete()
+                  .in('expense_id', installmentIds);
+
+                if (deleteSplitsError) {
+                  console.warn('⚠️ [TRANSACTION MODAL] Erro ao deletar splits antigos:', deleteSplitsError);
+                }
+
+                if (splitDetails.length > 0) {
+                  const splitsToInsert = installmentIds.flatMap(installmentId => 
+                    splitDetails.map(split => ({
+                      expense_id: installmentId,
+                      cost_center_id: split.cost_center_id,
+                      percentage: split.percentage,
+                      amount: split.amount / installmentIds.length
+                    }))
+                  );
+
+                  const { error: insertSplitsError } = await supabase
+                    .from('expense_splits')
+                    .insert(splitsToInsert);
+
+                  if (insertSplitsError) {
+                    console.error('❌ [TRANSACTION MODAL] Erro ao inserir splits:', insertSplitsError);
+                    throw insertSplitsError;
+                  }
+                }
+              }
+            }
+
+            console.log('✅ [TRANSACTION MODAL] Parcelas e splits atualizados com sucesso');
+          }
+
+        } else if (isCredit && (!editingTransaction || !wasCredit || !isExistingInstallment)) {
+          // Criar novas parcelas (novo ou convertendo para cartão)
+          if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
+          
+          console.log('🔄 [TRANSACTION MODAL] Criando novas parcelas');
+          
+          const ownerForRPC = willBeShared ? form.owner_name : form.owner_name;
+          
+          console.log('💾 [TRANSACTION MODAL] Criando parcelas:', {
+            amount: form.amount,
+            installments: form.installments,
+            card_id: form.card_id,
+            ownerForRPC,
+            willBeShared,
+            cost_center_id: costCenter?.id || null
+          });
+
+          const { data: parentExpenseId, error } = await supabase.rpc('create_installments', {
+            p_amount: parseCurrencyInput(form.amount),
+            p_installments: Number(form.installments),
+            p_description: form.description.trim(),
+            p_date: form.date,
+            p_card_id: form.card_id,
+            p_category_id: category?.id || null,
+            p_cost_center_id: costCenter?.id || null,
+            p_owner: ownerForRPC,
+            p_organization_id: organization.id,
+            p_user_id: orgUser.id,
+            p_whatsapp_message_id: null,
+            p_split_template: null
+          });
+          
+          if (error) {
+            console.error('❌ [TRANSACTION MODAL] Erro ao criar parcelas:', error);
+            throw error;
+          }
+          
+          console.log('✅ [TRANSACTION MODAL] Installments created, parent_expense_id:', parentExpenseId);
+          
+          // Atualizar o owner se necessário
+          if (willBeShared && ownerForRPC !== form.owner_name) {
+            const { error: updateError } = await supabase
+              .from('expenses')
+              .update({ 
+                owner: form.owner_name.trim(),
+                is_shared: true 
+              })
+              .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+            
+            if (updateError) {
+              console.error('⚠️ [TRANSACTION MODAL] Erro ao atualizar owner das parcelas:', updateError);
+            } else {
+              console.log('✅ [TRANSACTION MODAL] Owner atualizado para:', form.owner_name);
+            }
+          }
+
+          // Se estava editando, deletar a transação antiga
+          if (editingTransaction) {
+            if (isExistingInstallment) {
+              // Deletar todas as parcelas do grupo antigo
+              const oldParentId = editingTransaction.parent_expense_id === editingTransaction.id 
+                ? editingTransaction.id 
+                : editingTransaction.parent_expense_id;
+              
+              await supabase
+                .from('expenses')
+                .delete()
+                .or(`id.eq.${oldParentId},parent_expense_id.eq.${oldParentId}`);
+            } else {
+              // Deletar despesa simples
+              await supabase.from('expenses').delete().eq('id', editingTransaction.id);
+            }
+          }
+
+          // Atualizar available_limit do cartão
+          if (form.card_id) {
+            try {
+              const { data: card } = await supabase
+                .from('cards')
+                .select('available_limit, credit_limit')
+                .eq('id', form.card_id)
+                .single();
+              
+              if (card) {
+                const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
+                const oldAmount = editingTransaction ? Number(editingTransaction.amount || 0) : 0;
+                const amountChange = parseCurrencyInput(form.amount) - oldAmount;
+                const newAvailable = Math.max(0, currentAvailable - amountChange);
+                
+                await supabase
+                  .from('cards')
+                  .update({ available_limit: newAvailable })
+                  .eq('id', form.card_id);
+                
+                console.log('✅ [TRANSACTION MODAL] Updated card available_limit:', newAvailable);
+              }
+            } catch (cardUpdateError) {
+              console.error('⚠️ Erro ao atualizar limite disponível do cartão:', cardUpdateError);
+            }
+          }
+
+          // Inserir splits para todas as parcelas
+          if (willBeShared && splitDetails.length > 0) {
+            console.log('🔍 [TRANSACTION MODAL] Inserindo splits para todas as parcelas...');
+            
+            const { data: allInstallments, error: fetchError } = await supabase
+              .from('expenses')
+              .select('id')
+              .or(`id.eq.${parentExpenseId},parent_expense_id.eq.${parentExpenseId}`);
+            
+            if (fetchError) throw fetchError;
+            
+            console.log('📊 [TRANSACTION MODAL] Parcelas encontradas:', allInstallments.length);
+            
+            const uniqueSplits = Object.values(
+              splitDetails.reduce((acc, split) => {
+                const id = split.cost_center_id;
+                if (!id) return acc;
+                if (!acc[id]) {
+                  acc[id] = {
+                    cost_center_id: id,
+                    percentage: 0,
+                    amount: 0
+                  };
+                }
+                acc[id].percentage += Number(split.percentage) || 0;
+                acc[id].amount += Number(split.amount) || 0;
+                return acc;
+              }, {})
+            );
+            
+            const splitsToInsert = allInstallments.flatMap(installment => 
+              uniqueSplits.map(split => ({
+                expense_id: installment.id,
+                cost_center_id: split.cost_center_id,
+                percentage: split.percentage,
+                amount: split.amount / Number(form.installments)
+              }))
+            );
+
+            const { error: splitError } = await supabase
+              .from('expense_splits')
+              .insert(splitsToInsert);
+
+            if (splitError) {
+              console.error('❌ [TRANSACTION MODAL] Erro ao inserir splits:', splitError);
+              throw splitError;
+            }
+            
+            console.log('✅ [TRANSACTION MODAL] Splits inseridos com sucesso');
+          }
+
+          console.log('✅ [TRANSACTION MODAL] Conversão para cartão concluída');
+
+        } else {
+          const dataToSave = {
+            cost_center_id: costCenter?.id || null,
+            owner: form.owner_name.trim(),
+            is_shared: willBeShared, // Usar willBeShared calculado acima
+            category_id: category?.id || null,
+            category: category?.name || null,
+            amount: parseCurrencyInput(form.amount),
+            description: form.description.trim(),
+            date: form.date,
+            payment_method: form.payment_method,
+            status: 'confirmed',
+            confirmed_at: new Date().toISOString(),
+            confirmed_by: orgUser.id,
+            source: 'manual'
+          };
+          
+          console.log('💾 [TRANSACTION MODAL] Inserting expense:', dataToSave);
+
+          let expense;
+          let error;
+
+          if (editingTransaction) {
+            // Editar despesa existente
+            const { data, error: updateError } = await supabase
+              .from('expenses')
+              .update(dataToSave)
+              .eq('id', editingTransaction.id)
+              .select()
+              .single();
+            
+            expense = data;
+            error = updateError;
+          } else {
+            // Criar nova despesa
+            const insertData = {
+              ...dataToSave,
+              organization_id: organization.id,
+              user_id: orgUser.id,
+            };
+            
+            const { data, error: insertError } = await supabase
+              .from('expenses')
+              .insert(insertData)
+              .select()
+              .single();
+            
+            expense = data;
+            error = insertError;
+          }
+          
+          if (error) throw error;
+
+          console.log('✅ [TRANSACTION MODAL] Expense saved:', expense);
+
+          // Atualizar available_limit do cartão se for crédito
+          if (form.payment_method === 'credit_card' && expense.card_id) {
+            try {
+              const { data: card } = await supabase
+                .from('cards')
+                .select('available_limit, credit_limit')
+                .eq('id', expense.card_id)
+                .single();
+              
+              if (card) {
+                const currentAvailable = parseFloat(card.available_limit || card.credit_limit || 0);
+                const amountChange = editingTransaction 
+                  ? (parseCurrencyInput(form.amount) - Number(editingTransaction.amount || 0)) // Diferença se editando
+                  : parseCurrencyInput(form.amount); // Valor total se criando
+                
+                const newAvailable = Math.max(0, currentAvailable - amountChange);
+                
+                await supabase
+                  .from('cards')
+                  .update({ available_limit: newAvailable })
+                  .eq('id', expense.card_id);
+                
+                console.log('✅ [TRANSACTION MODAL] Updated card available_limit:', newAvailable);
+              }
+            } catch (cardUpdateError) {
+              console.error('⚠️ Erro ao atualizar limite disponível do cartão:', cardUpdateError);
+              // Não falhar por causa disso
+            }
+          }
+
+          if (willBeShared && splitDetails.length > 0) {
+            // Se está editando, deletar splits antigos primeiro
+            if (editingTransaction) {
+              const { error: deleteError } = await supabase
+                .from('expense_splits')
+                .delete()
+                .eq('expense_id', editingTransaction.id);
+              
+              if (deleteError) throw deleteError;
+            }
+
+            const splitsToInsert = splitDetails.map(split => ({
+              expense_id: expense.id,
+              cost_center_id: split.cost_center_id,
+              percentage: split.percentage,
+              amount: split.amount
+            }));
+
+            const { error: splitError } = await supabase
+              .from('expense_splits')
+              .insert(splitsToInsert);
+
+            if (splitError) throw splitError;
+          }
+        }
+      
+      onClose?.();
+      const action = editingTransaction ? 'atualizada' : 'salva';
+      success(`Despesa ${action} com sucesso!`);
+      onSuccess?.();
+    } catch (e) {
+      console.error('❌ [TRANSACTION MODAL] Erro ao salvar:', e);
+      const errorMessage = e?.message || e?.error?.message || 'Erro desconhecido';
+      showError(`Erro ao salvar: ${errorMessage}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
+        {/* Header fixo */}
+        <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
+            {editingTransaction ? 'Editar Despesa' : 'Nova Despesa'}
+          </h2>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose}
+            className="text-gray-700 hover:bg-gray-100"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-0">
+          {/* Toggle de tipo */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
+              <input
+                type="text"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                placeholder="Ex: Mercado, Farmácia"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Valor *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <input
+                  type="text"
+                  value={form.amount}
+                  onChange={(e) => handleCurrencyChange(e, (value) => setForm({ ...form, amount: value }))}
+                  onBlur={(e) => {
+                    // Garantir formatação completa ao sair do campo
+                    const value = e.target.value.trim();
+                    if (!value) {
+                      setForm({ ...form, amount: '' });
+                      return;
+                    }
+                    const parsed = parseCurrencyInput(value);
+                    if (parsed > 0) {
+                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      setForm({ ...form, amount: formatted });
+                    } else {
+                      setForm({ ...form, amount: '' });
+                    }
+                  }}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Data *</label>
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+              />
+            </div>
+
+            {/* Categoria */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+              <select
+                value={form.category_id}
+                onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+              >
+                <option value="">Selecione...</option>
+                {[...expenseCategories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+              <select
+                value={form.payment_method}
+                onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+              >
+                <option value="cash">Dinheiro</option>
+                <option value="debit_card">Cartão de Débito</option>
+                <option value="pix">PIX</option>
+                <option value="credit_card">Cartão de Crédito</option>
+                <option value="boleto">Boleto</option>
+                <option value="bank_transfer">Transferência Bancária</option>
+                <option value="other">Outros</option>
+              </select>
+            </div>
+
+            {!isSoloUser ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
+                <select
+                  value={form.owner_name}
+                  onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                >
+                  <option value="">Selecione...</option>
+                  {ownerOptions.map(o => (
+                    <option key={o.id ?? o.name} value={o.name}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+
+            {/* Campos específicos de despesa */}
+            {isCredit && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Cartão *</label>
+                  <select
+                    value={form.card_id}
+                    onChange={(e) => setForm({ ...form, card_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                    disabled={cards.length === 0}
+                  >
+                    <option value="">Selecione...</option>
+                    {cards.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  {cards.length === 0 && (
+                    <p className="mt-2 text-sm text-gray-500">
+                      Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Parcelas *</label>
+                  <select
+                    value={form.installments}
+                    onChange={(e) => setForm({ ...form, installments: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                  >
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <option key={i+1} value={i+1}>{i+1}x</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Configuração de Divisão */}
+          {isShared && (
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-medium text-gray-900">Divisão</h4>
+                <button
+                  type="button"
+                  onClick={() => showSplitConfig ? resetToDefaultSplit() : setShowSplitConfig(true)}
+                  className="text-sm text-flight-blue hover:text-flight-blue/80 font-medium"
+                >
+                  {showSplitConfig ? 'Usar Padrão' : 'Personalizar'}
+                </button>
+              </div>
+
+              {showSplitConfig ? (
+                <div className="space-y-3">
+                  {splitDetails.map((split, index) => (
+                    <div key={split.cost_center_id} className="flex items-center space-x-3">
+                      <div 
+                        className="w-4 h-4 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: split.color }}
+                      />
+                      <span className="flex-1 text-sm font-medium text-gray-700">{split.name}</span>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={split.percentage}
+                          onChange={(e) => updateSplitPercentage(index, parseFloat(e.target.value) || 0)}
+                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
+                        />
+                        <span className="text-sm text-gray-500 w-6">%</span>
+                        <span className="text-sm text-gray-600 w-24 text-right">
+                          R$ {split.amount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="pt-3 border-t border-gray-300 flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Total:</span>
+                    <span className={`text-sm font-bold ${totalPercentage === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                      {totalPercentage.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {splitDetails.map((split) => (
+                    <div key={split.cost_center_id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: split.color }}
+                        />
+                        <span className="text-gray-700">{split.name}</span>
+                      </div>
+                      <span className="text-gray-600 font-medium">
+                        {split.percentage}% (R$ {split.amount.toFixed(2)})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Footer fixo */}
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-5 md:p-6 pt-3 sm:pt-4 md:pt-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={saving}
+            className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !isFormValid}
+            className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
+          >
+            {saving ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

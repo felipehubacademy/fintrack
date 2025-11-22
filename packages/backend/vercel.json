@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/webhook",
+      "destination": "/api/webhook"
+    },
+    {
+      "source": "/webhook/smart",
+      "destination": "/api/webhook/smart"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/expenses/general",
+      "destination": "/api/expenses/general"
+    },
+    {
+      "source": "/expenses/summary",
+      "destination": "/api/expenses/summary"
+    },
+    {
+      "source": "/organizations",
+      "destination": "/api/organizations"
+    },
+    {
+      "source": "/organizations/(.*)",
+      "destination": "/api/organizations/$1"
+    },
+    {
+      "source": "/api/zul-chat",
+      "destination": "/api/zul-chat"
+    }
+  ]
+}
