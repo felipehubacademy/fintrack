@@ -85,3 +85,4 @@ WABA_ID=1305894714600979  # Opcional (usa valor padrão se não configurado)
 
 
 
+
