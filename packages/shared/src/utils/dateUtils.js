@@ -105,17 +105,3 @@ export function formatDateBR(date) {
   const year = dateObj.getFullYear();
   return `${day}/${month}/${year}`;
 }
-
-/**
- * Formata um valor monetário para o formato brasileiro (R$ 1.234,56)
- * @param {number} value - Valor a ser formatado
- * @returns {string} Valor formatado
- */
-export function formatCurrency(value) {
-  if (value === null || value === undefined) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value);
-}
-
