@@ -29,29 +29,14 @@ export default function OpenFinanceManagementModal({
     
     setLoading(true);
     try {
-      const response = await fetch(`/api/belvo/links/index?organization_id=${organization.id}`);
+      const response = await fetch(`/api/belvo/links?organization_id=${organization.id}`);
       const data = await response.json();
 
       if (data.success && data.links) {
-        // Group accounts by link_id
-        const linksMap = {};
-        data.links.forEach(link => {
-          if (!linksMap[link.link_id]) {
-            linksMap[link.link_id] = {
-              ...link,
-              accountCount: 0,
-              cardCount: 0
-            };
-          }
-          if (link.account_type) {
-            linksMap[link.link_id].accountCount++;
-          }
-          if (link.card_type) {
-            linksMap[link.link_id].cardCount++;
-          }
-        });
-
-        setBelvoLinks(Object.values(linksMap));
+        // API já retorna as contagens de contas e cartões
+        setBelvoLinks(data.links);
+      } else {
+        setBelvoLinks([]);
       }
     } catch (error) {
       console.error('Error fetching Belvo links:', error);

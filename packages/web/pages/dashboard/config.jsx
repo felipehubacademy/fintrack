@@ -515,6 +515,12 @@ export default function ConfigPage() {
           onConfirm={handleDeleteAccount}
           loading={isDeletingAccount}
         />
+
+        <OpenFinanceManagementModal
+          isOpen={showOpenFinanceModal}
+          onClose={() => setShowOpenFinanceModal(false)}
+          organization={organization}
+        />
       </main>
       </Header>
     </>

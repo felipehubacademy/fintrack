@@ -76,8 +76,16 @@ export default function BankAccounts() {
 
       if (error) throw error;
 
-      setAccounts(data || []);
-      calculateStats(data || []);
+      // Oculta contas Belvo desativadas (foram removidas/desconectadas)
+      const filteredAccounts = (data || []).filter(account => {
+        if (account.provider === 'belvo') {
+          return account.is_active;
+        }
+        return true;
+      });
+
+      setAccounts(filteredAccounts);
+      calculateStats(filteredAccounts);
     } catch (error) {
       console.error('Erro ao buscar contas bancárias:', error);
     } finally {
