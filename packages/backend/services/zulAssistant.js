@@ -139,6 +139,14 @@ class ZulAssistant {
     if (!text) return '';
     let cleaned = text.trim();
     
+    // 🔧 FIX: Remover valores monetários (números com vírgula/ponto) e cartões
+    // Exemplos: "286,53", "112.99", "Latam", "2x"
+    cleaned = cleaned.replace(/\b\d+[.,]\d{1,2}\b/g, ''); // Remove "286,53", "112.99"
+    cleaned = cleaned.replace(/\b(latam|c6|neon|roxinho|hub|xp|mercado\s?pago|nubank)\b/gi, ''); // Remove nomes de cartões
+    cleaned = cleaned.replace(/\b\d+\s*x\b/gi, ''); // Remove "2x", "3x"
+    cleaned = cleaned.replace(/\b(à vista|a vista)\b/gi, ''); // Remove "à vista"
+    cleaned = cleaned.replace(/\s+/g, ' ').trim(); // Normalizar espaços
+    
     // Remover números no início APENAS se for padrão "NÚMERO + palavra única" e número >= 20
     // Isso detecta valores monetários (ex: "150 mercado", "200 farmácia")
     // Mas mantém quantidades (ex: "2 televisões", "5kg de carne", "TV 50 polegadas")
@@ -164,13 +172,16 @@ class ZulAssistant {
     const normalized = noAccent.replace(/[.,!?;:]/g, ' ');
     const stopwords = new Set([
       'comprei','paguei','gastei','foi','deu','peguei','compre','comprar','pagando','pagamento',
+      'compramos','pagamos','gastamos','fizemos','fomos','compraram','pagaram','gastaram', // verbos conjugados
       'um','uma','uns','umas','o','a','os','as',
       'no','na','nos','nas','num','numa','em','de','do','da','dos','das','para','pra','pro','pela','pelo','por','ao','à','aos','às'
     ]);
     const tokens = normalized.split(/\s+/).filter(Boolean).filter(t => !stopwords.has(t));
     if (tokens.length === 0) return cleaned.trim();
-    // Retornar até 3 palavras significativas (mantendo números se fizerem parte)
-    return tokens.slice(0, 3).join(' ');
+    // Retornar até 3 palavras significativas (filtrando números isolados)
+    const meaningfulTokens = tokens.filter(t => !/^\d+$/.test(t)); // Remove números isolados
+    if (meaningfulTokens.length === 0) return tokens.slice(0, 3).join(' '); // Fallback se tudo for número
+    return meaningfulTokens.slice(0, 3).join(' ');
   }
 
   /**
@@ -1966,8 +1977,8 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       // Carregar histórico da conversa do banco
       const history = await this.loadConversationHistory(userPhone);
       
-      // Extrair informações já coletadas do histórico
-      const collectedInfo = this.extractCollectedInfo(history);
+      // Extrair informações já coletadas do histórico + mensagem atual
+      const collectedInfo = this.extractCollectedInfo(history, userMessage);
       console.log('📊 [GPT-4] Informações coletadas:', JSON.stringify(collectedInfo));
       
       // Detectar primeira mensagem (histórico vazio ou muito antigo)
@@ -2092,12 +2103,18 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
   /**
    * Extrair informações já coletadas do histórico
    */
-  extractCollectedInfo(history) {
+  extractCollectedInfo(history, currentMessage = null) {
     const info = {};
     
-    // 🔧 FIX: Considerar TODAS as mensagens do usuário, não apenas a última
-    // Isso permite capturar informações fornecidas em mensagens separadas
+    // 🔧 FIX: Considerar TODAS as mensagens do usuário, incluindo a mensagem atual
+    // Isso permite capturar informações fornecidas na primeira mensagem ou em mensagens separadas
     const userMessages = history.filter(m => m.role === 'user');
+    
+    // 🚀 CRITICAL FIX: Incluir mensagem atual se fornecida (resolve bug de primeira mensagem)
+    if (currentMessage) {
+      userMessages.push({ role: 'user', content: currentMessage });
+    }
+    
     const conversationText = userMessages.map(m => m.content).join(' ').toLowerCase();
     
     console.log(`📝 [extractCollectedInfo] Analisando ${userMessages.length} mensagens do usuário`);
@@ -2176,19 +2193,38 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       console.log(`  👥 Responsável: Compartilhado`);
     }
     
-    // Extrair cartão mencionado
-    const cardMatch = conversationText.match(/\b(latam|c6|neon|roxinho|hub|xp|mercado\s?pago|nubank)\b/i);
-    if (cardMatch) {
-      info.card = cardMatch[1];
-      console.log(`  💳 Cartão mencionado: ${info.card}`);
+    // Extrair cartão mencionado E parcelas em padrão combinado (ex: "Latam 2x", "C6 3x")
+    // 🚀 CRITICAL FIX: Detectar padrão "Cartão + Parcelas" junto (ex: "Latam 2x")
+    const cardWithInstallments = conversationText.match(/\b(latam|c6|neon|roxinho|hub|xp|mercado\s?pago|nubank)\s+(\d+)\s*x\b/i);
+    if (cardWithInstallments) {
+      info.card = cardWithInstallments[1];
+      info.installments = parseInt(cardWithInstallments[2]);
+      console.log(`  💳🔢 Cartão + Parcelas detectados juntos: ${info.card} ${info.installments}x`);
+    } else {
+      // Se não encontrou padrão combinado, buscar separadamente
+      
+      // Extrair cartão mencionado
+      const cardMatch = conversationText.match(/\b(latam|c6|neon|roxinho|hub|xp|mercado\s?pago|nubank)\b/i);
+      if (cardMatch) {
+        info.card = cardMatch[1];
+        console.log(`  💳 Cartão mencionado: ${info.card}`);
+      }
+      
+      // Extrair parcelas
+      // 🔧 FIX: Melhorar detecção de "2x", "Latam 2x", etc. (sem espaço obrigatório antes do x)
+      const installmentsMatch = conversationText.match(/(\d+)\s*x\b/i) ||  // "2x", "Latam 2x"
+                               conversationText.match(/(\d+)\s*(?:vezes|parcelas)/i) ||  // "2 vezes", "3 parcelas"
+                               conversationText.match(/\b(?:à vista|a vista|uma vez)\b/i);  // "à vista", "uma vez"
+      if (installmentsMatch) {
+        info.installments = installmentsMatch[1] ? parseInt(installmentsMatch[1]) : 1;
+        console.log(`  🔢 Parcelas encontradas: ${info.installments}`);
+      }
     }
     
-    // Extrair parcelas
-    const installmentsMatch = conversationText.match(/(\d+)\s*(?:x|vezes|parcelas)/i) || 
-                             conversationText.match(/\b(?:à vista|a vista|uma vez)\b/i);
-    if (installmentsMatch) {
-      info.installments = installmentsMatch[1] ? parseInt(installmentsMatch[1]) : 1;
-      console.log(`  🔢 Parcelas encontradas: ${info.installments}`);
+    // 🚀 CRITICAL FIX: Inferir pagamento = crédito quando cartão é detectado
+    if (info.card && !info.payment_method) {
+      info.payment_method = 'crédito';
+      console.log(`  💳 Pagamento inferido como crédito (cartão detectado: ${info.card})`);
     }
     
     return info;
