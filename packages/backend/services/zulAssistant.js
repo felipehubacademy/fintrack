@@ -1522,13 +1522,22 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
               searchText = normalize(args.description);
               
               // 2.1: Tentar encontrar correspondência nos synonyms
+              // 🚀 CRITICAL FIX: Usar word boundary para evitar matches parciais (ex: "sal" em "salao")
               for (const group of synonyms) {
-                  const matchedKeyword = group.keywords.find(k => searchText.includes(k));
+                  const sortedKeywords = [...group.keywords].sort((a, b) => b.length - a.length);
+                  const matchedKeyword = sortedKeywords.find(k => {
+                    const normalizedKeyword = normalize(k);
+                    // Usar word boundary para match de palavra inteira
+                    const regex = new RegExp(`\\b${normalizedKeyword}\\b`);
+                    return regex.test(searchText);
+                  });
                   if (matchedKeyword) {
+                    console.log(`🔍 [CATEGORY] Match encontrado: "${matchedKeyword}" em "${args.description}"`);
                     const targetNorm = normalize(group.target);
                     if (byNormalizedName.has(targetNorm)) {
                       resolvedName = byNormalizedName.get(targetNorm).name;
                       categoryId = byNormalizedName.get(targetNorm).id;
+                      console.log(`✅ [CATEGORY] Categoria inferida: "${resolvedName}" (keyword: "${matchedKeyword}")`);
                       break;
                     } else if (group.fallback) {
                       // Tentar fallback recursivamente se a categoria principal não existir
