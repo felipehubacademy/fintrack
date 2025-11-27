@@ -2033,12 +2033,31 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       }
       console.log('💬 [GPT-4] Total de mensagens sendo enviadas ao GPT:', messages.length);
       
+      // 🔍 DEBUG: Log do system message completo para debug
+      if (Object.keys(collectedInfo).length > 0) {
+        console.log('📋 [DEBUG] System message enviado ao GPT (últimas 1000 chars):');
+        console.log(systemMessage.slice(-1000));
+        console.log('📋 [DEBUG] ---FIM SYSTEM MESSAGE---');
+      }
+      
+      // 🚀 CRITICAL FIX: Forçar function_call quando todas as informações obrigatórias estiverem coletadas
+      const hasAllRequiredInfo = collectedInfo.amount && 
+                                 collectedInfo.description && 
+                                 collectedInfo.payment_method && 
+                                 collectedInfo.responsible;
+      
+      const functionCallMode = hasAllRequiredInfo ? { name: 'save_expense' } : 'auto';
+      
+      if (hasAllRequiredInfo) {
+        console.log('🎯 [GPT-4] Todas as informações coletadas! Forçando chamada de save_expense');
+      }
+      
       // Chamar GPT-4 com function calling
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: messages,
         functions: this.getFunctions(),
-        function_call: 'auto',
+        function_call: functionCallMode,
         temperature: 0.6, // Natural e consistente
         top_p: 1.0,
         frequency_penalty: 0.25, // Evita repetição
@@ -2057,12 +2076,18 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
         
         const functionResult = await this.handleFunctionCall(functionName, functionArgs, context);
         
-        // Se salvou despesa ou entrada COM SUCESSO, limpar histórico e retornar APENAS mensagem da função
+        // Se salvou despesa ou entrada COM SUCESSO, limpar histórico e retornar resultado completo
         if ((functionName === 'save_expense' || functionName === 'save_income' || functionName === 'save_bill') && functionResult.success) {
           await this.clearConversationHistory(userPhone);
           
-          // Retornar APENAS a mensagem da função (ignorar qualquer texto que o GPT escreveu)
-          return functionResult.message || (functionName === 'save_income' ? 'Entrada registrada! ✅' : 'Anotado! ✅');
+          // Retornar objeto completo com success, message, e expense_id
+          return {
+            success: true,
+            message: functionResult.message || (functionName === 'save_income' ? 'Entrada registrada! ✅' : 'Anotado! ✅'),
+            expense_id: functionResult.expense_id,
+            income_id: functionResult.income_id,
+            bill_id: functionResult.bill_id
+          };
         }
         
         // Se a função retornou erro (success: false), salvar a mensagem de erro no histórico para manter contexto
@@ -4593,6 +4618,12 @@ ${context.isFirstMessage ? `\n\n🌅 PRIMEIRA MENSAGEM: Cumprimente ${firstName}
         userPhone
       );
       
+      // 🚀 CRITICAL FIX: Se response é objeto com success (resultado de função), retorná-lo diretamente
+      if (typeof response === 'object' && response !== null && 'success' in response) {
+        return response; // Retornar { success, message, expense_id, ... }
+      }
+      
+      // Se é string (resposta normal), envolver em objeto
       return {
         message: response,
         threadId: null // GPT-4 não usa threads
