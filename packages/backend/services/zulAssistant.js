@@ -2033,13 +2033,6 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       }
       console.log('💬 [GPT-4] Total de mensagens sendo enviadas ao GPT:', messages.length);
       
-      // 🔍 DEBUG: Log do system message completo para debug
-      if (Object.keys(collectedInfo).length > 0) {
-        console.log('📋 [DEBUG] System message enviado ao GPT (últimas 1000 chars):');
-        console.log(systemMessage.slice(-1000));
-        console.log('📋 [DEBUG] ---FIM SYSTEM MESSAGE---');
-      }
-      
       // 🚀 CRITICAL FIX: Forçar function_call quando todas as informações obrigatórias estiverem coletadas
       const hasAllRequiredInfo = collectedInfo.amount && 
                                  collectedInfo.description && 
