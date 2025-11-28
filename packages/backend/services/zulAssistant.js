@@ -1458,10 +1458,11 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
                     target: 'Casa',
                     fallback: 'Outros'
                   },
-                  // Shein Vestuário (fallback para Casa → Outros)
+                  // Shein Vestuário/Roupas/Moda (tentar múltiplas variações → Casa → Outros)
                   {
                     keywords: ['shein', 'sheyn', 'shain', 'xein'],
                     target: 'Vestuário',
+                    alternativeTargets: ['Roupas', 'Roupa', 'Moda'], // Tentar essas variações se Vestuário não existir
                     fallback: 'Casa'
                   },
                   // Vestuário (fallback para Outros)
@@ -1551,7 +1552,23 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
                       categoryId = byNormalizedName.get(targetNorm).id;
                       console.log(`✅ [CATEGORY] Categoria inferida: "${resolvedName}" (keyword: "${matchedKeyword}")`);
                       break;
-                    } else if (group.fallback) {
+                    }
+                    
+                    // 🚀 NOVO: Tentar alternativeTargets antes de ir para fallback
+                    if (group.alternativeTargets && Array.isArray(group.alternativeTargets)) {
+                      for (const altTarget of group.alternativeTargets) {
+                        const altNorm = normalize(altTarget);
+                        if (byNormalizedName.has(altNorm)) {
+                          resolvedName = byNormalizedName.get(altNorm).name;
+                          categoryId = byNormalizedName.get(altNorm).id;
+                          console.log(`✅ [CATEGORY] Categoria alternativa encontrada: "${resolvedName}" (alternativa de "${group.target}")`);
+                          break;
+                        }
+                      }
+                    }
+                    
+                    // Se ainda não encontrou, tentar fallback
+                    if (!categoryId && group.fallback) {
                       // Tentar fallback recursivamente se a categoria principal não existir
                       let fallbackChain = [group.fallback];
                       // Construir cadeia de fallbacks (ex: Viagem -> Lazer -> Outros)
