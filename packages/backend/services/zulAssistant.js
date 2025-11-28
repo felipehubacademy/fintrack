@@ -1452,6 +1452,18 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
                     target: 'Beleza',
                     fallback: 'Outros'
                   },
+                  // E-commerce Casa (Amazon, Shopee, Mercado Livre, etc. - fallback para Outros)
+                  {
+                    keywords: ['amazon', 'amazônia', 'amazon.com', 'amazon.com.br', 'shopee', 'xopi', 'chopi', 'choppy', 'aliexpress', 'ali express', 'mercado livre', 'mercadolivre', 'ml', 'magalu', 'magazine luiza', 'magazineluiza', 'casas bahia', 'casasbahia', 'ponto frio', 'pontofrio', 'americanas', 'americanas.com', 'submarino', 'submarino.com', 'extra', 'extra.com', 'carrefour online', 'carrefour.com'],
+                    target: 'Casa',
+                    fallback: 'Outros'
+                  },
+                  // Shein Vestuário (fallback para Casa → Outros)
+                  {
+                    keywords: ['shein', 'sheyn', 'shain', 'xein'],
+                    target: 'Vestuário',
+                    fallback: 'Casa'
+                  },
                   // Vestuário (fallback para Outros)
                   { 
                     keywords: ['roupa', 'roupas', 'sapato', 'sapatos', 'tenis', 'tenis', 'camisa', 'camiseta', 'calca', 'calça', 'vestido', 'renner', 'riachuelo', 'cea', 'c&a', 'zara', 'h&m', 'nike', 'adidas', 'puma', 'shopping', 'loja'], 
