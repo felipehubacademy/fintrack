@@ -7,6 +7,33 @@ import { X, Users, User } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
 
+// Helper: Agregar splits por cost_center_id para evitar duplicatas
+const aggregateSplits = (splits) => {
+  if (!splits || splits.length === 0) return [];
+  
+  const aggregated = Object.values(
+    splits.reduce((acc, split) => {
+      const id = split.cost_center_id;
+      if (!id) return acc;
+      if (!acc[id]) {
+        acc[id] = {
+          cost_center_id: id,
+          name: split.name,
+          color: split.color,
+          percentage: 0,
+          amount: 0
+        };
+      }
+      acc[id].percentage += Number(split.percentage) || 0;
+      acc[id].amount += Number(split.amount) || 0;
+      return acc;
+    }, {})
+  );
+  
+  console.log('🔍 [aggregateSplits] Input:', splits.length, '→ Output:', aggregated.length);
+  return aggregated;
+};
+
 export default function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction = null, categories = [] }) {
   const { organization, user: orgUser, costCenters, incomeCategories, budgetCategories, isSoloUser, loading: orgLoading } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
@@ -25,7 +52,15 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     installments: 1,
   });
 
-  const [splitDetails, setSplitDetails] = useState([]);
+  // Wrapper para setSplitDetails que garante unicidade por cost_center_id
+  const [splitDetailsRaw, setSplitDetailsRaw] = useState([]);
+  const setSplitDetails = (newSplits) => {
+    const splits = typeof newSplits === 'function' ? newSplits(splitDetailsRaw) : newSplits;
+    const deduplicated = aggregateSplits(splits);
+    setSplitDetailsRaw(deduplicated);
+  };
+  const splitDetails = splitDetailsRaw;
+
   const [showSplitConfig, setShowSplitConfig] = useState(false);
 
   const userCostCenter = useMemo(() => {
@@ -215,6 +250,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           percentage: parseFloat(cc.default_split_percentage || 0),
           amount: 0
         }));
+        console.log('🔍 [TRANSACTION MODAL] Splits ANTES de setSplitDetails:', JSON.stringify(defaultSplits, null, 2));
         setSplitDetails(defaultSplits);
         console.log('🔍 [TRANSACTION MODAL] Organização/compartilhado selecionado, splits inicializados:', defaultSplits.length);
       }
@@ -678,22 +714,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             
             console.log('📊 [TRANSACTION MODAL] Parcelas encontradas:', allInstallments.length);
             
-            const uniqueSplits = Object.values(
-              splitDetails.reduce((acc, split) => {
-                const id = split.cost_center_id;
-                if (!id) return acc;
-                if (!acc[id]) {
-                  acc[id] = {
-                    cost_center_id: id,
-                    percentage: 0,
-                    amount: 0
-                  };
-                }
-                acc[id].percentage += Number(split.percentage) || 0;
-                acc[id].amount += Number(split.amount) || 0;
-                return acc;
-              }, {})
-            );
+            // Usar helper para garantir unicidade
+            const uniqueSplits = aggregateSplits(splitDetails);
             
             const splitsToInsert = allInstallments.flatMap(installment => 
               uniqueSplits.map(split => ({
@@ -703,6 +725,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                 amount: split.amount / Number(form.installments)
               }))
             );
+
+            console.log('💾 [TRANSACTION MODAL] Total de splits únicos a inserir:', splitsToInsert.length);
 
             const { error: splitError } = await supabase
               .from('expense_splits')
@@ -804,28 +828,56 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           }
 
           if (willBeShared && splitDetails.length > 0) {
-            // Se está editando, deletar splits antigos primeiro
-            if (editingTransaction) {
-              const { error: deleteError } = await supabase
-                .from('expense_splits')
-                .delete()
-                .eq('expense_id', editingTransaction.id);
-              
-              if (deleteError) throw deleteError;
+            // SEMPRE deletar splits existentes primeiro (pode haver trigger que cria automaticamente)
+            console.log('🔍 [TRANSACTION MODAL] Verificando splits existentes para expense_id:', expense.id);
+            
+            const { data: existingSplits, error: checkError } = await supabase
+              .from('expense_splits')
+              .select('*')
+              .eq('expense_id', expense.id);
+            
+            if (checkError) {
+              console.error('⚠️ [TRANSACTION MODAL] Erro ao verificar splits existentes:', checkError);
+            } else {
+              console.log('📊 [TRANSACTION MODAL] Splits existentes encontrados:', existingSplits?.length || 0);
+              if (existingSplits && existingSplits.length > 0) {
+                console.log('🗑️ [TRANSACTION MODAL] Deletando splits existentes...');
+                const { error: deleteError } = await supabase
+                  .from('expense_splits')
+                  .delete()
+                  .eq('expense_id', expense.id);
+                
+                if (deleteError) {
+                  console.error('❌ [TRANSACTION MODAL] Erro ao deletar splits existentes:', deleteError);
+                  throw deleteError;
+                }
+                console.log('✅ [TRANSACTION MODAL] Splits existentes deletados');
+              }
             }
 
-            const splitsToInsert = splitDetails.map(split => ({
+            // Garantir unicidade por cost_center_id antes de inserir
+            const uniqueSplits = aggregateSplits(splitDetails);
+            const splitsToInsert = uniqueSplits.map(split => ({
               expense_id: expense.id,
               cost_center_id: split.cost_center_id,
               percentage: split.percentage,
               amount: split.amount
             }));
 
+            console.log('💾 [TRANSACTION MODAL] Inserindo splits únicos:', splitsToInsert.length);
+            console.log('📊 [TRANSACTION MODAL] Payload completo:', JSON.stringify(splitsToInsert, null, 2));
+
             const { error: splitError } = await supabase
               .from('expense_splits')
               .insert(splitsToInsert);
 
-            if (splitError) throw splitError;
+            if (splitError) {
+              console.error('❌ [TRANSACTION MODAL] Erro ao inserir splits:', splitError);
+              console.error('❌ [TRANSACTION MODAL] Payload que falhou:', JSON.stringify(splitsToInsert, null, 2));
+              throw splitError;
+            }
+            
+            console.log('✅ [TRANSACTION MODAL] Splits inseridos com sucesso');
           }
         }
       
