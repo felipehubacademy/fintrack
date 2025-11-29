@@ -180,8 +180,14 @@ class ZulAssistant {
     ]);
     const tokens = normalized.split(/\s+/).filter(Boolean).filter(t => !stopwords.has(t));
     if (tokens.length === 0) return cleaned.trim();
-    // Retornar até 3 palavras significativas (filtrando números isolados)
-    const meaningfulTokens = tokens.filter(t => !/^\d+$/.test(t)); // Remove números isolados
+    // Retornar até 3 palavras significativas (filtrando números isolados, MAS mantendo palavras curtas válidas)
+    const validShortWords = ['tv', 'pc', 'dvd', 'cd', 'hd', 'ssd', 'led', 'ar', 'vr'];
+    const meaningfulTokens = tokens.filter(t => {
+      // Remove apenas números isolados, mas mantém palavras curtas válidas
+      if (/^\d+$/.test(t)) return false; // Número isolado
+      if (validShortWords.includes(t.toLowerCase())) return true; // Palavra curta válida
+      return true; // Qualquer outra palavra
+    });
     if (meaningfulTokens.length === 0) return tokens.slice(0, 3).join(' '); // Fallback se tudo for número
     return meaningfulTokens.slice(0, 3).join(' ');
   }
@@ -2024,6 +2030,39 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       // Detectar primeira mensagem (histórico vazio ou muito antigo)
       const isFirstMessage = history.length === 0;
       
+      // 🚨 VALIDAÇÃO DE DESCRIÇÃO: Verificar se não é nonsense ANTES de montar system message
+      let descriptionIsValid = true;
+      if (collectedInfo.description) {
+        const desc = collectedInfo.description.toLowerCase();
+        
+        // Lista de padrões que indicam descrição inválida/nonsense
+        const invalidPatterns = [
+          /^r\$/,  // Começa com "R$"
+          /^r\$ /,  // "R$ algo"
+          /credito/,  // Contém "credito" (já extraído)
+          /debito/,  // Contém "debito"
+          /cartao/,  // Contém "cartao"
+          /latam|neon|roxinho|nubank|^c6$|hub|xp/,  // Nome de cartão
+          /^[a-z]{1,3}$/,  // Palavras muito curtas (1-3 letras) que não são comuns
+          /^\d+$/  // Só números
+        ];
+        
+        // Palavras de 1-3 letras que SÃO válidas (exceções)
+        const validShortWords = ['tv', 'pc', 'dvd', 'cd', 'hd', 'ssd', 'led', 'ar', 'vr'];
+        
+        for (const pattern of invalidPatterns) {
+          if (pattern.test(desc)) {
+            // Se for palavra curta, verificar se é válida
+            if (/^[a-z]{1,3}$/.test(desc) && validShortWords.includes(desc)) {
+              continue; // É válida, pular
+            }
+            descriptionIsValid = false;
+            console.log(`⚠️ [VALIDATION] Descrição "${collectedInfo.description}" parece inválida (match: ${pattern})`);
+            break;
+          }
+        }
+      }
+      
       // Adicionar contexto de informações coletadas ao system message
       let systemMessage = this.getConversationalInstructions(context);
       
@@ -2035,7 +2074,11 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       if (Object.keys(collectedInfo).length > 0) {
         systemMessage += `\n\n📝 INFORMAÇÕES JÁ COLETADAS NESTA CONVERSA:\n`;
         if (collectedInfo.amount) systemMessage += `- Valor: R$ ${collectedInfo.amount}\n`;
-        if (collectedInfo.description) systemMessage += `- Descrição: ${collectedInfo.description}\n`;
+        if (collectedInfo.description && descriptionIsValid) systemMessage += `- Descrição: ${collectedInfo.description}\n`;
+        if (collectedInfo.description && !descriptionIsValid) {
+          systemMessage += `- ⚠️ Descrição extraída parece INVÁLIDA: "${collectedInfo.description}"\n`;
+          systemMessage += `  → IGNORE esta descrição! PERGUNTE ao usuário: "O que você comprou?" ou "Qual foi a compra?"\n`;
+        }
         if (collectedInfo.payment_method) systemMessage += `- Pagamento: ${collectedInfo.payment_method}\n`;
         if (collectedInfo.responsible) systemMessage += `- Responsável: ${collectedInfo.responsible}\n`;
         if (collectedInfo.card) systemMessage += `- Cartão: ${collectedInfo.card}\n`;
@@ -2043,7 +2086,7 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
         
         const missing = [];
         if (!collectedInfo.amount) missing.push('valor');
-        if (!collectedInfo.description) missing.push('descrição');
+        if (!collectedInfo.description || !descriptionIsValid) missing.push('descrição');
         if (!collectedInfo.payment_method) missing.push('pagamento');
         if (!collectedInfo.responsible) missing.push('responsável');
         
@@ -2073,45 +2116,11 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       }
       console.log('💬 [GPT-4] Total de mensagens sendo enviadas ao GPT:', messages.length);
       
-      // 🚀 CRITICAL FIX: Forçar function_call quando todas as informações obrigatórias estiverem coletadas
-      // 🚨 VALIDAÇÃO: Verificar se descrição faz sentido (não é nonsense)
+      // 🚀 CRITICAL FIX: Forçar function_call quando todas as informações obrigatórias estiverem coletadas E descrição for válida
       const hasAllRequiredInfo = collectedInfo.amount && 
                                  collectedInfo.description && 
                                  collectedInfo.payment_method && 
                                  collectedInfo.responsible;
-      
-      // 🚨 VALIDAÇÃO DE DESCRIÇÃO: Verificar se não é nonsense
-      let descriptionIsValid = true;
-      if (collectedInfo.description) {
-        const desc = collectedInfo.description.toLowerCase();
-        
-        // Lista de padrões que indicam descrição inválida/nonsense
-        const invalidPatterns = [
-          /^r\$/,  // Começa com "R$"
-          /^r\$ /,  // "R$ algo"
-          /credito/,  // Contém "credito" (já extraído)
-          /debito/,  // Contém "debito"
-          /cartao/,  // Contém "cartao"
-          /latam/,  // Nome de cartão
-          /^[a-z]{1,3}$/,  // Palavras muito curtas (1-3 letras) que não são comuns
-          /^\d+$/  // Só números
-        ];
-        
-        // Palavras de 1-3 letras que SÃO válidas (exceções)
-        const validShortWords = ['tv', 'pc', 'dvd', 'cd', 'hd', 'ssd', 'led', 'ar', 'vr'];
-        
-        for (const pattern of invalidPatterns) {
-          if (pattern.test(desc)) {
-            // Se for palavra curta, verificar se é válida
-            if (/^[a-z]{1,3}$/.test(desc) && validShortWords.includes(desc)) {
-              continue; // É válida, pular
-            }
-            descriptionIsValid = false;
-            console.log(`⚠️ [VALIDATION] Descrição "${collectedInfo.description}" parece inválida (match: ${pattern})`);
-            break;
-          }
-        }
-      }
       
       const functionCallMode = (hasAllRequiredInfo && descriptionIsValid) ? { name: 'save_expense' } : 'auto';
       
