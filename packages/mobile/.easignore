@@ -1,0 +1,60 @@
+# EAS Build ignore file
+# Arquivos e pastas que não são necessários para o build
+
+# Dependências locais (serão instaladas durante o build)
+node_modules/
+
+# Build artifacts
+.expo/
+.expo-shared/
+dist/
+build/
+*.log
+
+# Arquivos de desenvolvimento
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testes
+coverage/
+.nyc_output/
+*.test.js
+*.test.ts
+*.test.tsx
+*.spec.js
+*.spec.ts
+*.spec.tsx
+__tests__/
+__mocks__/
+
+# Documentação
+*.md
+docs/
+*.md.md
+
+# Scripts de desenvolvimento
+scripts/generate-icon.js
+fix-react-duplication.sh
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Outros
+.DS_Store
+Thumbs.db
+*.pem
+*.key
+
+# Assets grandes que não são necessários (se houver)
+# packages/mobile/assets/logo_flat.svg (mantém os PNGs)
+

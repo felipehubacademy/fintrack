@@ -2,10 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js",
-  "/auth/callback": "pages/auth/callback.js",
-  "/login": "pages/login.js",
   "/org/[orgId]/user/[userId]/dashboard": "pages/org/[orgId]/user/[userId]/dashboard.js",
-  "/api/notifications/list": "pages/api/notifications/list.js",
-  "/org/[orgId]/user/[userId]/dashboard/transactions": "pages/org/[orgId]/user/[userId]/dashboard/transactions.js"
+  "/login": "pages/login.js",
+  "/api/notifications/list": "pages/api/notifications/list.js"
 }

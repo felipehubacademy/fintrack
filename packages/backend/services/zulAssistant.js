@@ -2042,13 +2042,34 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
           /credito/,  // Contém "credito" (já extraído)
           /debito/,  // Contém "debito"
           /cartao/,  // Contém "cartao"
-          /latam|neon|roxinho|nubank|^c6$|hub|xp/,  // Nome de cartão
-          /^[a-z]{1,3}$/,  // Palavras muito curtas (1-3 letras) que não são comuns
+          /latam|neon|roxinho|nubank|^c6$|hub|^xp$/,  // Nome de cartão
           /^\d+$/  // Só números
         ];
         
         // Palavras de 1-3 letras que SÃO válidas (exceções)
-        const validShortWords = ['tv', 'pc', 'dvd', 'cd', 'hd', 'ssd', 'led', 'ar', 'vr'];
+        const validShortWords = ['tv', 'pc', 'dvd', 'cd', 'hd', 'ssd', 'led', 'ar', 'vr', 'pao', 'pão'];
+        
+        // 🚨 NOVO: Detectar palavras que parecem ser erros de transcrição
+        // Palavras válidas comuns em português (whitelist parcial)
+        const commonWords = [
+          // Comida/bebida
+          'pao', 'pão', 'leite', 'cafe', 'café', 'agua', 'água', 'suco', 'refrigerante', 'cerveja', 'vinho',
+          // Lugares comuns
+          'mercado', 'farmacia', 'farmácia', 'padaria', 'açougue', 'acougue', 'restaurante', 'lanchonete', 'bar', 'cinema',
+          'posto', 'uber', 'taxi', 'salao', 'salão', 'escola', 'curso', 'hotel',
+          // Produtos
+          'roupa', 'sapato', 'tenis', 'tênis', 'livro', 'celular', 'notebook', 'mouse', 'teclado', 'fone', 'carregador',
+          // Serviços/contas
+          'luz', 'agua', 'água', 'internet', 'telefone', 'aluguel', 'condominio', 'condomínio', 'plano', 'netflix', 'spotify',
+          // Saúde/beleza
+          'remedio', 'remédio', 'consulta', 'exame', 'vacina', 'corte', 'barba', 'unha', 'manicure', 'pedicure',
+          // E-commerce
+          'shopee', 'amazon', 'shein', 'aliexpress', 'magalu',
+          // Transporte/combustível
+          'gasolina', 'alcool', 'álcool', 'etanol', 'diesel', 'gas', 'gás',
+          // Outros
+          'presente', 'doacao', 'doação', 'imposto', 'taxa', 'multa', 'cartorio', 'cartório'
+        ];
         
         for (const pattern of invalidPatterns) {
           if (pattern.test(desc)) {
@@ -2059,6 +2080,32 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
             descriptionIsValid = false;
             console.log(`⚠️ [VALIDATION] Descrição "${collectedInfo.description}" parece inválida (match: ${pattern})`);
             break;
+          }
+        }
+        
+        // 🚨 NOVO: Se não foi invalidada por padrão, verificar se é palavra comum OU tem padrão válido
+        if (descriptionIsValid) {
+          const words = desc.split(/\s+/);
+          const firstWord = words[0];
+          
+          // Se palavra única e curta (≤ 5 letras) e não está na lista de comuns, é suspeita
+          if (words.length === 1 && firstWord.length <= 5 && !commonWords.includes(firstWord)) {
+            // Verificar se tem vogais razoáveis
+            const vowels = (firstWord.match(/[aeiou]/g) || []).length;
+            const consonants = (firstWord.match(/[bcdfghjklmnpqrstvwxyz]/g) || []).length;
+            
+            // Palavras com proporção estranha de vogais/consoantes são suspeitas
+            // Ex: "solg" (1 vogal, 3 consoantes) é estranho
+            const vowelRatio = vowels / firstWord.length;
+            
+            // Palavra suspeita se:
+            // 1. Sem vogais, OU
+            // 2. Menos de 30% de vogais E tem 4-5 letras (palavras curtas precisam mais vogais)
+            // 3. Não está na whitelist de exceções (TV, PC, etc)
+            if (vowels === 0 || (vowelRatio < 0.3 && firstWord.length >= 4 && !validShortWords.includes(firstWord))) {
+              descriptionIsValid = false;
+              console.log(`⚠️ [VALIDATION] Descrição "${collectedInfo.description}" parece estranha (vogais: ${vowels}/${firstWord.length}, ratio: ${(vowelRatio*100).toFixed(0)}%)`);
+            }
           }
         }
       }
