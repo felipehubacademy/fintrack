@@ -173,8 +173,10 @@ class ZulAssistant {
     const stopwords = new Set([
       'comprei','paguei','gastei','foi','deu','peguei','compre','comprar','pagando','pagamento',
       'compramos','pagamos','gastamos','fizemos','fomos','compraram','pagaram','gastaram', // verbos conjugados
+      'lancar','lançar','lancei','lançou','lancamos','lançamos','despesa','despesas','gasto','gastos', // palavras de comando
+      'credito','crédito','debito','débito','dinheiro','cartao','cartão', // formas de pagamento (já extraídas)
       'um','uma','uns','umas','o','a','os','as',
-      'no','na','nos','nas','num','numa','em','de','do','da','dos','das','para','pra','pro','pela','pelo','por','ao','à','aos','às'
+      'no','na','nos','nas','num','numa','em','de','do','da','dos','das','para','pra','pro','pela','pelo','por','ao','à','aos','às','com','nome'
     ]);
     const tokens = normalized.split(/\s+/).filter(Boolean).filter(t => !stopwords.has(t));
     if (tokens.length === 0) return cleaned.trim();
@@ -2072,15 +2074,51 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       console.log('💬 [GPT-4] Total de mensagens sendo enviadas ao GPT:', messages.length);
       
       // 🚀 CRITICAL FIX: Forçar function_call quando todas as informações obrigatórias estiverem coletadas
+      // 🚨 VALIDAÇÃO: Verificar se descrição faz sentido (não é nonsense)
       const hasAllRequiredInfo = collectedInfo.amount && 
                                  collectedInfo.description && 
                                  collectedInfo.payment_method && 
                                  collectedInfo.responsible;
       
-      const functionCallMode = hasAllRequiredInfo ? { name: 'save_expense' } : 'auto';
+      // 🚨 VALIDAÇÃO DE DESCRIÇÃO: Verificar se não é nonsense
+      let descriptionIsValid = true;
+      if (collectedInfo.description) {
+        const desc = collectedInfo.description.toLowerCase();
+        
+        // Lista de padrões que indicam descrição inválida/nonsense
+        const invalidPatterns = [
+          /^r\$/,  // Começa com "R$"
+          /^r\$ /,  // "R$ algo"
+          /credito/,  // Contém "credito" (já extraído)
+          /debito/,  // Contém "debito"
+          /cartao/,  // Contém "cartao"
+          /latam/,  // Nome de cartão
+          /^[a-z]{1,3}$/,  // Palavras muito curtas (1-3 letras) que não são comuns
+          /^\d+$/  // Só números
+        ];
+        
+        // Palavras de 1-3 letras que SÃO válidas (exceções)
+        const validShortWords = ['tv', 'pc', 'dvd', 'cd', 'hd', 'ssd', 'led', 'ar', 'vr'];
+        
+        for (const pattern of invalidPatterns) {
+          if (pattern.test(desc)) {
+            // Se for palavra curta, verificar se é válida
+            if (/^[a-z]{1,3}$/.test(desc) && validShortWords.includes(desc)) {
+              continue; // É válida, pular
+            }
+            descriptionIsValid = false;
+            console.log(`⚠️ [VALIDATION] Descrição "${collectedInfo.description}" parece inválida (match: ${pattern})`);
+            break;
+          }
+        }
+      }
       
-      if (hasAllRequiredInfo) {
-        console.log('🎯 [GPT-4] Todas as informações coletadas! Forçando chamada de save_expense');
+      const functionCallMode = (hasAllRequiredInfo && descriptionIsValid) ? { name: 'save_expense' } : 'auto';
+      
+      if (hasAllRequiredInfo && descriptionIsValid) {
+        console.log('🎯 [GPT-4] Todas as informações coletadas e válidas! Forçando chamada de save_expense');
+      } else if (hasAllRequiredInfo && !descriptionIsValid) {
+        console.log(`⚠️ [GPT-4] Descrição "${collectedInfo.description}" parece inválida. GPT deve perguntar ao usuário.`);
       }
       
       // Chamar GPT-4 com function calling
