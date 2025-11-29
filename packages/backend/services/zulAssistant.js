@@ -2030,83 +2030,46 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
       // Detectar primeira mensagem (histórico vazio ou muito antigo)
       const isFirstMessage = history.length === 0;
       
-      // 🚨 VALIDAÇÃO DE DESCRIÇÃO: Verificar se não é nonsense ANTES de montar system message
+      // 🚨 VALIDAÇÃO INTELIGENTE: Usar GPT para validar se a descrição faz sentido
       let descriptionIsValid = true;
       if (collectedInfo.description) {
-        const desc = collectedInfo.description.toLowerCase();
-        
-        // Lista de padrões que indicam descrição inválida/nonsense
-        const invalidPatterns = [
-          /^r\$/,  // Começa com "R$"
-          /^r\$ /,  // "R$ algo"
-          /credito/,  // Contém "credito" (já extraído)
-          /debito/,  // Contém "debito"
-          /cartao/,  // Contém "cartao"
-          /latam|neon|roxinho|nubank|^c6$|hub|^xp$/,  // Nome de cartão
-          /^\d+$/  // Só números
-        ];
-        
-        // Palavras de 1-3 letras que SÃO válidas (exceções)
-        const validShortWords = ['tv', 'pc', 'dvd', 'cd', 'hd', 'ssd', 'led', 'ar', 'vr', 'pao', 'pão'];
-        
-        // 🚨 NOVO: Detectar palavras que parecem ser erros de transcrição
-        // Palavras válidas comuns em português (whitelist parcial)
-        const commonWords = [
-          // Comida/bebida
-          'pao', 'pão', 'leite', 'cafe', 'café', 'agua', 'água', 'suco', 'refrigerante', 'cerveja', 'vinho',
-          // Lugares comuns
-          'mercado', 'farmacia', 'farmácia', 'padaria', 'açougue', 'acougue', 'restaurante', 'lanchonete', 'bar', 'cinema',
-          'posto', 'uber', 'taxi', 'salao', 'salão', 'escola', 'curso', 'hotel',
-          // Produtos
-          'roupa', 'sapato', 'tenis', 'tênis', 'livro', 'celular', 'notebook', 'mouse', 'teclado', 'fone', 'carregador',
-          // Serviços/contas
-          'luz', 'agua', 'água', 'internet', 'telefone', 'aluguel', 'condominio', 'condomínio', 'plano', 'netflix', 'spotify',
-          // Saúde/beleza
-          'remedio', 'remédio', 'consulta', 'exame', 'vacina', 'corte', 'barba', 'unha', 'manicure', 'pedicure',
-          // E-commerce
-          'shopee', 'amazon', 'shein', 'aliexpress', 'magalu',
-          // Transporte/combustível
-          'gasolina', 'alcool', 'álcool', 'etanol', 'diesel', 'gas', 'gás',
-          // Outros
-          'presente', 'doacao', 'doação', 'imposto', 'taxa', 'multa', 'cartorio', 'cartório'
-        ];
-        
-        for (const pattern of invalidPatterns) {
-          if (pattern.test(desc)) {
-            // Se for palavra curta, verificar se é válida
-            if (/^[a-z]{1,3}$/.test(desc) && validShortWords.includes(desc)) {
-              continue; // É válida, pular
-            }
-            descriptionIsValid = false;
-            console.log(`⚠️ [VALIDATION] Descrição "${collectedInfo.description}" parece inválida (match: ${pattern})`);
-            break;
-          }
-        }
-        
-        // 🚨 NOVO: Se não foi invalidada por padrão, verificar se é palavra comum OU tem padrão válido
-        if (descriptionIsValid) {
-          const words = desc.split(/\s+/);
-          const firstWord = words[0];
+        try {
+          console.log(`🤖 [GPT-VALIDATION] Validando descrição: "${collectedInfo.description}"`);
           
-          // Se palavra única e curta (≤ 5 letras) e não está na lista de comuns, é suspeita
-          if (words.length === 1 && firstWord.length <= 5 && !commonWords.includes(firstWord)) {
-            // Verificar se tem vogais razoáveis
-            const vowels = (firstWord.match(/[aeiou]/g) || []).length;
-            const consonants = (firstWord.match(/[bcdfghjklmnpqrstvwxyz]/g) || []).length;
-            
-            // Palavras com proporção estranha de vogais/consoantes são suspeitas
-            // Ex: "solg" (1 vogal, 3 consoantes) é estranho
-            const vowelRatio = vowels / firstWord.length;
-            
-            // Palavra suspeita se:
-            // 1. Sem vogais, OU
-            // 2. Menos de 30% de vogais E tem 4-5 letras (palavras curtas precisam mais vogais)
-            // 3. Não está na whitelist de exceções (TV, PC, etc)
-            if (vowels === 0 || (vowelRatio < 0.3 && firstWord.length >= 4 && !validShortWords.includes(firstWord))) {
-              descriptionIsValid = false;
-              console.log(`⚠️ [VALIDATION] Descrição "${collectedInfo.description}" parece estranha (vogais: ${vowels}/${firstWord.length}, ratio: ${(vowelRatio*100).toFixed(0)}%)`);
-            }
-          }
+          const validationPrompt = `Você é um validador de texto em português. Analise se a palavra/frase abaixo é uma descrição válida de despesa em português:
+
+"${collectedInfo.description}"
+
+Considere VÁLIDO se:
+- É uma palavra ou frase que existe em português
+- Faz sentido como nome de lugar, produto, serviço ou categoria de gasto
+- É uma sigla conhecida (TV, PC, DVD, etc)
+- É um nome de marca/empresa (mesmo estrangeiro: Uber, Netflix, etc)
+
+Considere INVÁLIDO se:
+- Não é uma palavra real em português
+- Parece ser erro de transcrição de áudio
+- Contém apenas métodos de pagamento (pix, crédito, débito)
+- Contém apenas nomes de cartões (Latam, C6, Neon, etc)
+- Começa com "R$" ou contém apenas valores monetários
+
+Responda APENAS com uma palavra: "VÁLIDO" ou "INVÁLIDO"`;
+
+          const validationResponse = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: validationPrompt }],
+            temperature: 0, // Determinístico
+            max_tokens: 10
+          });
+          
+          const validation = validationResponse.choices[0].message.content.trim().toUpperCase();
+          descriptionIsValid = validation === 'VÁLIDO';
+          
+          console.log(`🤖 [GPT-VALIDATION] Resultado: ${validation} (${descriptionIsValid ? '✅' : '❌'})`);
+        } catch (error) {
+          console.error('❌ [GPT-VALIDATION] Erro ao validar:', error);
+          // Em caso de erro, assumir válido para não bloquear o fluxo
+          descriptionIsValid = true;
         }
       }
       
