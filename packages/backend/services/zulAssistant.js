@@ -197,6 +197,120 @@ class ZulAssistant {
   }
 
   /**
+   * Detectar intenção: expense (despesa já paga) vs bill (conta a pagar futura) vs ambiguous
+   * 
+   * BILL se:
+   * - Contém data FUTURA explícita (dia 15, 12/12, vence dia X)
+   * - Contém "programar", "agendar", "vence", "vencimento"
+   * - Contém "tenho que pagar", "preciso pagar"
+   * 
+   * EXPENSE se:
+   * - Contém verbo PASSADO ("paguei", "gastei", "comprei")
+   * - Menciona CARTÃO (Latam, C6, etc) = pagamento realizado
+   * - Menciona forma de pagamento (pix, débito, crédito)
+   * 
+   * AMBIGUOUS se não há pistas claras
+   */
+  detectIntentType(text) {
+    const normalized = text.toLowerCase();
+    
+    // Pistas fortes de BILL (conta a pagar futura)
+    const billIndicators = {
+      // Palavras-chave de agendamento
+      scheduling: /\b(programar|agendar|agenda|lembrar|lembrete)\b/,
+      // Palavras de vencimento
+      dueDate: /\b(vence|vencimento|vencer|prazo)\b/,
+      // Intenção futura
+      futureIntent: /\b(tenho que|preciso|devo|vai vencer|para pagar)\b/,
+      // Data futura explícita (dia X, dd/mm) - peso maior pois é forte indicador
+      explicitDate: /\b(dia\s+\d{1,2}|\d{1,2}\/\d{1,2})\b/
+    };
+    
+    // Pistas fortes de EXPENSE (despesa já realizada)
+    const expenseIndicators = {
+      // Verbos no passado
+      pastVerbs: /\b(paguei|gastei|comprei|fiz|foi|deu|peguei)\b/,
+      // Verbos compartilhados no passado
+      sharedPastVerbs: /\b(pagamos|gastamos|compramos|fizemos)\b/,
+      // Cartão mencionado = já pagou
+      cardMentioned: /\b(latam|c6|neon|roxinho|hub|xp|mercado\s?pago|nubank|mp)\b/i,
+      // Forma de pagamento = já pagou
+      paymentMethod: /\b(pix|débito|debito|crédito|credito|dinheiro|cash)\b/,
+      // Parcelas = já pagou
+      installments: /\b(\d+\s*x|à vista|a vista|parcelado)\b/i
+    };
+    
+    // Contar pistas
+    let billScore = 0;
+    let expenseScore = 0;
+    const reasons = { bill: [], expense: [] };
+    
+    // Avaliar pistas de BILL
+    if (billIndicators.scheduling.test(normalized)) {
+      billScore += 3;
+      reasons.bill.push('palavra de agendamento');
+    }
+    if (billIndicators.dueDate.test(normalized)) {
+      billScore += 3;
+      reasons.bill.push('palavra de vencimento');
+    }
+    if (billIndicators.futureIntent.test(normalized)) {
+      billScore += 2;
+      reasons.bill.push('intenção futura');
+    }
+    if (billIndicators.explicitDate.test(normalized)) {
+      billScore += 3; // Data explícita é forte indicador de bill
+      reasons.bill.push('data explícita');
+    }
+    
+    // Avaliar pistas de EXPENSE
+    if (expenseIndicators.pastVerbs.test(normalized)) {
+      expenseScore += 3;
+      reasons.expense.push('verbo passado');
+    }
+    if (expenseIndicators.sharedPastVerbs.test(normalized)) {
+      expenseScore += 3;
+      reasons.expense.push('verbo passado compartilhado');
+    }
+    if (expenseIndicators.cardMentioned.test(normalized)) {
+      expenseScore += 2;
+      reasons.expense.push('cartão mencionado');
+    }
+    if (expenseIndicators.paymentMethod.test(normalized)) {
+      expenseScore += 2;
+      reasons.expense.push('forma de pagamento');
+    }
+    if (expenseIndicators.installments.test(normalized)) {
+      expenseScore += 1;
+      reasons.expense.push('parcelas');
+    }
+    
+    // Determinar intenção
+    let intent = 'ambiguous';
+    let confidence = 'low';
+    
+    if (billScore >= 3 && billScore > expenseScore) {
+      intent = 'bill';
+      confidence = billScore >= 5 ? 'high' : 'medium';
+    } else if (expenseScore >= 2 && expenseScore > billScore) {
+      intent = 'expense';
+      confidence = expenseScore >= 4 ? 'high' : 'medium';
+    } else if (billScore > 0 && expenseScore > 0) {
+      // Conflito - ambíguo
+      intent = 'ambiguous';
+      confidence = 'low';
+    }
+    
+    const result = { intent, confidence, billScore, expenseScore, reasons };
+    console.log(`🎯 [INTENT] Detectado: ${intent} (confiança: ${confidence})`);
+    console.log(`   📊 Scores: bill=${billScore}, expense=${expenseScore}`);
+    if (reasons.bill.length > 0) console.log(`   📅 Pistas BILL: ${reasons.bill.join(', ')}`);
+    if (reasons.expense.length > 0) console.log(`   💰 Pistas EXPENSE: ${reasons.expense.join(', ')}`);
+    
+    return result;
+  }
+
+  /**
    * Escolher variação aleatória de forma mais determinística e variada
    * Usa timestamp + string para criar um "seed" variado a cada chamada
    */
@@ -2089,7 +2203,24 @@ Responda APENAS com uma palavra: "VÁLIDO" ou "INVÁLIDO"`;
       
       // Se tiver informações coletadas, dizer ao GPT para verificar
       if (Object.keys(collectedInfo).length > 0) {
-        systemMessage += `\n\n📝 INFORMAÇÕES JÁ COLETADAS NESTA CONVERSA:\n`;
+        // 🎯 INTENÇÃO DETECTADA: expense vs bill vs ambiguous
+        const intent = collectedInfo.detectedIntent || 'expense';
+        const intentConfidence = collectedInfo.intentConfidence || 'low';
+        
+        if (intent === 'ambiguous') {
+          systemMessage += `\n\n⚠️ INTENÇÃO AMBÍGUA DETECTADA!`;
+          systemMessage += `\nNão está claro se o usuário quer registrar uma DESPESA (já paga) ou uma CONTA A PAGAR (futura).`;
+          systemMessage += `\nPERGUNTE ao usuário: "Você já pagou essa conta ou quer programar o pagamento para depois?"`;
+          systemMessage += `\nNÃO chame nenhuma função até esclarecer!\n`;
+        } else if (intent === 'bill') {
+          systemMessage += `\n\n📅 INTENÇÃO DETECTADA: CONTA A PAGAR (bill) - confiança: ${intentConfidence}`;
+          systemMessage += `\nO usuário quer PROGRAMAR um pagamento futuro. Use save_bill (não save_expense).\n`;
+        } else {
+          systemMessage += `\n\n💰 INTENÇÃO DETECTADA: DESPESA (expense) - confiança: ${intentConfidence}`;
+          systemMessage += `\nO usuário quer registrar uma despesa já realizada. Use save_expense.\n`;
+        }
+        
+        systemMessage += `\n📝 INFORMAÇÕES JÁ COLETADAS NESTA CONVERSA:\n`;
         if (collectedInfo.amount) systemMessage += `- Valor: R$ ${collectedInfo.amount}\n`;
         if (collectedInfo.description && descriptionIsValid) systemMessage += `- Descrição: ${collectedInfo.description}\n`;
         if (collectedInfo.description && !descriptionIsValid) {
@@ -2100,17 +2231,29 @@ Responda APENAS com uma palavra: "VÁLIDO" ou "INVÁLIDO"`;
         if (collectedInfo.responsible) systemMessage += `- Responsável: ${collectedInfo.responsible}\n`;
         if (collectedInfo.card) systemMessage += `- Cartão: ${collectedInfo.card}\n`;
         if (collectedInfo.installments) systemMessage += `- Parcelas: ${collectedInfo.installments}\n`;
+        if (collectedInfo.dueDate) systemMessage += `- Data vencimento: ${collectedInfo.dueDate}\n`;
         
+        // Campos obrigatórios dependem da intenção
         const missing = [];
         if (!collectedInfo.amount) missing.push('valor');
         if (!collectedInfo.description || !descriptionIsValid) missing.push('descrição');
-        if (!collectedInfo.payment_method) missing.push('pagamento');
-        if (!collectedInfo.responsible) missing.push('responsável');
         
-        if (missing.length > 0) {
+        if (intent === 'bill') {
+          // Bill: precisa de data de vencimento
+          if (!collectedInfo.dueDate) missing.push('data de vencimento');
+        } else if (intent === 'expense') {
+          // Expense: precisa de pagamento e responsável
+          if (!collectedInfo.payment_method) missing.push('pagamento');
+          if (!collectedInfo.responsible) missing.push('responsável');
+        }
+        
+        if (intent === 'ambiguous') {
+          systemMessage += `\n⚠️ PRIMEIRO esclareça a intenção antes de pedir outras informações!`;
+        } else if (missing.length > 0) {
           systemMessage += `\n⚠️ FALTA: ${missing.join(', ')}`;
         } else {
-          systemMessage += `\n✅ TUDO COLETADO! Chame save_expense AGORA!`;
+          const functionToCall = intent === 'bill' ? 'save_bill' : 'save_expense';
+          systemMessage += `\n✅ TUDO COLETADO! Chame ${functionToCall} AGORA!`;
         }
       }
       
@@ -2134,15 +2277,35 @@ Responda APENAS com uma palavra: "VÁLIDO" ou "INVÁLIDO"`;
       console.log('💬 [GPT-4] Total de mensagens sendo enviadas ao GPT:', messages.length);
       
       // 🚀 CRITICAL FIX: Forçar function_call quando todas as informações obrigatórias estiverem coletadas E descrição for válida
-      const hasAllRequiredInfo = collectedInfo.amount && 
-                                 collectedInfo.description && 
-                                 collectedInfo.payment_method && 
-                                 collectedInfo.responsible;
+      const intent = collectedInfo.detectedIntent || 'expense';
       
-      const functionCallMode = (hasAllRequiredInfo && descriptionIsValid) ? { name: 'save_expense' } : 'auto';
+      // Verificar campos obrigatórios baseado na intenção
+      let hasAllRequiredInfo = false;
+      let functionToForce = null;
       
-      if (hasAllRequiredInfo && descriptionIsValid) {
-        console.log('🎯 [GPT-4] Todas as informações coletadas e válidas! Forçando chamada de save_expense');
+      if (intent === 'bill') {
+        // Bill: precisa de valor, descrição e data de vencimento
+        hasAllRequiredInfo = collectedInfo.amount && 
+                            collectedInfo.description && 
+                            collectedInfo.dueDate;
+        functionToForce = 'save_bill';
+      } else if (intent === 'expense') {
+        // Expense: precisa de valor, descrição, pagamento e responsável
+        hasAllRequiredInfo = collectedInfo.amount && 
+                            collectedInfo.description && 
+                            collectedInfo.payment_method && 
+                            collectedInfo.responsible;
+        functionToForce = 'save_expense';
+      }
+      // Se ambíguo, não forçar nada
+      
+      const shouldForceFunction = hasAllRequiredInfo && descriptionIsValid && intent !== 'ambiguous';
+      const functionCallMode = shouldForceFunction ? { name: functionToForce } : 'auto';
+      
+      if (shouldForceFunction) {
+        console.log(`🎯 [GPT-4] Todas as informações coletadas! Forçando chamada de ${functionToForce}`);
+      } else if (intent === 'ambiguous') {
+        console.log('⚠️ [GPT-4] Intenção ambígua. GPT deve perguntar ao usuário.');
       } else if (hasAllRequiredInfo && !descriptionIsValid) {
         console.log(`⚠️ [GPT-4] Descrição "${collectedInfo.description}" parece inválida. GPT deve perguntar ao usuário.`);
       }
@@ -2345,6 +2508,25 @@ Responda APENAS com uma palavra: "VÁLIDO" ou "INVÁLIDO"`;
     if (info.card && !info.payment_method) {
       info.payment_method = 'crédito';
       console.log(`  💳 Pagamento inferido como crédito (cartão detectado: ${info.card})`);
+    }
+    
+    // 🎯 DETECTAR INTENÇÃO: expense vs bill vs ambiguous
+    const intentResult = this.detectIntentType(conversationText);
+    info.detectedIntent = intentResult.intent;
+    info.intentConfidence = intentResult.confidence;
+    info.intentReasons = intentResult.reasons;
+    
+    // Extrair data de vencimento se for bill
+    if (intentResult.intent === 'bill' || intentResult.intent === 'ambiguous') {
+      // Tentar extrair data: "dia 15", "15/12", "vence dia 10"
+      const dueDateMatch = conversationText.match(/(?:dia|vence|vencimento)\s*(\d{1,2})(?:\/(\d{1,2}))?/i) ||
+                          conversationText.match(/(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?/);
+      if (dueDateMatch) {
+        const day = dueDateMatch[1];
+        const month = dueDateMatch[2] || null;
+        info.dueDate = month ? `${day}/${month}` : `dia ${day}`;
+        console.log(`  📅 Data de vencimento detectada: ${info.dueDate}`);
+      }
     }
     
     return info;
