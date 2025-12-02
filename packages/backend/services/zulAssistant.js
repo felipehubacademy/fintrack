@@ -145,6 +145,9 @@ class ZulAssistant {
     cleaned = cleaned.replace(/\b(latam|c6|neon|roxinho|hub|xp|mercado\s?pago|nubank)\b/gi, ''); // Remove nomes de cartões
     cleaned = cleaned.replace(/\b\d+\s*x\b/gi, ''); // Remove "2x", "3x"
     cleaned = cleaned.replace(/\b(à vista|a vista)\b/gi, ''); // Remove "à vista"
+    // 🔧 FIX: Remover datas no formato dd/mm ou dia N (para bills)
+    cleaned = cleaned.replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, ''); // Remove "15/12", "15/12/2025"
+    cleaned = cleaned.replace(/\b(dia|vence|vencimento)\s*\d{1,2}\b/gi, ''); // Remove "dia 15", "vence 10"
     cleaned = cleaned.replace(/\s+/g, ' ').trim(); // Normalizar espaços
     
     // Remover números no início APENAS se for padrão "NÚMERO + palavra única" e número >= 20
@@ -174,6 +177,7 @@ class ZulAssistant {
       'comprei','paguei','gastei','foi','deu','peguei','compre','comprar','pagando','pagamento',
       'compramos','pagamos','gastamos','fizemos','fomos','compraram','pagaram','gastaram', // verbos conjugados
       'lancar','lançar','lancei','lançou','lancamos','lançamos','despesa','despesas','gasto','gastos', // palavras de comando
+      'programar','agendar','pgto','conta','contas','pagar','vencer','vence','vencendo', // comandos de bills/contas
       'credito','crédito','debito','débito','dinheiro','cartao','cartão', // formas de pagamento (já extraídas)
       'um','uma','uns','umas','o','a','os','as',
       'no','na','nos','nas','num','numa','em','de','do','da','dos','das','para','pra','pro','pela','pelo','por','ao','à','aos','às','com','nome'
@@ -2036,7 +2040,7 @@ Seja natural mas RIGOROSO. Melhor perguntar do que salvar errado.`;
         try {
           console.log(`🤖 [GPT-VALIDATION] Validando descrição: "${collectedInfo.description}"`);
           
-          const validationPrompt = `Você é um validador de texto em português. Analise se a palavra/frase abaixo é uma descrição válida de despesa em português:
+          const validationPrompt = `Você é um validador de texto em português. Analise se a palavra/frase abaixo é uma descrição válida de despesa ou conta a pagar em português:
 
 "${collectedInfo.description}"
 
@@ -2045,10 +2049,13 @@ Considere VÁLIDO se:
 - Faz sentido como nome de lugar, produto, serviço ou categoria de gasto
 - É uma sigla conhecida (TV, PC, DVD, etc)
 - É um nome de marca/empresa (mesmo estrangeiro: Uber, Netflix, etc)
+- É uma operadora de telefonia/internet (Claro, Vivo, Tim, Oi, NET, Sky, etc)
+- É um serviço/empresa de utilidades (CPFL, Enel, Sabesp, Cemig, etc)
+- É um tipo de conta (aluguel, condomínio, IPTU, IPVA, etc)
 
 Considere INVÁLIDO se:
-- Não é uma palavra real em português
-- Parece ser erro de transcrição de áudio
+- Não é uma palavra real em português ou marca conhecida
+- Parece ser erro de transcrição de áudio (palavras sem sentido como "Solg", "Xpto")
 - Contém apenas métodos de pagamento (pix, crédito, débito)
 - Contém apenas nomes de cartões (Latam, C6, Neon, etc)
 - Começa com "R$" ou contém apenas valores monetários
