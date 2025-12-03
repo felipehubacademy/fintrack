@@ -16,14 +16,24 @@ export default async function handler(req, res) {
 
     console.log('💾 Saving Belvo link:', link_id);
 
-    // Check if link already exists
+    // Check if link already exists (including status)
     const { data: existing } = await supabase
       .from('belvo_links')
-      .select('id')
+      .select('id, status')
       .eq('link_id', link_id)
       .single();
 
     if (existing) {
+      // Don't reactivate deleted links - user must explicitly reconnect
+      if (existing.status === 'deleted') {
+        console.log('⚠️  Link was previously deleted, not reactivating. User must reconnect explicitly.');
+        return res.status(400).json({
+          success: false,
+          error: 'Este link foi desconectado anteriormente. Por favor, conecte novamente através do widget Belvo.',
+          requires_reconnect: true
+        });
+      }
+
       console.log('Link already exists, updating status');
       const { error: updateError } = await supabase
         .from('belvo_links')

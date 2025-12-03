@@ -54,6 +54,24 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Link not found' });
     }
 
+    // Check if link is deleted - ignore webhooks for deleted links
+    if (belvoLink.status === 'deleted') {
+      console.log('⏭️  Link is deleted, ignoring webhook:', link_id);
+      // Mark webhook as processed to prevent retries, but don't process it
+      await supabase
+        .from('belvo_webhooks_processed')
+        .insert({
+          webhook_id,
+          event_type: webhook_type,
+          link_id,
+          payload: req.body
+        });
+      return res.status(200).json({ 
+        success: true,
+        message: 'Webhook ignored - link is deleted' 
+      });
+    }
+
     // Process webhook based on type
     let result;
     switch (webhook_type) {
@@ -90,14 +108,17 @@ export default async function handler(req, res) {
         payload: req.body
       });
 
-    // Update link sync time
-    await supabase
-      .from('belvo_links')
-      .update({ 
-        last_sync_at: new Date().toISOString(),
-        status: 'synced'
-      })
-      .eq('link_id', link_id);
+    // Update link sync time (only if not deleted)
+    // Don't change status if link is deleted - preserve deletion
+    if (belvoLink.status !== 'deleted') {
+      await supabase
+        .from('belvo_links')
+        .update({ 
+          last_sync_at: new Date().toISOString(),
+          status: 'synced'
+        })
+        .eq('link_id', link_id);
+    }
 
     console.log('✅ Webhook processed successfully');
 
@@ -199,6 +220,12 @@ async function saveAccounts(belvoLink, accounts) {
 
   if (!accounts || accounts.length === 0) {
     console.log('⚠️ No accounts to save');
+    return 0;
+  }
+
+  // Don't process accounts if link is deleted
+  if (belvoLink.status === 'deleted') {
+    console.log('⏭️  Link is deleted, skipping account processing');
     return 0;
   }
 

@@ -45,6 +45,14 @@ class BelvoWebhookProcessor {
         throw new Error(`Link ${link} not found`);
       }
 
+      // Check if link is deleted - ignore webhooks for deleted links
+      if (linkData.status === 'deleted') {
+        console.log(`⏭️  Link ${link} is deleted, ignoring webhook`);
+        // Mark webhook as processed to prevent retries, but don't process it
+        await this.markAsProcessed(webhook_id, webhook_type, link, webhook);
+        return { success: true, message: 'Webhook ignored - link is deleted' };
+      }
+
       // 3. Process based on event type
       let result;
       switch (webhook_type) {
@@ -138,6 +146,19 @@ class BelvoWebhookProcessor {
    * @param {string} linkId 
    */
   async updateLinkSyncTime(linkId) {
+    // Get current link status to avoid reactivating deleted links
+    const { data: linkData } = await this.supabase
+      .from('belvo_links')
+      .select('status')
+      .eq('link_id', linkId)
+      .single();
+
+    // Don't update status if link is deleted - preserve deletion
+    if (linkData && linkData.status === 'deleted') {
+      console.log(`⏭️  Link ${linkId} is deleted, skipping status update`);
+      return;
+    }
+
     await this.supabase
       .from('belvo_links')
       .update({ 
@@ -213,6 +234,12 @@ class BelvoWebhookProcessor {
    * @returns {Promise<object>}
    */
   async processAccounts(accounts, linkData) {
+    // Don't process accounts if link is deleted
+    if (linkData.status === 'deleted') {
+      console.log(`⏭️  Link ${linkData.link_id} is deleted, skipping account processing`);
+      return { success: true, created: 0, updated: 0, message: 'Link is deleted' };
+    }
+
     let created = 0;
     let updated = 0;
 
