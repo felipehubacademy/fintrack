@@ -135,7 +135,16 @@ export default function BudgetWizard({
 
   const handleIncomeChange = (event) => {
     const raw = event.target.value;
-    const cleaned = raw.replace(/[^\d,.-]/g, '');
+    // Manter apenas números e uma vírgula, limitando a 2 casas decimais
+    let cleaned = raw.replace(/[^\d,]/g, '');
+
+    const commaIndex = cleaned.indexOf(',');
+    if (commaIndex !== -1) {
+      const beforeComma = cleaned.substring(0, commaIndex);
+      const afterComma = cleaned.substring(commaIndex + 1).replace(/,/g, '').substring(0, 2);
+      cleaned = beforeComma + (afterComma ? ',' + afterComma : '');
+    }
+
     setMonthlyIncome(cleaned);
     setAutoRecalculate(true);
   };
@@ -231,13 +240,24 @@ export default function BudgetWizard({
     
     if (macroCategories.length === 0 || macroTotal === 0) return;
     
-    const amountPerCategory = macroTotal / macroCategories.length;
+    const amountPerCategory = Math.round((macroTotal / macroCategories.length) * 100) / 100;
+    const totalRounded = amountPerCategory * macroCategories.length;
+    const difference = Math.round((macroTotal - totalRounded) * 100) / 100;
     
-    setDistributions(prev => prev.map(dist => 
-      dist.macro_group === macroKey 
-        ? { ...dist, amount: amountPerCategory, percentage: (amountPerCategory / income) * 100 }
-        : dist
-    ));
+    setDistributions(prev => prev.map(dist => {
+      if (dist.macro_group !== macroKey) return dist;
+      // índice da categoria dentro do macro
+      const macroIndex = macroCategories.findIndex((c) => c.categoryId === dist.categoryId);
+      const finalAmount = macroIndex === 0
+        ? Math.round((amountPerCategory + difference) * 100) / 100
+        : amountPerCategory;
+
+      return {
+        ...dist,
+        amount: finalAmount,
+        percentage: (finalAmount / income) * 100
+      };
+    }));
   };
 
   const handleCopyPreviousPlan = async () => {
