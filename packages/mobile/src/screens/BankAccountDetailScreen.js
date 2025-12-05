@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -23,6 +23,10 @@ import BankTransactionsModal from '../components/financial/BankTransactionsModal
 import { BankAccountFormModal } from '../components/financial/BankAccountFormModal';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { useToast } from '../components/ui/Toast';
+import { orderTransactionsForDisplay } from '../utils/sortTransactions';
+import { getMonthRange, getCurrentMonthKey } from '../utils/monthRange';
+import { formatBrazilDate } from '../utils/date';
+import { MonthSelector } from '../components/financial/MonthSelector';
 
 // Removido ACCOUNT_COLORS - usando apenas cores da app
 
@@ -48,6 +52,11 @@ const getOwnerLabel = (account) => {
 
 export default function BankAccountDetailScreen({ route, navigation }) {
   const { accountId } = route.params;
+  const [selectedMonth, setSelectedMonth] = useState(() => route.params?.selectedMonth || getCurrentMonthKey());
+  const { startDate: monthStartDate, endDate: monthEndDate, monthKey: normalizedMonthKey } = useMemo(
+    () => getMonthRange(selectedMonth),
+    [selectedMonth]
+  );
   const { organization, user, loading: orgLoading, refetch: refetchOrganization } = useOrganization();
   const { confirm } = useConfirmation();
   const { showToast } = useToast();
@@ -70,7 +79,7 @@ export default function BankAccountDetailScreen({ route, navigation }) {
       fetchIncomeCategories();
       fetchCostCenters();
     }
-  }, [orgLoading, organization, accountId]);
+  }, [orgLoading, organization, accountId, monthStartDate, monthEndDate]);
 
   const fetchIncomeCategories = async () => {
     try {
@@ -129,24 +138,21 @@ export default function BankAccountDetailScreen({ route, navigation }) {
 
   const fetchTransactions = async () => {
     try {
-      const now = new Date();
-      const threeMonthsAgo = new Date(now.setMonth(now.getMonth() - 3));
-      const startDate = `${threeMonthsAgo.getFullYear()}-${String(threeMonthsAgo.getMonth() + 1).padStart(2, '0')}-01`;
-
-      // Buscar transações da conta bancária
       const { data, error } = await supabase
         .from('bank_account_transactions')
         .select('*')
         .eq('bank_account_id', accountId)
         .eq('organization_id', organization.id)
-        .gte('date', startDate)
+        .gte('date', monthStartDate)
+        .lte('date', monthEndDate)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (error) throw error;
 
-      setTransactions(data || []);
+      const orderedTransactions = orderTransactionsForDisplay(data || []);
+      setTransactions(orderedTransactions);
     } catch (error) {}
   };
 
@@ -240,6 +246,10 @@ export default function BankAccountDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         }
       />
+
+      <View style={styles.monthSelectorWrapper}>
+        <MonthSelector selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -401,9 +411,9 @@ export default function BankAccountDetailScreen({ route, navigation }) {
                         {transaction.description || '-'}
                       </Callout>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing[0.5], gap: spacing[1] }}>
-                        <Caption color="secondary">
-                          {new Date(transaction.date).toLocaleDateString('pt-BR')}
-                        </Caption>
+                          <Caption color="secondary">
+                            {formatBrazilDate(transaction.date)}
+                          </Caption>
                         <Caption color="tertiary" style={{ fontSize: 10 }}>
                           {getTransactionTypeLabel(transaction.transaction_type)}
                         </Caption>
@@ -492,6 +502,7 @@ export default function BankAccountDetailScreen({ route, navigation }) {
         onClose={() => setTransactionsHistoryModalVisible(false)}
         account={account}
         organization={organization}
+        selectedMonth={normalizedMonthKey}
       />
 
       <BankAccountFormModal
@@ -516,6 +527,12 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: spacing[2],
+  },
+  monthSelectorWrapper: {
+    paddingHorizontal: spacing[3],
+    paddingTop: spacing[2],
+    paddingBottom: spacing[1],
+    backgroundColor: colors.background.primary,
   },
 
   // Account Card - Layout sóbrio

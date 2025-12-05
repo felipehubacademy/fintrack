@@ -9,6 +9,7 @@ import EmptyState from '../ui/EmptyState';
 import LoadingLogo from '../ui/LoadingLogo';
 import { supabase } from '../../services/supabase';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilDate } from '../../utils/date';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
@@ -97,9 +98,7 @@ export default function ContributionHistory({ organizationId }) {
     ? Math.max(...contributions.map(c => parseFloat(c.amount || 0))) 
     : 0;
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
+  const formatDate = (dateString) => formatBrazilDate(dateString);
 
   const exportToCSV = async () => {
     try {

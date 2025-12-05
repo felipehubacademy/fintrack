@@ -14,6 +14,7 @@ import { Button } from './Button';
 import { Card } from './Card';
 import { useInAppNotifications } from '../../hooks/useInAppNotifications';
 import { useOrganization } from '../../hooks/useOrganization';
+import { formatBrazilDayMonthNumeric } from '../../utils/date';
 
 const { height } = Dimensions.get('window');
 
@@ -66,7 +67,7 @@ const formatTime = (dateString) => {
   if (diffInMinutes < 1) return 'Agora';
   if (diffInMinutes < 60) return `${diffInMinutes}m`;
   if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  return formatBrazilDayMonthNumeric(dateString);
 };
 
 export default function NotificationModal({ visible, onClose }) {

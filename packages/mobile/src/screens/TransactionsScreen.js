@@ -49,6 +49,7 @@ import { TransactionModal } from '../components/financial/TransactionModal';
 import { FilterSheet } from '../components/financial/FilterSheet';
 import { Tooltip } from '../components/ui/Tooltip';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilDayMonthShort } from '../utils/date';
 import { useToast } from '../components/ui/Toast';
 import { useAlert } from '../components/ui/AlertProvider';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
@@ -197,9 +198,48 @@ export default function TransactionsScreen() {
       type: 'income',
       category_name: inc.category_name || categoryMap[inc.category_id]?.name || null,
     }));
-    const merged = [...expenseItems, ...incomeItems].sort(
-      (a, b) => new Date(b.date) - new Date(a.date)
-    );
+    // Ordenar: passadas/atuais primeiro (mais recentes primeiro), depois futuras (mais próximas primeiro)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const merged = [...expenseItems, ...incomeItems].sort((a, b) => {
+      const dateA = new Date(a.date + 'T00:00:00');
+      const dateB = new Date(b.date + 'T00:00:00');
+      const dateATime = dateA.getTime();
+      const dateBTime = dateB.getTime();
+      const todayTime = today.getTime();
+      
+      const aIsFuture = dateATime > todayTime;
+      const bIsFuture = dateBTime > todayTime;
+      
+      // Se uma é futura e outra não, passada/atual vem primeiro
+      if (aIsFuture && !bIsFuture) return 1; // b vem primeiro (é passada/atual)
+      if (!aIsFuture && bIsFuture) return -1; // a vem primeiro (é passada/atual)
+      
+      // Ambas são passadas/atuais: ordenar por data decrescente (mais recente primeiro)
+      if (!aIsFuture && !bIsFuture) {
+        if (dateBTime !== dateATime) {
+          return dateBTime - dateATime;
+        }
+        // Se a data for igual, ordenar por created_at (mais recente primeiro)
+        const createdA = new Date(a.created_at || a.confirmed_at || 0);
+        const createdB = new Date(b.created_at || b.confirmed_at || 0);
+        return createdB.getTime() - createdA.getTime();
+      }
+      
+      // Ambas são futuras: ordenar por data crescente (mais próxima primeiro)
+      if (aIsFuture && bIsFuture) {
+        if (dateATime !== dateBTime) {
+          return dateATime - dateBTime;
+        }
+        // Se a data for igual, ordenar por created_at (mais antiga primeiro)
+        const createdA = new Date(a.created_at || a.confirmed_at || 0);
+        const createdB = new Date(b.created_at || b.confirmed_at || 0);
+        return createdA.getTime() - createdB.getTime();
+      }
+      
+      return 0;
+    });
     setTransactions(merged);
     setHasMore(merged.length >= PAGE_SIZE);
     setPage(0); // Reset page quando dados mudam
@@ -237,13 +277,60 @@ export default function TransactionsScreen() {
         }
         // Ordenar
         const sorted = [...filtered].sort((a, b) => {
+          // Se ordenando por data, aplicar lógica especial: passadas/atuais primeiro, futuras depois
+          if (sortConfig.key === 'date') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayTime = today.getTime();
+            
+            const dateA = new Date(a.date + 'T00:00:00');
+            const dateB = new Date(b.date + 'T00:00:00');
+            const dateATime = dateA.getTime();
+            const dateBTime = dateB.getTime();
+            
+            const aIsFuture = dateATime > todayTime;
+            const bIsFuture = dateBTime > todayTime;
+            
+            // Se uma é futura e outra não, passada/atual vem primeiro (independente da direção)
+            if (aIsFuture && !bIsFuture) return 1; // b vem primeiro (é passada/atual)
+            if (!aIsFuture && bIsFuture) return -1; // a vem primeiro (é passada/atual)
+            
+            // Ambas são passadas/atuais: ordenar conforme direção escolhida
+            if (!aIsFuture && !bIsFuture) {
+              if (dateATime !== dateBTime) {
+                return sortConfig.direction === 'desc' 
+                  ? dateBTime - dateATime // mais recente primeiro
+                  : dateATime - dateBTime; // mais antiga primeiro
+              }
+              // Se a data for igual, ordenar por created_at
+              const createdA = new Date(a.created_at || a.confirmed_at || 0);
+              const createdB = new Date(b.created_at || b.confirmed_at || 0);
+              return sortConfig.direction === 'desc'
+                ? createdB.getTime() - createdA.getTime()
+                : createdA.getTime() - createdB.getTime();
+            }
+            
+            // Ambas são futuras: ordenar conforme direção escolhida
+            if (aIsFuture && bIsFuture) {
+              if (dateATime !== dateBTime) {
+                // Para futuras, ordem crescente faz mais sentido (mais próxima primeiro)
+                return sortConfig.direction === 'desc'
+                  ? dateATime - dateBTime // mais próxima primeiro
+                  : dateATime - dateBTime; // mais próxima primeiro
+              }
+              // Se a data for igual, ordenar por created_at
+              const createdA = new Date(a.created_at || a.confirmed_at || 0);
+              const createdB = new Date(b.created_at || b.confirmed_at || 0);
+              return sortConfig.direction === 'desc'
+                ? createdA.getTime() - createdB.getTime()
+                : createdA.getTime() - createdB.getTime();
+            }
+          }
+          
+          // Para outras colunas, manter ordenação normal
           let aValue = a[sortConfig.key];
           let bValue = b[sortConfig.key];
           switch (sortConfig.key) {
-            case 'date':
-              aValue = new Date(aValue + 'T00:00:00');
-              bValue = new Date(bValue + 'T00:00:00');
-              break;
             case 'amount':
               aValue = parseFloat(aValue || 0);
               bValue = parseFloat(bValue || 0);
@@ -257,13 +344,6 @@ export default function TransactionsScreen() {
             comparison = sortConfig.direction === 'asc' ? -1 : 1;
           } else if (aValue > bValue) {
             comparison = sortConfig.direction === 'asc' ? 1 : -1;
-          }
-          if (comparison === 0 && sortConfig.key === 'date') {
-            const createdA = new Date(a.created_at || a.confirmed_at || 0);
-            const createdB = new Date(b.created_at || b.confirmed_at || 0);
-            comparison = sortConfig.direction === 'asc' 
-              ? createdA.getTime() - createdB.getTime()
-              : createdB.getTime() - createdA.getTime();
           }
           return comparison;
         });
@@ -369,15 +449,62 @@ export default function TransactionsScreen() {
 
     // Aplicar ordenação diretamente aqui
     const sorted = [...filtered].sort((a, b) => {
+      // Se ordenando por data, aplicar lógica especial: passadas/atuais primeiro, futuras depois
+      if (sortConfig.key === 'date') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTime = today.getTime();
+        
+        const dateA = new Date(a.date + 'T00:00:00');
+        const dateB = new Date(b.date + 'T00:00:00');
+        const dateATime = dateA.getTime();
+        const dateBTime = dateB.getTime();
+        
+        const aIsFuture = dateATime > todayTime;
+        const bIsFuture = dateBTime > todayTime;
+        
+        // Se uma é futura e outra não, passada/atual vem primeiro (independente da direção)
+        if (aIsFuture && !bIsFuture) return 1; // b vem primeiro (é passada/atual)
+        if (!aIsFuture && bIsFuture) return -1; // a vem primeiro (é passada/atual)
+        
+        // Ambas são passadas/atuais: ordenar conforme direção escolhida
+        if (!aIsFuture && !bIsFuture) {
+          if (dateATime !== dateBTime) {
+            return sortConfig.direction === 'desc' 
+              ? dateBTime - dateATime // mais recente primeiro
+              : dateATime - dateBTime; // mais antiga primeiro
+          }
+          // Se a data for igual, ordenar por created_at
+          const createdA = new Date(a.created_at || a.confirmed_at || 0);
+          const createdB = new Date(b.created_at || b.confirmed_at || 0);
+          return sortConfig.direction === 'desc'
+            ? createdB.getTime() - createdA.getTime()
+            : createdA.getTime() - createdB.getTime();
+        }
+        
+        // Ambas são futuras: ordenar conforme direção escolhida
+        if (aIsFuture && bIsFuture) {
+          if (dateATime !== dateBTime) {
+            // Para futuras, ordem crescente faz mais sentido (mais próxima primeiro)
+            return sortConfig.direction === 'desc'
+              ? dateATime - dateBTime // mais próxima primeiro (contra-intuitivo, mas mantém padrão)
+              : dateATime - dateBTime; // mais próxima primeiro
+          }
+          // Se a data for igual, ordenar por created_at
+          const createdA = new Date(a.created_at || a.confirmed_at || 0);
+          const createdB = new Date(b.created_at || b.confirmed_at || 0);
+          return sortConfig.direction === 'desc'
+            ? createdA.getTime() - createdB.getTime()
+            : createdA.getTime() - createdB.getTime();
+        }
+      }
+      
+      // Para outras colunas, manter ordenação normal
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
 
       // Tratamento especial para cada tipo de coluna
       switch (sortConfig.key) {
-        case 'date':
-          aValue = new Date(aValue + 'T00:00:00');
-          bValue = new Date(bValue + 'T00:00:00');
-          break;
         case 'amount':
           aValue = parseFloat(aValue || 0);
           bValue = parseFloat(bValue || 0);
@@ -399,15 +526,6 @@ export default function TransactionsScreen() {
         comparison = sortConfig.direction === 'asc' ? -1 : 1;
       } else if (aValue > bValue) {
         comparison = sortConfig.direction === 'asc' ? 1 : -1;
-      }
-      
-      // Se os valores são iguais (especialmente para date), usar created_at como desempate
-      if (comparison === 0 && sortConfig.key === 'date') {
-        const createdA = new Date(a.created_at || a.confirmed_at || 0);
-        const createdB = new Date(b.created_at || b.confirmed_at || 0);
-        comparison = sortConfig.direction === 'asc' 
-          ? createdA.getTime() - createdB.getTime()
-          : createdB.getTime() - createdA.getTime();
       }
       
       return comparison;
@@ -419,15 +537,62 @@ export default function TransactionsScreen() {
   // Função para ordenar transações
   const sortTransactions = (transactionsList) => {
     return [...transactionsList].sort((a, b) => {
+      // Se ordenando por data, aplicar lógica especial: passadas/atuais primeiro, futuras depois
+      if (sortConfig.key === 'date') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTime = today.getTime();
+        
+        const dateA = new Date(a.date + 'T00:00:00');
+        const dateB = new Date(b.date + 'T00:00:00');
+        const dateATime = dateA.getTime();
+        const dateBTime = dateB.getTime();
+        
+        const aIsFuture = dateATime > todayTime;
+        const bIsFuture = dateBTime > todayTime;
+        
+        // Se uma é futura e outra não, passada/atual vem primeiro (independente da direção)
+        if (aIsFuture && !bIsFuture) return 1; // b vem primeiro (é passada/atual)
+        if (!aIsFuture && bIsFuture) return -1; // a vem primeiro (é passada/atual)
+        
+        // Ambas são passadas/atuais: ordenar conforme direção escolhida
+        if (!aIsFuture && !bIsFuture) {
+          if (dateATime !== dateBTime) {
+            return sortConfig.direction === 'desc' 
+              ? dateBTime - dateATime // mais recente primeiro
+              : dateATime - dateBTime; // mais antiga primeiro
+          }
+          // Se a data for igual, ordenar por created_at
+          const createdA = new Date(a.created_at || a.confirmed_at || 0);
+          const createdB = new Date(b.created_at || b.confirmed_at || 0);
+          return sortConfig.direction === 'desc'
+            ? createdB.getTime() - createdA.getTime()
+            : createdA.getTime() - createdB.getTime();
+        }
+        
+        // Ambas são futuras: ordenar conforme direção escolhida
+        if (aIsFuture && bIsFuture) {
+          if (dateATime !== dateBTime) {
+            // Para futuras, ordem crescente faz mais sentido (mais próxima primeiro)
+            return sortConfig.direction === 'desc'
+              ? dateATime - dateBTime // mais próxima primeiro
+              : dateATime - dateBTime; // mais próxima primeiro
+          }
+          // Se a data for igual, ordenar por created_at
+          const createdA = new Date(a.created_at || a.confirmed_at || 0);
+          const createdB = new Date(b.created_at || b.confirmed_at || 0);
+          return sortConfig.direction === 'desc'
+            ? createdA.getTime() - createdB.getTime()
+            : createdA.getTime() - createdB.getTime();
+        }
+      }
+      
+      // Para outras colunas, manter ordenação normal
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
 
       // Tratamento especial para cada tipo de coluna
       switch (sortConfig.key) {
-        case 'date':
-          aValue = new Date(aValue + 'T00:00:00');
-          bValue = new Date(bValue + 'T00:00:00');
-          break;
         case 'amount':
           aValue = parseFloat(aValue || 0);
           bValue = parseFloat(bValue || 0);
@@ -449,15 +614,6 @@ export default function TransactionsScreen() {
         comparison = sortConfig.direction === 'asc' ? -1 : 1;
       } else if (aValue > bValue) {
         comparison = sortConfig.direction === 'asc' ? 1 : -1;
-      }
-      
-      // Se os valores são iguais (especialmente para date), usar created_at como desempate
-      if (comparison === 0 && sortConfig.key === 'date') {
-        const createdA = new Date(a.created_at || a.confirmed_at || 0);
-        const createdB = new Date(b.created_at || b.confirmed_at || 0);
-        comparison = sortConfig.direction === 'asc' 
-          ? createdA.getTime() - createdB.getTime()
-          : createdB.getTime() - createdA.getTime();
       }
       
       return comparison;
@@ -495,10 +651,7 @@ export default function TransactionsScreen() {
     } else if (dateOnly.getTime() === yesterday.getTime()) {
       return 'Ontem';
     } else {
-      return date.toLocaleDateString('pt-BR', { 
-        day: '2-digit', 
-        month: 'short' 
-      });
+      return formatBrazilDayMonthShort(dateString.split('T')[0]);
     }
   };
 
@@ -527,9 +680,41 @@ export default function TransactionsScreen() {
       }
     });
 
-    return Object.values(groups).sort((a, b) => 
-      new Date(b.date) - new Date(a.date)
-    );
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+
+    return Object.values(groups).sort((a, b) => {
+      const dateA = new Date(a.date.split('T')[0] + 'T00:00:00');
+      const dateB = new Date(b.date.split('T')[0] + 'T00:00:00');
+      const dateATime = dateA.getTime();
+      const dateBTime = dateB.getTime();
+      const aIsFuture = dateATime > todayTime;
+      const bIsFuture = dateBTime > todayTime;
+
+      if (aIsFuture && !bIsFuture) return 1;
+      if (!aIsFuture && bIsFuture) return -1;
+
+      if (!aIsFuture && !bIsFuture) {
+        if (dateATime !== dateBTime) {
+          return dateBTime - dateATime;
+        }
+        const createdA = new Date(a.transactions[0]?.created_at || a.transactions[0]?.confirmed_at || 0);
+        const createdB = new Date(b.transactions[0]?.created_at || b.transactions[0]?.confirmed_at || 0);
+        return createdB.getTime() - createdA.getTime();
+      }
+
+      if (aIsFuture && bIsFuture) {
+        if (dateATime !== dateBTime) {
+          return dateATime - dateBTime;
+        }
+        const createdA = new Date(a.transactions[0]?.created_at || a.transactions[0]?.confirmed_at || 0);
+        const createdB = new Date(b.transactions[0]?.created_at || b.transactions[0]?.confirmed_at || 0);
+        return createdA.getTime() - createdB.getTime();
+      }
+
+      return 0;
+    });
   };
 
   const groupedTransactions = groupByDate(filteredTransactions);
@@ -589,7 +774,7 @@ export default function TransactionsScreen() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedItems.length === 0) return;
+      if (selectedItems.length === 0) return;
 
     HapticFeedback.warning();
     const confirmed = await confirm({
@@ -1307,71 +1492,71 @@ export default function TransactionsScreen() {
 
       {/* Transactions List - Otimizado com SectionList */}
       {sectionsData.length === 0 ? (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
           {/* Seletor de mês */}
-          <View style={styles.section}>
-            <MonthSelector
-              selectedMonth={selectedMonth}
-              onMonthChange={setSelectedMonth}
-            />
-          </View>
+        <View style={styles.section}>
+          <MonthSelector
+            selectedMonth={selectedMonth}
+            onMonthChange={setSelectedMonth}
+          />
+        </View>
 
           {/* Cards de estatísticas */}
-          <View style={styles.section}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.statsScroll}
-              snapToInterval={STAT_CARD_WIDTH + spacing[2]}
-              decelerationRate="fast"
-            >
-              <View style={{ position: 'relative', width: STAT_CARD_WIDTH }}>
-                <StatCard
-                  label="Total de Entradas"
-                  value={formatCurrency(statsIncome)}
-                  icon={<ArrowDownLeft size={20} color={colors.brand.primary} />}
-                  variant="income"
-                  style={{ width: STAT_CARD_WIDTH }}
-                  onPress={() => handleStatCardPress('income')}
-                />
-                <View style={{ position: 'absolute', top: spacing[0.5], right: spacing[0.5], pointerEvents: 'none' }}>
-                  <HelpCircle size={14} color={colors.text.tertiary} />
-                </View>
-              </View>
-              <View style={{ position: 'relative', width: STAT_CARD_WIDTH }}>
-                <StatCard
-                  label="Total de Despesas"
-                  value={formatCurrency(statsExpense)}
-                  icon={<ArrowUpRight size={20} color={colors.error.main} />}
-                  variant="expense"
-                  style={{ width: STAT_CARD_WIDTH }}
-                  onPress={() => handleStatCardPress('expense')}
-                />
-                <View style={{ position: 'absolute', top: spacing[0.5], right: spacing[0.5], pointerEvents: 'none' }}>
-                  <HelpCircle size={14} color={colors.text.tertiary} />
-                </View>
-              </View>
-              <StatCard
-                label="Saldo"
-                value={formatCurrency(statsBalance)}
-                icon={statsBalance >= 0 
-                  ? <ArrowDownLeft size={20} color={colors.success.main} /> 
-                  : <ArrowUpRight size={20} color={colors.error.main} />
-                }
-                variant={statsBalance >= 0 ? 'success' : 'danger'}
-                style={{ width: STAT_CARD_WIDTH }}
-                valueColor={statsBalance < 0 ? colors.error.main : colors.text.primary}
-              />
-            </ScrollView>
+        <View style={styles.section}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.statsScroll}
+            snapToInterval={STAT_CARD_WIDTH + spacing[2]}
+            decelerationRate="fast"
+          >
+          <View style={{ position: 'relative', width: STAT_CARD_WIDTH }}>
+            <StatCard
+              label="Total de Entradas"
+              value={formatCurrency(statsIncome)}
+              icon={<ArrowDownLeft size={20} color={colors.brand.primary} />}
+              variant="income"
+              style={{ width: STAT_CARD_WIDTH }}
+              onPress={() => handleStatCardPress('income')}
+            />
+            <View style={{ position: 'absolute', top: spacing[0.5], right: spacing[0.5], pointerEvents: 'none' }}>
+              <HelpCircle size={14} color={colors.text.tertiary} />
+            </View>
           </View>
+          <View style={{ position: 'relative', width: STAT_CARD_WIDTH }}>
+            <StatCard
+              label="Total de Despesas"
+              value={formatCurrency(statsExpense)}
+              icon={<ArrowUpRight size={20} color={colors.error.main} />}
+              variant="expense"
+              style={{ width: STAT_CARD_WIDTH }}
+              onPress={() => handleStatCardPress('expense')}
+            />
+            <View style={{ position: 'absolute', top: spacing[0.5], right: spacing[0.5], pointerEvents: 'none' }}>
+              <HelpCircle size={14} color={colors.text.tertiary} />
+            </View>
+          </View>
+          <StatCard
+            label="Saldo"
+            value={formatCurrency(statsBalance)}
+            icon={statsBalance >= 0 
+              ? <ArrowDownLeft size={20} color={colors.success.main} /> 
+              : <ArrowUpRight size={20} color={colors.error.main} />
+            }
+            variant={statsBalance >= 0 ? 'success' : 'danger'}
+            style={{ width: STAT_CARD_WIDTH }}
+                valueColor={statsBalance < 0 ? colors.error.main : colors.text.primary}
+          />
+          </ScrollView>
+        </View>
 
           <TransactionsSearchFilters
             selectionMode={selectionMode}
@@ -1400,66 +1585,66 @@ export default function TransactionsScreen() {
               const isLast = index === section.data.length - 1;
               
               return (
-                <TouchableOpacity
-                  style={[
-                    styles.transactionItem,
+                  <TouchableOpacity
+                    style={[
+                      styles.transactionItem,
                     !isLast && styles.transactionItemBorder,
-                    selectionMode && isItemSelected(transaction) && styles.transactionItemSelected
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => handleTransactionPress(transaction)}
-                >
-                  {/* Checkbox (se modo de seleção) */}
-                  {selectionMode && (
-                    <View style={styles.checkboxContainer}>
-                      {isItemSelected(transaction) ? (
-                        <CheckSquare size={24} color={colors.brand.primary} />
+                      selectionMode && isItemSelected(transaction) && styles.transactionItemSelected
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => handleTransactionPress(transaction)}
+                  >
+                    {/* Checkbox (se modo de seleção) */}
+                    {selectionMode && (
+                      <View style={styles.checkboxContainer}>
+                        {isItemSelected(transaction) ? (
+                          <CheckSquare size={24} color={colors.brand.primary} />
+                        ) : (
+                          <Square size={24} color={colors.text.tertiary} />
+                        )}
+                      </View>
+                    )}
+                    
+                    {/* Icon */}
+                    <View style={[
+                      styles.transactionIcon,
+                      { backgroundColor: transaction.type === 'income' 
+                        ? colors.info.bg 
+                        : colors.error.bg 
+                      }
+                    ]}>
+                      {transaction.type === 'income' ? (
+                        <ArrowDownLeft size={20} color={colors.brand.primary} />
                       ) : (
-                        <Square size={24} color={colors.text.tertiary} />
+                        <ArrowUpRight size={20} color={colors.error.main} />
                       )}
                     </View>
-                  )}
-                  
-                  {/* Icon */}
-                  <View style={[
-                    styles.transactionIcon,
-                    { backgroundColor: transaction.type === 'income' 
-                      ? colors.info.bg 
-                      : colors.error.bg 
-                    }
-                  ]}>
-                    {transaction.type === 'income' ? (
-                      <ArrowDownLeft size={20} color={colors.brand.primary} />
-                    ) : (
-                      <ArrowUpRight size={20} color={colors.error.main} />
-                    )}
-                  </View>
 
-                  {/* Info */}
-                  <View style={styles.transactionInfo}>
-                    <Callout weight="medium" numberOfLines={1}>
-                      {transaction.description || 'Sem descrição'}
-                    </Callout>
-                    <Caption color="secondary" numberOfLines={1}>
-                      {transaction.category_name || transaction.category || 'Sem categoria'}
-                    </Caption>
-                  </View>
+                    {/* Info */}
+                    <View style={styles.transactionInfo}>
+                      <Callout weight="medium" numberOfLines={1}>
+                        {transaction.description || 'Sem descrição'}
+                      </Callout>
+                      <Caption color="secondary" numberOfLines={1}>
+                        {transaction.category_name || transaction.category || 'Sem categoria'}
+                      </Caption>
+                    </View>
 
-                  {/* Amount */}
-                  <View style={styles.transactionRight}>
-                    <Callout 
-                      weight="semiBold"
-                      style={{ 
-                        color: transaction.type === 'income' 
-                          ? colors.brand.primary 
-                          : colors.text.primary 
-                      }}
-                    >
-                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                    </Callout>
-                    <ChevronRight size={16} color={colors.text.tertiary} />
-                  </View>
-                </TouchableOpacity>
+                    {/* Amount */}
+                    <View style={styles.transactionRight}>
+                      <Callout 
+                        weight="semiBold"
+                        style={{ 
+                          color: transaction.type === 'income' 
+                            ? colors.brand.primary 
+                            : colors.text.primary 
+                        }}
+                      >
+                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                      </Callout>
+                      <ChevronRight size={16} color={colors.text.tertiary} />
+                    </View>
+                  </TouchableOpacity>
               );
             }}
             renderSectionHeader={({ section }) => (
@@ -1479,7 +1664,7 @@ export default function TransactionsScreen() {
                         -{formatCurrency(section.totalExpenses)}
                       </Caption>
                     )}
-                  </View>
+            </View>
                 </View>
               </View>
             )}
@@ -1542,7 +1727,7 @@ export default function TransactionsScreen() {
                       style={{ width: STAT_CARD_WIDTH }}
                       valueColor={statsBalance < 0 ? colors.error.main : colors.text.primary}
                     />
-                  </ScrollView>
+      </ScrollView>
                 </View>
 
                 <TransactionsSearchFilters
@@ -1616,15 +1801,15 @@ export default function TransactionsScreen() {
               {selectedItems.length} selecionada(s)
             </Callout>
             <View style={styles.bulkActionsButtons}>
-              <TouchableOpacity 
+            <TouchableOpacity 
                 style={styles.bulkActionButton}
-                onPress={handleBulkDelete}
-              >
+              onPress={handleBulkDelete}
+            >
                 <Trash2 size={18} color={colors.error.main} />
                 <Caption style={{ color: colors.error.main, marginLeft: spacing[0.5] }}>
-                  Excluir
+                Excluir
                 </Caption>
-              </TouchableOpacity>
+            </TouchableOpacity>
             </View>
           </View>
         </View>

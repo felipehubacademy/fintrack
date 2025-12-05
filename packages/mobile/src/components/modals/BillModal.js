@@ -7,32 +7,133 @@ import {
   Dimensions,
   Switch,
   Platform,
+  ScrollView as RNScrollView,
 } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
-import { X, Calendar as CalendarIcon, DollarSign, Tag, User, CreditCard, RefreshCw } from 'lucide-react-native';
-import { colors, spacing, radius, shadows } from '../../theme';
+import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { X, Calendar as CalendarIcon, DollarSign, Tag, User, CreditCard, RefreshCw, Check } from 'lucide-react-native';
+import { colors, spacing, radius } from '../../theme';
 import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 
+// Usar ScrollView nativo no Android para melhor detecção de scroll
+const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
+
 const { height } = Dimensions.get('window');
 
 const PAYMENT_METHODS = [
-  { value: '', label: 'Selecione...' },
-  { value: 'pix', label: 'PIX' },
-  { value: 'credit_card', label: 'Cartão de Crédito' },
-  { value: 'debit_card', label: 'Cartão de Débito' },
-  { value: 'boleto', label: 'Boleto' },
-  { value: 'bank_transfer', label: 'Transferência' },
-  { value: 'cash', label: 'Dinheiro' },
-  { value: 'other', label: 'Outro' },
+  { id: 'pix', label: 'PIX' },
+  { id: 'credit_card', label: 'Cartão de Crédito' },
+  { id: 'debit_card', label: 'Cartão de Débito' },
+  { id: 'boleto', label: 'Boleto' },
+  { id: 'bank_transfer', label: 'Transferência' },
+  { id: 'cash', label: 'Dinheiro' },
+  { id: 'other', label: 'Outro' },
 ];
 
 const RECURRENCE_OPTIONS = [
-  { value: 'monthly', label: 'Mensal' },
-  { value: 'weekly', label: 'Semanal' },
-  { value: 'yearly', label: 'Anual' },
+  { id: 'monthly', label: 'Mensal' },
+  { id: 'weekly', label: 'Semanal' },
+  { id: 'yearly', label: 'Anual' },
 ];
+
+const VALID_PAYMENT_METHODS = ['pix', 'credit_card', 'debit_card', 'boleto', 'bank_transfer', 'cash', 'other'];
+
+// Parse currency input (handles comma and dot)
+const parseCurrencyInput = (formattedValue) => {
+  if (!formattedValue) return 0;
+  const cleaned = formattedValue.replace(/\./g, '').replace(',', '.');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+// Componente SelectField (igual ao TransactionModal)
+const SelectField = ({ label, value, placeholder, onPress, disabled }) => (
+  <View style={styles.field}>
+    <Caption color="secondary" weight="medium">
+      {label}
+    </Caption>
+    <TouchableOpacity
+      style={[
+        styles.selectField,
+        disabled && styles.selectFieldDisabled,
+        !value && styles.selectFieldEmpty,
+      ]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.7}
+    >
+      <Callout
+        numberOfLines={1}
+        style={!value ? styles.selectPlaceholder : null}
+      >
+        {value || placeholder}
+      </Callout>
+    </TouchableOpacity>
+  </View>
+);
+
+// Componente OptionSheet (igual ao TransactionModal)
+const OptionSheet = ({
+  visible,
+  title,
+  options = [],
+  selectedId,
+  onSelect,
+  onClose,
+}) => {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={styles.sheetContainer} onPress={(e) => e.stopPropagation()}>
+          <View style={styles.sheetHandle} />
+          <Title2 weight="semiBold" style={styles.sheetTitle}>
+            {title}
+          </Title2>
+
+          <ScrollView
+            style={{ maxHeight: height * 0.5 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {options.length === 0 ? (
+              <Caption color="secondary" style={{ textAlign: 'center', marginBottom: spacing[2] }}>
+                Nenhuma opção disponível
+              </Caption>
+            ) : (
+              options.map((option) => {
+                const optionId = option.id;
+                const isSelected = selectedId === optionId;
+                return (
+                  <TouchableOpacity
+                    key={optionId || option.label}
+                    style={[
+                      styles.sheetOption,
+                      isSelected && styles.sheetOptionSelected,
+                    ]}
+                    onPress={() => {
+                      onSelect(option);
+                      onClose?.();
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Callout weight="medium">{option.label}</Callout>
+                      {option.description ? (
+                        <Caption color="secondary">{option.description}</Caption>
+                      ) : null}
+                    </View>
+                    {isSelected && (
+                      <Check size={20} color={colors.brand.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </ScrollView>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
 
 /**
  * BillModal - Modal para adicionar/editar conta a pagar
@@ -47,6 +148,10 @@ export function BillModal({
   cards = [],
   organization = null,
 }) {
+  const insets = useSafeAreaInsets();
+  // Safe area apenas no Android
+  const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
+  
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -62,6 +167,7 @@ export function BillModal({
   });
 
   const [errors, setErrors] = useState({});
+  const [activeSheet, setActiveSheet] = useState(null);
 
   useEffect(() => {
     if (bill) {
@@ -103,7 +209,8 @@ export function BillModal({
       newErrors.description = 'Descrição é obrigatória';
     }
 
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    const amountValue = parseCurrencyInput(formData.amount);
+    if (!formData.amount || amountValue <= 0) {
       newErrors.amount = 'Valor deve ser maior que zero';
     }
 
@@ -120,11 +227,39 @@ export function BillModal({
       return;
     }
 
+    const isSoloUserLocal = organization?.type === 'solo';
+    const isShared = isSoloUserLocal ? false : formData.is_shared;
+    const costCenterId = isSoloUserLocal
+      ? (costCenters.find(cc => cc.is_active !== false)?.id || null)
+      : isShared
+        ? null
+        : (formData.cost_center_id || null);
+
     const billData = {
-      ...formData,
-      amount: parseFloat(formData.amount),
+      description: formData.description.trim(),
+      amount: parseCurrencyInput(formData.amount),
+      due_date: formData.due_date,
+      category_id: formData.category_id || null,
+      cost_center_id: costCenterId,
+      is_shared: isShared,
+      is_recurring: formData.is_recurring,
+      recurrence_frequency: formData.is_recurring ? formData.recurrence_frequency : null,
       organization_id: organization?.id,
     };
+
+    // Adicionar payment_method apenas se tiver valor válido
+    if (formData.payment_method && VALID_PAYMENT_METHODS.includes(formData.payment_method)) {
+      billData.payment_method = formData.payment_method;
+      // Adicionar card_id apenas se for cartão de crédito
+      if (formData.payment_method === 'credit_card' && formData.card_id) {
+        billData.card_id = formData.card_id;
+      }
+    }
+
+    // Adicionar notes se houver
+    if (formData.notes?.trim()) {
+      billData.notes = formData.notes.trim();
+    }
 
     onSave(billData);
     onClose();
@@ -135,22 +270,9 @@ export function BillModal({
   const isSoloUser = organization?.type === 'solo';
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <TouchableOpacity 
-        style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]} 
-        activeOpacity={1} 
-        onPress={onClose}
-      >
-        <TouchableOpacity 
-          activeOpacity={1} 
-          style={styles.modal}
-          onPress={(e) => e.stopPropagation()}
-        >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[styles.modal, { marginBottom: safeBottom }]} onPress={(e) => e.stopPropagation()}>
           {/* Handle */}
           <View style={styles.handle} />
 
@@ -167,7 +289,12 @@ export function BillModal({
           {/* Content */}
           <ScrollView 
             style={styles.content}
+            contentContainerStyle={[styles.contentContainer, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, spacing[6]) : spacing[6] }]}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            bounces={false}
+            {...(Platform.OS === 'android' ? { nestedScrollEnabled: true } : {})}
+            scrollEnabled={true}
           >
             <View style={styles.form}>
               {/* Description */}
@@ -191,10 +318,14 @@ export function BillModal({
                 <Caption color="secondary" weight="medium">Valor *</Caption>
                 <Input
                   value={formData.amount}
-                  onChangeText={(text) => setFormData({ ...formData, amount: text.replace(/[^0-9.,]/g, '') })}
+                  onChangeText={(text) => {
+                    // Permitir apenas números e vírgula/ponto
+                    const cleaned = text.replace(/[^0-9,.]/g, '');
+                    setFormData({ ...formData, amount: cleaned });
+                  }}
                   placeholder="0,00"
                   keyboardType="decimal-pad"
-                  icon={<DollarSign size={20} color={colors.text.secondary} />}
+                  icon={<Text style={styles.currencyIcon}>R$</Text>}
                 />
                 {errors.amount && (
                   <Caption style={{ color: colors.error.main, marginTop: spacing[0.5] }}>
@@ -221,79 +352,46 @@ export function BillModal({
 
               {/* Category */}
               {categories.length > 0 && (
-                <View style={styles.field}>
-                  <Caption color="secondary" weight="medium">Categoria</Caption>
-                  <View style={styles.selectContainer}>
-                    <Tag size={20} color={colors.text.secondary} style={styles.selectIcon} />
-                    <select
-                      value={formData.category_id}
-                      onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                      style={styles.select}
-                    >
-                      <option value="">Selecione uma categoria...</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
-                  </View>
-                </View>
+                <SelectField
+                  label="Categoria"
+                  value={categories.find(c => c.id === formData.category_id)?.name || ''}
+                  placeholder="Selecionar categoria"
+                  disabled={categories.length === 0}
+                  onPress={() => categories.length > 0 && setActiveSheet('category')}
+                />
               )}
 
               {/* Responsible (only if not solo) */}
               {!isSoloUser && costCenters.length > 0 && (
-                <View style={styles.field}>
-                  <Caption color="secondary" weight="medium">Responsável</Caption>
-                  <View style={styles.selectContainer}>
-                    <User size={20} color={colors.text.secondary} style={styles.selectIcon} />
-                    <select
-                      value={formData.cost_center_id}
-                      onChange={(e) => setFormData({ ...formData, cost_center_id: e.target.value, is_shared: !e.target.value })}
-                      style={styles.select}
-                    >
-                      <option value="">Compartilhado ({organization?.name || 'Família'})</option>
-                      {costCenters.filter(cc => cc.is_active !== false && !cc.is_shared).map(cc => (
-                        <option key={cc.id} value={cc.id}>{cc.name}</option>
-                      ))}
-                    </select>
-                  </View>
-                </View>
+                <SelectField
+                  label="Responsável"
+                  value={formData.cost_center_id 
+                    ? costCenters.find(cc => cc.id === formData.cost_center_id)?.name || ''
+                    : `Compartilhado (${organization?.name || 'Família'})`
+                  }
+                  placeholder="Selecionar responsável"
+                  disabled={costCenters.length === 0}
+                  onPress={() => costCenters.length > 0 && setActiveSheet('cost_center')}
+                />
               )}
 
               {/* Payment Method */}
-              <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Forma de Pagamento</Caption>
-                <View style={styles.selectContainer}>
-                  <CreditCard size={20} color={colors.text.secondary} style={styles.selectIcon} />
-                  <select
-                    value={formData.payment_method}
-                    onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-                    style={styles.select}
-                  >
-                    {PAYMENT_METHODS.map(pm => (
-                      <option key={pm.value} value={pm.value}>{pm.label}</option>
-                    ))}
-                  </select>
-                </View>
-              </View>
+              <SelectField
+                label="Forma de Pagamento"
+                value={PAYMENT_METHODS.find(pm => pm.id === formData.payment_method)?.label || ''}
+                placeholder="Selecionar forma de pagamento"
+                onPress={() => setActiveSheet('payment_method')}
+              />
 
               {/* Card (if credit card) */}
               {formData.payment_method === 'credit_card' && cards.length > 0 && (
-                <View style={styles.field}>
-                  <Caption color="secondary" weight="medium">Cartão</Caption>
-                  <View style={styles.selectContainer}>
-                    <CreditCard size={20} color={colors.text.secondary} style={styles.selectIcon} />
-                    <select
-                      value={formData.card_id}
-                      onChange={(e) => setFormData({ ...formData, card_id: e.target.value })}
-                      style={styles.select}
-                    >
-                      <option value="">Selecione um cartão...</option>
-                      {cards.map(card => (
-                        <option key={card.id} value={card.id}>{card.name}</option>
-                      ))}
-                    </select>
-                  </View>
-                </View>
+                <SelectField
+                  label="Cartão"
+                  value={cards.find(c => c.id === formData.card_id)?.name || ''}
+                  placeholder="Selecionar cartão"
+                  disabled={cards.length === 0}
+                  onPress={() => cards.length > 0 && setActiveSheet('card')}
+                />
               )}
 
               {/* Recurring */}
@@ -314,21 +412,12 @@ export function BillModal({
 
               {/* Recurrence Frequency */}
               {formData.is_recurring && (
-                <View style={styles.field}>
-                  <Caption color="secondary" weight="medium">Frequência</Caption>
-                  <View style={styles.selectContainer}>
-                    <RefreshCw size={20} color={colors.text.secondary} style={styles.selectIcon} />
-                    <select
-                      value={formData.recurrence_frequency}
-                      onChange={(e) => setFormData({ ...formData, recurrence_frequency: e.target.value })}
-                      style={styles.select}
-                    >
-                      {RECURRENCE_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </View>
-                </View>
+                <SelectField
+                  label="Frequência"
+                  value={RECURRENCE_OPTIONS.find(opt => opt.id === formData.recurrence_frequency)?.label || ''}
+                  placeholder="Selecionar frequência"
+                  onPress={() => setActiveSheet('recurrence_frequency')}
+                />
               )}
 
               {/* Notes */}
@@ -347,23 +436,71 @@ export function BillModal({
           </ScrollView>
 
           {/* Footer */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, spacing[4]) : spacing[4] }]}>
             <Button
+              title="Cancelar"
               variant="outline"
               onPress={onClose}
               style={{ flex: 1 }}
-            >
-              Cancelar
-            </Button>
+            />
             <Button
+              title={bill ? 'Salvar' : 'Adicionar'}
+              variant="primary"
               onPress={handleSave}
               style={{ flex: 1 }}
-            >
-              {bill ? 'Salvar' : 'Adicionar'}
-            </Button>
+            />
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
+
+      {/* Option Sheets */}
+      <OptionSheet
+        visible={activeSheet === 'category'}
+        title="Selecione a Categoria"
+        options={categories.map(cat => ({ id: cat.id, label: cat.name }))}
+        selectedId={formData.category_id}
+        onSelect={(option) => setFormData({ ...formData, category_id: option.id })}
+        onClose={() => setActiveSheet(null)}
+      />
+
+      <OptionSheet
+        visible={activeSheet === 'cost_center'}
+        title="Selecione o Responsável"
+        options={[
+          { id: '', label: `Compartilhado (${organization?.name || 'Família'})` },
+          ...costCenters.filter(cc => cc.is_active !== false && !cc.is_shared).map(cc => ({ id: cc.id, label: cc.name }))
+        ]}
+        selectedId={formData.cost_center_id}
+        onSelect={(option) => setFormData({ ...formData, cost_center_id: option.id, is_shared: !option.id })}
+        onClose={() => setActiveSheet(null)}
+      />
+
+      <OptionSheet
+        visible={activeSheet === 'payment_method'}
+        title="Selecione a Forma de Pagamento"
+        options={PAYMENT_METHODS}
+        selectedId={formData.payment_method}
+        onSelect={(option) => setFormData({ ...formData, payment_method: option.id, card_id: option.id !== 'credit_card' ? '' : formData.card_id })}
+        onClose={() => setActiveSheet(null)}
+      />
+
+      <OptionSheet
+        visible={activeSheet === 'card'}
+        title="Selecione o Cartão"
+        options={cards.map(card => ({ id: card.id, label: card.name }))}
+        selectedId={formData.card_id}
+        onSelect={(option) => setFormData({ ...formData, card_id: option.id })}
+        onClose={() => setActiveSheet(null)}
+      />
+
+      <OptionSheet
+        visible={activeSheet === 'recurrence_frequency'}
+        title="Selecione a Frequência"
+        options={RECURRENCE_OPTIONS}
+        selectedId={formData.recurrence_frequency}
+        onSelect={(option) => setFormData({ ...formData, recurrence_frequency: option.id })}
+        onClose={() => setActiveSheet(null)}
+      />
     </Modal>
   );
 }
@@ -407,41 +544,89 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    flex: 1,
+    paddingHorizontal: spacing[3],
+    paddingTop: spacing[3],
+  },
+  contentContainer: {
+    paddingBottom: spacing[6],
   },
 
   form: {
-    padding: spacing[3],
     gap: spacing[3],
+    paddingBottom: spacing[4],
   },
 
   field: {
     gap: spacing[1],
   },
 
-  selectContainer: {
+  selectField: {
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1.5],
+    backgroundColor: colors.background.secondary,
+  },
+
+  selectFieldDisabled: {
+    opacity: 0.5,
+  },
+
+  selectFieldEmpty: {
+    borderStyle: 'dashed',
+  },
+
+  selectPlaceholder: {
+    color: colors.text.tertiary,
+  },
+
+  currencyIcon: {
+    fontWeight: '600',
+    color: colors.text.primary,
+    fontSize: 16,
+  },
+
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+
+  sheetContainer: {
+    backgroundColor: colors.background.primary,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing[3],
+    paddingBottom: spacing[4],
+    paddingTop: spacing[2],
+  },
+
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.neutral[300],
+    borderRadius: radius.full,
+    alignSelf: 'center',
+    marginBottom: spacing[2],
+  },
+
+  sheetTitle: {
+    textAlign: 'center',
+    marginBottom: spacing[2],
+  },
+
+  sheetOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.md,
+    justifyContent: 'space-between',
+    paddingVertical: spacing[2],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+  },
+
+  sheetOptionSelected: {
     backgroundColor: colors.background.secondary,
-    paddingLeft: spacing[2],
-  },
-
-  selectIcon: {
-    marginRight: spacing[1.5],
-  },
-
-  select: {
-    flex: 1,
-    height: 48,
-    paddingHorizontal: spacing[2],
-    fontSize: 16,
-    color: colors.text.primary,
-    backgroundColor: 'transparent',
-    border: 'none',
-    outline: 'none',
   },
 
   switchRow: {
@@ -454,10 +639,12 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     gap: spacing[2],
-    padding: spacing[3],
+    paddingTop: spacing[3],
+    paddingHorizontal: spacing[3],
     borderTopWidth: 1,
     borderTopColor: colors.border.light,
-    paddingBottom: Platform.OS === 'ios' ? spacing[4] : spacing[3],
+    backgroundColor: colors.background.secondary,
+    // paddingBottom será aplicado dinamicamente com safe area
   },
 });
 

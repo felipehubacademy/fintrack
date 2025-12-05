@@ -7,6 +7,7 @@ import {
   Dimensions,
   Switch,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView } from 'react-native';
 import { X, Bell, Mail, MessageSquare, AlertTriangle } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
@@ -58,6 +59,7 @@ const NOTIFICATION_TYPES = [
 
 export function NotificationSettingsModal({ visible, onClose, organization, user }) {
   const { showToast } = useToast();
+  const insets = useSafeAreaInsets();
   const [settings, setSettings] = useState({
     emailNotifications: true,
     whatsappNotifications: true,
@@ -131,14 +133,19 @@ export function NotificationSettingsModal({ visible, onClose, organization, user
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <TouchableOpacity 
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={[styles.overlay, { paddingTop: insets.top || spacing[4], paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>
+        <TouchableOpacity
           style={StyleSheet.absoluteFill}
-          activeOpacity={1} 
+          activeOpacity={1}
           onPress={onClose}
         />
-        <View style={styles.modal}>
+        <View
+          style={[
+            styles.modal,
+            { maxHeight: Math.min(height * 0.85, height - (insets.top + insets.bottom) - spacing[6]) },
+          ]}
+        >
           {/* Header */}
           <View style={styles.header}>
             <Title2 weight="bold">Configurações de Notificações</Title2>
@@ -150,7 +157,7 @@ export function NotificationSettingsModal({ visible, onClose, organization, user
           {/* Content */}
           <ScrollView
             style={styles.content}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, spacing[3]) }]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             bounces={true}
@@ -219,13 +226,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing[2],
   },
   modal: {
     backgroundColor: colors.background.primary,
     borderRadius: radius.xl,
-    width: '90%',
-    maxHeight: height * 0.9,
+    width: '100%',
+    minHeight: height * 0.5,
     flexDirection: 'column',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',

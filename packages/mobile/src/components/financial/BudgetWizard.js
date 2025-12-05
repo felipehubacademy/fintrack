@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Modal,
@@ -7,7 +7,10 @@ import {
   Dimensions,
   ScrollView,
   TextInput,
+  Platform,
+  Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, ChevronLeft, Sparkles, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Title1, Title2, Headline, Callout, Caption, Subheadline } from '../ui/Text';
@@ -18,6 +21,8 @@ import { useToast } from '../ui/Toast';
 import { useAlert } from '../ui/AlertProvider';
 import { supabase } from '../../services/supabase';
 import { formatCurrency } from '@fintrack/shared/utils';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Budget distribution functions
 const MACRO_GROUPS = {
@@ -122,15 +127,26 @@ function calculateBudgetDistribution(monthlyIncome, investmentPercentage = 20, a
       return;
     }
 
-    const perCategoryAmount = macroAmount / macroCategories.length;
-    macroCategories.forEach((category) => {
+    // Calcular valor por categoria arredondado para evitar perda de precisão
+    const perCategoryAmount = Math.round((macroAmount / macroCategories.length) * 100) / 100;
+    // Calcular a soma dos valores arredondados
+    const totalRounded = perCategoryAmount * macroCategories.length;
+    // Calcular diferença devido ao arredondamento
+    const difference = Math.round((macroAmount - totalRounded) * 100) / 100;
+    
+    macroCategories.forEach((category, index) => {
+      // Distribuir a diferença na primeira categoria para garantir soma exata
+      const finalAmount = index === 0 
+        ? Math.round((perCategoryAmount + difference) * 100) / 100
+        : perCategoryAmount;
+      
       distributions.push({
         id: category.id,
         categoryId: category.id,
         categoryName: category.name,
         macro_group: macroKey,
         percentage: macroPct / macroCategories.length,
-        amount: perCategoryAmount,
+        amount: finalAmount,
         color: category.color || getMacroColor(macroKey),
         isPlaceholder: false,
       });
@@ -157,10 +173,34 @@ function adjustTo100Percent(distributions, monthlyIncome) {
     }));
   }
 
-  return distributions.map((dist) => ({
-    ...dist,
-    amount: income * ((dist.percentage || 0) / 100),
-  }));
+  // Calcular valores arredondados para 2 casas decimais
+  const roundedDistributions = distributions.map((dist) => {
+    const calculatedAmount = income * ((dist.percentage || 0) / 100);
+    // Arredondar para 2 casas decimais
+    const roundedAmount = Math.round(calculatedAmount * 100) / 100;
+    return {
+      ...dist,
+      amount: roundedAmount,
+    };
+  });
+
+  // Calcular a soma total dos valores arredondados (apenas não-placeholder)
+  const nonPlaceholderDistributions = roundedDistributions.filter((dist) => !dist.isPlaceholder);
+  const totalRounded = nonPlaceholderDistributions.reduce((sum, dist) => sum + dist.amount, 0);
+  // Calcular a diferença devido ao arredondamento
+  const difference = Math.round((income - totalRounded) * 100) / 100;
+
+  // Se houver diferença, adicionar na primeira categoria não-placeholder para garantir soma exata
+  if (Math.abs(difference) > 0.0001 && nonPlaceholderDistributions.length > 0) {
+    const firstNonPlaceholderIndex = roundedDistributions.findIndex((dist) => !dist.isPlaceholder);
+    if (firstNonPlaceholderIndex >= 0) {
+      roundedDistributions[firstNonPlaceholderIndex].amount = Math.round(
+        (roundedDistributions[firstNonPlaceholderIndex].amount + difference) * 100
+      ) / 100;
+    }
+  }
+
+  return roundedDistributions;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -316,8 +356,10 @@ export function BudgetWizard({
   onComplete,
   isSoloUser = true,
 }) {
+  const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const { alert } = useAlert();
+  const confettiParticles = useRef([]);
 
   const [currentStep, setCurrentStep] = useState(STEPS.WELCOME);
   const [monthlyIncome, setMonthlyIncome] = useState('');
@@ -347,7 +389,7 @@ export function BudgetWizard({
     setDistributions([]);
     setShowAnimation(true);
     setAutoRecalculate(true);
-    setExpandedMacros(['needs', 'wants', 'investments']);
+    setExpandedMacros([]);
     setFixedMacroTotals({});
   }, [visible]);
 
@@ -415,7 +457,18 @@ export function BudgetWizard({
   };
 
   const handleIncomeChange = (text) => {
-    const cleaned = text.replace(/[^\d,.-]/g, '');
+    // Remover tudo exceto números e vírgula
+    let cleaned = text.replace(/[^\d,]/g, '');
+    
+    // Garantir apenas uma vírgula
+    const commaIndex = cleaned.indexOf(',');
+    if (commaIndex !== -1) {
+      // Manter apenas a primeira vírgula e limitar a 2 casas decimais
+      const beforeComma = cleaned.substring(0, commaIndex);
+      const afterComma = cleaned.substring(commaIndex + 1).replace(/,/g, '').substring(0, 2);
+      cleaned = beforeComma + (afterComma ? ',' + afterComma : '');
+    }
+    
     setMonthlyIncome(cleaned);
     setAutoRecalculate(true);
   };
@@ -492,14 +545,33 @@ export function BudgetWizard({
 
     if (macroCategories.length === 0 || macroTotal === 0) return;
 
-    const amountPerCategory = macroTotal / macroCategories.length;
+    // Calcular valor por categoria arredondado para evitar perda de precisão
+    const amountPerCategory = Math.round((macroTotal / macroCategories.length) * 100) / 100;
+    // Calcular a soma dos valores arredondados
+    const totalRounded = amountPerCategory * macroCategories.length;
+    // Calcular diferença devido ao arredondamento
+    const difference = Math.round((macroTotal - totalRounded) * 100) / 100;
 
     setDistributions((prev) =>
-      prev.map((dist) =>
-        dist.macro_group === macroKey
-          ? { ...dist, amount: amountPerCategory, percentage: (amountPerCategory / income) * 100 }
-          : dist
-      )
+      prev.map((dist, index) => {
+        if (dist.macro_group !== macroKey) return dist;
+        
+        // Encontrar o índice dentro do macro
+        const macroIndex = prev
+          .filter((d) => d.macro_group === macroKey)
+          .findIndex((d) => d.categoryId === dist.categoryId);
+        
+        // Distribuir a diferença na primeira categoria para garantir soma exata
+        const finalAmount = macroIndex === 0
+          ? Math.round((amountPerCategory + difference) * 100) / 100
+          : amountPerCategory;
+        
+        return {
+          ...dist,
+          amount: finalAmount,
+          percentage: (finalAmount / income) * 100,
+        };
+      })
     );
   };
 
@@ -607,11 +679,80 @@ export function BudgetWizard({
 
       showToast('Planejamento salvo com sucesso!', 'success');
       transitionToStep(STEPS.SUCCESS);
+      // Criar confetes quando entrar no step de sucesso
+      setTimeout(() => createConfetti(), 100);
     } catch (error) {
       console.error('Erro ao salvar planejamento:', error);
       showToast('Erro ao salvar planejamento: ' + (error.message || 'Erro desconhecido'), 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const createConfetti = () => {
+    // Limpar confetes anteriores
+    confettiParticles.current.forEach((particle) => {
+      if (particle.anim) {
+        particle.anim.stop();
+      }
+    });
+    confettiParticles.current = [];
+
+    const confettiCount = 100;
+    const confettiColors = [colors.brand.primary, colors.success.main, colors.warning.main, colors.error.main, '#5FFFA7', '#FFD93D', '#A8E6CF'];
+
+    for (let i = 0; i < confettiCount; i++) {
+      const anim = new Animated.Value(0);
+      const rotateAnim = new Animated.Value(0);
+      const opacityAnim = new Animated.Value(1);
+
+      const angle = Math.random() * 360;
+      const distance = Math.max(SCREEN_WIDTH, SCREEN_HEIGHT) * (0.6 + Math.random() * 0.4);
+      const duration = 2000 + Math.random() * 2000;
+      const size = 8 + Math.random() * 8;
+      const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+      const isCircle = Math.random() > 0.5;
+
+      const radians = (angle * Math.PI) / 180;
+      const endX = Math.cos(radians) * distance;
+      const endY = Math.sin(radians) * distance;
+
+      const particle = {
+        anim,
+        rotateAnim,
+        opacityAnim,
+        angle,
+        endX,
+        endY,
+        size,
+        color,
+        isCircle,
+        duration,
+      };
+
+      confettiParticles.current.push(particle);
+
+      // Animar posição
+      Animated.timing(anim, {
+        toValue: 1,
+        duration,
+        useNativeDriver: true,
+      }).start();
+
+      // Animar rotação
+      Animated.timing(rotateAnim, {
+        toValue: Math.random() * 1080,
+        duration,
+        useNativeDriver: true,
+      }).start();
+
+      // Animar opacidade (fade out)
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: duration * 0.8,
+        delay: duration * 0.2,
+        useNativeDriver: true,
+      }).start();
     }
   };
 
@@ -666,7 +807,12 @@ export function BudgetWizard({
       case STEPS.INCOME:
         return (
           <View style={[styles.stepContainer, baseClasses]}>
-            <View style={styles.incomeContainer}>
+            <ScrollView 
+              style={styles.scrollContent} 
+              contentContainerStyle={styles.scrollContentContainer}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <Title2 style={styles.stepTitle}>
                 {isSoloUser ? 'Qual a entrada programada para o mês?' : 'Qual a entrada familiar programada para o mês?'}
               </Title2>
@@ -685,8 +831,10 @@ export function BudgetWizard({
                   autoFocus
                 />
               </View>
-              <Button title="Continuar" onPress={handleNext} disabled={!income} style={styles.stepButton} />
-            </View>
+              <View style={styles.incomeButtonContainer}>
+                <Button title="Continuar" onPress={handleNext} disabled={!income} style={styles.stepButton} />
+              </View>
+            </ScrollView>
           </View>
         );
 
@@ -713,39 +861,48 @@ export function BudgetWizard({
 
               <View style={styles.investmentControls}>
                 <Text style={styles.investmentLabel}>Ajuste o percentual que deseja investir mensalmente</Text>
-                <View style={styles.sliderContainer}>
-                  <TextInput
-                    style={styles.percentageInput}
-                    value={String(investmentPercentage)}
-                    onChangeText={(text) => {
-                      const num = parseInt(text) || 0;
-                      handleInvestmentChange(num);
+                
+                <View style={styles.sliderWrapper}>
+                  <TouchableOpacity
+                    style={styles.sliderButton}
+                    onPress={() => {
+                      const newValue = Math.max(0, investmentPercentage - 5);
+                      handleInvestmentChange(newValue);
                     }}
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.percentageLabel}>%</Text>
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.sliderButtonText}>-</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.sliderContainer}>
+                    <TextInput
+                      style={styles.percentageInput}
+                      value={String(investmentPercentage)}
+                      onChangeText={(text) => {
+                        const num = parseInt(text) || 0;
+                        handleInvestmentChange(Math.min(80, Math.max(0, num)));
+                      }}
+                      keyboardType="numeric"
+                      textAlign="center"
+                    />
+                    <Text style={styles.percentageLabel}>%</Text>
+                  </View>
+                  
+                  <TouchableOpacity
+                    style={styles.sliderButton}
+                    onPress={() => {
+                      const newValue = Math.min(80, investmentPercentage + 5);
+                      handleInvestmentChange(newValue);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.sliderButtonText}>+</Text>
+                  </TouchableOpacity>
                 </View>
+                
                 <View style={styles.sliderTrack}>
                   <View style={[styles.sliderFill, { width: `${(investmentPercentage / 80) * 100}%` }]} />
                 </View>
-                <TouchableOpacity
-                  style={styles.sliderButton}
-                  onPress={() => {
-                    const newValue = Math.max(0, investmentPercentage - 5);
-                    handleInvestmentChange(newValue);
-                  }}
-                >
-                  <Text style={styles.sliderButtonText}>-</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.sliderButton, styles.sliderButtonRight]}
-                  onPress={() => {
-                    const newValue = Math.min(80, investmentPercentage + 5);
-                    handleInvestmentChange(newValue);
-                  }}
-                >
-                  <Text style={styles.sliderButtonText}>+</Text>
-                </TouchableOpacity>
               </View>
 
               <View style={styles.chartContainer}>
@@ -764,12 +921,14 @@ export function BudgetWizard({
                 ))}
               </View>
 
-              <Button
-                title="Ajustar subcategorias"
-                onPress={handleNext}
-                disabled={!isValidDistribution}
-                style={styles.stepButton}
-              />
+              <View style={styles.investmentButtonContainer}>
+                <Button
+                  title="Ajustar subcategorias"
+                  onPress={handleNext}
+                  disabled={!isValidDistribution}
+                  style={styles.stepButton}
+                />
+              </View>
             </ScrollView>
           </View>
         );
@@ -777,7 +936,11 @@ export function BudgetWizard({
       case STEPS.SUBCATEGORIES:
         return (
           <View style={[styles.stepContainer, baseClasses]}>
-            <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={styles.scrollContent} 
+              contentContainerStyle={styles.scrollContentContainer}
+              showsVerticalScrollIndicator={false}
+            >
               <Title2 style={styles.stepTitle}>Ajuste os valores para cada categoria</Title2>
               <Text style={styles.stepDescription}>Distribua o valor de cada macro entre as subcategorias</Text>
 
@@ -799,23 +962,25 @@ export function BudgetWizard({
                       onPress={() => toggleMacroExpansion(macroKey)}
                       activeOpacity={0.7}
                     >
-                      <View style={styles.macroHeaderLeft}>
-                        <View style={[styles.macroDot, { backgroundColor: MACRO_COLORS[macroKey] }]} />
-                        <Text style={styles.macroLabel}>{MACRO_LABELS[macroKey]}</Text>
-                        <Text style={styles.macroAmount}>{formatCurrency(macroTotal)}</Text>
-                      </View>
-                      <View style={styles.macroHeaderRight}>
-                        {!isBalanced && (
-                          <Text style={styles.macroAdjust}>
-                            Ajustar: {formatCurrency(Math.abs(macroDiff))}
-                          </Text>
-                        )}
+                      <View style={styles.macroHeaderTop}>
+                        <View style={styles.macroHeaderLeft}>
+                          <View style={[styles.macroDot, { backgroundColor: MACRO_COLORS[macroKey] }]} />
+                          <Text style={styles.macroLabel}>{MACRO_LABELS[macroKey]}</Text>
+                          <Text style={styles.macroAmount}>{formatCurrency(macroTotal)}</Text>
+                        </View>
                         {isExpanded ? (
                           <ChevronUp size={20} color={colors.text.secondary} />
                         ) : (
                           <ChevronDown size={20} color={colors.text.secondary} />
                         )}
                       </View>
+                      {!isBalanced && (
+                        <View style={styles.macroHeaderBottom}>
+                          <Text style={styles.macroAdjust}>
+                            Ajustar: {formatCurrency(Math.abs(macroDiff))}
+                          </Text>
+                        </View>
+                      )}
                     </TouchableOpacity>
 
                     {isExpanded && (
@@ -842,14 +1007,17 @@ export function BudgetWizard({
                                 <Text style={styles.categoryName}>{category.categoryName}</Text>
                                 <Text style={styles.categoryPercentage}>{percentage.toFixed(0)}%</Text>
                               </View>
-                              <TextInput
-                                style={styles.categoryInput}
-                                value={typeof category.amount === 'number' ? formatCurrencyInput(category.amount) : category.amount || ''}
-                                onChangeText={(text) => handleSubcategoryChange(category.categoryId, text, macroKey)}
-                                onBlur={() => handleSubcategoryBlur(category.categoryId, macroKey)}
-                                placeholder="0,00"
-                                keyboardType="numeric"
-                              />
+                              <View style={styles.categoryInputWrapper}>
+                                <Text style={styles.categoryInputCurrency}>R$</Text>
+                                <TextInput
+                                  style={styles.categoryInput}
+                                  value={typeof category.amount === 'number' ? formatCurrencyInput(category.amount) : category.amount || ''}
+                                  onChangeText={(text) => handleSubcategoryChange(category.categoryId, text, macroKey)}
+                                  onBlur={() => handleSubcategoryBlur(category.categoryId, macroKey)}
+                                  placeholder="0,00"
+                                  keyboardType="numeric"
+                                />
+                              </View>
                             </View>
                           );
                         })}
@@ -868,9 +1036,8 @@ export function BudgetWizard({
               })}
 
               <View style={styles.subcategoriesFooter}>
-                <Button title="Voltar" variant="outline" onPress={handlePrevious} style={styles.footerButton} />
                 <Button
-                  title={saving ? 'Salvando...' : 'Confirmar planejamento'}
+                  title={saving ? 'Salvando...' : 'Salvar'}
                   onPress={handleSave}
                   disabled={saving}
                   style={styles.footerButton}
@@ -883,6 +1050,42 @@ export function BudgetWizard({
       case STEPS.SUCCESS:
         return (
           <View style={[styles.stepContainer, baseClasses, styles.successContainer]}>
+            {/* Confetti particles */}
+            {confettiParticles.current.map((particle, index) => {
+              const translateX = particle.anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, particle.endX],
+              });
+              const translateY = particle.anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, particle.endY],
+              });
+              const rotate = particle.rotateAnim.interpolate({
+                inputRange: [0, 360],
+                outputRange: ['0deg', '360deg'],
+              });
+
+              return (
+                <Animated.View
+                  key={`confetti-${index}`}
+                  style={[
+                    styles.confetti,
+                    {
+                      width: particle.size,
+                      height: particle.size,
+                      borderRadius: particle.isCircle ? particle.size / 2 : 0,
+                      backgroundColor: particle.color,
+                      opacity: particle.opacityAnim,
+                      transform: [
+                        { translateX },
+                        { translateY },
+                        { rotate },
+                      ],
+                    },
+                  ]}
+                />
+              );
+            })}
             <View style={styles.successBadge}>
               <Sparkles size={20} color={colors.brand.primary} />
               <Text style={styles.successBadgeText}>Planejamento concluído</Text>
@@ -901,12 +1104,12 @@ export function BudgetWizard({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.overlay}>
         <View style={styles.modal}>
           {/* Header */}
           {showProgress && (
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, spacing[3]) }]}>
               <View style={styles.headerLeft}>
                 {progressIndex > 0 && (
                   <TouchableOpacity onPress={handlePrevious} style={styles.backButton}>
@@ -929,7 +1132,7 @@ export function BudgetWizard({
           )}
 
           {/* Content */}
-          <View style={styles.content}>{renderStep()}</View>
+          <View style={[styles.content, { paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>{renderStep()}</View>
         </View>
       </View>
     </Modal>
@@ -939,16 +1142,11 @@ export function BudgetWizard({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: colors.background.primary,
   },
   modal: {
+    flex: 1,
     backgroundColor: colors.background.primary,
-    borderRadius: radius.xl,
-    width: '95%',
-    maxHeight: height * 0.9,
-    ...shadows.lg,
   },
   header: {
     flexDirection: 'row',
@@ -1007,6 +1205,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     flex: 1,
   },
+  scrollContentContainer: {
+    paddingBottom: spacing[4],
+  },
   welcomeContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1047,46 +1248,59 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   stepTitle: {
-    textAlign: 'center',
-    marginBottom: spacing[1],
+    fontSize: 22,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginBottom: spacing[2],
+    textAlign: 'left',
+    lineHeight: 28,
   },
   stepDescription: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.text.secondary,
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: spacing[4],
-  },
-  incomeContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: spacing[6],
+    lineHeight: 22,
   },
   incomeInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    maxWidth: 300,
+    borderWidth: 1.5,
+    borderColor: colors.border.default,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    backgroundColor: colors.background.secondary,
     marginBottom: spacing[6],
   },
   currencySymbol: {
-    fontSize: 24,
-    color: colors.text.secondary,
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text.primary,
     marginRight: spacing[2],
   },
   incomeInput: {
     flex: 1,
-    fontSize: 24,
-    textAlign: 'center',
-    borderWidth: 2,
-    borderColor: colors.border.light,
-    borderRadius: radius.md,
-    padding: spacing[2],
+    fontSize: 20,
+    fontWeight: '500',
+    textAlign: 'left',
     color: colors.text.primary,
+    padding: 0,
   },
   stepButton: {
     width: '100%',
     maxWidth: 300,
+  },
+  incomeButtonContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: spacing[2],
+  },
+  investmentButtonContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: spacing[2],
   },
   investmentInfoBox: {
     backgroundColor: colors.brand.bg,
@@ -1104,40 +1318,54 @@ const styles = StyleSheet.create({
   },
   investmentControls: {
     marginBottom: spacing[4],
+    paddingHorizontal: spacing[2],
   },
   investmentLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
-    color: colors.text.secondary,
+    color: colors.text.primary,
     textAlign: 'center',
-    marginBottom: spacing[2],
+    marginBottom: spacing[4],
+    lineHeight: 22,
+  },
+  sliderWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[3],
+    gap: spacing[3],
   },
   sliderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing[2],
-  },
-  percentageInput: {
-    width: 60,
-    fontSize: 18,
-    textAlign: 'center',
     borderWidth: 1,
     borderColor: colors.border.light,
-    borderRadius: radius.md,
-    padding: spacing[1.5],
-    marginRight: spacing[1],
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    backgroundColor: colors.background.secondary,
+    minWidth: 120,
+  },
+  percentageInput: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.text.primary,
+    textAlign: 'center',
+    minWidth: 50,
+    padding: 0,
   },
   percentageLabel: {
     fontSize: 18,
+    fontWeight: '500',
     color: colors.text.secondary,
+    marginLeft: spacing[1],
   },
   sliderTrack: {
     height: 8,
     backgroundColor: colors.neutral[200],
     borderRadius: radius.full,
-    marginBottom: spacing[2],
-    position: 'relative',
+    overflow: 'hidden',
   },
   sliderFill: {
     height: '100%',
@@ -1145,24 +1373,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   sliderButton: {
-    position: 'absolute',
-    left: 0,
-    top: -8,
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     borderRadius: radius.full,
     backgroundColor: colors.brand.primary,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  sliderButtonRight: {
-    left: 'auto',
-    right: 0,
+    ...shadows.sm,
   },
   sliderButtonText: {
     color: colors.background.primary,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
+    lineHeight: 28,
   },
   chartContainer: {
     marginBottom: spacing[4],
@@ -1201,20 +1424,30 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   macroHeader: {
+    padding: spacing[3],
+  },
+  macroHeaderTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing[3],
+    minHeight: 40,
+  },
+  macroHeaderBottom: {
+    marginTop: spacing[1.5],
+    paddingTop: spacing[1.5],
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
   },
   macroHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: spacing[2],
   },
   macroDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     marginRight: spacing[2],
   },
   macroLabel: {
@@ -1222,20 +1455,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text.primary,
     marginRight: spacing[2],
+    flex: 1,
   },
   macroAmount: {
-    fontSize: 14,
-    color: colors.text.secondary,
-  },
-  macroHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.text.primary,
   },
   macroAdjust: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.warning.main,
     fontWeight: '500',
-    marginRight: spacing[2],
   },
   macroContent: {
     padding: spacing[3],
@@ -1256,33 +1486,55 @@ const styles = StyleSheet.create({
   categoryInputCard: {
     backgroundColor: colors.background.primary,
     borderRadius: radius.md,
-    padding: spacing[2],
+    padding: spacing[3],
     marginBottom: spacing[2],
+    borderWidth: 1,
+    borderColor: colors.border.light,
   },
   categoryInputHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing[1],
+    marginBottom: spacing[2],
   },
   categoryName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
     color: colors.text.primary,
     flex: 1,
   },
   categoryPercentage: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.text.secondary,
+    backgroundColor: colors.background.secondary,
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[0.5],
+    borderRadius: radius.sm,
+  },
+  categoryInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.border.default,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing[2],
+    backgroundColor: colors.background.secondary,
+  },
+  categoryInputCurrency: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text.primary,
+    marginRight: spacing[1],
   },
   categoryInput: {
-    borderWidth: 1,
-    borderColor: colors.border.light,
-    borderRadius: radius.md,
-    padding: spacing[1.5],
+    flex: 1,
+    padding: spacing[2],
     textAlign: 'right',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '500',
     color: colors.text.primary,
+    backgroundColor: 'transparent',
   },
   balanceWarning: {
     backgroundColor: colors.warning.bg,
@@ -1301,6 +1553,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing[2],
     marginTop: spacing[4],
+    paddingTop: spacing[3],
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
   },
   footerButton: {
     flex: 1,
@@ -1309,6 +1564,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: spacing[6],
+    overflow: 'hidden',
+  },
+  confetti: {
+    position: 'absolute',
+    left: SCREEN_WIDTH / 2,
+    top: SCREEN_HEIGHT / 2,
+    pointerEvents: 'none',
+    zIndex: 9999,
   },
   successBadge: {
     flexDirection: 'row',

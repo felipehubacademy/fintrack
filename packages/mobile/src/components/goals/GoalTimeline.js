@@ -5,6 +5,7 @@ import { colors, spacing, radius } from '../../theme';
 import { Text, Title2, Caption } from '../ui/Text';
 import { Card } from '../ui/Card';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilMonthShort } from '../../utils/date';
 
 const { width } = Dimensions.get('window');
 
@@ -26,7 +27,7 @@ export default function GoalTimeline({ goal, contributions = [] }) {
     // Ponto inicial (quando a meta foi criada)
     const startDate = new Date(goal.created_at);
     data.push({
-      date: startDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+      date: formatBrazilMonthShort(startDate),
       valor: accumulated,
       meta: parseFloat(goal.target_amount)
     });
@@ -36,7 +37,7 @@ export default function GoalTimeline({ goal, contributions = [] }) {
       accumulated += parseFloat(contribution.amount || 0);
       const contribDate = new Date(contribution.contribution_date);
       data.push({
-        date: contribDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+        date: formatBrazilMonthShort(contribDate),
         valor: accumulated,
         meta: parseFloat(goal.target_amount),
         contribution: parseFloat(contribution.amount)
@@ -60,7 +61,7 @@ export default function GoalTimeline({ goal, contributions = [] }) {
         
         accumulated += goal.monthly_contribution;
         data.push({
-          date: projectionDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+          date: formatBrazilMonthShort(projectionDate),
           projecao: Math.min(accumulated, parseFloat(goal.target_amount)),
           meta: parseFloat(goal.target_amount),
           isProjection: true

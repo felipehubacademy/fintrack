@@ -15,6 +15,7 @@ import { Card } from '../ui/Card';
 import { useOrganization } from '../../hooks/useOrganization';
 import { supabase } from '../../services/supabase';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilDate, formatBrazilMonthYear } from '../../utils/date';
 import MarkInvoiceAsPaidModal from './MarkInvoiceAsPaidModal';
 import RolloverInvoiceModal from './RolloverInvoiceModal';
 import { useToast } from '../ui/Toast';
@@ -224,13 +225,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
     }
   };
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('pt-BR', { 
-      month: 'long', 
-      year: 'numeric' 
-    });
-  };
+  const formatDate = (dateStr) => formatBrazilMonthYear(dateStr);
 
   const handleMarkInvoiceAsPaid = async (paymentData) => {
     if (!selectedInvoice || !card) return;
@@ -708,13 +703,13 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                             
                             {/* Segunda linha: Data do ciclo */}
                             <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                              Data do ciclo: {new Date(invoice.startDate + 'T00:00:00').toLocaleDateString('pt-BR')} - {new Date(invoice.endDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                              Data do ciclo: {formatBrazilDate(invoice.startDate)} - {formatBrazilDate(invoice.endDate)}
                             </Caption>
                             
                             {/* Terceira linha: Fechou em... */}
                             {hasClosed && !isFuture && (
                               <Caption style={{ color: colors.warning.main, marginTop: spacing[0.5] }}>
-                                Fechou em {closingDate.toLocaleDateString('pt-BR')}
+                                Fechou em {formatBrazilDate(closingDate)}
                               </Caption>
                             )}
                             
@@ -753,7 +748,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                                   return (
                                     <View key={expense.id || expIndex} style={styles.expenseItem}>
                                       <Caption color="secondary">
-                                        {expenseDate.toLocaleDateString('pt-BR')}
+                                        {formatBrazilDate(expenseDate)}
                                       </Caption>
                                       <View style={styles.expenseContent}>
                                         <Callout numberOfLines={1}>

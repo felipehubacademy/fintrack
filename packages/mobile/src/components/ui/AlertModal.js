@@ -31,6 +31,7 @@ export default function AlertModal({
   title = 'Alerta',
   message = '',
   type = 'info', // warning, danger, info, success
+  buttons = [],
 }) {
   if (!visible) return null;
 
@@ -84,11 +85,28 @@ export default function AlertModal({
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Button
-              title="OK"
-              onPress={onClose}
-              style={styles.footerButton}
-            />
+            {buttons && buttons.length > 0 ? (
+              buttons.map((button, index) => (
+                <Button
+                  key={index}
+                  title={button.text}
+                  onPress={() => {
+                    if (button.onPress) {
+                      button.onPress();
+                    }
+                    onClose();
+                  }}
+                  variant={index === 0 ? 'primary' : 'outline'}
+                  style={[styles.footerButton, buttons.length > 1 && { flex: 1 }]}
+                />
+              ))
+            ) : (
+              <Button
+                title="OK"
+                onPress={onClose}
+                style={styles.footerButton}
+              />
+            )}
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -144,9 +162,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing[2],
     borderTopWidth: 1,
     borderTopColor: colors.border.light,
+    flexDirection: 'row',
+    gap: spacing[2],
   },
   footerButton: {
-    width: '100%',
+    flex: 1,
   },
 });
 

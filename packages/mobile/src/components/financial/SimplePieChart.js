@@ -43,28 +43,7 @@ export function SimplePieChart({ data, title }) {
           {title}
         </Text>
       )}
-
-      {/* Lista de categorias */}
-      <View style={styles.list}>
-        {data.map((item, index) => {
-          const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) : 0;
-          const color = chartColors[index % chartColors.length];
-
-          return (
-            <View key={item.label} style={styles.item}>
-              <View style={styles.itemLeft}>
-                <View style={[styles.colorDot, { backgroundColor: color }]} />
-                <Text variant="callout">{item.label}</Text>
-              </View>
-              <View style={styles.itemRight}>
-                <Text variant="callout" weight="semiBold">
-                  {percentage}%
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
+      {/* Lista removida - breakdown completo está no summaryContainer abaixo */}
     </View>
   );
 }

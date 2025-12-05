@@ -32,6 +32,7 @@ export function AlertProvider({ children }) {
     title: '',
     message: '',
     type: 'info',
+    buttons: [],
   });
 
   const alert = (options) => {
@@ -40,6 +41,7 @@ export function AlertProvider({ children }) {
       title: options.title || 'Alerta',
       message: options.message || '',
       type: options.type || 'info',
+      buttons: options.buttons || [],
     });
   };
 
@@ -56,6 +58,7 @@ export function AlertProvider({ children }) {
         title={alertState.title}
         message={alertState.message}
         type={alertState.type}
+        buttons={alertState.buttons}
       />
     </AlertContext.Provider>
   );

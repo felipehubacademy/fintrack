@@ -43,6 +43,10 @@ import { DetailedStatsSheet } from '../components/financial/DetailedStatsSheet';
 import { BankAccountsSheet } from '../components/financial/BankAccountsSheet';
 import { Tooltip } from '../components/ui/Tooltip';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilDate, formatBrazilDayMonthShort } from '../utils/date';
+import { orderTransactionsForDisplay } from '../utils/sortTransactions';
+import { useAlert } from '../components/ui/AlertProvider';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const STAT_CARD_WIDTH = (width - spacing[2] * 3) / 2.2;
@@ -57,17 +61,7 @@ const PAYMENT_METHOD_LABELS = {
   other: 'Outros',
 };
 
-const formatShortDate = (dateString) => {
-  if (!dateString) return '';
-  try {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-    });
-  } catch {
-    return dateString;
-  }
-};
+const formatShortDate = (dateString) => formatBrazilDayMonthShort(dateString);
 
 const getPaymentMethodLabel = (method) =>
   PAYMENT_METHOD_LABELS[method] || PAYMENT_METHOD_LABELS.other;
@@ -75,6 +69,7 @@ const getPaymentMethodLabel = (method) =>
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const { organization, user, loading: orgLoading } = useOrganization();
+  const { alert } = useAlert();
   // Forçar mes atual correto
   const getCurrentMonth = () => {
     const now = new Date();
@@ -131,8 +126,70 @@ export default function DashboardScreen() {
     if (organization) {
       loadDashboardData();
       loadMonthlyComparison();
+      checkBudgetExists();
     }
   }, [organization, selectedMonth]);
+
+  // Verificar se há orçamento para o mês atual e sugerir criar se não houver
+  const checkBudgetExists = async () => {
+    try {
+      if (!organization?.id) return;
+      
+      const currentMonth = getCurrentMonth();
+      if (selectedMonth !== currentMonth) return; // Só verificar no mês atual
+      
+      const monthYear = `${selectedMonth}-01`;
+      
+      const { data: budgets, error } = await supabase
+        .from('budgets')
+        .select('id')
+        .eq('organization_id', organization.id)
+        .eq('month_year', monthYear)
+        .limit(1);
+
+      if (error) {
+        console.error('Erro ao verificar orçamentos:', error);
+        return;
+      }
+
+      // Se não houver orçamentos, mostrar alerta
+      if (!budgets || budgets.length === 0) {
+        const dismissedKey = `budget_reminder_${currentMonth}`;
+        const isDismissed = await AsyncStorage.getItem(dismissedKey);
+        
+        if (!isDismissed) {
+          // Pequeno delay para melhorar UX
+          setTimeout(() => {
+            alert({
+              title: 'Crie seu orçamento mensal',
+              message: 'Você ainda não criou um orçamento para este mês. Crie um para acompanhar melhor seus gastos!',
+              type: 'info',
+              buttons: [
+                {
+                  text: 'Criar Agora',
+                  onPress: () => {
+                    // Navegar para Budgets e passar parâmetro para abrir wizard
+                    navigation.navigate('Mais', { 
+                      screen: 'Budgets',
+                      params: { openWizard: true }
+                    });
+                  },
+                },
+                {
+                  text: 'Mais tarde',
+                  onPress: () => {
+                    // Não salvar no AsyncStorage para que apareça novamente na próxima vez
+                  },
+                },
+              ],
+            });
+          }, 1000);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar orçamentos:', error);
+    }
+  };
 
   // Sincronizar categorias exibidas com estado de expansão
   useEffect(() => {
@@ -250,7 +307,7 @@ export default function DashboardScreen() {
         label: bill.description || 'Sem descrição',
         value: bill.amount || 0,
         subtitle: [
-          bill.due_date ? new Date(bill.due_date).toLocaleDateString('pt-BR') : '',
+          bill.due_date ? formatBrazilDate(bill.due_date) : '',
           bill.status === 'overdue' ? 'Vencida' : '',
           bill.category?.name || '',
         ].filter(Boolean).join(' · '),
@@ -271,12 +328,12 @@ export default function DashboardScreen() {
       });
 
       // Combinar e ordenar transações (últimas 5)
-      const allTransactions = [
+      const orderedTransactions = orderTransactionsForDisplay([
         ...(expensesData || []).map(e => ({ ...e, type: 'expense' })),
         ...(incomesData || []).map(i => ({ ...i, type: 'income' })),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+      ]);
 
-      setRecentTransactions(allTransactions);
+      setRecentTransactions(orderedTransactions.slice(0, 5));
 
       // Buscar categorias do supabase com CORES (da org + globais)
       const { data: categories } = await supabase
@@ -840,16 +897,16 @@ export default function DashboardScreen() {
             </View>
 
             <View style={{ position: 'relative', width: STAT_CARD_WIDTH }}>
-              <StatCard
+            <StatCard
                 label="Pagamentos Programados"
                 value={formatCurrency(stats.scheduledPayments)}
                 icon={<Calendar size={20} color={colors.warning.main} />}
                 variant="warning"
-                style={{ width: STAT_CARD_WIDTH }}
+              style={{ width: STAT_CARD_WIDTH }}
                 onPress={() => {
                   setScheduledPaymentsSheetVisible(true);
                 }}
-              />
+            />
               {/* Ícone ? APENAS VISUAL - indica que o StatCard é clicável */}
               <View style={{ position: 'absolute', top: spacing[0.5], right: spacing[0.5], pointerEvents: 'none' }}>
                 <HelpCircle size={14} color={colors.text.tertiary} />
@@ -1109,7 +1166,7 @@ export default function DashboardScreen() {
                       {transaction.description || 'Sem descrição'}
                     </Text>
                     <Caption color="secondary">
-                      {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                      {formatBrazilDate(transaction.date)}
                     </Caption>
                   </View>
                   <Text

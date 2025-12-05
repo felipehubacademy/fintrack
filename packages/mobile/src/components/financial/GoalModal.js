@@ -7,6 +7,7 @@ import {
   Dimensions,
   TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView } from 'react-native-gesture-handler';
 import { X, PiggyBank, CreditCard, ShoppingBag, TrendingUp, Wallet } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
@@ -72,6 +73,7 @@ const formatCurrencyInput = (value) => {
 
 export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
   const { showToast } = useToast();
+  const insets = useSafeAreaInsets();
   const [formData, setFormData] = useState({
     name: '',
     goal_type: 'savings',
@@ -164,11 +166,17 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
   const estimatedMonths = monthlyContribution > 0 ? Math.ceil(remaining / monthlyContribution) : 0;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <TouchableOpacity style={[styles.overlay, { paddingTop: insets.top || spacing[4] }]} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity
           activeOpacity={1}
-          style={styles.modal}
+          style={[
+            styles.modal,
+            {
+              maxHeight: Math.min(height * 0.85, height - (insets.top + insets.bottom) - spacing[6]),
+              paddingBottom: Math.max(insets.bottom, spacing[3]),
+            },
+          ]}
           onPress={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -182,10 +190,10 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
           {/* Content */}
           <ScrollView
             style={styles.content}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, spacing[4]) }]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            bounces={false}
+            bounces={true}
             nestedScrollEnabled={true}
           >
             {/* Goal Type Selection */}
@@ -366,12 +374,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing[2],
   },
   modal: {
     backgroundColor: colors.background.primary,
     borderRadius: radius.xl,
-    width: '90%',
-    maxHeight: height * 0.9,
+    width: '100%',
+    minHeight: height * 0.55,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',

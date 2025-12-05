@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -24,6 +24,10 @@ import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { CardFormModal } from '../components/financial/CardFormModal';
 import MarkInvoiceAsPaidModal from '../components/financial/MarkInvoiceAsPaidModal';
 import RolloverInvoiceModal from '../components/financial/RolloverInvoiceModal';
+import { orderTransactionsForDisplay } from '../utils/sortTransactions';
+import { getMonthRange, getCurrentMonthKey } from '../utils/monthRange';
+import { MonthSelector } from '../components/financial/MonthSelector';
+import { formatBrazilDate, formatBrazilMonthYear } from '../utils/date';
 
 const CARD_COLOR_MAP = {
   'bg-blue-600': '#2563EB',
@@ -42,6 +46,11 @@ const resolveCardColor = (color) => {
 
 export default function CardDetailScreen({ route, navigation }) {
   const { cardId } = route.params;
+  const [selectedMonth, setSelectedMonth] = useState(() => route.params?.selectedMonth || getCurrentMonthKey());
+  const { startDate: monthStartDate, endDate: monthEndDate } = useMemo(
+    () => getMonthRange(selectedMonth),
+    [selectedMonth]
+  );
   const { organization, user, loading: orgLoading, refetch: refetchOrganization } = useOrganization();
   const { showToast } = useToast();
   const { confirm } = useConfirmation();
@@ -52,7 +61,6 @@ export default function CardDetailScreen({ route, navigation }) {
   const [usedAmount, setUsedAmount] = useState(0);
   const [usageByCardId, setUsageByCardId] = useState({});
   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
-  const [currentCycleDates, setCurrentCycleDates] = useState({ startDate: null, endDate: null });
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [payInvoiceModalVisible, setPayInvoiceModalVisible] = useState(false);
   const [rolloverInvoiceModalVisible, setRolloverInvoiceModalVisible] = useState(false);
@@ -68,11 +76,11 @@ export default function CardDetailScreen({ route, navigation }) {
     }
   }, [orgLoading, organization, cardId]);
 
-  useEffect(() => {
-    if (currentCycleDates.startDate && currentCycleDates.endDate && organization && cardId) {
-      fetchTransactions();
-    }
-  }, [currentCycleDates, organization, cardId]);
+useEffect(() => {
+  if (organization && cardId) {
+    fetchTransactions();
+  }
+}, [organization, cardId, monthStartDate, monthEndDate]);
 
   useEffect(() => {
     if (card) {
@@ -107,13 +115,7 @@ export default function CardDetailScreen({ route, navigation }) {
     return `${year}-${month}-${day}`;
   };
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('pt-BR', { 
-      month: 'long', 
-      year: 'numeric' 
-    });
-  };
+const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
 
   const handleMarkInvoiceAsPaid = async (paymentData) => {
     if (!selectedInvoice || !card) return;
@@ -134,7 +136,7 @@ export default function CardDetailScreen({ route, navigation }) {
             p_bank_account_id: bank_account_id,
             p_transaction_type: 'manual_debit',
             p_amount: amount,
-            p_description: `Pagamento Fatura ${card.name} - ${formatDate(selectedInvoice.startDate)}`,
+      p_description: `Pagamento Fatura ${card.name} - ${formatBillingCycleLabel(selectedInvoice.startDate)}`,
             p_date: getBrazilTodayString(),
             p_organization_id: organization.id,
             p_user_id: user?.id
@@ -305,9 +307,6 @@ export default function CardDetailScreen({ route, navigation }) {
         endDate = end.toISOString().split('T')[0];
       }
 
-      // Armazenar datas do ciclo atual para usar em fetchTransactions
-      setCurrentCycleDates({ startDate, endDate });
-
       const limit = Number(card.credit_limit || 0);
       const availableLimit = Number(card.available_limit || limit);
       
@@ -350,23 +349,6 @@ export default function CardDetailScreen({ route, navigation }) {
 
   const fetchTransactions = async () => {
     try {
-      // Usar ciclo atual se disponível, senão usar mês atual como fallback
-      let startDate, endDate;
-      
-      if (currentCycleDates.startDate && currentCycleDates.endDate) {
-        startDate = currentCycleDates.startDate;
-        endDate = currentCycleDates.endDate;
-      } else {
-        // Fallback: usar mês atual
-        const today = getBrazilToday();
-        const y = today.getFullYear();
-        const m = today.getMonth();
-        const start = new Date(y, m, 1);
-        const end = new Date(y, m + 1, 0);
-        startDate = start.toISOString().split('T')[0];
-        endDate = end.toISOString().split('T')[0];
-      }
-
       const { data, error } = await supabase
         .from('expenses')
         .select('*')
@@ -374,14 +356,15 @@ export default function CardDetailScreen({ route, navigation }) {
         .eq('organization_id', organization.id)
         .eq('payment_method', 'credit_card')
         .eq('status', 'confirmed')
-        .gte('date', startDate)
-        .lte('date', endDate)
+        .gte('date', monthStartDate)
+        .lte('date', monthEndDate)
         .order('date', { ascending: false })
         .limit(20);
 
       if (error) throw error;
 
-      setTransactions(data || []);
+      const orderedTransactions = orderTransactionsForDisplay(data || []);
+      setTransactions(orderedTransactions);
     } catch (error) {}
   };
 
@@ -456,6 +439,10 @@ export default function CardDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         }
       />
+
+      <View style={styles.monthSelectorWrapper}>
+        <MonthSelector selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -656,7 +643,7 @@ export default function CardDetailScreen({ route, navigation }) {
                       {transaction.description}
                     </Callout>
                     <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                      {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                      {formatBrazilDate(transaction.date)}
                     </Caption>
                   </View>
                   <Callout weight="bold" style={{ color: colors.error.main }}>
@@ -870,6 +857,12 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: spacing[2],
+  },
+  monthSelectorWrapper: {
+    paddingHorizontal: spacing[3],
+    paddingTop: spacing[2],
+    paddingBottom: spacing[1],
+    backgroundColor: colors.background.primary,
   },
 
   cardVisualContainer: {

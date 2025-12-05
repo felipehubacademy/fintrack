@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text } from '../ui/Text';
+import { formatBrazilMonthYear } from '../../utils/date';
 
 /**
  * MonthSelector - Seletor de mês minimalista
@@ -13,13 +14,8 @@ export const MonthSelector = React.memo(function MonthSelector({ selectedMonth, 
     const [year, month] = selectedMonth.split('-');
     const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
     
-    const monthName = monthDate.toLocaleDateString('pt-BR', { 
-      month: 'long',
-      year: 'numeric',
-      timeZone: 'America/Sao_Paulo'
-    });
-
-    const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    const monthLabel = formatBrazilMonthYear(selectedMonth);
+    const capitalizedMonth = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
     const currentMonth = new Date().toISOString().slice(0, 7);
     const isCurrentMonth = selectedMonth === currentMonth;
     const isFutureMonth = selectedMonth > currentMonth;
@@ -59,7 +55,7 @@ export const MonthSelector = React.memo(function MonthSelector({ selectedMonth, 
       </TouchableOpacity>
 
       <View style={styles.monthContainer}>
-        <Text variant="headline" weight="semiBold">
+        <Text variant="headline" weight="semiBold" style={{ color: colors.text.primary }}>
           {monthInfo.capitalizedMonth}
         </Text>
         {monthInfo.isCurrentMonth && (

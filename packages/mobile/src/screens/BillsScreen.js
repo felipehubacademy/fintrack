@@ -24,6 +24,7 @@ import { useAlert } from '../components/ui/AlertProvider';
 import { useToast } from '../components/ui/Toast';
 import { supabase } from '../services/supabase';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilDate } from '../utils/date';
 
 // Funções de data do Brasil
 const getBrazilToday = () => {
@@ -693,7 +694,7 @@ export default function BillsScreen() {
                       </Callout>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[1], marginTop: spacing[0.5] }}>
                         <Footnote color="secondary">
-                          {new Date(bill.due_date).toLocaleDateString('pt-BR')}
+                          {formatBrazilDate(bill.due_date)}
                         </Footnote>
                         {bill.category && (
                           <>

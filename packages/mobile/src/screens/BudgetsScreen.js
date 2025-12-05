@@ -18,6 +18,7 @@ import { MonthSelector } from '../components/financial/MonthSelector';
 import { StatCard } from '../components/financial/StatCard';
 import { BudgetModal } from '../components/financial/BudgetModal';
 import { BudgetWizard } from '../components/financial/BudgetWizard';
+import { MacroEditModal } from '../components/financial/MacroEditModal';
 import { useOrganization } from '../hooks/useOrganization';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { useAlert } from '../components/ui/AlertProvider';
@@ -57,7 +58,7 @@ const inferMacroFromName = (name = '') => {
   return 'needs';
 };
 
-export default function BudgetsScreen() {
+export default function BudgetsScreen({ route }) {
   const { organization, user, budgetCategories, loading: orgLoading, isSoloUser } = useOrganization();
   const { confirm } = useConfirmation();
   const { alert } = useAlert();
@@ -75,12 +76,23 @@ export default function BudgetsScreen() {
   const [editingBudget, setEditingBudget] = useState(null);
   const [showBudgetWizard, setShowBudgetWizard] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [editingMacro, setEditingMacro] = useState(null);
 
   useEffect(() => {
     if (!orgLoading && organization) {
       fetchBudgets();
     }
   }, [orgLoading, organization?.id, selectedMonth]);
+
+  // Verificar se deve abrir o wizard ao entrar na tela
+  useEffect(() => {
+    if (route?.params?.openWizard && !orgLoading && organization) {
+      // Pequeno delay para garantir que a tela está carregada
+      setTimeout(() => {
+        setShowBudgetWizard(true);
+      }, 500);
+    }
+  }, [route?.params?.openWizard, orgLoading, organization]);
 
   // Auto-open wizard when no budgets exist
   useEffect(() => {
@@ -105,6 +117,8 @@ export default function BudgetsScreen() {
   // Detect month turnover
   useEffect(() => {
     if (!isDataLoaded) return;
+    // Não mostrar alerta se o usuário já veio com intenção de criar (openWizard)
+    if (route?.params?.openWizard) return;
 
     const checkMonthTurnover = async () => {
       const currentMonth = selectedMonth;
@@ -156,7 +170,7 @@ export default function BudgetsScreen() {
     };
 
     checkMonthTurnover();
-  }, [isDataLoaded, selectedMonth, budgets.length]);
+  }, [isDataLoaded, selectedMonth, budgets.length, route?.params?.openWizard]);
 
   const fetchBudgets = async () => {
     try {
@@ -204,8 +218,9 @@ export default function BudgetsScreen() {
 
       // Usar current_spent do banco (calculado pelo trigger)
       const budgetsWithSpent = (budgetsData || []).map(budget => {
-        const spent = parseFloat(budget.current_spent || 0);
-        const limit = parseFloat(budget.limit_amount || 0);
+        // Garantir precisão: arredondar para 2 casas decimais
+        const spent = Math.round(parseFloat(budget.current_spent || 0) * 100) / 100;
+        const limit = Math.round(parseFloat(budget.limit_amount || 0) * 100) / 100;
         const category = categoryMap.get(budget.category_id);
 
         return {
@@ -296,8 +311,9 @@ export default function BudgetsScreen() {
       const categoryInfo = categoryMap.get(budget.category_id);
       const macroGroup = budget.macro_group || inferMacroFromName(budget.category);
       const color = budget.color || MACRO_COLORS[macroGroup] || colors.brand.primary;
-      const amount = Number(budget.amount || 0);
-      const spent = Number(budget.spent || 0);
+      // Garantir precisão: arredondar para 2 casas decimais
+      const amount = Math.round(Number(budget.amount || 0) * 100) / 100;
+      const spent = Math.round(Number(budget.spent || 0) * 100) / 100;
 
       const targetGroup = groups[macroGroup] || groups.needs;
       targetGroup.totalBudget += amount;
@@ -317,27 +333,34 @@ export default function BudgetsScreen() {
 
     return MACRO_ORDER.map((key) => {
       const group = groups[key];
-      const remaining = group.totalBudget - group.totalSpent;
-      const progress = group.totalBudget > 0 ? (group.totalSpent / group.totalBudget) * 100 : 0;
+      // Garantir precisão: arredondar para 2 casas decimais
+      const totalBudget = Math.round(group.totalBudget * 100) / 100;
+      const totalSpent = Math.round(group.totalSpent * 100) / 100;
+      const remaining = Math.round((totalBudget - totalSpent) * 100) / 100;
+      const progress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
       group.categories.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
       return {
         ...group,
+        totalBudget,
+        totalSpent,
         remaining,
         progress,
-        status: getBudgetStatus(group.totalSpent, group.totalBudget)
+        status: getBudgetStatus(totalSpent, totalBudget)
       };
     });
   }, [budgets, categoryMap]);
 
-  const totalBudgetValue = useMemo(
-    () => macroSummary.reduce((sum, macro) => sum + macro.totalBudget, 0),
-    [macroSummary]
-  );
-  const totalSpentValue = useMemo(
-    () => macroSummary.reduce((sum, macro) => sum + macro.totalSpent, 0),
-    [macroSummary]
-  );
-  const totalRemainingValue = totalBudgetValue - totalSpentValue;
+  const totalBudgetValue = useMemo(() => {
+    const total = macroSummary.reduce((sum, macro) => sum + macro.totalBudget, 0);
+    // Garantir precisão: arredondar para 2 casas decimais
+    return Math.round(total * 100) / 100;
+  }, [macroSummary]);
+  const totalSpentValue = useMemo(() => {
+    const total = macroSummary.reduce((sum, macro) => sum + macro.totalSpent, 0);
+    // Garantir precisão: arredondar para 2 casas decimais
+    return Math.round(total * 100) / 100;
+  }, [macroSummary]);
+  const totalRemainingValue = Math.round((totalBudgetValue - totalSpentValue) * 100) / 100;
 
   const handleCopyPreviousMonth = async () => {
     try {
@@ -370,9 +393,13 @@ export default function BudgetsScreen() {
         return;
       }
 
+      const formatMonthYear = (year, month) => {
+        return `${month.toString().padStart(2, '0')}/${year}`;
+      };
+      
       const confirmed = await confirm({
         title: 'Copiar orçamentos',
-        message: `Copiar orçamentos de ${previousMonth.toString().padStart(2, '0')}/${previousYear} para ${selectedMonth}?`,
+        message: `Copiar orçamentos de ${formatMonthYear(previousYear, previousMonth)} para ${formatMonthYear(currentYear, currentMonth)}?`,
         type: 'info',
       });
 
@@ -402,13 +429,31 @@ export default function BudgetsScreen() {
           .eq('month_year', currentMonthYear);
       }
 
-      // Copiar orçamentos
-      const budgetsToInsert = previousBudgets.map(budget => ({
+      // Verificar se as categorias existem antes de copiar
+      const categoriesToUse = localCategories.length > 0 ? localCategories : (budgetCategories || []);
+      const categoryIds = new Set(categoriesToUse.map(cat => cat.id));
+      
+      // Filtrar apenas orçamentos com categorias válidas
+      const validBudgets = previousBudgets.filter(budget => 
+        budget.category_id && categoryIds.has(budget.category_id)
+      );
+
+      if (validBudgets.length === 0) {
+        alert({
+          title: 'Atenção',
+          message: 'Nenhum orçamento válido encontrado. As categorias do mês anterior podem não corresponder às categorias atuais.',
+          type: 'warning',
+        });
+        return;
+      }
+
+      // Copiar orçamentos (sem cost_center_id pois não existe na tabela)
+      const budgetsToInsert = validBudgets.map(budget => ({
         organization_id: organization.id,
         category_id: budget.category_id,
-        cost_center_id: budget.cost_center_id,
         limit_amount: budget.limit_amount,
         month_year: currentMonthYear,
+        is_shared: budget.is_shared || false,
       }));
 
       const { error: insertError } = await supabase
@@ -418,7 +463,7 @@ export default function BudgetsScreen() {
       if (insertError) throw insertError;
 
       await fetchBudgets();
-      showToast(`Orçamentos copiados com sucesso!`, 'success');
+      showToast(`Orçamentos copiados com sucesso! ${validBudgets.length} de ${previousBudgets.length} orçamentos copiados.`, 'success');
     } catch (error) {
       showToast('Erro ao copiar orçamentos: ' + (error.message || 'Erro desconhecido'), 'error');
     }
@@ -467,9 +512,12 @@ export default function BudgetsScreen() {
     setShowBudgetModal(true);
   };
 
+  const handleEditMacro = (macro) => {
+    setEditingMacro(macro);
+  };
+
   const handleAddBudget = () => {
-    setEditingBudget(null);
-    setShowBudgetModal(true);
+    setShowBudgetWizard(true);
   };
 
   const handleDeleteBudget = async (budget) => {
@@ -603,12 +651,14 @@ export default function BudgetsScreen() {
               <View key={macro.key} style={styles.macroSection}>
                 <TouchableOpacity
                   style={styles.macroHeader}
-                  onPress={() => setExpandedMacro(isExpanded ? null : macro.key)}
+                  onPress={() => {
+                    setExpandedMacro(isExpanded ? null : macro.key);
+                  }}
                   activeOpacity={0.7}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View style={styles.macroHeaderContent}>
                     <View style={[styles.macroDot, { backgroundColor: macro.color }]} />
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, marginRight: spacing[2] }}>
                       <Subheadline weight="semiBold">{macro.label}</Subheadline>
                       <Caption color="secondary">
                         {formatCurrency(macro.totalBudget)} • {formatCurrency(macro.totalSpent)} gasto
@@ -626,6 +676,17 @@ export default function BudgetsScreen() {
                       <ChevronDown size={20} color={colors.text.secondary} />
                     )}
                   </View>
+                  <TouchableOpacity
+                    style={styles.editMacroButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleEditMacro(macro);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Edit size={16} color={colors.brand.primary} />
+                    <Text style={styles.editMacroButtonText}>Editar macro</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
 
                 {/* Progress Bar */}
@@ -703,18 +764,6 @@ export default function BudgetsScreen() {
                                 : `Excedido: ${formatCurrency(Math.abs(category.remaining))}`
                               }
                             </Footnote>
-                            <View style={{ flexDirection: 'row', gap: spacing[2] }}>
-                              <TouchableOpacity
-                                onPress={() => handleEditBudget(category)}
-                              >
-                                <Edit size={16} color={colors.text.secondary} />
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={() => handleDeleteBudget(category)}
-                              >
-                                <Trash2 size={16} color={colors.error.main} />
-                              </TouchableOpacity>
-                            </View>
                           </View>
                         </Card>
                       );
@@ -766,6 +815,17 @@ export default function BudgetsScreen() {
         }}
         isSoloUser={isSoloUser}
       />
+
+      {/* Macro Edit Modal */}
+      <MacroEditModal
+        visible={!!editingMacro}
+        onClose={() => setEditingMacro(null)}
+        macro={editingMacro}
+        categories={budgetCategories || []}
+        selectedMonth={selectedMonth}
+        organization={organization}
+        onSave={fetchBudgets}
+      />
     </View>
   );
 }
@@ -799,6 +859,26 @@ const styles = StyleSheet.create({
   },
   macroHeader: {
     marginBottom: spacing[1],
+    paddingVertical: spacing[2],
+  },
+  macroHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  editMacroButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    marginTop: spacing[2],
+    paddingTop: spacing[2],
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
+  },
+  editMacroButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.brand.primary,
   },
   macroDot: {
     width: 16,

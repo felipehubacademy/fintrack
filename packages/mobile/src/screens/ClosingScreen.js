@@ -24,6 +24,7 @@ import PaymentAllocationModal from '../components/financial/PaymentAllocationMod
 import { useOrganization } from '../hooks/useOrganization';
 import { supabase } from '../services/supabase';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilMonthShort } from '../utils/date';
 
 const { width } = Dimensions.get('window');
 const STAT_CARD_WIDTH = (width - spacing[2] * 3) / 2.2;
@@ -311,6 +312,31 @@ export default function ClosingScreen() {
         credit: 0
       };
 
+      const deriveSplitShareAmount = (expense, split) => {
+        if (!split) return 0;
+        const expenseAmount = Number(expense.amount || 0);
+        let shareAmount = Number(split.amount || 0);
+        const percentage = Number(split.percentage || 0);
+        const totalInstallments = Number(expense.installment_info?.total_installments || 1);
+
+        if (
+          totalInstallments > 1 &&
+          shareAmount > expenseAmount + 0.01
+        ) {
+          shareAmount = shareAmount / totalInstallments;
+        }
+
+        if ((!shareAmount || shareAmount === 0) && percentage > 0 && expenseAmount > 0) {
+          shareAmount = (expenseAmount * percentage) / 100;
+        }
+
+        if (shareAmount > expenseAmount + 0.01 && percentage > 0 && expenseAmount > 0) {
+          shareAmount = (expenseAmount * percentage) / 100;
+        }
+
+        return Math.round(shareAmount * 100) / 100;
+      };
+
       const addToSummary = (ccId, field, amount, allocationType) => {
         if (!amount) return;
         const roundedAmount = Math.round(amount * 100) / 100;
@@ -362,7 +388,10 @@ export default function ClosingScreen() {
         const splits = expense.expense_splits || [];
         if (splits.length > 0) {
           splits.forEach((split) => {
-            addToSummary(split.cost_center_id, field, Number(split.amount || 0), 'shared');
+            const shareAmount = deriveSplitShareAmount(expense, split);
+            if (shareAmount) {
+              addToSummary(split.cost_center_id, field, shareAmount, 'shared');
+            }
           });
         } else if (expense.cost_center_id) {
           addToSummary(expense.cost_center_id, field, amount, 'individual');
@@ -434,11 +463,12 @@ export default function ClosingScreen() {
         } else if (expense.expense_splits && expense.expense_splits.length > 0) {
           expense.expense_splits.forEach((split) => {
             if (memberTransactionsMap.has(split.cost_center_id)) {
+              const shareAmount = deriveSplitShareAmount(expense, split);
               memberTransactionsMap.get(split.cost_center_id).cashExpenses.push({
                 ...expense,
                 payment_method: 'cash',
-                amount: split.amount,
-                memberShare: split.amount,
+                amount: shareAmount,
+                memberShare: shareAmount,
                 totalAmount: expense.amount,
                 isIndividual: false,
                 isShared: true
@@ -464,12 +494,13 @@ export default function ClosingScreen() {
         } else if (expense.expense_splits && expense.expense_splits.length > 0) {
           expense.expense_splits.forEach((split) => {
             if (memberTransactionsMap.has(split.cost_center_id)) {
+              const shareAmount = deriveSplitShareAmount(expense, split);
               memberTransactionsMap.get(split.cost_center_id).creditExpenses.push({
                 ...expense,
                 payment_method: 'credit',
                 card_name: cardName,
-                amount: split.amount,
-                memberShare: split.amount,
+                amount: shareAmount,
+                memberShare: shareAmount,
                 totalAmount: expense.amount,
                 isIndividual: false,
                 isShared: true
@@ -584,10 +615,7 @@ export default function ClosingScreen() {
 
         return {
           key: `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`,
-          label: new Date(targetYear, targetMonthIndex, 1).toLocaleDateString('pt-BR', {
-            month: 'short',
-            year: 'numeric'
-          }),
+          label: formatBrazilMonthShort(new Date(targetYear, targetMonthIndex, 1)),
           allocations: allocationsTotal,
           cash: cashTotalRange,
           credit: creditTotalRange,

@@ -38,6 +38,7 @@ import { StatsDetailSheet } from '../components/financial/StatsDetailSheet';
 import { BankAccountsSheet } from '../components/financial/BankAccountsSheet';
 import { CardFormModal } from '../components/financial/CardFormModal';
 import { BankAccountFormModal } from '../components/financial/BankAccountFormModal';
+import { getCurrentMonthKey } from '../utils/monthRange';
 import BankTransactionModal from '../components/financial/BankTransactionModal';
 import BankIncomeModal from '../components/financial/BankIncomeModal';
 import BankTransactionsModal from '../components/financial/BankTransactionsModal';
@@ -99,6 +100,7 @@ export default function FinancesScreen({ navigation }) {
   const { organization, user, loading: orgLoading } = useOrganization();
   const { confirm } = useConfirmation();
   const { showToast } = useToast();
+  const currentMonthKey = useMemo(() => getCurrentMonthKey(), []);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState([]);
@@ -340,7 +342,7 @@ export default function FinancesScreen({ navigation }) {
       const sheetData = (data || []).map((expense) => ({
         label: expense.description,
         value: Number(expense.amount || 0),
-        subtitle: new Date(expense.date).toLocaleDateString('pt-BR'),
+        subtitle: formatBrazilDate(expense.date),
       }));
 
       setInvoiceSheetTitle(`Fatura - ${card.name}`);
@@ -674,7 +676,12 @@ export default function FinancesScreen({ navigation }) {
                     <TouchableOpacity
                     key={card.id}
                       activeOpacity={0.8}
-                      onPress={() => navigation.navigate('CardDetail', { cardId: card.id })}
+                      onPress={() =>
+                        navigation.navigate('CardDetail', {
+                          cardId: card.id,
+                          selectedMonth: currentMonthKey,
+                        })
+                      }
                     style={styles.cardWrapper}
                     >
                       <View style={[styles.cardVisual, { backgroundColor: cardColor }]}>
@@ -804,7 +811,12 @@ export default function FinancesScreen({ navigation }) {
                     <TouchableOpacity
                     key={account.id}
                     activeOpacity={0.7}
-                      onPress={() => navigation.navigate('BankAccountDetail', { accountId: account.id })}
+                      onPress={() =>
+                        navigation.navigate('BankAccountDetail', {
+                          accountId: account.id,
+                          selectedMonth: currentMonthKey,
+                        })
+                      }
                     style={styles.accountCard}
                   >
                     {/* Card visual - Layout sóbrio */}
@@ -933,6 +945,7 @@ export default function FinancesScreen({ navigation }) {
         }}
         account={selectedAccountForHistory}
         organization={organization}
+        selectedMonth={currentMonthKey}
       />
 
       {/* Bank Accounts Sheet */}

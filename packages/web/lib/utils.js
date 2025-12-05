@@ -177,7 +177,9 @@ export function parseCurrencyInput(formattedValue) {
   const cleaned = normalized.replace(/\./g, '').replace(',', '.');
   const parsed = parseFloat(cleaned);
   
-  return isNaN(parsed) ? 0 : parsed;
+  if (isNaN(parsed)) return 0;
+  // Garantir precisão: arredondar para 2 casas decimais
+  return Math.round(parsed * 100) / 100;
 }
 
 /**

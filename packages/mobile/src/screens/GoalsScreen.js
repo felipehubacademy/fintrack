@@ -19,6 +19,7 @@ import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { useToast } from '../components/ui/Toast';
 import { supabase } from '../services/supabase';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilDate } from '../utils/date';
 
 export default function GoalsScreen() {
   const { organization, user, loading: orgLoading } = useOrganization();
@@ -248,7 +249,7 @@ export default function GoalsScreen() {
                     </Footnote>
                     {goal.target_date && (
                       <Footnote color="secondary" style={{ marginTop: spacing[0.5] }}>
-                        Prazo: {new Date(goal.target_date).toLocaleDateString('pt-BR')}
+                        Prazo: {formatBrazilDate(goal.target_date)}
                       </Footnote>
                     )}
                   </View>

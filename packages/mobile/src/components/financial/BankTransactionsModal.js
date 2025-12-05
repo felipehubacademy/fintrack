@@ -15,18 +15,13 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { supabase } from '../../services/supabase';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilDate } from '../../utils/date';
+import { orderTransactionsForDisplay } from '../../utils/sortTransactions';
+import { getMonthRange } from '../../utils/monthRange';
 
 const { height } = Dimensions.get('window');
 
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-};
+const formatDate = (dateString) => formatBrazilDate(dateString);
 
 const getTransactionLabel = (type) => {
   const creditTypes = ['income_deposit', 'transfer_in'];
@@ -36,15 +31,16 @@ const getTransactionLabel = (type) => {
   return 'Saída';
 };
 
-export default function BankTransactionsModal({ visible, onClose, account, organization }) {
+export default function BankTransactionsModal({ visible, onClose, account, organization, selectedMonth }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { startDate: monthStartDate, endDate: monthEndDate } = getMonthRange(selectedMonth);
 
   useEffect(() => {
     if (visible && account && organization) {
       fetchTransactions();
     }
-  }, [visible, account, organization]);
+  }, [visible, account, organization, monthStartDate, monthEndDate]);
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -54,11 +50,13 @@ export default function BankTransactionsModal({ visible, onClose, account, organ
         .select('*')
         .eq('bank_account_id', account.id)
         .eq('organization_id', organization.id)
+        .gte('date', monthStartDate)
+        .lte('date', monthEndDate)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTransactions(data || []);
+      setTransactions(orderTransactionsForDisplay(data || []));
     } catch (error) {
       console.error('Erro ao buscar transações:', error);
       setTransactions([]);

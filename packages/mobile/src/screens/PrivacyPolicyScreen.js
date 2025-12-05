@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Shield, Lock, Eye, FileText } from 'lucide-react-native';
 import { colors, spacing, radius } from '../theme';
+import { formatBrazilDateLong } from '../utils/date';
 import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
@@ -13,7 +14,7 @@ import { useOrganization } from '../hooks/useOrganization';
 
 export default function PrivacyPolicyScreen({ navigation }) {
   const { user } = useOrganization();
-  const lastUpdate = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const lastUpdate = formatBrazilDateLong(new Date());
 
   return (
     <View style={styles.container}>

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView } from 'react-native';
 import { X, Tag, Plus, Edit, Trash2 } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
@@ -33,6 +34,7 @@ const COLORS = [
 export function CategoryManagementModal({ visible, onClose, organization }) {
   const { showToast } = useToast();
   const { confirm } = useConfirmation();
+  const insets = useSafeAreaInsets();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('expense');
@@ -188,14 +190,19 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <TouchableOpacity 
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={[styles.overlay, { paddingTop: insets.top || spacing[4], paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>
+        <TouchableOpacity
           style={StyleSheet.absoluteFill}
-          activeOpacity={1} 
+          activeOpacity={1}
           onPress={onClose}
         />
-        <View style={styles.modal}>
+        <View
+          style={[
+            styles.modal,
+            { maxHeight: Math.min(height * 0.85, height - (insets.top + insets.bottom) - spacing[6]) },
+          ]}
+        >
           {/* Header */}
           <View style={styles.header}>
             <Title2 weight="bold">Gerenciar Categorias</Title2>
@@ -233,7 +240,7 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
           {/* Content */}
           <ScrollView
             style={styles.content}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, spacing[3]) }]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             bounces={true}
@@ -394,13 +401,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing[2],
   },
   modal: {
     backgroundColor: colors.background.primary,
     borderRadius: radius.xl,
-    width: '90%',
-    maxHeight: height * 0.9,
+    width: '100%',
+    minHeight: height * 0.55,
     flexDirection: 'column',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',

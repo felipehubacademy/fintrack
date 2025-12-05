@@ -13,6 +13,7 @@ import { Text, Title2, Headline, Callout, Caption, Subheadline } from '../ui/Tex
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { formatBrazilDate } from '../../utils/date';
 
 const { width, height } = Dimensions.get('window');
 
@@ -21,11 +22,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
 
   const { allocations = [], cashExpenses = [], creditExpenses = [] } = transactions || {};
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
+  const formatDate = (dateString) => formatBrazilDate(dateString);
 
   const getPaymentMethod = (expense) => {
     if (expense.payment_method === 'cash') return 'À Vista';
