@@ -240,14 +240,22 @@ export default function BudgetWizard({
     
     if (macroCategories.length === 0 || macroTotal === 0) return;
     
+    // Calcular valor por categoria arredondado para evitar perda de precisão
     const amountPerCategory = Math.round((macroTotal / macroCategories.length) * 100) / 100;
+    // Calcular a soma dos valores arredondados
     const totalRounded = amountPerCategory * macroCategories.length;
+    // Calcular diferença devido ao arredondamento
     const difference = Math.round((macroTotal - totalRounded) * 100) / 100;
     
     setDistributions(prev => prev.map(dist => {
       if (dist.macro_group !== macroKey) return dist;
-      // índice da categoria dentro do macro
-      const macroIndex = macroCategories.findIndex((c) => c.categoryId === dist.categoryId);
+      
+      // Encontrar o índice dentro do macro (usando prev para garantir ordem correta)
+      const macroIndex = prev
+        .filter((d) => d.macro_group === macroKey)
+        .findIndex((d) => d.categoryId === dist.categoryId);
+      
+      // Distribuir a diferença na primeira categoria para garantir soma exata
       const finalAmount = macroIndex === 0
         ? Math.round((amountPerCategory + difference) * 100) / 100
         : amountPerCategory;
@@ -328,11 +336,13 @@ export default function BudgetWizard({
         return amount > 0;
       })
       .map((dist) => {
+        // Garantir arredondamento para 2 casas decimais antes de salvar
         const amount = typeof dist.amount === 'string' ? parseCurrencyInput(dist.amount) : Number(dist.amount) || 0;
+        const roundedAmount = Math.round(amount * 100) / 100;
         return {
           organization_id: organization.id,
           category_id: dist.categoryId,
-          limit_amount: amount,
+          limit_amount: roundedAmount,
           month_year: monthYear
         };
       });

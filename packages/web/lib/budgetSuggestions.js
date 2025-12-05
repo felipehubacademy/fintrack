@@ -60,15 +60,26 @@ export function calculateBudgetDistribution(
       return;
     }
 
-    const perCategoryAmount = macroAmount / macroCategories.length;
-    macroCategories.forEach((category) => {
+    // Calcular valor por categoria arredondado para evitar perda de precisão
+    const perCategoryAmount = Math.round((macroAmount / macroCategories.length) * 100) / 100;
+    // Calcular a soma dos valores arredondados
+    const totalRounded = perCategoryAmount * macroCategories.length;
+    // Calcular diferença devido ao arredondamento
+    const difference = Math.round((macroAmount - totalRounded) * 100) / 100;
+    
+    macroCategories.forEach((category, index) => {
+      // Distribuir a diferença na primeira categoria para garantir soma exata
+      const finalAmount = index === 0 
+        ? Math.round((perCategoryAmount + difference) * 100) / 100
+        : perCategoryAmount;
+      
       distributions.push({
         id: category.id,
         categoryId: category.id,
         categoryName: category.name,
         macro_group: macroKey,
         percentage: macroPct / macroCategories.length,
-        amount: perCategoryAmount,
+        amount: finalAmount,
         color: category.color || getMacroColor(macroKey),
         isPlaceholder: false
       });
@@ -136,10 +147,34 @@ export function adjustTo100Percent(distributions, monthlyIncome) {
     }));
   }
 
-  return distributions.map((dist) => ({
-    ...dist,
-    amount: income * ((dist.percentage || 0) / 100)
-  }));
+  // Calcular valores arredondados para 2 casas decimais
+  const roundedDistributions = distributions.map((dist) => {
+    const calculatedAmount = income * ((dist.percentage || 0) / 100);
+    const roundedAmount = Math.round(calculatedAmount * 100) / 100;
+    return {
+      ...dist,
+      amount: roundedAmount
+    };
+  });
+
+  // Calcular a soma total dos valores arredondados (apenas não-placeholder)
+  const nonPlaceholderDistributions = roundedDistributions.filter((dist) => !dist.isPlaceholder);
+  const totalRounded = nonPlaceholderDistributions.reduce((sum, dist) => sum + dist.amount, 0);
+  const difference = Math.round((income - totalRounded) * 100) / 100;
+
+  // Se houver diferença, aplicar na primeira categoria não-placeholder
+  if (Math.abs(difference) > 0.0001 && nonPlaceholderDistributions.length > 0) {
+    const firstNonPlaceholderIndex = roundedDistributions.findIndex((dist) => !dist.isPlaceholder);
+    if (firstNonPlaceholderIndex >= 0) {
+      const adjustedAmount = Math.round((roundedDistributions[firstNonPlaceholderIndex].amount + difference) * 100) / 100;
+      roundedDistributions[firstNonPlaceholderIndex] = {
+        ...roundedDistributions[firstNonPlaceholderIndex],
+        amount: adjustedAmount
+      };
+    }
+  }
+
+  return roundedDistributions;
 }
 
 function clamp(value, min, max) {
