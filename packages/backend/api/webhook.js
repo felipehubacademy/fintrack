@@ -271,6 +271,11 @@ async function sendWhatsAppMessage(to, message) {
     const phoneNumberId = process.env.PHONE_ID;
     const token = process.env.WHATSAPP_TOKEN;
     
+    if (!phoneNumberId || !token) {
+      console.error('❌ [WHATSAPP] Credenciais não configuradas (PHONE_ID ou WHATSAPP_TOKEN)');
+      return false;
+    }
+    
     await axios.post(
       `${WHATSAPP_API_URL}/${phoneNumberId}/messages`,
       {
@@ -288,8 +293,26 @@ async function sendWhatsAppMessage(to, message) {
     );
     
     console.log('✅ Mensagem WhatsApp enviada para', to);
+    return true;
   } catch (error) {
-    console.error('❌ Erro ao enviar WhatsApp:', error);
+    // Detectar token expirado (401)
+    if (error.response?.status === 401) {
+      const authHeader = error.response.headers?.['www-authenticate'] || '';
+      if (authHeader.includes('expired')) {
+        console.error('🔐 [WHATSAPP] TOKEN EXPIRADO! Atualize o WHATSAPP_TOKEN nas variáveis de ambiente.');
+        console.error('📋 [WHATSAPP] Detalhes:', authHeader);
+      } else {
+        console.error('🔐 [WHATSAPP] Token inválido ou não autorizado.');
+      }
+    } else if (error.response?.status === 404) {
+      console.error('❌ [WHATSAPP] Phone Number ID inválido ou não encontrado:', phoneNumberId);
+    } else {
+      console.error('❌ [WHATSAPP] Erro ao enviar mensagem:', error.message);
+      if (error.response?.data) {
+        console.error('📄 [WHATSAPP] Detalhes do erro:', JSON.stringify(error.response.data));
+      }
+    }
+    return false;
   }
 }
 
