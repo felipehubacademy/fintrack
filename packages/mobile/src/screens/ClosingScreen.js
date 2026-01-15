@@ -190,10 +190,12 @@ export default function ClosingScreen() {
       const monthStartStr = formatDate(monthStart);
       const monthEndStr = formatDate(monthEnd);
 
-      const yearStart = new Date(selectedYear, 0, 1);
-      const fetchStartStr = formatDate(yearStart);
-      const fetchEnd = new Date(selectedYear, 11, 31);
-      const fetchEndStr = formatDate(fetchEnd);
+      // Para calcular faturas corretamente, precisamos buscar despesas de até um mês antes
+      // do mês selecionado, pois o ciclo de fechamento pode começar no mês anterior
+      const fetchStart = new Date(year, monthIndex - 1, 1);
+      const fetchStartStr = formatDate(fetchStart);
+      const yearEnd = new Date(selectedYear, 11, 31);
+      const fetchEndStr = formatDate(yearEnd);
 
       const [
         { data: allocationsData, error: allocationsError },
@@ -1049,6 +1051,7 @@ export default function ClosingScreen() {
         onClose={handleCloseMemberModal}
         member={selectedMember}
         transactions={memberTransactions}
+        organization={organization}
       />
 
       {/* Payment Allocation Modal */}
