@@ -9,7 +9,7 @@ import BankAccountModal from '../../components/BankAccountModal';
 import BankTransactionModal from '../../components/BankTransactionModal';
 import BankTransactionsModal from '../../components/BankTransactionsModal';
 import BankIncomeModal from '../../components/BankIncomeModal';
-import BelvoConnectModal from '../../components/BelvoConnectModal';
+
 import ConfirmationModal from '../../components/ConfirmationModal';
 import AccountTypeSelectionModal from '../../components/AccountTypeSelectionModal';
 import Header from '../../components/Header';
@@ -487,13 +487,6 @@ export default function BankAccounts() {
         organization={organization}
       />
       
-      <BelvoConnectModal
-        isOpen={isBelvoModalOpen}
-        onClose={() => setIsBelvoModalOpen(false)}
-        onSuccess={fetchAccounts}
-        accountType="bank_account"
-      />
-
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
