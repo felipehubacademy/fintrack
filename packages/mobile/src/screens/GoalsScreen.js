@@ -6,11 +6,13 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { Target, TrendingUp, Plus, Edit, Trash2 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Target, TrendingUp, Plus, Edit, Trash2, Trophy } from 'lucide-react-native';
 import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
+import { Text, Title1, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
+import { ProgressRing } from '../components/ui/ProgressRing';
 import LoadingLogo from '../components/ui/LoadingLogo';
 import EmptyState from '../components/ui/EmptyState';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
@@ -182,17 +184,54 @@ export default function GoalsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* Hero Summary */}
+        {goals.length > 0 && (
+          <LinearGradient
+            colors={colors.isDark
+              ? [colors.brand.primaryDark || '#0047CC', colors.background.tertiary || '#171717']
+              : colors.brand.gradient || ['#1A6AFF', '#0047CC']
+            }
+            style={styles.heroCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.heroRow}>
+              <View style={{ flex: 1 }}>
+                <Caption style={{ color: 'rgba(255,255,255,0.7)' }}>Progresso geral</Caption>
+                <Title1 style={{ color: '#FFFFFF', marginTop: spacing[0.5] }}>
+                  {goals.filter(g => g.progress >= 100).length}/{goals.length}
+                </Title1>
+                <Footnote style={{ color: 'rgba(255,255,255,0.7)', marginTop: spacing[0.5] }}>
+                  metas atingidas
+                </Footnote>
+              </View>
+              <ProgressRing
+                progress={goals.length > 0 ? goals.filter(g => g.progress >= 100).length / goals.length : 0}
+                size={72}
+                strokeWidth={7}
+                color="#F5A623"
+                trackColor="rgba(255,255,255,0.2)"
+                showPercentage
+              />
+            </View>
+          </LinearGradient>
+        )}
+
         {goals.length > 0 ? (
           goals.map((goal) => {
             const progressColor = getProgressColor(goal.progress);
-            
+
             return (
               <Card key={goal.id} style={styles.goalCard}>
                 <View style={styles.goalHeader}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <View style={[styles.goalIcon, { backgroundColor: `${progressColor}15` }]}>
-                      <Target size={24} color={progressColor} />
-                    </View>
+                    <ProgressRing
+                      progress={Math.min(goal.progress, 100) / 100}
+                      size={52}
+                      strokeWidth={5}
+                      color={progressColor}
+                      showPercentage
+                    />
                     <View style={{ flex: 1, marginLeft: spacing[2] }}>
                       <Callout weight="semiBold" numberOfLines={1}>
                         {goal.name}
@@ -242,7 +281,7 @@ export default function GoalsScreen() {
                 <View style={styles.goalFooter}>
                   <View style={{ flex: 1 }}>
                     <Footnote color="secondary">
-                      {goal.remaining > 0 
+                      {goal.remaining > 0
                         ? `Faltam ${formatCurrency(goal.remaining)}`
                         : goal.progress >= 100
                         ? '🎉 Meta atingida!'
@@ -309,6 +348,20 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: spacing[2],
+  },
+
+  heroCard: {
+    marginHorizontal: spacing[2],
+    marginBottom: spacing[3],
+    borderRadius: radius.xl,
+    padding: spacing[3],
+    overflow: 'hidden',
+  },
+
+  heroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 
   goalCard: {

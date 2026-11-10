@@ -5,11 +5,13 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react-native';
 import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
+import { Text, Title1, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
+import { ProgressRing } from '../components/ui/ProgressRing';
 import LoadingLogo from '../components/ui/LoadingLogo';
 import EmptyState from '../components/ui/EmptyState';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
@@ -299,6 +301,37 @@ export default function InsightsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* Hero Score Card */}
+        <LinearGradient
+          colors={colors.isDark
+            ? [colors.brand.primaryDark || '#0047CC', colors.background.tertiary || '#171717']
+            : colors.brand.gradient || ['#1A6AFF', '#0047CC']
+          }
+          style={styles.heroCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.heroRow}>
+            <View style={{ flex: 1 }}>
+              <Caption style={{ color: 'rgba(255,255,255,0.7)' }}>Saúde Financeira</Caption>
+              <Title1 style={{ color: '#FFFFFF', marginTop: spacing[0.5] }}>
+                {financialScore >= 80 ? 'Excelente' : financialScore >= 60 ? 'Bom' : financialScore >= 40 ? 'Atenção' : 'Crítico'}
+              </Title1>
+              <Footnote style={{ color: 'rgba(255,255,255,0.7)', marginTop: spacing[0.5] }}>
+                {insights.trend === 'down' ? 'Gastos em queda' : insights.trend === 'up' ? 'Gastos em alta' : 'Gastos estáveis'}
+              </Footnote>
+            </View>
+            <ProgressRing
+              progress={financialScore / 100}
+              size={72}
+              strokeWidth={7}
+              color="#F5A623"
+              trackColor="rgba(255,255,255,0.2)"
+              showPercentage
+            />
+          </View>
+        </LinearGradient>
+
         {/* Trend Card */}
         <Card style={styles.trendCard}>
           <View style={styles.trendHeader}>
@@ -443,6 +476,19 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: spacing[2],
+  },
+
+  heroCard: {
+    borderRadius: radius.xl,
+    padding: spacing[3],
+    marginBottom: spacing[3],
+    overflow: 'hidden',
+  },
+
+  heroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 
   trendCard: {

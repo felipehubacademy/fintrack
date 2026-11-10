@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Settings,
   Bell,
@@ -22,7 +23,7 @@ import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
 import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';
+import { Text, Headline, Callout, Caption, Title1, Title2 } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
@@ -232,17 +233,30 @@ export default function SettingsScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Organization Info */}
-        <Card style={styles.orgCard}>
-          <View style={styles.orgHeader}>
-            <View>
-              <Caption color="secondary" weight="medium">Informações da Organização</Caption>
-              <Headline weight="bold" style={{ marginTop: spacing[1] }}>
-                {organization?.name || 'N/A'}
-              </Headline>
-            </View>
-          </View>
-        </Card>
+        {/* Profile Hero */}
+        <LinearGradient
+          colors={colors.isDark
+            ? [colors.brand.primaryDark || '#0047CC', colors.background.tertiary || '#171717']
+            : colors.brand.gradient || ['#1A6AFF', '#0047CC']
+          }
+          style={styles.profileHero}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <TouchableOpacity
+            style={styles.profileAvatar}
+            onPress={() => setShowProfileModal(true)}
+            activeOpacity={0.8}
+          >
+            <User size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Title2 weight="bold" style={{ color: '#FFFFFF', marginTop: spacing[1.5] }}>
+            {user?.name || 'Usuário'}
+          </Title2>
+          <Caption style={{ color: 'rgba(255,255,255,0.7)', marginTop: spacing[0.5] }}>
+            {organization?.name || 'Organização'}
+          </Caption>
+        </LinearGradient>
 
         {/* Settings Sections */}
         {settingsSections.map((section, sectionIndex) => (
@@ -294,7 +308,7 @@ export default function SettingsScreen({ navigation }) {
                 Versão 1.0.0
               </Caption>
               <Caption color="tertiary" align="center" style={styles.appCopyright}>
-                © 2024 MeuAzulão. Todos os direitos reservados.
+                © 2026 MeuAzulão. Todos os direitos reservados.
               </Caption>
             </View>
           </View>
@@ -354,12 +368,19 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing[3],
   },
-  orgCard: {
+  profileHero: {
+    borderRadius: radius.xl,
+    padding: spacing[3],
     marginBottom: spacing[3],
+    alignItems: 'center',
+    overflow: 'hidden',
   },
-  orgHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  profileAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   section: {
