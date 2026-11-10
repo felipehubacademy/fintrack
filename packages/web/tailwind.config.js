@@ -7,30 +7,51 @@ module.exports = {
   theme: {
     extend: {
       screens: {
-        // Breakpoints padronizados para mobile-first
-        'sm': '640px',   // Mobile large
-        'md': '768px',   // Tablet portrait
-        'lg': '1024px',  // Tablet landscape / Desktop small
-        'xl': '1280px',  // Desktop medium
-        '2xl': '1536px', // Desktop large
+        'sm': '640px',
+        'md': '768px',
+        'lg': '1024px',
+        'xl': '1280px',
+        '2xl': '1536px',
       },
       colors: {
-        'flight-blue': '#207DFF',
-        'deep-sky': '#0D2C66',
-        'feather-blue': '#8FCBFF',
-        'spring-accent': '#5FFFA7',
-        'fog-mist': '#E9EEF5',
+        // Azulao Premium palette
+        azulao: {
+          50: '#EFF6FF',
+          100: '#DBEAFE',
+          200: '#BFDBFE',
+          300: '#93C5FD',
+          400: '#4D8AFF',
+          500: '#1A6AFF',
+          600: '#0047CC',
+          700: '#003399',
+          800: '#002266',
+          900: '#001133',
+        },
+        accent: {
+          50: '#FFF8E1',
+          100: '#FFE0B2',
+          200: '#FFD080',
+          300: '#F5A623',
+          400: '#CC8400',
+          500: '#996300',
+        },
+        // Backward compat aliases
+        'flight-blue': '#1A6AFF',
+        'deep-sky': '#003399',
+        'feather-blue': '#93C5FD',
+        'spring-accent': '#F5A623',
+        'fog-mist': '#EFF6FF',
       },
       keyframes: {
         fillLogo: {
-          '0%': { 
+          '0%': {
             clipPath: 'inset(100% 0 0 0)',
             opacity: '0.3'
           },
           '50%': {
             opacity: '1'
           },
-          '100%': { 
+          '100%': {
             clipPath: 'inset(0 0 0 0)',
             opacity: '1'
           }
@@ -43,4 +64,3 @@ module.exports = {
   },
   plugins: [],
 };
-

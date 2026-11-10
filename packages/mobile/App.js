@@ -5,19 +5,27 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { ToastProvider } from './src/components/ui/Toast';
 import { ConfirmationProvider } from './src/components/ui/ConfirmationProvider';
 import { AlertProvider } from './src/components/ui/AlertProvider';
+import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+
+function StatusBarWithTheme() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <ToastProvider>
-          <ConfirmationProvider>
-            <AlertProvider>
-              <AppNavigator />
-              <StatusBar style="auto" />
-            </AlertProvider>
-          </ConfirmationProvider>
-        </ToastProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <ConfirmationProvider>
+              <AlertProvider>
+                <AppNavigator />
+                <StatusBarWithTheme />
+              </AlertProvider>
+            </ConfirmationProvider>
+          </ToastProvider>
+        </ThemeProvider>
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );
