@@ -27,7 +27,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
               alt="MeuAzulão" 
               className="h-16 w-16 transition-transform group-hover:scale-110 group-hover:rotate-3"
             />
-            <span className="text-2xl font-bold bg-gradient-to-r from-[#0D2C66] to-[#207DFF] bg-clip-text text-transparent">
+            <span className="text-2xl font-bold bg-gradient-to-r from-[#0047CC] to-[#1A6AFF] bg-clip-text text-transparent">
               MeuAzulão
             </span>
           </Link>
@@ -56,7 +56,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
               href="/help" 
               className={`transition-colors text-sm font-medium ${
                 currentPage === 'help' 
-                  ? 'text-[#207DFF] font-semibold' 
+                  ? 'text-[#1A6AFF] font-semibold' 
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -66,7 +66,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
               href="/contact" 
               className={`transition-colors text-sm font-medium ${
                 currentPage === 'contact' 
-                  ? 'text-[#207DFF] font-semibold' 
+                  ? 'text-[#1A6AFF] font-semibold' 
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -81,7 +81,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
             {currentPage === 'home' && (
               <Link 
                 href="/account-type"
-                className="relative inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105"
+                className="relative inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105"
               >
                 Começar Agora
               </Link>
@@ -92,7 +92,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
           <div className="md:hidden flex items-center space-x-3">
             <Link 
               href="/login"
-              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] text-white rounded-full text-sm font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
             >
               Entrar
             </Link>

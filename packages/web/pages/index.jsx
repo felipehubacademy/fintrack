@@ -52,7 +52,7 @@ export default function LandingPage() {
       <div 
         className="pointer-events-none fixed inset-0 z-50 transition duration-300"
         style={{
-          background: `radial-gradient(600px at ${mousePosition.x}px ${mousePosition.y}px, rgba(32, 125, 255, 0.08), transparent 80%)`
+          background: `radial-gradient(600px at ${mousePosition.x}px ${mousePosition.y}px, rgba(26, 106, 255, 0.08), transparent 80%)`
         }}
       />
 
@@ -66,7 +66,7 @@ export default function LandingPage() {
         
         {/* Gradient Orbs */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-400/15 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 pt-20 pb-16 text-center">
           <div className="space-y-8">
@@ -75,7 +75,7 @@ export default function LandingPage() {
               <span className="block text-gray-900">
                 Suas finanças,
               </span>
-              <span className="block bg-gradient-to-r from-[#207DFF] via-[#0D2C66] to-[#207DFF] bg-clip-text text-transparent animate-gradient">
+              <span className="block bg-gradient-to-r from-[#1A6AFF] via-[#0047CC] to-[#1A6AFF] bg-clip-text text-transparent animate-gradient">
                 sob controle total
               </span>
             </h1>
@@ -90,7 +90,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link 
                 href="/account-type"
-                className="group relative inline-flex items-center px-8 py-4 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white rounded-2xl text-lg font-semibold shadow-2xl shadow-blue-500/50 hover:shadow-blue-500/60 transition-all duration-300 hover:scale-105"
+                className="group relative inline-flex items-center px-8 py-4 bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] text-white rounded-2xl text-lg font-semibold shadow-2xl shadow-blue-500/50 hover:shadow-blue-500/60 transition-all duration-300 hover:scale-105"
               >
                 <span>Começar Agora</span>
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -169,8 +169,8 @@ export default function LandingPage() {
                   <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-medium text-gray-600">Categorias</span>
-                      <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                        <Sparkles className="w-5 h-5 text-purple-600" />
+                      <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                        <Sparkles className="w-5 h-5 text-amber-600" />
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-gray-900">12</p>
@@ -212,7 +212,7 @@ export default function LandingPage() {
                     <div className="flex items-center space-x-4">
                       <span className="text-sm font-medium text-gray-600 w-24">Transporte</span>
                       <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-                        <div className="bg-gradient-to-r from-purple-500 to-purple-600 h-full rounded-full" style={{width: '45%'}}></div>
+                        <div className="bg-gradient-to-r from-amber-500 to-amber-600 h-full rounded-full" style={{width: '45%'}}></div>
                       </div>
                       <span className="text-sm font-bold text-gray-900 w-20 text-right">R$ 580</span>
                     </div>
@@ -256,7 +256,7 @@ export default function LandingPage() {
             <div className="group relative p-8 bg-gradient-to-br from-blue-50 to-white rounded-3xl border border-gray-200 hover:border-blue-300 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative">
-                <div className="w-14 h-14 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <div className="w-14 h-14 bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Zap className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
@@ -270,10 +270,10 @@ export default function LandingPage() {
             </div>
 
             {/* Feature 2 */}
-            <div className="group relative p-8 bg-gradient-to-br from-purple-50 to-white rounded-3xl border border-gray-200 hover:border-purple-300 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="group relative p-8 bg-gradient-to-br from-amber-50 to-white rounded-3xl border border-gray-200 hover:border-amber-300 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/10">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative">
-                <div className="w-14 h-14 bg-gradient-to-r from-purple-600 to-purple-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <div className="w-14 h-14 bg-gradient-to-r from-[#F5A623] to-[#CC8400] rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <TrendingUp className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
@@ -318,7 +318,7 @@ export default function LandingPage() {
               </div>
               
               <h2 className="text-5xl md:text-6xl font-bold text-gray-900">
-                Conheça o <span className="bg-gradient-to-r from-[#207DFF] to-[#0D2C66] bg-clip-text text-transparent">Zul</span>
+                Conheça o <span className="bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] bg-clip-text text-transparent">Zul</span>
               </h2>
               
               <p className="text-xl text-gray-600 leading-relaxed">
@@ -338,8 +338,8 @@ export default function LandingPage() {
                 </div>
                 
                 <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-purple-600" />
+                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-amber-600" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-1">Categorização Automática</h4>
@@ -452,7 +452,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-12">
             {/* Step 1 */}
             <div className="relative">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
                 1
               </div>
               <div className="pt-8 text-center">
@@ -468,7 +468,7 @@ export default function LandingPage() {
 
             {/* Step 2 */}
             <div className="relative">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
                 2
               </div>
               <div className="pt-8 text-center">
@@ -484,7 +484,7 @@ export default function LandingPage() {
 
             {/* Step 3 */}
             <div className="relative">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-r from-[#207DFF] to-[#0D2C66] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
                 3
               </div>
               <div className="pt-8 text-center">
@@ -503,7 +503,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-32 bg-gradient-to-br from-[#0D2C66] via-[#207DFF] to-[#0D2C66] bg-[length:200%_200%] animate-gradient relative overflow-hidden">
+      <section className="py-32 bg-gradient-to-br from-[#0047CC] via-[#1A6AFF] to-[#0047CC] bg-[length:200%_200%] animate-gradient relative overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white rounded-full blur-3xl animate-pulse" />
@@ -523,7 +523,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             href="/account-type"
-              className="group inline-flex items-center px-8 py-4 bg-white text-[#0D2C66] rounded-2xl text-lg font-semibold shadow-2xl hover:shadow-white/20 transition-all duration-300 hover:scale-105"
+              className="group inline-flex items-center px-8 py-4 bg-white text-[#0047CC] rounded-2xl text-lg font-semibold shadow-2xl hover:shadow-white/20 transition-all duration-300 hover:scale-105"
           >
               <span>Começar Agora</span>
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -531,7 +531,7 @@ export default function LandingPage() {
           
             <Link 
               href="/login"
-              className="inline-flex items-center px-8 py-4 bg-transparent border-2 border-white text-white rounded-2xl text-lg font-semibold hover:bg-white hover:text-[#0D2C66] transition-all duration-300"
+              className="inline-flex items-center px-8 py-4 bg-transparent border-2 border-white text-white rounded-2xl text-lg font-semibold hover:bg-white hover:text-[#0047CC] transition-all duration-300"
             >
               Já tem conta? Entrar
             </Link>
