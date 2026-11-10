@@ -3,10 +3,10 @@ import { X, Mail, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 
 export default function InviteUserModal({ isOpen, onClose, organization }) {
-  const { success, showError } = useNotificationContext();
+  const { success: showSuccess, showError } = useNotificationContext();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
 
   const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,11 +39,11 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
       const data = await response.json();
 
       if (data.success) {
-        setSuccess(true);
-        success('Convite enviado com sucesso!');
+        setInviteSuccess(true);
+        showSuccess('Convite enviado com sucesso!');
         setEmail('');
         setTimeout(() => {
-          setSuccess(false);
+          setInviteSuccess(false);
           onClose();
         }, 2000);
       } else {
@@ -61,7 +61,7 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
   const handleClose = () => {
     setEmail('');
     setMessage('');
-    setSuccess(false);
+    setInviteSuccess(false);
     onClose();
   };
 
@@ -85,7 +85,7 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
 
         {/* Conteúdo com scroll */}
         <div className="flex-1 overflow-y-auto p-6">
-          {success ? (
+          {inviteSuccess ? (
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />

@@ -200,7 +200,7 @@ export default function VerificationModal({ user, onVerified }) {
               </p>
             </div>
           </div>
-          </form>
+        </div>
         </div>
 
         {/* Footer fixo */}
