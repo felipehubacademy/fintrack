@@ -12,6 +12,9 @@
       },
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "development"
       }
     },
     "preview": {
@@ -21,19 +24,35 @@
       },
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "preview"
       }
     },
     "production": {
+      "autoIncrement": true,
       "ios": {
         "simulator": false
       },
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "APP_ENV": "production"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "felipe.xavier1987@gmail.com",
+        "ascAppId": "CONFIGURE_ME",
+        "appleTeamId": "CONFIGURE_ME"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-services.json",
+        "track": "internal"
+      }
+    }
   }
 }
-
