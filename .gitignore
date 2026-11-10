@@ -11,6 +11,8 @@ yarn.lock
 .env.production.local
 
 # Next.js
+.next/
+out/
 web/.next/
 web/out/
 web/build/

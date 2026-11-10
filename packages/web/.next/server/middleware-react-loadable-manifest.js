@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"lib/supabaseClient.js -> @fintrack/shared/api\":{\"id\":\"lib/supabaseClient.js -> @fintrack/shared/api\",\"files\":[]}}"
