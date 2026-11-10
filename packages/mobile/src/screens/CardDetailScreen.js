@@ -8,7 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { Edit, Trash2, FileText } from 'lucide-react-native';
-import { spacing, radius, shadows } from '../theme';
+import { colors, spacing, radius, shadows } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';

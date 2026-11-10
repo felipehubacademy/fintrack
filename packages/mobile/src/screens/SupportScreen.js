@@ -8,7 +8,7 @@ import {
   Linking,
 } from 'react-native';
 import { MessageCircle, Mail, Send, CheckCircle } from 'lucide-react-native';
-import { spacing, radius } from '../theme';
+import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';

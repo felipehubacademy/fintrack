@@ -20,7 +20,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
-import { spacing, radius } from '../theme';
+import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';

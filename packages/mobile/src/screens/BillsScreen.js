@@ -8,7 +8,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Calendar, Clock, CheckCircle, AlertCircle, Plus, Filter, Search, X as XIcon } from 'lucide-react-native';
-import { spacing, radius } from '../theme';
+import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';

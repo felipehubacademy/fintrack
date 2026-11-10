@@ -34,7 +34,7 @@ const { width } = Dimensions.get('window');
 import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
 import { useMonthlyFinancials } from '../hooks/useMonthlyFinancials';
-import { spacing, radius, shadows } from '../theme';
+import { colors, spacing, radius, shadows } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Callout, Caption, Subheadline } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';

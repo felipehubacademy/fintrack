@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Target, TrendingDown, AlertTriangle, Plus, Copy, ChevronDown, ChevronUp, Edit, Trash2, DollarSign } from 'lucide-react-native';
-import { spacing, radius } from '../theme';
+import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';

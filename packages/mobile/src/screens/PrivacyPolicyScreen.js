@@ -5,7 +5,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Shield, Lock, Eye, FileText } from 'lucide-react-native';
-import { spacing, radius } from '../theme';
+import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatBrazilDateLong } from '../utils/date';
 import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';

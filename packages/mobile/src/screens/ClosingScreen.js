@@ -8,7 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Calendar, TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { spacing, radius, shadows } from '../theme';
+import { colors, spacing, radius, shadows } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';

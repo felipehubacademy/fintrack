@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Building2, Edit, TrendingUp, TrendingDown, ArrowRightLeft, List, Link2, Trash2 } from 'lucide-react-native';
-import { spacing, radius, shadows } from '../theme';
+import { colors, spacing, radius, shadows } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';

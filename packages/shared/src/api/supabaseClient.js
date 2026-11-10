@@ -17,13 +17,22 @@ export function createSupabaseClient(options = {}) {
     process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('Missing Supabase environment variables:', {
+    console.warn('Missing Supabase environment variables:', {
       url: !!supabaseUrl,
       key: !!supabaseAnonKey
     });
+    return null;
   }
 
   return createClient(supabaseUrl, supabaseAnonKey, options);
+}
+
+let _supabase = null;
+export function getSupabase() {
+  if (!_supabase) {
+    _supabase = createSupabaseClient();
+  }
+  return _supabase;
 }
 
 // Cliente singleton para uso direto (web)

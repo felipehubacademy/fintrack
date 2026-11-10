@@ -20,11 +20,16 @@ export default function AppNavigator() {
   const [onboardingOrg, setOnboardingOrg] = useState(null);
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     // Verificar sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
-      
+
       // Verificar se precisa mostrar onboarding
       if (session?.user) {
         checkOnboardingStatus(session.user);
@@ -34,7 +39,7 @@ export default function AppNavigator() {
     // Listener para mudanças de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      
+
       if (session?.user) {
         checkOnboardingStatus(session.user);
       } else {

@@ -30,7 +30,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
-import { spacing, radius, shadows, gradients } from '../theme';
+import { colors, spacing, radius, shadows, gradients } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title1, Title2, Headline, Callout, Caption } from '../components/ui/Text';
 import { Card, CardContent } from '../components/ui/Card';
