@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Target, TrendingUp, Plus, Edit, Trash2 } from 'lucide-react-native';
-import { colors, spacing, radius } from '../theme';
+import { spacing, radius } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import LoadingLogo from '../components/ui/LoadingLogo';
@@ -22,6 +23,7 @@ import { formatCurrency } from '@fintrack/shared/utils';
 import { formatBrazilDate } from '../utils/date';
 
 export default function GoalsScreen() {
+  const { colors } = useTheme();
   const { organization, user, loading: orgLoading } = useOrganization();
   const { confirm } = useConfirmation();
   const { showToast } = useToast();

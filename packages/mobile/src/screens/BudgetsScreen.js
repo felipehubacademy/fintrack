@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Target, TrendingDown, AlertTriangle, Plus, Copy, ChevronDown, ChevronUp, Edit, Trash2, DollarSign } from 'lucide-react-native';
-import { colors, spacing, radius } from '../theme';
+import { spacing, radius } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import LoadingLogo from '../components/ui/LoadingLogo';
@@ -59,6 +60,7 @@ const inferMacroFromName = (name = '') => {
 };
 
 export default function BudgetsScreen({ route }) {
+  const { colors } = useTheme();
   const { organization, user, budgetCategories, loading: orgLoading, isSoloUser } = useOrganization();
   const { confirm } = useConfirmation();
   const { alert } = useAlert();

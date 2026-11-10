@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { MessageCircle, Search, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { colors, spacing, radius } from '../theme';
+import { spacing, radius } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
@@ -103,6 +104,7 @@ const FAQs = [
 const CATEGORIES = ['Todos', 'Geral', 'Conta', 'WhatsApp', 'Transações', 'Segurança', 'Dashboard'];
 
 export default function HelpScreen({ navigation }) {
+  const { colors } = useTheme();
   const { user } = useOrganization();
   const [searchQuery, setSearchQuery] = useState('');
   const [openFaq, setOpenFaq] = useState(null);

@@ -8,7 +8,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { Calendar, TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
-import { colors, spacing, radius, shadows } from '../theme';
+import { spacing, radius, shadows } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -31,6 +32,7 @@ const STAT_CARD_WIDTH = (width - spacing[2] * 3) / 2.2;
 const MEMBER_CARD_WIDTH = width * 0.85; // 85% da largura da tela para cada card
 
 export default function ClosingScreen() {
+  const { colors } = useTheme();
   const { organization, user, costCenters, loading: orgLoading, isSoloUser } = useOrganization();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);

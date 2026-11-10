@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Building2, Edit, TrendingUp, TrendingDown, ArrowRightLeft, List, Link2, Trash2 } from 'lucide-react-native';
-import { colors, spacing, radius, shadows } from '../theme';
+import { spacing, radius, shadows } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import LoadingLogo from '../components/ui/LoadingLogo';
@@ -51,6 +52,7 @@ const getOwnerLabel = (account) => {
 };
 
 export default function BankAccountDetailScreen({ route, navigation }) {
+  const { colors } = useTheme();
   const { accountId } = route.params;
   const [selectedMonth, setSelectedMonth] = useState(() => route.params?.selectedMonth || getCurrentMonthKey());
   const { startDate: monthStartDate, endDate: monthEndDate, monthKey: normalizedMonthKey } = useMemo(

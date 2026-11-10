@@ -25,6 +25,7 @@ import {
 import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
 import { colors, spacing, radius, shadows } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
@@ -97,6 +98,7 @@ const getOwnerLabel = (account) => {
 // Removido ACCOUNT_COLORS - usando apenas cores da app
 
 export default function FinancesScreen({ navigation }) {
+  const { colors } = useTheme();
   const { organization, user, loading: orgLoading } = useOrganization();
   const { confirm } = useConfirmation();
   const { showToast } = useToast();

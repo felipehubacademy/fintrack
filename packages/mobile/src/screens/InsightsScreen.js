@@ -6,7 +6,8 @@ import {
   RefreshControl,
 } from 'react-native';
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react-native';
-import { colors, spacing, radius } from '../theme';
+import { spacing, radius } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import LoadingLogo from '../components/ui/LoadingLogo';
@@ -21,6 +22,7 @@ import { supabase } from '../services/supabase';
 import { formatCurrency } from '@fintrack/shared/utils';
 
 export default function InsightsScreen() {
+  const { colors } = useTheme();
   const { organization, user, loading: orgLoading } = useOrganization();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);

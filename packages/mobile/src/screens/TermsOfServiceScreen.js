@@ -6,7 +6,8 @@ import {
   Linking,
 } from 'react-native';
 import { FileText, Scale, CheckCircle } from 'lucide-react-native';
-import { colors, spacing, radius } from '../theme';
+import { spacing, radius } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { formatBrazilDateLong } from '../utils/date';
 import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
@@ -14,6 +15,7 @@ import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { useOrganization } from '../hooks/useOrganization';
 
 export default function TermsOfServiceScreen({ navigation }) {
+  const { colors } = useTheme();
   const { user } = useOrganization();
   const lastUpdate = formatBrazilDateLong(new Date());
 

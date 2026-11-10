@@ -8,7 +8,8 @@ import {
   TextInput,
 } from 'react-native';
 import { Calendar, Clock, CheckCircle, AlertCircle, Plus, Filter, Search, X as XIcon } from 'lucide-react-native';
-import { colors, spacing, radius } from '../theme';
+import { spacing, radius } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import LoadingLogo from '../components/ui/LoadingLogo';
@@ -56,6 +57,7 @@ const getCurrentMonth = () => {
 };
 
 export default function BillsScreen() {
+  const { colors } = useTheme();
   const { organization, user, loading: orgLoading, budgetCategories, costCenters } = useOrganization();
   const { confirm } = useConfirmation();
   const { alert } = useAlert();

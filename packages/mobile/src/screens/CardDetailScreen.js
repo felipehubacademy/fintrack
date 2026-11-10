@@ -8,7 +8,8 @@ import {
   Animated,
 } from 'react-native';
 import { Edit, Trash2, FileText } from 'lucide-react-native';
-import { colors, spacing, radius, shadows } from '../theme';
+import { spacing, radius, shadows } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import LoadingLogo from '../components/ui/LoadingLogo';
@@ -45,6 +46,7 @@ const resolveCardColor = (color) => {
 };
 
 export default function CardDetailScreen({ route, navigation }) {
+  const { colors } = useTheme();
   const { cardId } = route.params;
   const [selectedMonth, setSelectedMonth] = useState(() => route.params?.selectedMonth || getCurrentMonthKey());
   const { startDate: monthStartDate, endDate: monthEndDate } = useMemo(

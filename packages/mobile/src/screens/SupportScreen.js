@@ -8,7 +8,8 @@ import {
   Linking,
 } from 'react-native';
 import { MessageCircle, Mail, Send, CheckCircle } from 'lucide-react-native';
-import { colors, spacing, radius } from '../theme';
+import { spacing, radius } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -20,6 +21,7 @@ import { supabase } from '../services/supabase';
 import { APP_CONFIG } from '@fintrack/shared/constants';
 
 export default function SupportScreen({ navigation }) {
+  const { colors } = useTheme();
   const { user } = useOrganization();
   const { showToast } = useToast();
   const [formData, setFormData] = useState({

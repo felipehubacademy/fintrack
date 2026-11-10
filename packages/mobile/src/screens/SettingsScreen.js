@@ -20,7 +20,8 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
-import { colors, spacing, radius } from '../theme';
+import { spacing, radius } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -35,6 +36,7 @@ import { ProfileModal } from '../components/settings/ProfileModal';
 import Logo from '../components/ui/Logo';
 
 export default function SettingsScreen({ navigation }) {
+  const { colors } = useTheme();
   const { organization, user, isSoloUser, refetch } = useOrganization();
   const { confirm } = useConfirmation();
   const { showToast } = useToast();
