@@ -15,7 +15,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
 
   const isTransparent = !isScrolled && currentPage === 'home';
   const linkColor = isTransparent
-    ? 'text-white/80 hover:text-white'
+    ? 'text-white hover:text-white/80'
     : 'text-gray-600 hover:text-gray-900';
 
   return (
@@ -34,7 +34,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
             />
             <span className={`text-2xl font-bold transition-colors ${
               isTransparent
-                ? 'text-white'
+                ? 'text-white drop-shadow-sm'
                 : 'bg-gradient-to-r from-[#0047CC] to-[#1A6AFF] bg-clip-text text-transparent'
             }`}>
               MeuAzulão
