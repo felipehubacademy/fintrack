@@ -17,18 +17,11 @@ export default function OnboardingOverlay({
   allowSkip = true,
   forceShow = false
 }) {
-  // PRIMEIRO: Se isOpen for false, retorna null IMEDIATAMENTE
-  // Isso remove o componente completamente do DOM
-  if (!isOpen) {
-    return null;
-  }
-
-  // Se não tem steps, não renderiza
-  if (!steps || steps.length === 0) {
-    return null;
-  }
-
   const [currentStep, setCurrentStep] = useState(0);
+
+  if (!isOpen || !steps || steps.length === 0) {
+    return null;
+  }
 
   // Garantir que currentStep esteja dentro dos limites
   const safeStep = Math.min(Math.max(0, currentStep), steps.length - 1);
