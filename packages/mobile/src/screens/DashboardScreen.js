@@ -37,6 +37,9 @@ import { Card, CardContent } from '../components/ui/Card';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { StatCard } from '../components/financial/StatCard';
 import { MonthSelector } from '../components/financial/MonthSelector';
+import { BalanceHero } from '../components/dashboard/BalanceHero';
+import { RecentTransactions } from '../components/dashboard/RecentTransactions';
+import { BudgetAlerts } from '../components/dashboard/BudgetAlerts';
 import { CategoryDonutChart } from '../components/financial/CategoryDonutChart';
 import { MonthlyComparisonChart } from '../components/financial/MonthlyComparisonChart';
 import { StatsDetailSheet } from '../components/financial/StatsDetailSheet';
@@ -826,6 +829,14 @@ export default function DashboardScreen() {
           />
         </View>
 
+        {/* Hero balance card */}
+        <BalanceHero
+          balance={stats.balance}
+          income={stats.totalIncome}
+          expenses={stats.totalExpenses}
+          userName={user?.name}
+        />
+
         {/* Cards de estatísticas principais */}
         <View style={styles.section}>
           <ScrollView
@@ -1025,88 +1036,13 @@ export default function DashboardScreen() {
         )}
 
         {/* Categorias Alarmantes */}
-        {alarmingCategories.length > 0 && (
-          <View style={styles.section}>
-            <Headline weight="semiBold" style={{ marginBottom: spacing[2] }}>
-              Atenção no Orçamento
-            </Headline>
-            <Card>
-              <CardContent>
-                {alarmingCategories.map((category, index) => {
-                  const isExceeded = category.percentage >= 100;
-                  const statusColor = isExceeded ? colors.error.main : colors.warning.main;
-                  const bgColor = isExceeded ? colors.error.bg : colors.warning.bg;
-                  
-                  return (
-                    <TouchableOpacity
-                      key={category.id || index}
-                      onPress={() => {
-                        // Navegar para a tab "Mais" e depois para "Budgets"
-                        navigation.navigate('Mais', { screen: 'Budgets' });
-                      }}
-                      style={[
-                        styles.alarmingCategoryItem,
-                        index < alarmingCategories.length - 1 && styles.alarmingCategoryBorder
-                      ]}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing[1] }}>
-                          <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
-                          <Callout weight="semiBold" numberOfLines={1} style={{ flex: 1 }}>
-                            {category.category_name}
-                          </Callout>
-                          <View style={[styles.percentageBadge, { backgroundColor: bgColor }]}>
-                            <Caption weight="semiBold" style={{ color: statusColor }}>
-                              {category.percentage}%
-                            </Caption>
-                          </View>
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <View>
-                            <Caption color="secondary">Gasto</Caption>
-                            <Callout weight="semiBold" style={{ color: statusColor }}>
-                              {formatCurrency(category.spent)}
-                            </Callout>
-                          </View>
-                          <View style={{ alignItems: 'flex-end' }}>
-                            <Caption color="secondary">Orçamento</Caption>
-                            <Callout weight="semiBold">
-                              {formatCurrency(category.limit)}
-                            </Callout>
-                          </View>
-                        </View>
-                        {category.remaining < 0 && (
-                          <Caption color="error" style={{ marginTop: spacing[0.5] }}>
-                            Excedido em {formatCurrency(Math.abs(category.remaining))}
-                          </Caption>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-
-                {/* Botão Ver todas/Ver menos */}
-                {allAlarmingCategories.length > 3 && (
-                  <TouchableOpacity 
-                    style={styles.alarmingExpandButton}
-                    onPress={handleToggleAlarmingCategories}
-                    activeOpacity={0.7}
-                  >
-                    <Caption weight="semiBold" style={{ color: colors.brand.primary }}>
-                      {alarmingCategoriesExpanded ? 'Ver menos' : `Ver todas (${allAlarmingCategories.length})`}
-                    </Caption>
-                    {alarmingCategoriesExpanded ? (
-                      <ChevronUp size={16} color={colors.brand.primary} strokeWidth={2.5} />
-                    ) : (
-                      <ChevronDown size={16} color={colors.brand.primary} strokeWidth={2.5} />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </CardContent>
-            </Card>
-          </View>
-        )}
+        <BudgetAlerts
+          categories={alarmingCategories}
+          allCategories={allAlarmingCategories}
+          expanded={alarmingCategoriesExpanded}
+          onToggleExpanded={handleToggleAlarmingCategories}
+          onPress={() => navigation.navigate('Mais', { screen: 'Budgets' })}
+        />
 
         {/* Monthly Comparison - SEPARADO ABAIXO DOS DONUTS */}
         {monthlyComparison.length > 0 && (
@@ -1127,80 +1063,11 @@ export default function DashboardScreen() {
         )}
 
         {/* Transações recentes */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Headline weight="semiBold">Atividade Recente</Headline>
-            <TouchableOpacity onPress={() => navigation.navigate('Transações')}>
-              <Callout style={{ color: colors.brand.primary }}>
-                Ver todas
-              </Callout>
-            </TouchableOpacity>
-          </View>
-
-          {recentTransactions.length > 0 ? (
-            <Card padding="none">
-              {recentTransactions.map((transaction, index) => (
-                <TouchableOpacity
-                  key={transaction.id}
-                  style={[
-                    styles.transactionItem,
-                    index < recentTransactions.length - 1 && styles.transactionItemBorder,
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  {/* Ícone minimalista com seta */}
-                  <View
-                    style={[
-                      styles.transactionIcon,
-                      transaction.type === 'income'
-                        ? styles.transactionIconIncome
-                        : styles.transactionIconExpense,
-                    ]}
-                  >
-                    {transaction.type === 'income' ? (
-                      <ArrowDownLeft size={18} color={colors.brand.primary} />
-                    ) : (
-                      <ArrowUpRight size={18} color={colors.error.main} />
-                    )}
-                  </View>
-                  <View style={styles.transactionContent}>
-                    <Text variant="callout" weight="medium">
-                      {transaction.description || 'Sem descrição'}
-                    </Text>
-                    <Caption color="secondary">
-                      {formatBrazilDate(transaction.date)}
-                    </Caption>
-                  </View>
-                  <Text
-                    variant="callout"
-                    weight="semiBold"
-                    style={{
-                      color:
-                        transaction.type === 'income'
-                          ? colors.brand.primary
-                          : colors.financial.expense,
-                    }}
-                  >
-                    {transaction.type === 'income' ? '+' : '-'}
-                    {formatCurrency(Math.abs(transaction.amount || 0))}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </Card>
-          ) : (
-            <Card>
-              <CardContent>
-                <View style={styles.emptyState}>
-                  <Text variant="body" color="secondary" align="center">
-                    Nenhuma transação este mês.
-                    {'\n'}
-                    Comece adicionando suas receitas e despesas.
-                  </Text>
-                </View>
-              </CardContent>
-            </Card>
-          )}
-        </View>
+        <RecentTransactions
+          transactions={recentTransactions}
+          onViewAll={() => navigation.navigate('Transações')}
+          formatDate={formatBrazilDate}
+        />
 
         {/* Espaçamento final */}
         <View style={{ height: spacing[8] }} />
@@ -1331,44 +1198,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border.light,
   },
 
-  // Transactions
-  transactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[2],
-  },
-
-  transactionItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-  },
-
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing[1.5],
-  },
-
-  transactionIconIncome: {
-    backgroundColor: colors.info.bg,
-  },
-
-  transactionIconExpense: {
-    backgroundColor: colors.error.bg,
-  },
-
-  transactionContent: {
-    flex: 1,
-  },
-
-  emptyState: {
-    paddingVertical: spacing[4],
-    alignItems: 'center',
-  },
-
   // Charts scroll
   chartsScroll: {
     gap: spacing[2],
@@ -1386,37 +1215,4 @@ const styles = StyleSheet.create({
     marginBottom: spacing[2],
   },
 
-  // Alarming Categories
-  alarmingCategoryItem: {
-    paddingVertical: spacing[2],
-  },
-  alarmingCategoryBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-    marginBottom: spacing[1],
-    paddingBottom: spacing[2],
-  },
-  categoryDot: {
-    width: 12,
-    height: 12,
-    borderRadius: radius.full,
-    marginRight: spacing[1.5],
-  },
-  percentageBadge: {
-    paddingHorizontal: spacing[1.5],
-    paddingVertical: spacing[0.5],
-    borderRadius: radius.sm,
-    marginLeft: spacing[1],
-  },
-  alarmingExpandButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[2],
-    marginTop: spacing[1],
-    gap: spacing[1],
-    borderTopWidth: 1,
-    borderTopColor: colors.border.light,
-  },
 });
