@@ -30,7 +30,8 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
-import { colors, spacing, radius, shadows, gradients } from '../theme';
+import { spacing, radius, shadows, gradients } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title1, Title2, Headline, Callout, Caption } from '../components/ui/Text';
 import { Card, CardContent } from '../components/ui/Card';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
@@ -70,6 +71,7 @@ export default function DashboardScreen() {
   const navigation = useNavigation();
   const { organization, user, loading: orgLoading } = useOrganization();
   const { alert } = useAlert();
+  const { colors } = useTheme();
   // Forçar mes atual correto
   const getCurrentMonth = () => {
     const now = new Date();
@@ -799,7 +801,7 @@ export default function DashboardScreen() {
   }
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]} pointerEvents="box-none">
       {/* Header Consistente */}
       <ScreenHeader
         user={user}

@@ -9,32 +9,20 @@ import {
   Linking,
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../services/supabase';
-import { colors, spacing, radius } from '../theme';
-import { Title1, Body, Caption } from '../components/ui/Text';
+import { spacing, radius } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import { Title1, Body, Headline, Caption } from '../components/ui/Text';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { useToast } from '../components/ui/Toast';
 import { useAlert } from '../components/ui/AlertProvider';
 import { APP_CONFIG } from '@fintrack/shared/src/constants/config';
 
-// Logo SVG - Versão Azul (para fundo branco)
-const logoSvgBlue = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+const logoSvg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0.00 0.00 512.00 512.00">
-<path stroke="#036ecb" stroke-width="2.00" fill="none" stroke-linecap="butt" vector-effect="non-scaling-stroke" d="
-  M 157.12 374.41
-  A 0.25 0.24 -42.9 0 0 157.10 374.86
-  Q 188.84 389.37 223.12 382.36
-  Q 235.63 379.80 245.14 376.36
-  Q 257.69 371.82 273.63 362.38
-  C 292.53 351.19 309.75 338.99 323.33 321.78
-  C 342.62 297.34 349.00 266.30 342.69 235.77
-  A 0.26 0.26 0.0 0 0 342.18 235.81
-  C 341.70 248.30 339.02 260.39 333.74 272.20
-  C 321.57 299.46 301.80 320.01 275.80 334.52
-  Q 222.95 364.02 162.55 373.57
-  C 160.46 373.90 158.76 373.78 157.12 374.41"/>
-<path fill="#057bd9" d="
+<path fill="#1A6AFF" d="
   M 113.00 377.89
   A 0.28 0.28 0.0 0 0 112.79 377.42
   Q 105.75 377.70 97.14 378.72
@@ -142,51 +130,11 @@ const logoSvgBlue = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
   Q 25.26 464.11 32.13 456.62
   C 54.42 432.32 91.20 399.43 107.98 382.98
   Q 111.48 379.56 113.00 377.89
-  Z
-  M 157.12 374.41
-  A 0.25 0.24 -42.9 0 0 157.10 374.86
-  Q 188.84 389.37 223.12 382.36
-  Q 235.63 379.80 245.14 376.36
-  Q 257.69 371.82 273.63 362.38
-  C 292.53 351.19 309.75 338.99 323.33 321.78
-  C 342.62 297.34 349.00 266.30 342.69 235.77
-  A 0.26 0.26 0.0 0 0 342.18 235.81
-  C 341.70 248.30 339.02 260.39 333.74 272.20
-  C 321.57 299.46 301.80 320.01 275.80 334.52
-  Q 222.95 364.02 162.55 373.57
-  C 160.46 373.90 158.76 373.78 157.12 374.41
-  Z"/>
-<path fill="#ffffff" opacity="0.9" d="
-  M 157.12 374.41
-  C 158.76 373.78 160.46 373.90 162.55 373.57
-  Q 222.95 364.02 275.80 334.52
-  C 301.80 320.01 321.57 299.46 333.74 272.20
-  C 339.02 260.39 341.70 248.30 342.18 235.81
-  A 0.26 0.26 0.0 0 1 342.69 235.77
-  C 349.00 266.30 342.62 297.34 323.33 321.78
-  C 309.75 338.99 292.53 351.19 273.63 362.38
-  Q 257.69 371.82 245.14 376.36
-  Q 235.63 379.80 223.12 382.36
-  Q 188.84 389.37 157.10 374.86
-  A 0.25 0.24 -42.9 0 1 157.12 374.41
-  Z"/>
-<path fill="#0061bc" d="
-  M 157.12 374.41
-  C 158.76 373.78 160.46 373.90 162.55 373.57
-  Q 222.95 364.02 275.80 334.52
-  C 301.80 320.01 321.57 299.46 333.74 272.20
-  C 339.02 260.39 341.70 248.30 342.18 235.81
-  A 0.26 0.26 0.0 0 1 342.69 235.77
-  C 349.00 266.30 342.62 297.34 323.33 321.78
-  C 309.75 338.99 292.53 351.19 273.63 362.38
-  Q 257.69 371.82 245.14 376.36
-  Q 235.63 379.80 223.12 382.36
-  Q 188.84 389.37 157.10 374.86
-  A 0.25 0.24 -42.9 0 1 157.12 374.41
   Z"/>
 </svg>`;
 
 export default function LoginScreen({ navigation }) {
+  const { colors, isDark } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -201,12 +149,11 @@ export default function LoginScreen({ navigation }) {
     }
 
     setLoading(true);
-
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
           email: email.trim(),
-          password: password,
+          password,
         });
         if (error) throw error;
         alert({
@@ -217,7 +164,7 @@ export default function LoginScreen({ navigation }) {
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
-          password: password,
+          password,
         });
         if (error) throw error;
       }
@@ -230,36 +177,48 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background.primary }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.gradient}>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Hero section with gradient */}
+        <LinearGradient
+          colors={isDark
+            ? [colors.brand.primaryDark, colors.background.primary]
+            : [colors.brand.primary, colors.brand.primaryLight]
+          }
+          style={styles.hero}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            {/* Logo */}
-            <SvgXml 
-              xml={logoSvgBlue}
-              width={120}
-              height={120}
-              style={styles.logo}
-              accessibilityLabel="Logo MeuAzulão"
-            />
+          <SvgXml
+            xml={logoSvg}
+            width={88}
+            height={88}
+            style={styles.logo}
+            accessibilityLabel="Logo MeuAzulão"
+          />
+          <Title1 style={[styles.title, { color: '#FFFFFF' }]}>
+            MeuAzulão
+          </Title1>
+          <Body style={[styles.subtitle, { color: 'rgba(255,255,255,0.85)' }]}>
+            Gestão Financeira Inteligente
+          </Body>
+        </LinearGradient>
 
-            <Title1 color="primary" weight="bold" style={styles.title}>
-              MeuAzulão
-            </Title1>
-            <Caption color="secondary" style={styles.subtitle}>
-              Gestão Financeira Inteligente
-            </Caption>
-          </View>
+        {/* Form card */}
+        <View style={[styles.formCard, {
+          backgroundColor: colors.background.secondary,
+          borderColor: colors.border.light,
+        }]}>
+          <Headline style={[styles.formTitle, { color: colors.text.primary }]}>
+            {isSignUp ? 'Criar conta' : 'Entrar na conta'}
+          </Headline>
 
-        {/* Form */}
-        <View style={styles.form}>
           <Input
             placeholder="seu@email.com"
             value={email}
@@ -290,75 +249,54 @@ export default function LoginScreen({ navigation }) {
             style={styles.button}
           />
 
-          {isSignUp ? (
-            <TouchableOpacity
-              onPress={() => setIsSignUp(false)}
-              style={styles.switchButton}
-              accessibilityRole="button"
-              accessibilityLabel="Já tem uma conta? Entrar"
-              accessibilityHint="Alternar para tela de login"
-            >
-              <Caption color="secondary" align="center">
-                Já tem uma conta? Entrar
+          <TouchableOpacity
+            onPress={() => {
+              if (isSignUp) {
+                setIsSignUp(false);
+              } else {
+                Linking.openURL(APP_CONFIG.BASE_URL).catch(() =>
+                  showToast('Não foi possível abrir a página', 'error')
+                );
+              }
+            }}
+            style={styles.switchButton}
+            accessibilityRole="button"
+          >
+            <Caption style={{ color: colors.text.secondary, textAlign: 'center' }}>
+              {isSignUp ? 'Já tem uma conta? ' : 'Não tem conta? '}
+              <Caption style={{ color: colors.brand.primary, fontWeight: '600' }}>
+                {isSignUp ? 'Entrar' : 'Criar agora'}
               </Caption>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={async () => {
-                const url = APP_CONFIG.BASE_URL;
-                const supported = await Linking.canOpenURL(url);
-                if (supported) {
-                  await Linking.openURL(url);
-                } else {
-                  showToast('Não foi possível abrir a página', 'error');
-                }
-              }}
-              style={styles.switchButton}
-              accessibilityRole="button"
-              accessibilityLabel="Não tem conta? Criar agora"
-              accessibilityHint="Abre a página web para criar uma conta"
-            >
-              <Caption color="secondary" align="center">
-                Não tem conta? Criar agora
-              </Caption>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        </ScrollView>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Caption color="tertiary" align="center" style={styles.footerText}>
-            Ao continuar, você concorda com nossos
-          </Caption>
-          <View style={styles.footerLinks}>
-            <TouchableOpacity
-              onPress={() => navigation?.navigate('TermsOfService')}
-              style={styles.footerLink}
-              accessibilityRole="button"
-              accessibilityLabel="Ler Termos de Uso"
-              accessibilityHint="Abre a tela com os termos de uso do aplicativo"
-            >
-              <Caption color="primary" weight="semiBold" style={styles.footerLinkText}>
-                Termos de Uso
-              </Caption>
-            </TouchableOpacity>
-            <Caption color="tertiary" style={styles.footerSeparator}>
-              {' e '}
             </Caption>
-            <TouchableOpacity
-              onPress={() => navigation?.navigate('PrivacyPolicy')}
-              style={styles.footerLink}
-              accessibilityRole="button"
-              accessibilityLabel="Ler Política de Privacidade"
-              accessibilityHint="Abre a tela com a política de privacidade do aplicativo"
-            >
-              <Caption color="primary" weight="semiBold" style={styles.footerLinkText}>
-                Política de Privacidade
-              </Caption>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <Caption style={{ color: colors.text.tertiary, textAlign: 'center', lineHeight: 20 }}>
+          Ao continuar, você concorda com nossos{' '}
+        </Caption>
+        <View style={styles.footerLinks}>
+          <TouchableOpacity
+            onPress={() => navigation?.navigate('TermsOfService')}
+            accessibilityRole="button"
+            accessibilityLabel="Ler Termos de Uso"
+          >
+            <Caption style={{ color: colors.text.link, fontWeight: '600', textDecorationLine: 'underline' }}>
+              Termos de Uso
+            </Caption>
+          </TouchableOpacity>
+          <Caption style={{ color: colors.text.tertiary }}>{' e '}</Caption>
+          <TouchableOpacity
+            onPress={() => navigation?.navigate('PrivacyPolicy')}
+            accessibilityRole="button"
+            accessibilityLabel="Ler Política de Privacidade"
+          >
+            <Caption style={{ color: colors.text.link, fontWeight: '600', textDecorationLine: 'underline' }}>
+              Política de Privacidade
+            </Caption>
+          </TouchableOpacity>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -369,96 +307,64 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-
-  gradient: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing[3],
-    paddingTop: spacing[8],
-    paddingBottom: spacing[4],
-    backgroundColor: colors.background.primary,
-  },
-
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingVertical: spacing[4],
   },
-
-  // Header
-  header: {
+  hero: {
     alignItems: 'center',
-    marginBottom: spacing[6],
+    paddingTop: 80,
+    paddingBottom: 48,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
-
   logo: {
-    marginBottom: spacing[4],
-  },
-
-  title: {
-    marginBottom: spacing[1],
-    fontSize: 32,
-  },
-
-  subtitle: {
-    opacity: 0.9,
-    fontSize: 16,
-    marginTop: spacing[0.5],
-  },
-
-  // Form
-  form: {
-    width: '100%',
-    marginBottom: spacing[4],
-  },
-
-  input: {
     marginBottom: spacing[2],
   },
-
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+  },
+  formCard: {
+    marginHorizontal: spacing[2],
+    marginTop: -24,
+    borderRadius: radius.xl,
+    padding: spacing[3],
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  formTitle: {
+    textAlign: 'center',
+    marginBottom: spacing[3],
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  input: {
+    marginBottom: spacing[1.5],
+  },
   button: {
-    marginTop: spacing[3],
+    marginTop: spacing[2],
   },
-
   switchButton: {
-    marginTop: spacing[3],
-    paddingVertical: spacing[2],
+    marginTop: spacing[2],
+    paddingVertical: spacing[1.5],
   },
-
-  // Footer
   footer: {
-    paddingTop: spacing[2],
-    paddingBottom: spacing[2],
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
     alignItems: 'center',
   },
-
-  footerText: {
-    opacity: 0.8,
-    lineHeight: 20,
-    marginBottom: spacing[1],
-  },
-
   footerLinks: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     flexWrap: 'wrap',
-  },
-
-  footerLink: {
-    paddingVertical: spacing[0.5],
-    paddingHorizontal: spacing[1],
-    borderRadius: radius.sm,
-  },
-
-  footerLinkText: {
-    fontSize: 14,
-    textDecorationLine: 'underline',
-    opacity: 0.95,
-  },
-
-  footerSeparator: {
-    opacity: 0.8,
-    marginHorizontal: spacing[0.5],
   },
 });
