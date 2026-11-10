@@ -22,6 +22,7 @@
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
+    "@sentry/react-native": "~7.2.0",
     "@supabase/supabase-js": "^2.76.1",
     "expo": "~54.0.25",
     "expo-constants": "~18.0.10",

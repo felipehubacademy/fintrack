@@ -1,3 +1,5 @@
+import './src/services/sentry';
+import { Sentry } from './src/services/sentry';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,7 +14,7 @@ function StatusBarWithTheme() {
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
 }
 
-export default function App() {
+function App() {
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -30,3 +32,5 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+export default Sentry.wrap(App);

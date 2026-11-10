@@ -22,6 +22,7 @@ export default {
     },
     plugins: [
       'expo-dev-client',
+      '@sentry/react-native',
       [
         'expo-image-picker',
         {
@@ -79,6 +80,7 @@ export default {
         projectId: '1c40456c-0cbf-44bf-be20-e6723bffc90c',
       },
       appEnv: process.env.APP_ENV || 'development',
+      sentryDsn: process.env.SENTRY_DSN || '',
     },
     owner: 'felipexavier_kid',
   },
