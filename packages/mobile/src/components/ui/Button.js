@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, ActivityIndicator, StyleSheet, View } from 'react-native';
 import { colors, spacing, radius, shadows } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { Text } from './Text';
 import { HapticFeedback } from '../../utils/haptics';
 
@@ -35,6 +36,7 @@ export function Button({
   accessibilityHint,
   ...props
 }) {
+  const { colors } = useTheme();
   const isDisabled = disabled || loading;
 
   const buttonStyles = [

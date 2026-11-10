@@ -1,33 +1,45 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { colors, spacing, radius, shadows } from '../../theme';
+import { spacing, radius, shadows } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { Text } from './Text';
 
-/**
- * Card Component - Minimal Apple-style card
- * 
- * Features:
- * - Clean white background
- * - Subtle shadow
- * - Rounded corners
- * - Optional glass effect
- */
-export function Card({ 
-  children, 
-  variant = 'default', // 'default', 'glass', 'outlined'
-  padding = 'default', // 'none', 'sm', 'default', 'lg'
+export function Card({
+  children,
+  variant = 'default',
+  padding = 'default',
   style,
-  ...props 
+  ...props
 }) {
-  const cardStyles = [
-    styles.base,
-    styles[`variant_${variant}`],
-    styles[`padding_${padding}`],
-    style,
-  ];
+  const { colors } = useTheme();
+
+  const variantStyles = {
+    default: {
+      backgroundColor: colors.background.secondary,
+      ...shadows.sm,
+    },
+    glass: {
+      backgroundColor: colors.background.glass,
+      borderWidth: 1,
+      borderColor: colors.border.light,
+    },
+    outlined: {
+      backgroundColor: colors.background.secondary,
+      borderWidth: 1,
+      borderColor: colors.border.main,
+    },
+  };
 
   return (
-    <View style={cardStyles} {...props}>
+    <View
+      style={[
+        styles.base,
+        variantStyles[variant],
+        styles[`padding_${padding}`],
+        style,
+      ]}
+      {...props}
+    >
       {children}
     </View>
   );
@@ -43,12 +55,7 @@ export function CardHeader({ children, style, ...props }) {
 
 export function CardTitle({ children, style, ...props }) {
   return (
-    <Text 
-      variant="headline" 
-      weight="semiBold"
-      style={style}
-      {...props}
-    >
+    <Text variant="headline" weight="semiBold" style={style} {...props}>
       {children}
     </Text>
   );
@@ -56,12 +63,7 @@ export function CardTitle({ children, style, ...props }) {
 
 export function CardDescription({ children, style, ...props }) {
   return (
-    <Text 
-      variant="callout" 
-      color="secondary"
-      style={[styles.description, style]}
-      {...props}
-    >
+    <Text variant="callout" color="secondary" style={[styles.description, style]} {...props}>
       {children}
     </Text>
   );
@@ -76,8 +78,9 @@ export function CardContent({ children, style, ...props }) {
 }
 
 export function CardFooter({ children, style, ...props }) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.footer, style]} {...props}>
+    <View style={[styles.footer, { borderTopColor: colors.border.light }, style]} {...props}>
       {children}
     </View>
   );
@@ -88,24 +91,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
   },
-  
-  // Variants
-  variant_default: {
-    backgroundColor: colors.background.secondary,
-    ...shadows.sm,
-  },
-  variant_glass: {
-    backgroundColor: colors.background.glass,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  variant_outlined: {
-    backgroundColor: colors.background.secondary,
-    borderWidth: 1,
-    borderColor: colors.border.main,
-  },
-  
-  // Padding
   padding_none: {
     padding: 0,
   },
@@ -118,24 +103,16 @@ const styles = StyleSheet.create({
   padding_lg: {
     padding: spacing[3],
   },
-  
-  // Sections
   header: {
     marginBottom: spacing[1.5],
   },
-  
   description: {
     marginTop: spacing[0.5],
   },
-  
-  content: {
-    // No default styles, flexible content
-  },
-  
+  content: {},
   footer: {
     marginTop: spacing[2],
     paddingTop: spacing[2],
     borderTopWidth: 1,
-    borderTopColor: colors.border.light,
   },
 });

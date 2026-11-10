@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text as RNText, StyleSheet } from 'react-native';
-import { typography, colors } from '../../theme';
+import { typography } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 /**
  * Text Component - Apple HIG compliant
@@ -20,7 +21,7 @@ export function Text({
   accessibilityLabel,
   ...props
 }) {
-  // Get color value
+  const { colors } = useTheme();
   const textColor = colors.text?.[color] || color;
   
   // Get typography style
