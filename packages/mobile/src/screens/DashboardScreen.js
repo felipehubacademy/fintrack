@@ -5,334 +5,292 @@ import {
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
-  TrendingDown,
-  ArrowUpRight,
   ArrowDownLeft,
-  Wallet,
-  HelpCircle,
-  Calendar,
+  ArrowUpRight,
+  CreditCard,
+  PieChart,
+  ChevronRight,
+  Receipt,
+  Target,
 } from 'lucide-react-native';
 import { colors, spacing } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { Text, Headline, Caption } from '../components/ui/Text';
-import { Card, CardContent } from '../components/ui/Card';
-import { ScreenHeader } from '../components/layout/ScreenHeader';
-import { StatCard } from '../components/financial/StatCard';
 import { MonthSelector } from '../components/financial/MonthSelector';
-import { BalanceHero } from '../components/dashboard/BalanceHero';
-import { RecentTransactions } from '../components/dashboard/RecentTransactions';
-import { BudgetAlerts } from '../components/dashboard/BudgetAlerts';
-import { CategoryDonutChart } from '../components/financial/CategoryDonutChart';
-import { MonthlyComparisonChart } from '../components/financial/MonthlyComparisonChart';
-import { StatsDetailSheet } from '../components/financial/StatsDetailSheet';
-import { DetailedStatsSheet } from '../components/financial/DetailedStatsSheet';
-import { BankAccountsSheet } from '../components/financial/BankAccountsSheet';
-import { Tooltip } from '../components/ui/Tooltip';
+import { CategoryIcon } from '../components/ui/CategoryIcon';
 import { formatCurrency } from '@fintrack/shared/utils';
-import { formatBrazilDate } from '../utils/date';
+import { formatBrazilDate, formatBrazilDayMonthShort } from '../utils/date';
 import { useDashboardData } from '../hooks/useDashboardData';
-
-const { width } = Dimensions.get('window');
-const STAT_CARD_WIDTH = (width - spacing[2] * 3) / 2.2;
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
+  const { colors: themeColors, isDark } = useTheme();
   const {
     user, orgLoading,
     selectedMonth, setSelectedMonth,
     refreshing, onRefresh,
     stats, recentTransactions,
-    categoryData, paymentMethodData, ownerData,
-    incomeCategoryData,
-    monthlyComparison,
-    alarmingCategories, allAlarmingCategories, alarmingCategoriesExpanded,
-    bankAccounts,
-    scheduledPaymentsData,
-    colors,
-    sheetVisible, setSheetVisible, sheetData,
-    detailedSheetVisible, setDetailedSheetVisible, detailedSheetData,
-    bankAccountsSheetVisible, setBankAccountsSheetVisible,
-    scheduledPaymentsSheetVisible, setScheduledPaymentsSheetVisible,
-    balanceSheetVisible, setBalanceSheetVisible,
-    handleToggleAlarmingCategories,
-    handleCategoryLegendPress,
-    openIncomeSheet,
-    openExpenseSheet,
+    alarmingCategories,
   } = useDashboardData(navigation);
 
   if (orgLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: themeColors.background.primary }]}>
         <Text variant="body" color="secondary">Carregando...</Text>
       </View>
     );
   }
 
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background.primary }]} pointerEvents="box-none">
-      <ScreenHeader
-        user={user}
-        title="Painel Inicial"
-        showNotifications={true}
-        showLogo={true}
-      />
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Bom dia';
+    if (h < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
 
+  return (
+    <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Month selector */}
-        <View style={styles.section}>
-          <MonthSelector selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>{greeting()},</Text>
+            <Headline style={styles.userName}>{user?.name?.split(' ')[0] || 'Usuário'}</Headline>
+          </View>
+          <MonthSelector selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} compact />
         </View>
 
-        {/* Hero balance card */}
-        <BalanceHero
-          balance={stats.balance}
-          income={stats.totalIncome}
-          expenses={stats.totalExpenses}
-          userName={user?.name}
-        />
-
-        {/* Stat cards */}
+        {/* Balance Card */}
         <View style={styles.section}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsScroll}>
-            <StatCardWithHint
-              label="Total de Entradas"
-              value={formatCurrency(stats.totalIncome)}
-              icon={<ArrowDownLeft size={20} color={colors.brand.primary} />}
-              variant="income"
-              onPress={openIncomeSheet}
-              colors={colors}
-            />
-            <StatCardWithHint
-              label="Total de Despesas"
-              value={formatCurrency(stats.totalExpenses)}
-              icon={<ArrowUpRight size={20} color={colors.error.main} />}
-              variant="expense"
-              onPress={openExpenseSheet}
-              colors={colors}
-            />
-            <StatCardWithHint
-              label="Pagamentos Programados"
-              value={formatCurrency(stats.scheduledPayments)}
-              icon={<Calendar size={20} color={colors.warning.main} />}
-              variant="warning"
-              onPress={() => setScheduledPaymentsSheetVisible(true)}
-              colors={colors}
-            />
-            <StatCardWithHint
-              label="Saldo Parcial do Mês"
-              value={formatCurrency(stats.balance)}
-              icon={<Wallet size={20} color={stats.balance < 0 ? colors.error.main : colors.brand.primary} />}
-              valueColor={stats.balance < 0 ? colors.error.main : colors.brand.primary}
-              onPress={() => setBalanceSheetVisible(true)}
-              colors={colors}
-            />
-          </ScrollView>
-        </View>
-
-        {/* Quick summary */}
-        <View style={styles.section}>
-          <Card>
-            <CardContent>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <Caption color="secondary">Transações</Caption>
-                  <Headline weight="semiBold">{stats.transactions}</Headline>
-                </View>
-                <View style={styles.divider} />
-                <TouchableOpacity
-                  style={styles.summaryItem}
-                  activeOpacity={0.7}
-                  onPress={() => setBankAccountsSheetVisible(true)}
-                >
-                  <Caption color="secondary">Contas Bancárias</Caption>
-                  <Headline
-                    weight="semiBold"
-                    style={{ color: stats.bankAccountsTotal < 0 ? colors.error.main : colors.text.primary }}
-                  >
-                    {formatCurrency(stats.bankAccountsTotal)}
-                  </Headline>
-                </TouchableOpacity>
+          <LinearGradient
+            colors={['#1A6AFF', '#0047CC']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.balanceCard}
+          >
+            <Text style={styles.balanceLabel}>Saldo de {getMonthName(selectedMonth)}</Text>
+            <Text style={styles.balanceAmount}>{formatCurrency(stats.balance)}</Text>
+            <View style={styles.balanceRow}>
+              <View style={styles.balanceItem}>
+                <Text style={styles.balanceItemLabel}>Entradas</Text>
+                <Text style={[styles.balanceItemValue, { color: '#A5F3C0' }]}>
+                  {formatCurrency(stats.totalIncome)}
+                </Text>
               </View>
-            </CardContent>
-          </Card>
+              <View style={styles.balanceItem}>
+                <Text style={styles.balanceItemLabel}>Saídas</Text>
+                <Text style={[styles.balanceItemValue, { color: '#FFB3B0' }]}>
+                  {formatCurrency(stats.totalExpenses)}
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
         </View>
 
-        {/* Charts */}
-        {(categoryData.length > 0 || paymentMethodData.length > 0 || ownerData.length > 0 || incomeCategoryData.length > 0) && (
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <QuickAction
+            icon={<ArrowDownLeft size={18} color="#EF4444" />}
+            label="Despesa"
+            bg={isDark ? '#EF444418' : '#FEF2F2'}
+            onPress={() => navigation.navigate('AddTransaction', { type: 'expense' })}
+          />
+          <QuickAction
+            icon={<ArrowUpRight size={18} color="#22C55E" />}
+            label="Receita"
+            bg={isDark ? '#22C55E18' : '#F0FDF4'}
+            onPress={() => navigation.navigate('AddTransaction', { type: 'income' })}
+          />
+          <QuickAction
+            icon={<CreditCard size={18} color="#6366F1" />}
+            label="Cartões"
+            bg={isDark ? '#6366F118' : '#EEF2FF'}
+            onPress={() => navigation.navigate('Mais', { screen: 'Cards' })}
+          />
+          <QuickAction
+            icon={<PieChart size={18} color="#F59E0B" />}
+            label="Orçamento"
+            bg={isDark ? '#F59E0B18' : '#FFFBEB'}
+            onPress={() => navigation.navigate('Orçamento')}
+          />
+        </View>
+
+        {/* Budget Mini */}
+        {alarmingCategories.length > 0 && (
           <View style={styles.section}>
-            <Headline weight="semiBold" style={{ marginBottom: spacing[2] }}>Análises</Headline>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chartsScroll}
-              snapToInterval={width - spacing[2] * 2 + spacing[2]}
-              decelerationRate="fast"
-            >
-              {categoryData.length > 0 && (
-                <Card style={styles.chartCard}>
-                  <CardContent>
-                    <CategoryDonutChart data={categoryData} title="Despesas por Categoria" onCategoryPress={handleCategoryLegendPress} />
-                  </CardContent>
-                </Card>
-              )}
-              {paymentMethodData.length > 0 && (
-                <Card style={styles.chartCard}>
-                  <CardContent>
-                    <CategoryDonutChart data={paymentMethodData} title="Despesas por Pagamento" />
-                  </CardContent>
-                </Card>
-              )}
-              {ownerData.length > 0 && (
-                <Card style={styles.chartCard}>
-                  <CardContent>
-                    <CategoryDonutChart data={ownerData} title="Despesas por Responsável" />
-                  </CardContent>
-                </Card>
-              )}
-              {incomeCategoryData.length > 0 && (
-                <Card style={styles.chartCard}>
-                  <CardContent>
-                    <CategoryDonutChart data={incomeCategoryData} title="Receitas por Categoria" />
-                  </CardContent>
-                </Card>
-              )}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Budget alerts */}
-        <BudgetAlerts
-          categories={alarmingCategories}
-          allCategories={allAlarmingCategories}
-          expanded={alarmingCategoriesExpanded}
-          onToggleExpanded={handleToggleAlarmingCategories}
-          onPress={() => navigation.navigate('Mais', { screen: 'Budgets' })}
-        />
-
-        {/* Monthly comparison */}
-        {monthlyComparison.length > 0 && (
-          <View style={[styles.section, { marginTop: spacing[3], marginBottom: spacing[2] }]}>
             <View style={styles.sectionHeader}>
-              <Headline weight="semiBold">Comparação Mensal</Headline>
-              <Tooltip
-                title="Comparação Mensal"
-                content="Compare suas entradas (azul) e saídas totais (cinza) dos últimos 6 meses."
-              />
+              <Headline style={styles.sectionTitle}>Orçamentos</Headline>
+              <TouchableOpacity onPress={() => navigation.navigate('Orçamento')}>
+                <Text style={[styles.seeAll, { color: themeColors.brand.primary }]}>Ver todos</Text>
+              </TouchableOpacity>
             </View>
-            <Card style={[styles.chartCard, { paddingBottom: 0, paddingTop: spacing[2], paddingHorizontal: spacing[2] }]} padding="none">
-              <CardContent style={{ paddingBottom: 0 }}>
-                <MonthlyComparisonChart data={monthlyComparison} />
-              </CardContent>
-            </Card>
+            <View style={[styles.card, { backgroundColor: themeColors.background.secondary || themeColors.background.primary }]}>
+              {alarmingCategories.slice(0, 4).map((budget, i) => (
+                <BudgetMiniItem
+                  key={budget.id || i}
+                  name={budget.category_name}
+                  percentage={budget.percentage}
+                  color={budget.color}
+                  isLast={i === Math.min(alarmingCategories.length, 4) - 1}
+                />
+              ))}
+            </View>
           </View>
         )}
 
-        {/* Recent transactions */}
-        <RecentTransactions
-          transactions={recentTransactions}
-          onViewAll={() => navigation.navigate('Transações')}
-          formatDate={formatBrazilDate}
-        />
+        {/* Recent Transactions */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Headline style={styles.sectionTitle}>Últimas transações</Headline>
+            <TouchableOpacity onPress={() => navigation.navigate('Transações')}>
+              <Text style={[styles.seeAll, { color: themeColors.brand.primary }]}>Ver todas</Text>
+            </TouchableOpacity>
+          </View>
+          {recentTransactions.length === 0 ? (
+            <View style={[styles.card, styles.emptyCard, { backgroundColor: themeColors.background.secondary || themeColors.background.primary }]}>
+              <Receipt size={32} color={themeColors.text.tertiary} />
+              <Text style={{ color: themeColors.text.secondary, fontSize: 13, marginTop: 8 }}>
+                Nenhuma transação este mês
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.card, { backgroundColor: themeColors.background.secondary || themeColors.background.primary }]}>
+              {recentTransactions.slice(0, 5).map((tx, i) => (
+                <TransactionItem
+                  key={tx.id || i}
+                  tx={tx}
+                  isLast={i === Math.min(recentTransactions.length, 5) - 1}
+                  themeColors={themeColors}
+                />
+              ))}
+            </View>
+          )}
+        </View>
 
         <View style={{ height: spacing[8] }} />
       </ScrollView>
-
-      {/* Bottom sheets */}
-      <StatsDetailSheet visible={sheetVisible} onClose={() => setSheetVisible(false)} title={sheetData.title} data={sheetData.data} />
-      <StatsDetailSheet visible={scheduledPaymentsSheetVisible} onClose={() => setScheduledPaymentsSheetVisible(false)} title="Pagamentos Programados" data={scheduledPaymentsData} />
-      <StatsDetailSheet
-        visible={balanceSheetVisible}
-        onClose={() => setBalanceSheetVisible(false)}
-        title="Saldo Parcial do Mês"
-        data={[
-          { label: 'Total de Entradas', value: stats.totalIncome, color: colors.brand.primary, subtitle: 'Receitas confirmadas do mês' },
-          { label: 'Total de Despesas', value: stats.totalExpenses, color: colors.error.main, subtitle: 'Despesas confirmadas do mês' },
-          { label: 'Pagamentos Programados', value: stats.scheduledPayments, color: colors.warning.main, subtitle: 'Contas a pagar do mês' },
-          { label: 'Saldo Parcial do Mês', value: stats.balance, color: stats.balance < 0 ? colors.error.main : colors.brand.primary, subtitle: 'Entradas - Despesas - Pagamentos Programados' },
-        ]}
-      />
-      <DetailedStatsSheet
-        visible={detailedSheetVisible}
-        onClose={() => setDetailedSheetVisible(false)}
-        title={detailedSheetData.title}
-        type={detailedSheetData.type}
-        paymentBreakdown={detailedSheetData.paymentBreakdown}
-        responsibleData={detailedSheetData.responsibleData}
-        totalAmount={detailedSheetData.totalAmount}
-      />
-      <BankAccountsSheet visible={bankAccountsSheetVisible} onClose={() => setBankAccountsSheetVisible(false)} accounts={bankAccounts} />
     </View>
   );
 }
 
-function StatCardWithHint({ label, value, icon, variant, onPress, colors, valueColor }) {
+function QuickAction({ icon, label, bg, onPress }) {
   return (
-    <View style={{ position: 'relative', width: STAT_CARD_WIDTH }}>
-      <StatCard
-        label={label}
-        value={value}
-        icon={icon}
-        variant={variant}
-        style={{ width: STAT_CARD_WIDTH }}
-        valueColor={valueColor}
-        onPress={onPress}
-      />
-      <View style={{ position: 'absolute', top: spacing[0.5], right: spacing[0.5], pointerEvents: 'none' }}>
-        <HelpCircle size={14} color={colors.text.tertiary} />
+    <TouchableOpacity style={styles.quickActionItem} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.quickActionIcon, { backgroundColor: bg }]}>{icon}</View>
+      <Text style={styles.quickActionLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function BudgetMiniItem({ name, percentage, color, isLast }) {
+  const barColor = percentage >= 90 ? '#FF3B30' : percentage >= 70 ? '#FF9500' : color;
+  return (
+    <View style={[styles.budgetItem, !isLast && styles.budgetItemBorder]}>
+      <View style={[styles.budgetDot, { backgroundColor: color }]} />
+      <View style={styles.budgetInfo}>
+        <Text style={styles.budgetName}>{name}</Text>
+        <View style={styles.budgetBar}>
+          <View style={[styles.budgetFill, { width: `${Math.min(percentage, 100)}%`, backgroundColor: barColor }]} />
+        </View>
       </View>
+      <Text style={[styles.budgetPct, percentage >= 90 && { color: '#FF3B30' }]}>{percentage}%</Text>
     </View>
   );
+}
+
+function TransactionItem({ tx, isLast, themeColors }) {
+  const isExpense = tx.type === 'expense';
+  const categoryName = tx.budget_category_name || tx.category || tx.income_category_name || 'Outros';
+
+  return (
+    <View style={[styles.txItem, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.border?.light || '#E5E5EA' }]}>
+      <CategoryIcon category={categoryName} size={36} iconSize={18} />
+      <View style={styles.txInfo}>
+        <Text style={styles.txDesc} numberOfLines={1}>{tx.description || 'Sem descrição'}</Text>
+        <Text style={[styles.txMeta, { color: themeColors.text.tertiary }]}>
+          {categoryName}
+          {tx.payment_method ? ` · ${getPaymentLabel(tx.payment_method)}` : ''}
+        </Text>
+      </View>
+      <Text style={[styles.txAmount, { color: isExpense ? themeColors.text.primary : '#22C55E' }]}>
+        {isExpense ? '-' : '+'}{formatCurrency(tx.amount || 0)}
+      </Text>
+    </View>
+  );
+}
+
+function getMonthName(monthStr) {
+  const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const [, m] = monthStr.split('-');
+  return months[parseInt(m, 10) - 1] || '';
+}
+
+function getPaymentLabel(method) {
+  const labels = {
+    credit_card: 'Crédito', debit_card: 'Débito', pix: 'PIX',
+    bank_transfer: 'Transferência', boleto: 'Boleto', cash: 'Dinheiro',
+  };
+  return labels[method] || method;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-    position: 'relative',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-  },
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollView: { flex: 1 },
-  scrollContent: { paddingTop: spacing[2] },
-  section: {
-    marginBottom: spacing[3],
-    paddingHorizontal: spacing[2],
+  scrollContent: { paddingTop: 60 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
+    paddingHorizontal: 20, paddingBottom: 16,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing[2],
-  },
-  statsScroll: { gap: spacing[1.5] },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  summaryItem: { flex: 1, alignItems: 'center' },
-  divider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.border.light,
-  },
-  chartsScroll: {
-    gap: spacing[2],
-    paddingRight: spacing[2],
-  },
-  chartCard: {
-    width: width - spacing[2] * 2,
-  },
+  greeting: { fontSize: 14, color: '#8E8E93' },
+  userName: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  section: { marginBottom: 24, paddingHorizontal: 16 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
+  seeAll: { fontSize: 13, fontWeight: '600' },
+
+  // Balance card
+  balanceCard: { borderRadius: 20, padding: 24, overflow: 'hidden' },
+  balanceLabel: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
+  balanceAmount: { fontSize: 34, fontWeight: '800', color: 'white', letterSpacing: -1, marginVertical: 4 },
+  balanceRow: { flexDirection: 'row', gap: 24, marginTop: 12 },
+  balanceItem: { flex: 1 },
+  balanceItemLabel: { fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 0.5 },
+  balanceItemValue: { fontSize: 16, fontWeight: '700', marginTop: 2 },
+
+  // Quick actions
+  quickActions: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 16, marginBottom: 24 },
+  quickActionItem: { alignItems: 'center', gap: 6 },
+  quickActionIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  quickActionLabel: { fontSize: 11, fontWeight: '500', color: '#8E8E93' },
+
+  // Card container
+  card: { borderRadius: 16, padding: 4, overflow: 'hidden' },
+  emptyCard: { padding: 32, alignItems: 'center', justifyContent: 'center' },
+
+  // Budget mini
+  budgetItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 12 },
+  budgetItemBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border?.light || '#E5E5EA' },
+  budgetDot: { width: 8, height: 8, borderRadius: 4 },
+  budgetInfo: { flex: 1 },
+  budgetName: { fontSize: 13, fontWeight: '600' },
+  budgetBar: { height: 4, backgroundColor: '#E5E5EA', borderRadius: 2, marginTop: 5, overflow: 'hidden' },
+  budgetFill: { height: '100%', borderRadius: 2 },
+  budgetPct: { fontSize: 12, fontWeight: '700', color: '#8E8E93', minWidth: 36, textAlign: 'right' },
+
+  // Transaction item
+  txItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12 },
+  txInfo: { flex: 1, minWidth: 0 },
+  txDesc: { fontSize: 14, fontWeight: '600' },
+  txMeta: { fontSize: 11, marginTop: 2 },
+  txAmount: { fontSize: 14, fontWeight: '700', textAlign: 'right' },
 });

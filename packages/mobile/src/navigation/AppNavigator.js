@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from '../services/supabase';
 import LoginScreen from '../screens/LoginScreen';
 import MainTabNavigator from './MainTabNavigator';
+import AddTransactionScreen from '../screens/AddTransactionScreen';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '../screens/TermsOfServiceScreen';
@@ -125,7 +126,14 @@ export default function AppNavigator() {
           }}
         >
           {session ? (
-            <Stack.Screen name="Main" component={MainTabNavigator} />
+            <>
+              <Stack.Screen name="Main" component={MainTabNavigator} />
+              <Stack.Screen
+                name="AddTransaction"
+                component={AddTransactionScreen}
+                options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+              />
+            </>
           ) : (
             <>
               <Stack.Screen name="Login" component={LoginScreen} />
