@@ -22,6 +22,8 @@ import {
   Trash2,
   X,
   SlidersHorizontal,
+  AlertCircle,
+  ClipboardList,
 } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
@@ -331,7 +333,7 @@ export default function TransactionsScreen() {
     return <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}><LoadingLogo fullScreen message="Carregando..." /></View>;
   }
   if (financialsError) {
-    return <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}><EmptyState emoji="⚠️" title="Erro ao carregar" description="Tente novamente." actionLabel="Recarregar" onAction={loadTransactions} /></View>;
+    return <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}><EmptyState icon={<AlertCircle size={48} color="#FF3B30" />} title="Erro ao carregar" description="Tente novamente." actionLabel="Recarregar" onAction={loadTransactions} /></View>;
   }
 
   const renderTransaction = ({ item: tx, index, section }) => {
@@ -455,7 +457,7 @@ export default function TransactionsScreen() {
       {sectionsData.length === 0 ? (
         <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <ListHeader />
-          <EmptyState emoji="📋" title="Nenhuma transação" description={searchQuery ? 'Tente outro termo' : 'Adicione sua primeira transação'} />
+          <EmptyState icon={<ClipboardList size={48} color="#AEAEB2" />} title="Nenhuma transação" description={searchQuery ? 'Tente outro termo' : 'Adicione sua primeira transação'} />
         </ScrollView>
       ) : (
         <SectionList

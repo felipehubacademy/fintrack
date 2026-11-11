@@ -6,7 +6,7 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { TrendingUp, TrendingDown, DollarSign, Plus, Edit, Trash2 } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, DollarSign, Plus, Edit, Trash2, Wallet } from 'lucide-react-native';
 import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
@@ -332,7 +332,7 @@ export default function InvestmentsScreen() {
           })
         ) : (
           <EmptyState
-            emoji="💰"
+            icon={<Wallet size={48} color="#AEAEB2" />}
             title="Nenhum investimento registrado"
             description="Adicione seus investimentos para acompanhar a rentabilidade."
           />

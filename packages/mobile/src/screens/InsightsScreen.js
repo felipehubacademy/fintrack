@@ -6,7 +6,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BarChart3, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react-native';
+import { BarChart3, TrendingUp, TrendingDown, DollarSign, Calendar, PieChart } from 'lucide-react-native';
 import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title1, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
@@ -451,7 +451,7 @@ export default function InsightsScreen() {
 
         {!insights.topCategory && (
           <EmptyState
-            emoji="📊"
+            icon={<PieChart size={48} color="#AEAEB2" />}
             title="Nenhuma análise disponível"
             description="Adicione transações para visualizar insights financeiros."
           />

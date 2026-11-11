@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { Calendar, TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Calendar, TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react-native';
 import { colors, spacing, radius, shadows } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
@@ -1029,7 +1029,7 @@ export default function ClosingScreen() {
 
         {data.allocations.length === 0 && data.expenses.length === 0 && (
           <EmptyState
-            emoji="📊"
+            icon={<BarChart3 size={48} color="#AEAEB2" />}
             title="Nenhum dado para este mês"
             description={`Não há entradas ou despesas registradas para ${selectedMonth}`}
           />

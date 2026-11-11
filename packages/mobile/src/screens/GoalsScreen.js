@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Target, TrendingUp, Plus, Edit, Trash2, Trophy } from 'lucide-react-native';
+import { Target, TrendingUp, Plus, Edit, Trash2, Trophy, Crosshair } from 'lucide-react-native';
 import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title1, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
@@ -312,7 +312,7 @@ export default function GoalsScreen() {
           })
         ) : (
           <EmptyState
-            emoji="🎯"
+            icon={<Crosshair size={48} color="#AEAEB2" />}
             title="Nenhuma meta definida"
             description="Crie metas financeiras para acompanhar seus objetivos."
           />

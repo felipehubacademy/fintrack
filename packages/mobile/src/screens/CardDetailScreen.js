@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
-import { Edit, Trash2, FileText } from 'lucide-react-native';
+import { Edit, Trash2, FileText, CreditCard, ClipboardList } from 'lucide-react-native';
 import { colors, spacing, radius, shadows } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
@@ -416,7 +416,7 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
       <View style={styles.container}>
         <ScreenHeader user={user} title="Cartão" />
         <EmptyState
-          emoji="💳"
+          icon={<CreditCard size={48} color="#AEAEB2" />}
           title="Cartão não encontrado"
           description="O cartão que você procura não existe."
         />
@@ -656,7 +656,7 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
             </Card>
           ) : (
             <EmptyState
-              emoji="📝"
+              icon={<ClipboardList size={48} color="#AEAEB2" />}
               title="Nenhuma transação"
               description="Ainda não há transações neste cartão."
             />

@@ -6,7 +6,7 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { Building2, Edit, TrendingUp, TrendingDown, ArrowRightLeft, List, Link2, Trash2 } from 'lucide-react-native';
+import { Building2, Edit, TrendingUp, TrendingDown, ArrowRightLeft, List, Link2, Trash2, Landmark, ClipboardList } from 'lucide-react-native';
 import { colors, spacing, radius, shadows } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
@@ -228,7 +228,7 @@ export default function BankAccountDetailScreen({ route, navigation }) {
       <View style={styles.container}>
         <ScreenHeader user={user} title="Conta Bancária" showLogo={true} />
         <EmptyState
-          emoji="🏦"
+          icon={<Landmark size={48} color="#AEAEB2" />}
           title="Conta não encontrada"
           description="A conta bancária que você procura não existe."
         />
@@ -441,7 +441,7 @@ export default function BankAccountDetailScreen({ route, navigation }) {
             </Card>
           ) : (
             <EmptyState
-              emoji="📝"
+              icon={<ClipboardList size={48} color="#AEAEB2" />}
               title="Nenhuma movimentação"
               description="Ainda não há transações nesta conta."
             />

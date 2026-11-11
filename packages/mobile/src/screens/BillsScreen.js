@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native';
-import { Calendar, Clock, CheckCircle, AlertCircle, Plus, Filter, Search, X as XIcon } from 'lucide-react-native';
+import { Calendar, Clock, CheckCircle, AlertCircle, Plus, Filter, Search, X as XIcon, ClipboardList } from 'lucide-react-native';
 import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
@@ -758,7 +758,7 @@ export default function BillsScreen() {
           })
         ) : (
           <EmptyState
-            emoji="📋"
+            icon={<ClipboardList size={48} color="#AEAEB2" />}
             title="Nenhuma conta encontrada"
             description={searchQuery || filter !== 'all' || filterCategory || filterOwner
               ? "Tente ajustar os filtros para encontrar contas."
