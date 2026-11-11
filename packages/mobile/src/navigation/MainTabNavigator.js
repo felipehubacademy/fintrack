@@ -50,14 +50,10 @@ export default function MainTabNavigator() {
       <Tab.Screen
         name="Adicionar"
         component={AddPlaceholder}
-        options={{
-          tabBarButton: (props) => <GoldFAB {...props} isDark={isDark} />,
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate('AddTransaction');
-          },
+        options={({ navigation }) => ({
+          tabBarButton: () => (
+            <GoldFAB isDark={isDark} onPress={() => navigation.getParent()?.navigate('AddTransaction')} />
+          ),
         })}
       />
       <Tab.Screen
@@ -74,13 +70,13 @@ export default function MainTabNavigator() {
   );
 }
 
-function GoldFAB({ isDark }) {
+function GoldFAB({ isDark, onPress }) {
   return (
-    <View style={styles.fabContainer}>
+    <TouchableOpacity style={styles.fabContainer} onPress={onPress} activeOpacity={0.8}>
       <View style={[styles.fab, isDark && styles.fabDark]}>
         <Plus size={22} color="#FFFFFF" strokeWidth={2.5} />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
