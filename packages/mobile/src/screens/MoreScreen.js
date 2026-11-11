@@ -4,43 +4,35 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Platform,
 } from 'react-native';
-import { 
+import {
   User,
-  Bell,
-  Lock,
   HelpCircle,
   FileText,
   LogOut,
   ChevronRight,
   Settings,
-  CreditCard,
-  Target,
-  TrendingUp,
-  PieChart as PieChartIcon,
   Calendar,
   FileCheck,
+  Target,
   BarChart3,
-  DollarSign,
+  TrendingUp,
+  Shield,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
-import { colors, spacing, radius, shadows } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { Text, Headline, Callout, Caption } from '../components/ui/Text';
-import { Card } from '../components/ui/Card';
-import { ScreenHeader } from '../components/layout/ScreenHeader';
+import { Text } from '../components/ui/Text';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
-import { useAlert } from '../components/ui/AlertProvider';
 import { ProfileModal } from '../components/settings/ProfileModal';
 
 export default function MoreScreen({ navigation }) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { organization, user, refetch } = useOrganization();
   const { confirm } = useConfirmation();
-  const { alert } = useAlert();
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   const handleLogout = async () => {
@@ -54,174 +46,109 @@ export default function MoreScreen({ navigation }) {
           await supabase.auth.signOut();
         },
       });
-    } catch (error) {
-      // Usuário cancelou
-    }
+    } catch (error) {}
   };
 
-  const menuSections = [
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] ||
+    user?.email?.split('@')[0] || '';
+
+  const sections = [
     {
+      title: 'Ferramentas',
       items: [
-        {
-          icon: Calendar,
-          label: 'Fechamento Mensal',
-          description: 'Alocações vs Despesas do mês',
-          color: colors.brand.primary,
-          onPress: () => navigation.navigate('Closing'),
-        },
-        {
-          icon: FileCheck,
-          label: 'Contas a Pagar',
-          description: 'Gerencie suas contas e vencimentos',
-          color: colors.warning.main,
-          onPress: () => navigation.navigate('Bills'),
-        },
-        {
-          icon: Target,
-          label: 'Orçamentos',
-          description: 'Defina limites por categoria',
-          color: colors.success.main,
-          onPress: () => navigation.navigate('Budgets'),
-        },
-        {
-          icon: BarChart3,
-          label: 'Análises',
-          description: 'Insights e tendências financeiras',
-          color: colors.info.main,
-          onPress: () => navigation.navigate('Insights'),
-        },
-        {
-          icon: Target,
-          label: 'Metas',
-          description: 'Acompanhe seus objetivos financeiros',
-          color: colors.brand.secondary,
-          onPress: () => navigation.navigate('Goals'),
-        },
-        {
-          icon: TrendingUp,
-          label: 'Investimentos',
-          description: 'Gerencie sua carteira de investimentos',
-          color: colors.success.dark,
-          onPress: () => navigation.navigate('Investments'),
-        },
+        { icon: Calendar, label: 'Fechamento Mensal', color: '#1A6AFF', screen: 'Closing' },
+        { icon: FileCheck, label: 'Contas a Pagar', color: '#F5A623', screen: 'Bills' },
+        { icon: Target, label: 'Orçamentos', color: '#10B981', screen: 'Budgets' },
+        { icon: BarChart3, label: 'Análises', color: '#0EA5E9', screen: 'Insights' },
+        { icon: Target, label: 'Metas', color: '#A855F7', screen: 'Goals' },
+        { icon: TrendingUp, label: 'Investimentos', color: '#059669', screen: 'Investments' },
       ],
     },
     {
-      title: 'Conta e Configurações',
+      title: 'Conta',
       items: [
-        {
-          icon: User,
-          label: 'Meu Perfil',
-          description: 'Edite suas informações',
-          color: colors.text.primary,
-          onPress: () => setShowProfileModal(true),
-        },
-        {
-          icon: Settings,
-          label: 'Configurações',
-          description: 'Preferências do aplicativo',
-          color: colors.text.primary,
-          onPress: () => navigation.navigate('Settings'),
-        },
+        { icon: User, label: 'Meu Perfil', color: '#6366F1', onPress: () => setShowProfileModal(true) },
+        { icon: Settings, label: 'Configurações', color: '#78716C', screen: 'Settings' },
       ],
     },
     {
-      title: 'Suporte',
+      title: 'Sobre',
       items: [
-        {
-          icon: HelpCircle,
-          label: 'Ajuda e Suporte',
-          description: 'Tire suas dúvidas',
-          color: colors.text.primary,
-          onPress: () => navigation.navigate('Help'),
-        },
-        {
-          icon: FileText,
-          label: 'Termos de Uso',
-          description: 'Leia nossos termos',
-          color: colors.text.primary,
-          onPress: () => navigation.navigate('TermsOfService'),
-        },
+        { icon: HelpCircle, label: 'Ajuda e Suporte', color: '#0EA5E9', screen: 'Help' },
+        { icon: FileText, label: 'Termos de Uso', color: '#78716C', screen: 'TermsOfService' },
+        { icon: Shield, label: 'Política de Privacidade', color: '#78716C', screen: 'PrivacyPolicy' },
       ],
     },
   ];
 
-  return (
-    <View style={styles.container}>
-      <ScreenHeader
-        user={user}
-        title="Mais"
-        showLogo={true}
-      />
+  const bg = isDark ? '#0A0A0A' : '#F2F2F7';
+  const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
+  const borderColor = isDark ? '#38383A' : '#E5E5EA';
+  const textPrimary = isDark ? '#FFFFFF' : '#000000';
+  const textSecondary = isDark ? '#8E8E93' : '#6B7280';
 
+  return (
+    <View style={[styles.container, { backgroundColor: bg }]}>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {menuSections.map((section, sectionIndex) => (
-          <View key={sectionIndex} style={styles.section}>
-            {section.title && (
-              <Caption 
-                color="secondary" 
-                weight="semiBold" 
-                style={styles.sectionTitle}
-              >
-                {section.title}
-              </Caption>
-            )}
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: textPrimary }]}>Mais</Text>
+          {firstName ? (
+            <Text style={[styles.subtitle, { color: textSecondary }]}>
+              Olá, {firstName}
+            </Text>
+          ) : null}
+        </View>
 
-            <Card style={styles.menuCard}>
-              {section.items.map((item, itemIndex) => (
+        {/* Sections */}
+        {sections.map((section, si) => (
+          <View key={si} style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: textSecondary }]}>
+              {section.title.toUpperCase()}
+            </Text>
+            <View style={[styles.card, { backgroundColor: cardBg }]}>
+              {section.items.map((item, ii) => (
                 <TouchableOpacity
-                  key={itemIndex}
+                  key={ii}
                   style={[
-                    styles.menuItem,
-                    itemIndex < section.items.length - 1 && styles.menuItemBorder
+                    styles.row,
+                    ii < section.items.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: borderColor },
                   ]}
-                  onPress={item.onPress}
-                  activeOpacity={0.7}
+                  onPress={item.onPress || (() => navigation.navigate(item.screen))}
+                  activeOpacity={0.6}
                 >
-                  <View style={[styles.menuIcon, { backgroundColor: `${item.color}15` }]}>
-                    <item.icon size={24} color={item.color} />
+                  <View style={[styles.iconBox, { backgroundColor: `${item.color}14` }]}>
+                    <item.icon size={20} color={item.color} />
                   </View>
-                  <View style={styles.menuInfo}>
-                    <Callout weight="medium">{item.label}</Callout>
-                    <Caption color="secondary">{item.description}</Caption>
-                  </View>
-                  <ChevronRight size={20} color={colors.text.tertiary} />
+                  <Text style={[styles.rowLabel, { color: textPrimary }]}>{item.label}</Text>
+                  <ChevronRight size={18} color={isDark ? '#48484A' : '#C7C7CC'} />
                 </TouchableOpacity>
               ))}
-            </Card>
+            </View>
           </View>
         ))}
 
-        {/* Logout Button */}
+        {/* Logout */}
         <TouchableOpacity
-          style={styles.logoutButton}
+          style={[styles.logoutBtn, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
           onPress={handleLogout}
-          activeOpacity={0.7}
+          activeOpacity={0.6}
         >
-          <LogOut size={20} color={colors.error.main} />
-          <Text variant="callout" weight="semiBold" style={{ color: colors.error.main }}>
-            Sair da Conta
-          </Text>
+          <LogOut size={18} color="#FF3B30" />
+          <Text style={styles.logoutText}>Sair da Conta</Text>
         </TouchableOpacity>
 
-        {/* App Info */}
-        <View style={styles.appInfo}>
-          <Caption color="secondary" align="center">
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: isDark ? '#48484A' : '#AEAEB2' }]}>
             MeuAzulão v1.0.0
-          </Caption>
-          <Caption color="secondary" align="center">
-            © 2024 MeuAzulão
-          </Caption>
+          </Text>
         </View>
-
-        <View style={{ height: spacing[10] }} />
       </ScrollView>
 
-      {/* Profile Modal */}
       <ProfileModal
         visible={showProfileModal}
         onClose={() => setShowProfileModal(false)}
@@ -234,71 +161,31 @@ export default function MoreScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
+  container: { flex: 1 },
+  scroll: { paddingHorizontal: 20 },
+  header: { marginBottom: 24 },
+  title: { fontSize: 34, fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { fontSize: 15, marginTop: 4 },
 
-  scrollView: {
-    flex: 1,
+  section: { marginBottom: 28 },
+  sectionTitle: { fontSize: 12, fontWeight: '600', letterSpacing: 0.8, marginBottom: 8, paddingLeft: 4 },
+  card: { borderRadius: 14, overflow: 'hidden' },
+  row: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 13, gap: 12,
   },
+  iconBox: {
+    width: 34, height: 34, borderRadius: 9,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  rowLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
 
-  scrollContent: {
-    padding: spacing[3],
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 14, borderRadius: 14, marginTop: 8,
   },
+  logoutText: { fontSize: 15, fontWeight: '600', color: '#FF3B30' },
 
-  section: {
-    marginBottom: spacing[3],
-  },
-
-  sectionTitle: {
-    marginBottom: spacing[1.5],
-    paddingHorizontal: spacing[1],
-  },
-
-  menuCard: {
-    padding: 0,
-    overflow: 'hidden',
-  },
-
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[2],
-    gap: spacing[2],
-  },
-
-  menuItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-  },
-
-  menuIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  menuInfo: {
-    flex: 1,
-    gap: spacing[0.5],
-  },
-
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[1.5],
-    padding: spacing[2.5],
-    borderRadius: radius.lg,
-    backgroundColor: colors.error.bg,
-    marginTop: spacing[2],
-  },
-
-  appInfo: {
-    marginTop: spacing[4],
-    gap: spacing[0.5],
-  },
+  footer: { alignItems: 'center', marginTop: 24 },
+  footerText: { fontSize: 12 },
 });
