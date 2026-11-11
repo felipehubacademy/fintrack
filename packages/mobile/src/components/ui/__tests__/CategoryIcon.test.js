@@ -2,31 +2,16 @@ jest.mock('../../../contexts/ThemeContext', () => ({
   useTheme: () => ({ isDark: false }),
 }));
 
-jest.mock('lucide-react-native', () => {
+jest.mock('phosphor-react-native', () => {
   const MockIcon = (name) => {
     const Component = (props) => `${name}Icon`;
     Component.displayName = name;
     return Component;
   };
-  return {
-    ShoppingCart: MockIcon('ShoppingCart'),
-    Utensils: MockIcon('Utensils'),
-    Car: MockIcon('Car'),
-    Home: MockIcon('Home'),
-    Heart: MockIcon('Heart'),
-    Gamepad2: MockIcon('Gamepad2'),
-    GraduationCap: MockIcon('GraduationCap'),
-    Shirt: MockIcon('Shirt'),
-    Smartphone: MockIcon('Smartphone'),
-    Zap: MockIcon('Zap'),
-    Banknote: MockIcon('Banknote'),
-    Gift: MockIcon('Gift'),
-    Briefcase: MockIcon('Briefcase'),
-    HelpCircle: MockIcon('HelpCircle'),
-  };
+  return new Proxy({}, { get: (_, name) => MockIcon(name) });
 });
 
-const { CategoryIcon } = require('../CategoryIcon');
+const { CategoryIcon, getCategoryColor, CATEGORIES } = require('../CategoryIcon');
 
 describe('CategoryIcon', () => {
   it('is a function component', () => {
@@ -46,5 +31,15 @@ describe('CategoryIcon', () => {
   it('accepts custom size prop', () => {
     const result = CategoryIcon({ category: 'Transporte', size: 60 });
     expect(result).toBeTruthy();
+  });
+
+  it('exports getCategoryColor helper', () => {
+    expect(getCategoryColor('Alimentação')).toBe('#EF4444');
+    expect(getCategoryColor('Unknown')).toBe('#737373');
+  });
+
+  it('exports CATEGORIES list with 30+ entries', () => {
+    expect(Array.isArray(CATEGORIES)).toBe(true);
+    expect(CATEGORIES.length).toBeGreaterThanOrEqual(30);
   });
 });
