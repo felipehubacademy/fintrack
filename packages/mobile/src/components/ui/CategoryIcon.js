@@ -1,39 +1,37 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import {
-  ForkKnife,
-  Car,
-  House,
-  Heartbeat,
-  GameController,
-  GraduationCap,
-  TShirt,
-  ShoppingCart,
-  DeviceMobile,
-  Lightning,
-  Money,
-  Gift,
-  Briefcase,
-  FilmStrip,
-  Coffee,
-  PawPrint,
-  Barbell,
-  Airplane,
-  Baby,
-  Pill,
-  Drop,
-  CreditCard,
-  Bank,
-  Wallet,
-  Question,
-  ArrowDown,
-  ArrowUp,
-  Receipt,
-  Storefront,
-  WifiHigh,
-  Wrench,
-  BookOpen,
-} from 'phosphor-react-native';
+import { ForkKnife } from 'phosphor-react-native/lib/module/icons/ForkKnife';
+import { Car } from 'phosphor-react-native/lib/module/icons/Car';
+import { House } from 'phosphor-react-native/lib/module/icons/House';
+import { Heartbeat } from 'phosphor-react-native/lib/module/icons/Heartbeat';
+import { GameController } from 'phosphor-react-native/lib/module/icons/GameController';
+import { GraduationCap } from 'phosphor-react-native/lib/module/icons/GraduationCap';
+import { TShirt } from 'phosphor-react-native/lib/module/icons/TShirt';
+import { ShoppingCart } from 'phosphor-react-native/lib/module/icons/ShoppingCart';
+import { DeviceMobile } from 'phosphor-react-native/lib/module/icons/DeviceMobile';
+import { Lightning } from 'phosphor-react-native/lib/module/icons/Lightning';
+import { Money } from 'phosphor-react-native/lib/module/icons/Money';
+import { Gift } from 'phosphor-react-native/lib/module/icons/Gift';
+import { Briefcase } from 'phosphor-react-native/lib/module/icons/Briefcase';
+import { FilmStrip } from 'phosphor-react-native/lib/module/icons/FilmStrip';
+import { Coffee } from 'phosphor-react-native/lib/module/icons/Coffee';
+import { PawPrint } from 'phosphor-react-native/lib/module/icons/PawPrint';
+import { Barbell } from 'phosphor-react-native/lib/module/icons/Barbell';
+import { Airplane } from 'phosphor-react-native/lib/module/icons/Airplane';
+import { Baby } from 'phosphor-react-native/lib/module/icons/Baby';
+import { Pill } from 'phosphor-react-native/lib/module/icons/Pill';
+import { Drop } from 'phosphor-react-native/lib/module/icons/Drop';
+import { CreditCard } from 'phosphor-react-native/lib/module/icons/CreditCard';
+import { Bank } from 'phosphor-react-native/lib/module/icons/Bank';
+import { Wallet } from 'phosphor-react-native/lib/module/icons/Wallet';
+import { Question } from 'phosphor-react-native/lib/module/icons/Question';
+import { ArrowDown } from 'phosphor-react-native/lib/module/icons/ArrowDown';
+import { ArrowUp } from 'phosphor-react-native/lib/module/icons/ArrowUp';
+import { Receipt } from 'phosphor-react-native/lib/module/icons/Receipt';
+import { Storefront } from 'phosphor-react-native/lib/module/icons/Storefront';
+import { WifiHigh } from 'phosphor-react-native/lib/module/icons/WifiHigh';
+import { Wrench } from 'phosphor-react-native/lib/module/icons/Wrench';
+import { BookOpen } from 'phosphor-react-native/lib/module/icons/BookOpen';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const CATEGORY_MAP = {
