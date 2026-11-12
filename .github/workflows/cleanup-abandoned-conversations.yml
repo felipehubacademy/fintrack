@@ -1,58 +1,31 @@
 name: Cleanup Abandoned Conversations
 
-# Roda diariamente às 3h da manhã (horário UTC)
 on:
-  schedule:
-    - cron: '0 3 * * *'  # 3:00 AM UTC = 00:00 AM Brasília
-  workflow_dispatch:  # Permite execução manual
+  workflow_dispatch:
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
-
       - name: Install dependencies
-        run: |
-          cd packages/backend
-          npm install
-
-      - name: Check secrets
-        run: |
-          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
-            echo "❌ SUPABASE_URL não configurado no GitHub Secrets"
-            echo "💡 Configure em: Settings > Secrets and variables > Actions"
-            exit 1
-          fi
-          
-          if [ -z "${{ secrets.SUPABASE_SERVICE_KEY }}" ]; then
-            echo "❌ SUPABASE_SERVICE_KEY não configurado no GitHub Secrets"
-            echo "💡 Configure em: Settings > Secrets and variables > Actions"
-            exit 1
-          fi
-          
-          echo "✅ Secrets configurados"
-
-      - name: Run cleanup script
+        run: npm install
+        working-directory: packages/backend
+      - name: Run cleanup
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          if [ ! -f "packages/backend/scripts/cleanup-abandoned-conversations.js" ]; then
-            echo "⚠️ Script cleanup-abandoned-conversations.js não encontrado"
-            echo "💡 Pulando step (script não existe)"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
+            echo "Secrets not configured — skipping."
             exit 0
           fi
-          
+          if [ ! -f "packages/backend/scripts/cleanup-abandoned-conversations.js" ]; then
+            echo "Script not found — skipping."
+            exit 0
+          fi
           node packages/backend/scripts/cleanup-abandoned-conversations.js
-
-      - name: Summary
-        run: echo "✅ Limpeza de conversas abandonadas concluída!"
 
