@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView } from 'react-native-gesture-handler';
-import { X } from 'lucide-react-native';
+import { X, TrendingUp, Briefcase, Landmark, BarChart3, Bitcoin, Wallet } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Input } from '../ui/Input';
@@ -19,12 +19,12 @@ import { useToast } from '../ui/Toast';
 const { height } = Dimensions.get('window');
 
 const INVESTMENT_TYPES = [
-  { value: 'stocks', label: 'Ações', icon: '📈' },
-  { value: 'funds', label: 'Fundos', icon: '💼' },
-  { value: 'treasury', label: 'Tesouro Direto', icon: '🏛️' },
-  { value: 'fixed_income', label: 'Renda Fixa', icon: '📊' },
-  { value: 'crypto', label: 'Criptomoedas', icon: '₿' },
-  { value: 'other', label: 'Outros', icon: '💰' }
+  { value: 'stocks', label: 'Ações', Icon: TrendingUp, color: '#10B981' },
+  { value: 'funds', label: 'Fundos', Icon: Briefcase, color: '#6366F1' },
+  { value: 'treasury', label: 'Tesouro Direto', Icon: Landmark, color: '#1A6AFF' },
+  { value: 'fixed_income', label: 'Renda Fixa', Icon: BarChart3, color: '#F59E0B' },
+  { value: 'crypto', label: 'Criptomoedas', Icon: Bitcoin, color: '#F97316' },
+  { value: 'other', label: 'Outros', Icon: Wallet, color: '#78716C' },
 ];
 
 // Funções de formatação de moeda
@@ -207,7 +207,7 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
                     ]}
                     onPress={() => setFormData(prev => ({ ...prev, type: type.value }))}
                   >
-                    <Text style={{ fontSize: 24, marginBottom: spacing[0.5] }}>{type.icon}</Text>
+                    <type.Icon size={24} color={type.color} style={{ marginBottom: spacing[0.5] }} />
                     <Caption numberOfLines={2} style={{ textAlign: 'center' }}>{type.label}</Caption>
                   </TouchableOpacity>
                 ))}

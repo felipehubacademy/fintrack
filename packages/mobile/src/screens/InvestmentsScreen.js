@@ -11,7 +11,7 @@ import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
+import Badge from '../components/ui/Badge';
 import LoadingLogo from '../components/ui/LoadingLogo';
 import EmptyState from '../components/ui/EmptyState';
 import { ScreenHeader } from '../components/layout/ScreenHeader';

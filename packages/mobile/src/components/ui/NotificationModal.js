@@ -7,7 +7,7 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
-import { X, Check, Trash2, Bell, AlertCircle, Clock, Info, CheckCircle } from 'lucide-react-native';
+import { X, Check, Trash2, Bell, AlertCircle, Clock, Info, CheckCircle, Crosshair, BarChart3, TrendingUp, Lightbulb, Megaphone, Siren } from 'lucide-react-native';
 import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Title2, Callout, Caption, Subheadline } from './Text';
 import { Button } from './Button';
@@ -33,29 +33,22 @@ const getPriorityColor = (priority) => {
   }
 };
 
+const TYPE_ICONS = {
+  bill_reminder: { Icon: Bell, color: '#F59E0B' },
+  investment_reminder: { Icon: Crosshair, color: '#6366F1' },
+  budget_alert: { Icon: AlertCircle, color: '#FF3B30' },
+  daily_reminder: { Icon: BarChart3, color: '#1A6AFF' },
+  weekly_report: { Icon: TrendingUp, color: '#10B981' },
+  monthly_report: { Icon: BarChart3, color: '#0EA5E9' },
+  insight: { Icon: Lightbulb, color: '#F5A623' },
+  expense_confirmation: { Icon: CheckCircle, color: '#34C759' },
+  system_alert: { Icon: Siren, color: '#FF3B30' },
+};
+const DEFAULT_ICON = { Icon: Megaphone, color: '#78716C' };
+
 const getTypeIcon = (type) => {
-  switch (type) {
-    case 'bill_reminder':
-      return '🔔';
-    case 'investment_reminder':
-      return '🎯';
-    case 'budget_alert':
-      return '⚠️';
-    case 'daily_reminder':
-      return '📊';
-    case 'weekly_report':
-      return '📈';
-    case 'monthly_report':
-      return '📊';
-    case 'insight':
-      return '💡';
-    case 'expense_confirmation':
-      return '✅';
-    case 'system_alert':
-      return '🚨';
-    default:
-      return '📢';
-  }
+  const cfg = TYPE_ICONS[type] || DEFAULT_ICON;
+  return <cfg.Icon size={20} color={cfg.color} />;
 };
 
 const formatTime = (dateString) => {

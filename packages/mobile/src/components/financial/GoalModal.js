@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView } from 'react-native-gesture-handler';
-import { X, PiggyBank, CreditCard, ShoppingBag, TrendingUp, Wallet } from 'lucide-react-native';
+import { X, PiggyBank, CreditCard, ShoppingBag, TrendingUp, Wallet, BarChart3 } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Input } from '../ui/Input';
@@ -333,7 +333,7 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
             {/* Projection Preview */}
             {formData.target_amount && formData.monthly_contribution && monthlyContribution > 0 && (
               <View style={styles.projectionCard}>
-                <Callout weight="semiBold" style={{ marginBottom: spacing[1] }}>📊 Projeção</Callout>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing[1] }}><BarChart3 size={16} color="#1A6AFF" /><Callout weight="semiBold">Projeção</Callout></View>
                 <View style={styles.projectionRow}>
                   <Caption color="secondary">Falta economizar:</Caption>
                   <Callout weight="bold">{formatCurrencyInput(remaining)}</Callout>
