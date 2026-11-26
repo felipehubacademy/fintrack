@@ -17,14 +17,12 @@ import { useToast } from '../ui/Toast';
 import { useConfirmation } from '../ui/ConfirmationProvider';
 import { supabase } from '../../services/supabase';
 import { HapticFeedback } from '../../utils/haptics';
+import { useI18n } from '../../contexts/I18nContext';
+import { categoryLabel } from '../../utils/categoryLabel';
 
 const { height } = Dimensions.get('window');
 
-const MACRO_OPTIONS = [
-  { value: 'needs', label: 'Necessidades' },
-  { value: 'wants', label: 'Desejos' },
-  { value: 'investments', label: 'Investimentos' },
-];
+const MACRO_OPTIONS = ['needs', 'wants', 'investments'];
 
 const COLORS = [
   '#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B',
@@ -34,6 +32,7 @@ const COLORS = [
 export function CategoryManagementModal({ visible, onClose, organization }) {
   const { showToast } = useToast();
   const { confirm } = useConfirmation();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,8 +74,8 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
 
       setCategories([...(globalsData || []), ...(orgData || [])]);
     } catch (error) {
-      console.error('Erro ao buscar categorias:', error);
-      showToast('Erro ao carregar categorias', 'error');
+      console.error('Failed to load categories:', error);
+      showToast(t('settings.categoryManager.loadError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -85,7 +84,7 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       HapticFeedback.warning();
-      showToast('Nome da categoria é obrigatório', 'warning');
+      showToast(t('settings.categoryManager.nameRequired'), 'warning');
       return;
     }
 
@@ -104,7 +103,7 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
 
         if (error) throw error;
         HapticFeedback.success();
-        showToast('Categoria atualizada com sucesso!', 'success');
+        showToast(t('settings.categoryManager.updated'), 'success');
       } else {
         const { error } = await supabase
           .from('budget_categories')
@@ -120,14 +119,14 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
 
         if (error) throw error;
         HapticFeedback.success();
-        showToast('Categoria criada com sucesso!', 'success');
+        showToast(t('settings.categoryManager.created'), 'success');
       }
 
       await fetchCategories();
       resetForm();
     } catch (error) {
-      console.error('Erro ao salvar categoria:', error);
-      showToast('Erro ao salvar categoria: ' + (error.message || 'Erro desconhecido'), 'error');
+      console.error('Failed to save category:', error);
+      showToast(t('settings.categoryManager.saveError'), 'error');
     }
   };
 
@@ -145,7 +144,7 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
   const handleEdit = (category) => {
     if (category.is_default) {
       HapticFeedback.warning();
-      showToast('Categorias padrão não podem ser editadas', 'warning');
+      showToast(t('settings.categoryManager.defaultNoEdit'), 'warning');
       return;
     }
     HapticFeedback.light();
@@ -161,15 +160,17 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
 
   const handleDelete = async (category) => {
     if (category.is_default) {
-      showToast('Categorias padrão não podem ser excluídas', 'warning');
+      showToast(t('settings.categoryManager.defaultNoDelete'), 'warning');
       return;
     }
 
     try {
       await confirm({
-        title: 'Excluir categoria',
-        message: `Tem certeza que deseja excluir "${category.name}"?`,
+        title: t('settings.categoryManager.deleteTitle'),
+        message: t('settings.categoryManager.deleteMessage', { name: categoryLabel(category.name) }),
         type: 'danger',
+        confirmText: t('common.delete'),
+        cancelText: t('common.cancel'),
         onConfirm: async () => {
           const { error } = await supabase
             .from('budget_categories')
@@ -178,12 +179,12 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
 
           if (error) throw error;
 
-          showToast('Categoria excluída com sucesso!', 'success');
+          showToast(t('settings.categoryManager.deleted'), 'success');
           await fetchCategories();
         },
       });
     } catch (error) {
-      // Usuário cancelou
+      // cancelled
     }
   };
 
@@ -205,8 +206,13 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Title2 weight="bold">Gerenciar Categorias</Title2>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Title2 weight="bold">{t('settings.categoryManager.title')}</Title2>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.close')}
+            >
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -221,7 +227,7 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
               }}
             >
               <Caption weight={activeTab === 'expense' ? 'semiBold' : 'regular'}>
-                Despesas
+                {t('settings.categoryManager.tabs.expense')}
               </Caption>
             </TouchableOpacity>
             <TouchableOpacity
@@ -232,7 +238,7 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
               }}
             >
               <Caption weight={activeTab === 'income' ? 'semiBold' : 'regular'}>
-                Receitas
+                {t('settings.categoryManager.tabs.income')}
               </Caption>
             </TouchableOpacity>
           </View>
@@ -247,7 +253,7 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
           >
             {loading ? (
               <View style={styles.loadingContainer}>
-                <Caption color="secondary">Carregando...</Caption>
+                <Caption color="secondary">{t('settings.categoryManager.loading')}</Caption>
               </View>
             ) : (
               <>
@@ -255,25 +261,25 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
                 {showForm ? (
                   <View style={styles.form}>
                     <Input
-                      label="Nome *"
+                      label={`${t('settings.categoryManager.nameLabel')} *`}
                       value={formData.name}
                       onChangeText={(text) => setFormData({ ...formData, name: text })}
-                      placeholder="Nome da categoria"
-                      accessibilityLabel="Nome da categoria"
+                      placeholder={t('settings.categoryManager.namePlaceholder')}
+                      accessibilityLabel={t('settings.categoryManager.namePlaceholder')}
                     />
                     <Input
-                      label="Descrição"
+                      label={t('settings.categoryManager.descriptionLabel')}
                       value={formData.description}
                       onChangeText={(text) => setFormData({ ...formData, description: text })}
-                      placeholder="Descrição (opcional)"
+                      placeholder={t('settings.categoryManager.descriptionPlaceholder')}
                       multiline
-                      accessibilityLabel="Descrição da categoria"
+                      accessibilityLabel={t('settings.categoryManager.descriptionA11y')}
                     />
                     
-                    {/* Seletor de Cor */}
+                    {/* Color picker */}
                     <View style={styles.field}>
                       <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1.5] }}>
-                        Cor
+                        {t('settings.categoryManager.color')}
                       </Caption>
                       <View style={styles.colorGrid}>
                         {COLORS.map((color) => (
@@ -302,23 +308,25 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
                     {activeTab === 'expense' && (
                       <View style={styles.field}>
                         <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                          Grupo Macro
+                          {t('settings.categoryManager.group')}
                         </Caption>
                         <View style={styles.macroOptions}>
-                          {MACRO_OPTIONS.map((option) => (
+                          {MACRO_OPTIONS.map((value) => (
                             <TouchableOpacity
-                              key={option.value}
+                              key={value}
                               style={[
                                 styles.macroOption,
-                                formData.macro_group === option.value && styles.macroOptionActive,
+                                formData.macro_group === value && styles.macroOptionActive,
                               ]}
                               onPress={() => {
                                 HapticFeedback.selection();
-                                setFormData({ ...formData, macro_group: option.value });
+                                setFormData({ ...formData, macro_group: value });
                               }}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected: formData.macro_group === value }}
                             >
-                              <Caption weight={formData.macro_group === option.value ? 'semiBold' : 'regular'}>
-                                {option.label}
+                              <Caption weight={formData.macro_group === value ? 'semiBold' : 'regular'}>
+                                {t(`settings.categoryManager.macro.${value}`)}
                               </Caption>
                             </TouchableOpacity>
                           ))}
@@ -327,13 +335,13 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
                     )}
                     <View style={styles.formActions}>
                       <Button
-                        title="Cancelar"
+                        title={t('common.cancel')}
                         variant="outline"
                         onPress={resetForm}
                         style={{ flex: 1, marginRight: spacing[2] }}
                       />
                       <Button
-                        title={editingCategory ? 'Salvar' : 'Criar'}
+                        title={editingCategory ? t('common.save') : t('settings.categoryManager.create')}
                         onPress={handleSubmit}
                         style={{ flex: 1 }}
                       />
@@ -341,7 +349,7 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
                   </View>
                 ) : (
                   <Button
-                    title="Nova Categoria"
+                    title={t('settings.categoryManager.newCategory')}
                     onPress={() => {
                       HapticFeedback.light();
                       setShowForm(true);
@@ -357,13 +365,13 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
                     <View key={category.id} style={styles.categoryItem}>
                       <View style={[styles.colorDot, { backgroundColor: category.color || '#6366F1' }]} />
                       <View style={styles.categoryInfo}>
-                        <Callout weight="medium">{category.name}</Callout>
+                        <Callout weight="medium">{categoryLabel(category.name)}</Callout>
                         {category.description && (
                           <Caption color="secondary">{category.description}</Caption>
                         )}
-                        {category.macro_group && (
+                        {MACRO_OPTIONS.includes(category.macro_group) && (
                           <Caption color="tertiary" style={{ marginTop: spacing[0.5] }}>
-                            {MACRO_OPTIONS.find(m => m.value === category.macro_group)?.label}
+                            {t(`settings.categoryManager.macro.${category.macro_group}`)}
                           </Caption>
                         )}
                       </View>
@@ -372,12 +380,16 @@ export function CategoryManagementModal({ visible, onClose, organization }) {
                           <TouchableOpacity
                             onPress={() => handleEdit(category)}
                             style={styles.actionButton}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('settings.categoryManager.edit', { name: categoryLabel(category.name) })}
                           >
                             <Edit size={18} color={colors.text.secondary} />
                           </TouchableOpacity>
                           <TouchableOpacity
                             onPress={() => handleDelete(category)}
                             style={styles.actionButton}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('settings.categoryManager.delete', { name: categoryLabel(category.name) })}
                           >
                             <Trash2 size={18} color={colors.error.main} />
                           </TouchableOpacity>

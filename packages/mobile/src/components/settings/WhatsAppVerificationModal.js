@@ -24,23 +24,22 @@ import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { supabase } from '../../services/supabase';
 import { APP_CONFIG } from '@fintrack/shared/constants';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { height } = Dimensions.get('window');
 
-// Função de formatação de telefone
+// Formats a Brazilian phone as typed: (11) 99999-9999
 function formatPhone(value) {
-  // Remove tudo que não é número
   let numbers = value.replace(/\D/g, '');
   
-  // Remove o código do país se foi digitado (55)
+  // Drop the country code (55) if it was typed
   if (numbers.startsWith('55') && numbers.length > 11) {
     numbers = numbers.substring(2);
   }
   
-  // Limita a 11 dígitos (DDD + número)
+  // At most 11 digits (area code + number)
   numbers = numbers.slice(0, 11);
   
-  // Formata: (11) 99999-9999
   if (numbers.length <= 11) {
     return numbers
       .replace(/^(\d{2})(\d)/, '($1) $2')
@@ -50,11 +49,10 @@ function formatPhone(value) {
   return numbers;
 }
 
-// Remove formatação do telefone do usuário para exibição
+// Stored phone (55 + digits) -> local digits for display
 const normalizePhone = (phone) => {
   if (!phone) return '';
   const numbers = phone.replace(/\D/g, '');
-  // Se começa com 55 e tem mais de 11 dígitos, remove o 55
   if (numbers.startsWith('55') && numbers.length > 11) {
     return numbers.substring(2);
   }
@@ -63,6 +61,7 @@ const normalizePhone = (phone) => {
 
 export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }) {
   const { showToast } = useToast();
+  const { t } = useI18n();
   const userPhoneNormalized = normalizePhone(user?.phone);
   
   const [phone, setPhone] = useState(userPhoneNormalized ? formatPhone(userPhoneNormalized) : '');
@@ -104,9 +103,9 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
     setPhone(formatted);
     setError(null);
     
-    // Verificar se o número é diferente do cadastrado
+    // Warn when the number differs from the one on the account
     if (registeredPhone && formatted.replace(/\D/g, '') !== registeredPhone.replace(/\D/g, '') && formatted.replace(/\D/g, '').length === 11) {
-      setWarning('Este número é diferente do seu cadastro. Ao enviar o código, seu número será atualizado automaticamente.');
+      setWarning(t('settings.whatsappVerify.differentNumber'));
     } else {
       setWarning(null);
     }
@@ -114,7 +113,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
 
   const handleSendCode = async () => {
     if (!phone || phone.replace(/\D/g, '').length < 11) {
-      setError('Digite um telefone válido');
+      setError(t('settings.whatsappVerify.errors.invalidPhone'));
       return;
     }
 
@@ -123,19 +122,17 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
     setWarning(null);
 
     try {
-      // Normalizar telefone (apenas números)
       const normalizedPhone = phone.replace(/\D/g, '');
       
-      // Normalizar número (garantir que comece com 55)
+      // Stored with the country code (55)
       const normalizedNew = normalizedPhone.startsWith('55') 
         ? normalizedPhone 
         : `55${normalizedPhone}`;
       
-      // Se o número é diferente do cadastrado, atualizar no banco primeiro
+      // A new number is saved first (and loses its verified flag)
       const normalizedRegistered = registeredPhone ? registeredPhone.replace(/\D/g, '') : '';
       
       if (!registeredPhone || normalizedNew !== normalizedRegistered) {
-        // Atualizar telefone e resetar verificação
         const { error: updateError } = await supabase
           .from('users')
           .update({ 
@@ -146,7 +143,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
           .eq('id', user?.id);
 
         if (updateError) {
-          throw new Error('Erro ao atualizar telefone');
+          throw new Error(t('settings.whatsappVerify.errors.updatePhone'));
         }
         
         setRegisteredPhone(normalizedNew);
@@ -171,17 +168,16 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
           const minutes = Math.ceil(retryAfter / 60);
           
           if (minutes >= 60) {
-            const hours = Math.ceil(minutes / 60);
-            setError(`⏰ Muitas tentativas. Aguarde ${hours} hora${hours > 1 ? 's' : ''} para tentar novamente.`);
+            setError(t('settings.whatsappVerify.errors.waitHours', { count: Math.ceil(minutes / 60) }));
           } else if (minutes > 1) {
-            setError(`⏰ Muitas tentativas. Aguarde ${minutes} minutos para tentar novamente.`);
+            setError(t('settings.whatsappVerify.errors.waitMinutes', { count: minutes }));
           } else {
-            setError(`⏰ Aguarde ${retryAfter} segundos para tentar novamente.`);
+            setError(t('settings.whatsappVerify.errors.waitSeconds', { count: retryAfter }));
           }
           
           setCountdown(retryAfter);
         } else {
-          setError(data.error || `Erro ao enviar código (${response.status})`);
+          setError(t('settings.whatsappVerify.errors.sendFailed'));
         }
         return;
       }
@@ -189,10 +185,10 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
       setCodeSent(true);
       setStep(2);
       setCountdown(60);
-      showToast('Código enviado! Verifique seu WhatsApp', 'success');
+      showToast(t('settings.whatsappVerify.codeSent'), 'success');
     } catch (err) {
-      console.error('❌ Erro na requisição:', err);
-      setError(err.message || 'Erro ao enviar código. Verifique sua conexão.');
+      console.error('Failed to send verification code:', err);
+      setError(err.message || t('settings.whatsappVerify.errors.sendFailed'));
     } finally {
       setLoading(false);
     }
@@ -200,7 +196,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
 
   const verifyCode = async (code = verificationCode) => {
     if (!code || code.length !== 6) {
-      setError('Digite o código de 6 dígitos');
+      setError(t('settings.whatsappVerify.errors.codeLength'));
       return;
     }
 
@@ -218,15 +214,15 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
         })
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.error || 'Código inválido');
+        throw new Error(t('settings.whatsappVerify.errors.invalidCode'));
       }
 
       setIsVerified(true);
       setStep(3);
-      showToast('WhatsApp verificado com sucesso!', 'success');
+      showToast(t('settings.whatsappVerify.verified'), 'success');
       
       if (onVerified) {
         setTimeout(() => {
@@ -234,7 +230,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
         }, 1000);
       }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || t('settings.whatsappVerify.errors.invalidCode'));
     } finally {
       setLoading(false);
     }
@@ -252,7 +248,12 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.close')}
+            >
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
 
@@ -273,16 +274,16 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
                 )}
               </View>
               <Title2 weight="bold" align="center" style={{ marginTop: spacing[2] }}>
-                {step === 1 && (isVerified && registeredPhone ? 'Alterar WhatsApp' : 'Verificar WhatsApp')}
-                {step === 2 && 'Digite o Código'}
-                {step === 3 && 'Tudo Pronto!'}
+                {step === 1 && (isVerified && registeredPhone ? t('settings.whatsappVerify.titleChange') : t('settings.whatsappVerify.titleVerify'))}
+                {step === 2 && t('settings.whatsappVerify.titleCode')}
+                {step === 3 && t('settings.whatsappVerify.titleDone')}
               </Title2>
               <Caption color="secondary" align="center" style={{ marginTop: spacing[1] }}>
-                {step === 1 && (isVerified && registeredPhone 
-                  ? 'Digite um novo número para alterar sua verificação'
-                  : 'Informe seu número para conversar com o Zul')}
-                {step === 2 && 'Enviamos um código de 6 dígitos no WhatsApp'}
-                {step === 3 && 'Seu WhatsApp está verificado e pronto para uso'}
+                {step === 1 && (isVerified && registeredPhone
+                  ? t('settings.whatsappVerify.subtitleChange')
+                  : t('settings.whatsappVerify.subtitleVerify'))}
+                {step === 2 && t('settings.whatsappVerify.subtitleCode')}
+                {step === 3 && t('settings.whatsappVerify.subtitleDone')}
               </Caption>
             </View>
           </View>
@@ -299,28 +300,27 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
             {step === 3 ? (
               /* Success State */
               <View style={styles.successContainer}>
-                <Text style={{ fontSize: 48, marginBottom: spacing[2] }}>🎉</Text>
                 <View style={styles.successCard}>
                   <Callout weight="semiBold" style={{ color: colors.success.dark, marginBottom: spacing[1] }}>
-                    WhatsApp Verificado com Sucesso!
+                    {t('settings.whatsappVerify.doneTitle')}
                   </Callout>
                   <Caption style={{ color: colors.success.main }}>
-                    Número: <Text weight="bold">{phone}</Text>
+                    {t('settings.whatsappVerify.numberLabel')} <Text weight="bold">{phone}</Text>
                   </Caption>
                 </View>
                 <View style={styles.infoCard}>
                   <MessageCircle size={20} color={colors.brand.primary} />
                   <View style={{ flex: 1, marginLeft: spacing[2] }}>
                     <Callout weight="semiBold" style={{ color: colors.brand.primary, marginBottom: spacing[0.5] }}>
-                      Agora você pode usar o Zul!
+                      {t('settings.whatsappVerify.readyTitle')}
                     </Callout>
                     <Caption color="secondary">
-                      Envie mensagens via WhatsApp para registrar despesas, ver relatórios e muito mais.
+                      {t('settings.whatsappVerify.readyBody')}
                     </Caption>
                   </View>
                 </View>
                 <Button
-                  title="Entendido"
+                  title={t('settings.whatsappVerify.gotIt')}
                   onPress={onClose}
                   style={{ marginTop: spacing[3] }}
                 />
@@ -330,7 +330,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
               <View style={styles.codeContainer}>
                 <View style={styles.codeInputContainer}>
                   <Caption weight="semiBold" align="center" style={{ marginBottom: spacing[2] }}>
-                    Código de Verificação
+                    {t('settings.whatsappVerify.codeLabel')}
                   </Caption>
                   <TextInput
                     style={styles.codeInput}
@@ -346,10 +346,11 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
                     }}
                     maxLength={6}
                     keyboardType="number-pad"
+                    accessibilityLabel={t('settings.whatsappVerify.codeA11y')}
                     autoFocus
                   />
                   <Caption color="tertiary" align="center" style={{ marginTop: spacing[1] }}>
-                    Código enviado para <Text weight="semiBold">{phone}</Text>
+                    {t('settings.whatsappVerify.codeSentTo')} <Text weight="semiBold">{phone}</Text>
                   </Caption>
                 </View>
 
@@ -363,7 +364,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
                 )}
 
                 <Button
-                  title={loading ? 'Verificando...' : 'Verificar Código'}
+                  title={loading ? t('settings.whatsappVerify.verifying') : t('settings.whatsappVerify.verifyCode')}
                   onPress={() => verifyCode()}
                   disabled={loading || verificationCode.length !== 6}
                   icon={loading ? <ActivityIndicator size="small" color={colors.neutral[0]} /> : <CheckCircle2 size={20} color={colors.neutral[0]} />}
@@ -379,12 +380,12 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
                     <View style={styles.resendButtonContent}>
                       <RefreshCw size={16} color={colors.text.secondary} />
                       <Caption color="tertiary">
-                        Reenviar em {countdown}s
+                        {t('settings.whatsappVerify.resendIn', { seconds: countdown })}
                       </Caption>
                     </View>
                   ) : (
                     <Caption color="secondary" weight="medium">
-                      Não recebeu? Reenviar código
+                      {t('settings.whatsappVerify.resend')}
                     </Caption>
                   )}
                 </TouchableOpacity>
@@ -399,7 +400,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
                   style={styles.backButton}
                 >
                   <Caption color="secondary" weight="medium">
-                    ← Voltar para o número
+                    {t('settings.whatsappVerify.backToNumber')}
                   </Caption>
                 </TouchableOpacity>
               </View>
@@ -411,13 +412,13 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
                     <CheckCircle2 size={20} color={colors.success.main} />
                     <View style={{ flex: 1, marginLeft: spacing[2] }}>
                       <Callout weight="semiBold" style={{ color: colors.success.dark, marginBottom: spacing[0.5] }}>
-                        Número Atual Verificado
+                        {t('settings.whatsappVerify.currentVerified')}
                       </Callout>
                       <Caption style={{ color: colors.success.main }}>
-                        Número atual: <Text weight="bold">{formatPhone(registeredPhone)}</Text>
+                        {t('settings.whatsappVerify.currentNumber')} <Text weight="bold">{formatPhone(registeredPhone)}</Text>
                       </Caption>
                       <Caption style={{ color: colors.success.main, marginTop: spacing[0.5] }}>
-                        Digite um novo número abaixo para alterar
+                        {t('settings.whatsappVerify.enterNewToChange')}
                       </Caption>
                     </View>
                   </View>
@@ -425,7 +426,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
 
                 <View style={styles.phoneInputContainer}>
                   <Caption weight="semiBold" style={{ marginBottom: spacing[1] }}>
-                    {isVerified ? 'Novo Número do WhatsApp' : 'Número do WhatsApp'}
+                    {isVerified ? t('settings.whatsappVerify.newNumberField') : t('settings.whatsappVerify.numberField')}
                   </Caption>
                   <View style={styles.phoneInputWrapper}>
                     <TextInput
@@ -434,6 +435,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
                       value={phone}
                       onChangeText={handlePhoneChange}
                       keyboardType="phone-pad"
+                      accessibilityLabel={isVerified ? t('settings.whatsappVerify.newNumberField') : t('settings.whatsappVerify.numberField')}
                       autoFocus
                     />
                     <MessageCircle size={20} color={colors.text.tertiary} />
@@ -458,7 +460,7 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
                 )}
 
                 <Button
-                  title={loading ? 'Enviando...' : 'Enviar Código'}
+                  title={loading ? t('settings.whatsappVerify.sending') : t('settings.whatsappVerify.sendCode')}
                   onPress={handleSendCode}
                   disabled={loading || !phone || phone.replace(/\D/g, '').length < 11}
                   icon={loading ? <ActivityIndicator size="small" color={colors.neutral[0]} /> : <ArrowRight size={20} color={colors.neutral[0]} />}
@@ -469,10 +471,10 @@ export function WhatsAppVerificationModal({ visible, onClose, user, onVerified }
                   <MessageCircle size={20} color={colors.brand.primary} />
                   <View style={{ flex: 1, marginLeft: spacing[2] }}>
                     <Callout weight="semiBold" style={{ color: colors.brand.primary, marginBottom: spacing[0.5] }}>
-                      Como funciona?
+                      {t('settings.whatsappVerify.howTitle')}
                     </Callout>
                     <Caption color="secondary">
-                      Enviaremos um código de 6 dígitos via WhatsApp. Você terá 10 minutos para validá-lo e começar a usar o Zul.
+                      {t('settings.whatsappVerify.howBody')}
                     </Caption>
                   </View>
                 </View>
