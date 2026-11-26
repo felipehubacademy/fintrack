@@ -1,6 +1,8 @@
 module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'node',
+  // Files from ../shared resolve deps (e.g. @babel/runtime) from the mobile install.
+  modulePaths: ['<rootDir>/node_modules'],
   moduleNameMapper: {
     '^@fintrack/shared/(.*)$': '<rootDir>/../shared/src/$1',
     '^@fintrack/shared$': '<rootDir>/../shared/src/index.js',
