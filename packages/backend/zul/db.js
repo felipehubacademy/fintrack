@@ -88,7 +88,12 @@ export function createDb(supabase = getSupabase()) {
 
     async saveConversation(phone, patch) {
       const row = { phone: digitsOnly(phone), ...patch, updated_at: new Date().toISOString() };
-      const { error } = await supabase.from('zul_conversations').upsert(row, { onConflict: 'phone' });
+      let { error } = await supabase.from('zul_conversations').upsert(row, { onConflict: 'phone' });
+      if (error && isMissingColumn(error) && 'trial_notice_sent_at' in row) {
+        // Billing migration not applied yet: save everything else.
+        const { trial_notice_sent_at: _skip, ...rest } = row;
+        ({ error } = await supabase.from('zul_conversations').upsert(rest, { onConflict: 'phone' }));
+      }
       if (error) console.warn('[zul] could not save conversation state:', error.message);
     },
 

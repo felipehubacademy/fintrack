@@ -17,6 +17,8 @@ import { applyCorrection } from './actions/correction.js';
 import {
   dashboardLink, deleteAccountLink, simpleReply, setName, setLanguage, setCurrency, invite, joinOrganization, greeting,
 } from './actions/account.js';
+import { paywallReply, planReply, cancelReply, addTrialNotice } from './actions/billing.js';
+import { isBlocked } from './billing.js';
 
 const IGNORED_TYPES = new Set(['reaction', 'system', 'unsupported', 'ephemeral', 'request_welcome']);
 const OPEN_TO_STRANGERS = new Set(['language', 'currency', 'join', 'plan', 'cancel', 'delete_account', 'help', 'off_topic']);
@@ -78,6 +80,8 @@ export function createZul(deps = {}) {
       ctx.state.intro_sent_at = now().toISOString();
       return simpleReply(ctx, 'intro');
     }
+    // Trial over without Plus: keep reading, stop writing (data is never deleted).
+    if (ctx.user && RECORDING_INTENTS.has(type) && isBlocked(ctx.user.organization, ctx.now || now())) return paywallReply(ctx);
     switch (type) {
       case 'expense': return logExpenses(ctx, intent);
       case 'installments': return logInstallments(ctx, intent);
@@ -95,8 +99,8 @@ export function createZul(deps = {}) {
       case 'join': return joinOrganization(ctx, intent.code);
       case 'invite': return invite(ctx);
       case 'dashboard': return simpleReply(ctx, 'dashboard', { link: dashboardLink(ctx) });
-      case 'plan': return simpleReply(ctx, 'plan');
-      case 'cancel': return simpleReply(ctx, 'cancel', { link: deleteAccountLink() });
+      case 'plan': return planReply(ctx);
+      case 'cancel': return cancelReply(ctx);
       case 'delete_account': return simpleReply(ctx, 'delete_account', { link: deleteAccountLink() });
       case 'help': return simpleReply(ctx, 'help');
       case 'fewer': ctx.state.quiet = true; return simpleReply(ctx, 'fewer_on');
@@ -169,22 +173,26 @@ export function createZul(deps = {}) {
       if (user) state.user_id = user.id;
       ctx = {
         db, ai: getAi(), wa: getWa(), phone, state, user,
-        lang: state.language, currency: state.currency, today: localDate(state.timezone, now()),
+        lang: state.language, currency: state.currency, today: localDate(state.timezone, now()), now: now(),
         contactName: contact?.profile?.name || null, messageId: message.id, replyTarget: null,
       };
       const read = getWa().markRead(message.id);
 
       if (message.context?.id) ctx.replyTarget = await db.getConfirmation(message.context.id, phone);
 
-      const input = await extractInput(message, ctx);
+      // Receipt photos only ever record something: skip the model call when the trial is over.
+      const blockedMedia = (message.type === 'image' || message.type === 'document') && user && isBlocked(user.organization, ctx.now);
+      const input = blockedMedia ? { blocked: true } : await extractInput(message, ctx);
       let replies;
-      if (input.ignore) replies = [];
+      if (input.blocked) replies = paywallReply(ctx);
+      else if (input.ignore) replies = [];
       else if (input.error) replies = simpleReply(ctx, input.error);
       else {
         const intent = input.intent || await route(input, ctx, { ai: ctx.ai });
         replies = await execute(intent, ctx);
       }
       replies = addOnboarding(ctx, replies);
+      replies = addTrialNotice(ctx, replies);
       await sendReplies(ctx, waId, replies);
       await saveState(db, ctx.state);
       await read;

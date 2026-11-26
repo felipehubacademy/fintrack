@@ -8,6 +8,7 @@
  *  - last_confirmation: { waMessageId, kind, ids, at } for "foi 78" without a reply
  *  - records_count: how many messages produced a record (onboarding milestones)
  *  - quiet: "fewer messages" mode
+ *  - trial_notice_sent_at: when the "trial ends in N days" line was added (once)
  */
 import { digitsOnly, languageFromPhone, currencyFromPhone, timezoneFromPhone, normalizeLanguage } from './language.js';
 
@@ -25,6 +26,7 @@ export function defaultState(phone) {
     records_count: 0,
     quiet: false,
     intro_sent_at: null,
+    trial_notice_sent_at: null,
     last_seen_at: null,
     isNew: true,
   };
@@ -52,6 +54,7 @@ export async function saveState(db, state) {
     records_count: state.records_count || 0,
     quiet: !!state.quiet,
     intro_sent_at: state.intro_sent_at || null,
+    trial_notice_sent_at: state.trial_notice_sent_at || null,
     last_seen_at: new Date().toISOString(),
   });
 }

@@ -173,11 +173,13 @@ describe('installments, bills, budgets, queries', () => {
     assert.match(s[0].body, /Gastos: \*R\$ 30,00\*/);
   });
 
-  it('plan / cancel explain early access', async () => {
+  it('plan / cancel explain the trial (never a fixed free-until date)', async () => {
     const { say } = setup();
     await say(BR, 'uber 1');
-    assert.match((await say(BR, 'cancelar'))[0].body, /nada pra cancelar/);
-    assert.match((await say(BR, 'plano'))[0].body, /31\/01\/2027/);
+    assert.match((await say(BR, 'cancelar'))[0].body, /não tem assinatura ativa/);
+    const plan = (await say(BR, 'plano'))[0].body;
+    assert.match(plan, /teste grátis/);
+    assert.doesNotMatch(plan, /2027/);
   });
 
   it('account deletion only sends the link, never deletes', async () => {
