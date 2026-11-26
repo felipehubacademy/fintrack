@@ -6,6 +6,10 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 import { TourProvider } from '../contexts/TourContext';
 import { APP_CONFIG, redirectToCorrectDomain, getCanonicalUrl } from '../lib/constants';
 import ZulFloatingButton from '../components/ZulFloatingButton';
+import { installApiAuthFetch } from '../lib/apiFetch';
+
+// API routes require the session token; attach it to every same-origin /api/* call.
+if (typeof window !== 'undefined') installApiAuthFetch();
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
