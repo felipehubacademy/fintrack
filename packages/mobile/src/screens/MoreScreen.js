@@ -4,7 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Platform,
+  Linking,
 } from 'react-native';
 import {
   User,
@@ -19,17 +19,38 @@ import {
   BarChart3,
   TrendingUp,
   Shield,
+  Flag,
 } from 'lucide-react-native';
+import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../services/supabase';
 import { useOrganization } from '../hooks/useOrganization';
 import { useTheme } from '../contexts/ThemeContext';
+import { useI18n } from '../contexts/I18nContext';
 import { Text } from '../components/ui/Text';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { ProfileModal } from '../components/settings/ProfileModal';
+import { legalUrl } from '../components/settings/accountApi';
+import { isFeatureEnabled } from '@fintrack/shared/config';
+import { buildMoreSections } from '../navigation/routes';
+
+const ICONS = {
+  calendar: Calendar,
+  bills: FileCheck,
+  target: Target,
+  chart: BarChart3,
+  goal: Flag,
+  trending: TrendingUp,
+  user: User,
+  settings: Settings,
+  help: HelpCircle,
+  file: FileText,
+  shield: Shield,
+};
 
 export default function MoreScreen({ navigation }) {
   const { colors, isDark } = useTheme();
+  const { t, language } = useI18n();
   const insets = useSafeAreaInsets();
   const { organization, user, refetch } = useOrganization();
   const { confirm } = useConfirmation();
@@ -38,54 +59,38 @@ export default function MoreScreen({ navigation }) {
   const handleLogout = async () => {
     try {
       await confirm({
-        title: 'Sair',
-        message: 'Tem certeza que deseja sair?',
+        title: t('navigation.logout.title'),
+        message: t('navigation.logout.message'),
         type: 'warning',
-        confirmText: 'Sair',
+        confirmText: t('navigation.logout.confirm'),
+        cancelText: t('common.cancel'),
         onConfirm: async () => {
-          await supabase.auth.signOut();
+          await supabase?.auth.signOut();
         },
       });
-    } catch (error) {}
+    } catch (error) {
+      // cancelled
+    }
   };
 
-  const firstName = user?.user_metadata?.full_name?.split(' ')[0] ||
-    user?.email?.split('@')[0] || '';
+  const handleItem = (item) => {
+    if (item.action === 'profile') return setShowProfileModal(true);
+    if (item.action === 'terms' || item.action === 'privacy') {
+      return Linking.openURL(legalUrl(item.action, language)).catch(() => {});
+    }
+    return navigation.navigate(item.screen);
+  };
 
-  const sections = [
-    {
-      title: 'Ferramentas',
-      items: [
-        { icon: Calendar, label: 'Fechamento Mensal', color: '#1A6AFF', screen: 'Closing' },
-        { icon: FileCheck, label: 'Contas a Pagar', color: '#F5A623', screen: 'Bills' },
-        { icon: Target, label: 'Orçamentos', color: '#10B981', screen: 'Budgets' },
-        { icon: BarChart3, label: 'Análises', color: '#0EA5E9', screen: 'Insights' },
-        { icon: Target, label: 'Metas', color: '#A855F7', screen: 'Goals' },
-        { icon: TrendingUp, label: 'Investimentos', color: '#059669', screen: 'Investments' },
-      ],
-    },
-    {
-      title: 'Conta',
-      items: [
-        { icon: User, label: 'Meu Perfil', color: '#6366F1', onPress: () => setShowProfileModal(true) },
-        { icon: Settings, label: 'Configurações', color: '#78716C', screen: 'Settings' },
-      ],
-    },
-    {
-      title: 'Sobre',
-      items: [
-        { icon: HelpCircle, label: 'Ajuda e Suporte', color: '#0EA5E9', screen: 'Help' },
-        { icon: FileText, label: 'Termos de Uso', color: '#78716C', screen: 'TermsOfService' },
-        { icon: Shield, label: 'Política de Privacidade', color: '#78716C', screen: 'PrivacyPolicy' },
-      ],
-    },
-  ];
+  const fullName = user?.name || user?.user_metadata?.full_name || '';
+  const firstName = fullName.split(' ')[0] || user?.email?.split('@')[0] || '';
+  const sections = buildMoreSections(t, isFeatureEnabled);
+  const version = Constants.expoConfig?.version || '1.0.0';
 
-  const bg = isDark ? '#0A0A0A' : '#F2F2F7';
-  const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
-  const borderColor = isDark ? '#38383A' : '#E5E5EA';
-  const textPrimary = isDark ? '#FFFFFF' : '#000000';
-  const textSecondary = isDark ? '#8E8E93' : '#6B7280';
+  const bg = isDark ? '#0B0F17' : '#F5F7FB';
+  const cardBg = isDark ? '#141A24' : '#FFFFFF';
+  const borderColor = isDark ? '#232B38' : '#E5E8EF';
+  const textPrimary = isDark ? '#F4F6FA' : '#0B1220';
+  const textSecondary = isDark ? '#9AA3B2' : '#5B6475';
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -93,58 +98,62 @@ export default function MoreScreen({ navigation }) {
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: textPrimary }]}>Mais</Text>
+          <Text style={[styles.title, { color: textPrimary }]}>{t('navigation.more.title')}</Text>
           {firstName ? (
             <Text style={[styles.subtitle, { color: textSecondary }]}>
-              Olá, {firstName}
+              {t('navigation.more.greeting', { name: firstName })}
             </Text>
           ) : null}
         </View>
 
-        {/* Sections */}
-        {sections.map((section, si) => (
-          <View key={si} style={styles.section}>
+        {sections.map((section) => (
+          <View key={section.key} style={styles.section}>
             <Text style={[styles.sectionTitle, { color: textSecondary }]}>
               {section.title.toUpperCase()}
             </Text>
             <View style={[styles.card, { backgroundColor: cardBg }]}>
-              {section.items.map((item, ii) => (
-                <TouchableOpacity
-                  key={ii}
-                  style={[
-                    styles.row,
-                    ii < section.items.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: borderColor },
-                  ]}
-                  onPress={item.onPress || (() => navigation.navigate(item.screen))}
-                  activeOpacity={0.6}
-                >
-                  <View style={[styles.iconBox, { backgroundColor: `${item.color}14` }]}>
-                    <item.icon size={20} color={item.color} />
-                  </View>
-                  <Text style={[styles.rowLabel, { color: textPrimary }]}>{item.label}</Text>
-                  <ChevronRight size={18} color={isDark ? '#48484A' : '#C7C7CC'} />
-                </TouchableOpacity>
-              ))}
+              {section.items.map((item, ii) => {
+                const Icon = ICONS[item.icon] || FileText;
+                return (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={[
+                      styles.row,
+                      ii < section.items.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: borderColor },
+                    ]}
+                    onPress={() => handleItem(item)}
+                    activeOpacity={0.6}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.label}
+                  >
+                    <View style={[styles.iconBox, { backgroundColor: `${item.color}14` }]}>
+                      <Icon size={20} color={item.color} />
+                    </View>
+                    <Text style={[styles.rowLabel, { color: textPrimary }]}>{item.label}</Text>
+                    <ChevronRight size={18} color={isDark ? '#5B6475' : '#B4BBC8'} />
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         ))}
 
-        {/* Logout */}
         <TouchableOpacity
-          style={[styles.logoutBtn, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+          style={[styles.logoutBtn, { backgroundColor: cardBg }]}
           onPress={handleLogout}
           activeOpacity={0.6}
+          accessibilityRole="button"
         >
-          <LogOut size={18} color="#FF3B30" />
-          <Text style={styles.logoutText}>Sair da Conta</Text>
+          <LogOut size={18} color={colors.error?.main || '#F04438'} />
+          <Text style={[styles.logoutText, { color: colors.error?.main || '#F04438' }]}>
+            {t('navigation.more.logout')}
+          </Text>
         </TouchableOpacity>
 
-        {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: isDark ? '#48484A' : '#AEAEB2' }]}>
-            MeuAzulão v1.0.0
+          <Text style={[styles.footerText, { color: textSecondary }]}>
+            {t('navigation.more.version', { appName: t('navigation.appName'), version })}
           </Text>
         </View>
       </ScrollView>
@@ -169,22 +178,22 @@ const styles = StyleSheet.create({
 
   section: { marginBottom: 28 },
   sectionTitle: { fontSize: 12, fontWeight: '600', letterSpacing: 0.8, marginBottom: 8, paddingLeft: 4 },
-  card: { borderRadius: 14, overflow: 'hidden' },
+  card: { borderRadius: 12, overflow: 'hidden' },
   row: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 13, gap: 12,
+    paddingHorizontal: 16, paddingVertical: 12, gap: 12,
   },
   iconBox: {
-    width: 34, height: 34, borderRadius: 9,
+    width: 36, height: 36, borderRadius: 8,
     justifyContent: 'center', alignItems: 'center',
   },
   rowLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
 
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 14, borderRadius: 14, marginTop: 8,
+    gap: 8, paddingVertical: 16, borderRadius: 999, marginTop: 8,
   },
-  logoutText: { fontSize: 15, fontWeight: '600', color: '#FF3B30' },
+  logoutText: { fontSize: 15, fontWeight: '600' },
 
   footer: { alignItems: 'center', marginTop: 24 },
   footerText: { fontSize: 12 },

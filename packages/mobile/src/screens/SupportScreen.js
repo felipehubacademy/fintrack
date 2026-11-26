@@ -10,6 +10,8 @@ import {
 import { MessageCircle, Mail, Send, CheckCircle } from 'lucide-react-native';
 import { colors, spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useI18n } from '../contexts/I18nContext';
+import { zulChatLink } from '@fintrack/shared/config';
 import { Text, Headline, Callout, Caption, Title2 } from '../components/ui/Text';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -22,6 +24,7 @@ import { APP_CONFIG } from '@fintrack/shared/constants';
 
 export default function SupportScreen({ navigation }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const { user } = useOrganization();
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
@@ -35,22 +38,24 @@ export default function SupportScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.email.trim() || !formData.subject.trim() || !formData.message.trim()) {
-      showToast('Por favor, preencha todos os campos', 'warning');
+      showToast(t('settings.contact.fillAll'), 'warning');
       return;
     }
 
     // Validar email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email.trim())) {
-      showToast('Por favor, insira um e-mail válido', 'warning');
+      showToast(t('settings.contact.invalidEmail'), 'warning');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Obter token de autenticação se disponível
-      const { data: { session } } = await supabase.auth.getSession();
+      // Send the access token when signed in
+      const { data: { session } } = supabase
+        ? await supabase.auth.getSession()
+        : { data: { session: null } };
       const headers = {
         'Content-Type': 'application/json',
       };
@@ -72,14 +77,14 @@ export default function SupportScreen({ navigation }) {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao enviar mensagem');
+        throw new Error(data.error || 'send_failed');
       }
 
       setSubmitted(true);
-      showToast('Mensagem enviada com sucesso! Entraremos em contato em breve.', 'success');
+      showToast(t('settings.contact.sentText'), 'success');
 
       setFormData({
         name: user?.name || '',
@@ -92,7 +97,7 @@ export default function SupportScreen({ navigation }) {
         setSubmitted(false);
       }, 5000);
     } catch (error) {
-      showToast(error.message || 'Erro ao enviar mensagem. Tente novamente.', 'error');
+      showToast(t('settings.contact.error'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -102,7 +107,7 @@ export default function SupportScreen({ navigation }) {
     <View style={styles.container}>
       <ScreenHeader
         user={user}
-        title="Suporte"
+        title={t('settings.contact.title')}
         showBackButton={true}
       />
 
@@ -116,14 +121,14 @@ export default function SupportScreen({ navigation }) {
           <View style={styles.badge}>
             <MessageCircle size={16} color={colors.brand.primary} />
             <Caption style={{ color: colors.brand.primary, marginLeft: spacing[1] }}>
-              Entre em Contato
+              {t('settings.contact.title')}
             </Caption>
           </View>
           <Headline weight="bold" style={{ marginTop: spacing[2], marginBottom: spacing[1] }}>
-            Fale conosco
+            {t('settings.contact.heading')}
           </Headline>
           <Caption color="secondary" align="center">
-            Tem alguma dúvida, sugestão ou precisa de suporte? Estamos aqui para ajudar!
+            {t('settings.contact.subtitle')}
           </Caption>
         </Card>
 
@@ -133,10 +138,10 @@ export default function SupportScreen({ navigation }) {
               <CheckCircle size={48} color={colors.success.main} />
             </View>
             <Headline weight="bold" align="center" style={{ marginTop: spacing[2], marginBottom: spacing[1] }}>
-              Mensagem enviada!
+              {t('settings.contact.sentTitle')}
             </Headline>
             <Callout color="secondary" align="center">
-              Entraremos em contato em breve.
+              {t('settings.contact.sentText')}
             </Callout>
           </Card>
         ) : (
@@ -144,11 +149,8 @@ export default function SupportScreen({ navigation }) {
             {/* Contact Info */}
             <Card style={styles.infoCard}>
               <Title2 weight="bold" style={{ marginBottom: spacing[2] }}>
-                Informações de Contato
+                {t('settings.contact.heading')}
               </Title2>
-              <Callout color="secondary" style={{ marginBottom: spacing[3] }}>
-                Nossa equipe está sempre pronta para ajudar. Responderemos sua mensagem o mais rápido possível.
-              </Callout>
 
               <View style={styles.contactItem}>
                 <View style={[styles.contactIcon, { backgroundColor: colors.brand.bg }]}>
@@ -156,7 +158,7 @@ export default function SupportScreen({ navigation }) {
                 </View>
                 <View style={styles.contactInfo}>
                   <Callout weight="semiBold" style={{ marginBottom: spacing[0.5] }}>
-                    E-mail
+                    {t('settings.contact.emailLabel')}
                   </Callout>
                   <TouchableOpacity onPress={() => Linking.openURL('mailto:contato@meuazulao.com.br')}>
                     <Callout style={{ color: colors.brand.primary }}>
@@ -172,18 +174,19 @@ export default function SupportScreen({ navigation }) {
                 </View>
                 <View style={styles.contactInfo}>
                   <Callout weight="semiBold" style={{ marginBottom: spacing[0.5] }}>
-                    WhatsApp
+                    {t('settings.contact.whatsappLabel')}
                   </Callout>
-                  <Callout color="secondary">
-                    Converse com o Zul pelo WhatsApp
-                  </Callout>
+                  <TouchableOpacity onPress={() => Linking.openURL(zulChatLink(t('onboarding.whatsapp.greeting'))).catch(() => {})}>
+                    <Callout style={{ color: colors.brand.primary }}>
+                      {t('settings.contact.whatsappText')}
+                    </Callout>
+                  </TouchableOpacity>
                 </View>
               </View>
 
               <View style={styles.hoursInfo}>
                 <Caption color="tertiary">
-                  Horário de atendimento:{'\n'}
-                  Segunda a Sexta, 9h às 18h (horário de Brasília)
+                  {t('settings.contact.hours')}
                 </Caption>
               </View>
             </Card>
@@ -191,44 +194,45 @@ export default function SupportScreen({ navigation }) {
             {/* Contact Form */}
             <Card style={styles.formCard}>
               <Title2 weight="bold" style={{ marginBottom: spacing[3] }}>
-                Enviar Mensagem
+                {t('settings.contact.formTitle')}
               </Title2>
 
               <Input
-                label="Nome completo *"
+                label={t('settings.contact.name')}
                 value={formData.name}
                 onChangeText={(text) => setFormData({ ...formData, name: text })}
-                placeholder="Seu nome"
+                placeholder={t('settings.contact.namePlaceholder')}
                 editable={!isSubmitting}
               />
 
               <Input
-                label="E-mail *"
+                label={t('settings.contact.email')}
                 value={formData.email}
                 onChangeText={(text) => setFormData({ ...formData, email: text })}
-                placeholder="seu@email.com"
+                placeholder={t('settings.contact.emailPlaceholder')}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!isSubmitting}
               />
 
               <Input
-                label="Assunto *"
+                label={t('settings.contact.subject')}
                 value={formData.subject}
                 onChangeText={(text) => setFormData({ ...formData, subject: text })}
-                placeholder="Qual o motivo do contato?"
+                placeholder={t('settings.contact.subjectPlaceholder')}
                 editable={!isSubmitting}
               />
 
               <View style={styles.field}>
                 <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                  Mensagem *
+                  {t('settings.contact.message')}
                 </Caption>
                 <TextInput
                   style={styles.textArea}
                   value={formData.message}
                   onChangeText={(text) => setFormData({ ...formData, message: text })}
-                  placeholder="Descreva sua dúvida, sugestão ou problema..."
+                  placeholder={t('settings.contact.messagePlaceholder')}
+                  placeholderTextColor={colors.text.tertiary}
                   multiline
                   numberOfLines={6}
                   textAlignVertical="top"
@@ -237,7 +241,7 @@ export default function SupportScreen({ navigation }) {
               </View>
 
               <Button
-                title={isSubmitting ? 'Enviando...' : 'Enviar Mensagem'}
+                title={isSubmitting ? t('settings.contact.sending') : t('settings.contact.send')}
                 onPress={handleSubmit}
                 disabled={isSubmitting || !formData.name.trim() || !formData.email.trim() || !formData.subject.trim() || !formData.message.trim()}
                 icon={!isSubmitting ? <Send size={20} color={colors.neutral[0]} /> : null}
