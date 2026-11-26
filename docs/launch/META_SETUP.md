@@ -234,9 +234,9 @@ Lembrete para quem dividiu uma despesa com o usuário.
 | Variável | Exemplo pt_BR | Exemplo es | Exemplo en |
 |---|---|---|---|
 | `{{1}}` nome | `Felipe` | `Sofía` | `Alex` |
-| `{{2}}` plano | `Acesso antecipado` | `Acceso anticipado` | `Early access` |
+| `{{2}}` plano | `Plus` | `Plus` | `Plus` |
 | `{{3}}` situação | `ativo` | `activo` | `active` |
-| `{{4}}` data | `31/01/2027` | `31/01/2027` | `01/31/2027` |
+| `{{4}}` data | `25/12/2026` | `25/12/2026` | `12/25/2026` |
 
 ### 9.8 `reativacao` (Marketing)
 
@@ -252,6 +252,8 @@ Categoria **Marketing**. Ative o botão de descadastro que a Meta oferece (**Par
 |---|---|---|---|
 | `{{1}}` nome | `Felipe` | `Sofía` | `Alex` |
 | `{{2}}` dias | `12` | `12` | `12` |
+
+Os templates da assinatura (`fim_teste` e `oferta_primeiro_mes`) estão em `BILLING.md` §4.
 
 Hoje só o `codigo_login` é enviado pelo código. Os outros sete ficam aprovados para os lembretes e resumos automáticos; aprovar com antecedência evita espera no dia em que forem ligados.
 

@@ -12,7 +12,8 @@
     "./constants": "./src/constants/index.js",
     "./design-tokens": "./src/design-tokens/index.js",
     "./i18n": "./src/i18n/index.js",
-    "./config": "./src/config/features.js"
+    "./config": "./src/config/features.js",
+    "./billing": "./src/billing/index.js"
   },
   "scripts": {
     "test": "node --test src/**/*.test.js"

@@ -19,7 +19,7 @@ export const FEATURE_DEFAULTS = {
   goals: true,
   closing: true,
   insights: true,
-  paywall: false, // early access: everything free
+  paywall: true, // 7-day trial, then Plus (approved 2026-11-26)
   manualEntry: true, // hidden manual form; WhatsApp is the main path
 };
 
