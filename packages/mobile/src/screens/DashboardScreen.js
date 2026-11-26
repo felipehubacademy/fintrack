@@ -7,290 +7,175 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CreditCard,
-  PieChart,
-  ChevronRight,
-  Receipt,
-  Target,
-} from 'lucide-react-native';
-import { colors, spacing } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChevronRight, CreditCard, Target } from 'lucide-react-native';
+import { isFeatureEnabled } from '@fintrack/shared/config';
 import { useTheme } from '../contexts/ThemeContext';
-import { Text, Headline, Caption } from '../components/ui/Text';
-import { MonthSelector } from '../components/financial/MonthSelector';
-import { CategoryIcon } from '../components/ui/CategoryIcon';
-import { formatCurrency } from '@fintrack/shared/utils';
-import { formatBrazilDate, formatBrazilDayMonthShort } from '../utils/date';
+import { useI18n } from '../contexts/I18nContext';
+import { Text } from '../components/ui/Text';
+import { WhatsAppButton } from '../components/ui/WhatsAppButton';
+import { SpendPerDayHero } from '../components/dashboard/SpendPerDayHero';
+import { RecentTransactions } from '../components/dashboard/RecentTransactions';
+import { typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
 
+// Route names live in the navigators (owned elsewhere); kept in one place here.
+const ROUTES = {
+  transactions: 'Transações',
+  more: 'Mais',
+  addTransaction: 'AddTransaction',
+};
+
+/**
+ * Home (plan 4.1/4.2): one number first ("you can spend X a day until the
+ * 30th"), then the big "Log it on WhatsApp" button, month to date, next card
+ * bill and the last 5 transactions. The manual form stays reachable but small.
+ */
 export default function DashboardScreen() {
   const navigation = useNavigation();
-  const { colors: themeColors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const { t, formatMoney, formatDate } = useI18n();
   const {
     user, orgLoading,
-    selectedMonth, setSelectedMonth,
     refreshing, onRefresh,
     stats, recentTransactions,
-    alarmingCategories,
+    allowance, nextStatement, goalsSummary,
   } = useDashboardData(navigation);
 
   if (orgLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: themeColors.background.primary }]}>
-        <Text variant="body" color="secondary">Carregando...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background.primary }]}>
+        <Text variant="body" color="secondary">{t('dashboard.loading')}</Text>
       </View>
     );
   }
 
-  const greeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Bom dia';
-    if (h < 18) return 'Boa tarde';
-    return 'Boa noite';
-  };
+  const firstName = user?.name?.trim().split(/\s+/)[0];
+  const showGoals = isFeatureEnabled('goals') && goalsSummary;
+  const card = [styles.card, { backgroundColor: colors.background.secondary }];
+  const money = [styles.money, typography.tabularNums, { color: colors.text.primary }];
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}>
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{greeting()},</Text>
-            <Headline style={styles.userName}>{user?.name?.split(' ')[0] || 'Usuário'}</Headline>
-          </View>
-          <MonthSelector selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} compact />
-        </View>
+        <Text style={[styles.greeting, { color: colors.text.secondary }]} accessibilityRole="header">
+          {firstName ? t('dashboard.hi', { name: firstName }) : t('dashboard.hiNoName')}
+        </Text>
 
-        {/* Balance Card */}
-        <View style={styles.section}>
-          <LinearGradient
-            colors={['#1A6AFF', '#0047CC']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.balanceCard}
+        {/* 1. The one number */}
+        <SpendPerDayHero allowance={allowance} />
+
+        {/* 2. Log it on WhatsApp (main path) */}
+        <WhatsAppButton size="lg" style={styles.whatsapp} />
+        {isFeatureEnabled('manualEntry') && (
+          <TouchableOpacity
+            style={styles.manual}
+            onPress={() => navigation.navigate(ROUTES.addTransaction, { type: 'expense' })}
+            accessibilityRole="button"
+            hitSlop={8}
           >
-            <Text style={styles.balanceLabel}>Saldo de {getMonthName(selectedMonth)}</Text>
-            <Text style={styles.balanceAmount}>{formatCurrency(stats.balance)}</Text>
-            <View style={styles.balanceRow}>
-              <View style={styles.balanceItem}>
-                <Text style={styles.balanceItemLabel}>Entradas</Text>
-                <Text style={[styles.balanceItemValue, { color: '#A5F3C0' }]}>
-                  {formatCurrency(stats.totalIncome)}
-                </Text>
-              </View>
-              <View style={styles.balanceItem}>
-                <Text style={styles.balanceItemLabel}>Saídas</Text>
-                <Text style={[styles.balanceItemValue, { color: '#FFB3B0' }]}>
-                  {formatCurrency(stats.totalExpenses)}
-                </Text>
-              </View>
+            <Text style={[styles.manualText, { color: colors.brand.primary }]}>{t('dashboard.manualAdd')}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* 3. Month to date */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text.primary }]} accessibilityRole="header">
+            {t('dashboard.monthToDate.title')}
+          </Text>
+          <View style={[card, styles.row]}>
+            <View style={styles.half}>
+              <Text style={[styles.label, { color: colors.text.secondary }]}>{t('dashboard.monthToDate.received')}</Text>
+              <Text style={money}>{formatMoney(stats.totalIncome)}</Text>
             </View>
-          </LinearGradient>
+            <View style={[styles.divider, { backgroundColor: colors.border.light }]} />
+            <View style={styles.half}>
+              <Text style={[styles.label, { color: colors.text.secondary }]}>{t('dashboard.monthToDate.spent')}</Text>
+              <Text style={money}>{formatMoney(stats.totalExpenses)}</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <QuickAction
-            icon={<ArrowDownLeft size={18} color="#EF4444" />}
-            label="Despesa"
-            bg={isDark ? '#EF444418' : '#FEF2F2'}
-            onPress={() => navigation.navigate('AddTransaction', { type: 'expense' })}
-          />
-          <QuickAction
-            icon={<ArrowUpRight size={18} color="#22C55E" />}
-            label="Receita"
-            bg={isDark ? '#22C55E18' : '#F0FDF4'}
-            onPress={() => navigation.navigate('AddTransaction', { type: 'income' })}
-          />
-          <QuickAction
-            icon={<CreditCard size={18} color="#6366F1" />}
-            label="Cartões"
-            bg={isDark ? '#6366F118' : '#EEF2FF'}
-            onPress={() => navigation.navigate('Mais', { screen: 'Cards' })}
-          />
-          <QuickAction
-            icon={<PieChart size={18} color="#F59E0B" />}
-            label="Orçamento"
-            bg={isDark ? '#F59E0B18' : '#FFFBEB'}
-            onPress={() => navigation.navigate('Orçamento')}
-          />
-        </View>
-
-        {/* Budget Mini */}
-        {alarmingCategories.length > 0 && (
+        {/* 4. Next card bill */}
+        {nextStatement && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Headline style={styles.sectionTitle}>Orçamentos</Headline>
-              <TouchableOpacity onPress={() => navigation.navigate('Orçamento')}>
-                <Text style={[styles.seeAll, { color: themeColors.brand.primary }]}>Ver todos</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={[styles.card, { backgroundColor: themeColors.background.secondary || themeColors.background.primary }]}>
-              {alarmingCategories.slice(0, 4).map((budget, i) => (
-                <BudgetMiniItem
-                  key={budget.id || i}
-                  name={budget.category_name}
-                  percentage={budget.percentage}
-                  color={budget.color}
-                  isLast={i === Math.min(alarmingCategories.length, 4) - 1}
-                />
-              ))}
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]} accessibilityRole="header">
+              {t('dashboard.nextStatement.title')}
+            </Text>
+            <View style={[card, styles.row, styles.cardRow]}>
+              <View style={[styles.iconBadge, { backgroundColor: colors.brand.bg }]}>
+                <CreditCard size={20} color={colors.brand.primary} />
+              </View>
+              <View style={styles.flex}>
+                <Text style={money}>{formatMoney(nextStatement.amount)}</Text>
+                <Text style={[styles.label, { color: colors.text.secondary }]} numberOfLines={1}>
+                  {t('dashboard.nextStatement.due', {
+                    card: nextStatement.card.name,
+                    date: formatDate(nextStatement.dueDate, 'dayMonth'),
+                  })}
+                </Text>
+              </View>
             </View>
           </View>
         )}
 
-        {/* Recent Transactions */}
+        {/* 5. Last 5 transactions */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Headline style={styles.sectionTitle}>Últimas transações</Headline>
-            <TouchableOpacity onPress={() => navigation.navigate('Transações')}>
-              <Text style={[styles.seeAll, { color: themeColors.brand.primary }]}>Ver todas</Text>
-            </TouchableOpacity>
-          </View>
-          {recentTransactions.length === 0 ? (
-            <View style={[styles.card, styles.emptyCard, { backgroundColor: themeColors.background.secondary || themeColors.background.primary }]}>
-              <Receipt size={32} color={themeColors.text.tertiary} />
-              <Text style={{ color: themeColors.text.secondary, fontSize: 13, marginTop: 8 }}>
-                Nenhuma transação este mês
-              </Text>
-            </View>
-          ) : (
-            <View style={[styles.card, { backgroundColor: themeColors.background.secondary || themeColors.background.primary }]}>
-              {recentTransactions.slice(0, 5).map((tx, i) => (
-                <TransactionItem
-                  key={tx.id || i}
-                  tx={tx}
-                  isLast={i === Math.min(recentTransactions.length, 5) - 1}
-                  themeColors={themeColors}
-                />
-              ))}
-            </View>
-          )}
+          <RecentTransactions
+            transactions={recentTransactions}
+            onSeeAll={() => navigation.navigate(ROUTES.transactions)}
+          />
         </View>
 
-        <View style={{ height: spacing[8] }} />
+        {/* Goals (behind the launch flag) */}
+        {showGoals && (
+          <TouchableOpacity
+            style={[card, styles.row, styles.cardRow, styles.section]}
+            onPress={() => navigation.navigate(ROUTES.more, { screen: 'Goals' })}
+            accessibilityRole="button"
+          >
+            <View style={[styles.iconBadge, { backgroundColor: colors.brand.bg }]}>
+              <Target size={20} color={colors.brand.primary} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={[styles.sectionTitle, styles.noMargin, { color: colors.text.primary }]}>{t('dashboard.goals.title')}</Text>
+              <Text style={[styles.label, { color: colors.text.secondary }]}>
+                {t('dashboard.goals.summary', { done: goalsSummary.done, total: goalsSummary.total })}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={colors.text.tertiary} />
+          </TouchableOpacity>
+        )}
+
+        <View style={{ height: 96 }} />
       </ScrollView>
     </View>
   );
 }
 
-function QuickAction({ icon, label, bg, onPress }) {
-  return (
-    <TouchableOpacity style={styles.quickActionItem} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.quickActionIcon, { backgroundColor: bg }]}>{icon}</View>
-      <Text style={styles.quickActionLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function BudgetMiniItem({ name, percentage, color, isLast }) {
-  const barColor = percentage >= 90 ? '#FF3B30' : percentage >= 70 ? '#FF9500' : color;
-  return (
-    <View style={[styles.budgetItem, !isLast && styles.budgetItemBorder]}>
-      <View style={[styles.budgetDot, { backgroundColor: color }]} />
-      <View style={styles.budgetInfo}>
-        <Text style={styles.budgetName}>{name}</Text>
-        <View style={styles.budgetBar}>
-          <View style={[styles.budgetFill, { width: `${Math.min(percentage, 100)}%`, backgroundColor: barColor }]} />
-        </View>
-      </View>
-      <Text style={[styles.budgetPct, percentage >= 90 && { color: '#FF3B30' }]}>{percentage}%</Text>
-    </View>
-  );
-}
-
-function TransactionItem({ tx, isLast, themeColors }) {
-  const isExpense = tx.type === 'expense';
-  const categoryName = tx.budget_category_name || tx.category || tx.income_category_name || 'Outros';
-
-  return (
-    <View style={[styles.txItem, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.border?.light || '#E5E5EA' }]}>
-      <CategoryIcon category={categoryName} size={36} iconSize={18} />
-      <View style={styles.txInfo}>
-        <Text style={styles.txDesc} numberOfLines={1}>{tx.description || 'Sem descrição'}</Text>
-        <Text style={[styles.txMeta, { color: themeColors.text.tertiary }]}>
-          {categoryName}
-          {tx.payment_method ? ` · ${getPaymentLabel(tx.payment_method)}` : ''}
-        </Text>
-      </View>
-      <Text style={[styles.txAmount, { color: isExpense ? themeColors.text.primary : '#22C55E' }]}>
-        {isExpense ? '-' : '+'}{formatCurrency(tx.amount || 0)}
-      </Text>
-    </View>
-  );
-}
-
-function getMonthName(monthStr) {
-  const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-  const [, m] = monthStr.split('-');
-  return months[parseInt(m, 10) - 1] || '';
-}
-
-function getPaymentLabel(method) {
-  const labels = {
-    credit_card: 'Crédito', debit_card: 'Débito', pix: 'PIX',
-    bank_transfer: 'Transferência', boleto: 'Boleto', cash: 'Dinheiro',
-  };
-  return labels[method] || method;
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scrollView: { flex: 1 },
-  scrollContent: { paddingTop: 60 },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
-    paddingHorizontal: 20, paddingBottom: 16,
-  },
-  greeting: { fontSize: 14, color: '#8E8E93' },
-  userName: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
-  section: { marginBottom: 24, paddingHorizontal: 16 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
-  seeAll: { fontSize: 13, fontWeight: '600' },
-
-  // Balance card
-  balanceCard: { borderRadius: 20, padding: 24, overflow: 'hidden' },
-  balanceLabel: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
-  balanceAmount: { fontSize: 34, fontWeight: '800', color: 'white', letterSpacing: -1, marginVertical: 4 },
-  balanceRow: { flexDirection: 'row', gap: 24, marginTop: 12 },
-  balanceItem: { flex: 1 },
-  balanceItemLabel: { fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 0.5 },
-  balanceItemValue: { fontSize: 16, fontWeight: '700', marginTop: 2 },
-
-  // Quick actions
-  quickActions: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 16, marginBottom: 24 },
-  quickActionItem: { alignItems: 'center', gap: 6 },
-  quickActionIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  quickActionLabel: { fontSize: 11, fontWeight: '500', color: '#8E8E93' },
-
-  // Card container
-  card: { borderRadius: 16, padding: 4, overflow: 'hidden' },
-  emptyCard: { padding: 32, alignItems: 'center', justifyContent: 'center' },
-
-  // Budget mini
-  budgetItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 12 },
-  budgetItemBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border?.light || '#E5E5EA' },
-  budgetDot: { width: 8, height: 8, borderRadius: 4 },
-  budgetInfo: { flex: 1 },
-  budgetName: { fontSize: 13, fontWeight: '600' },
-  budgetBar: { height: 4, backgroundColor: '#E5E5EA', borderRadius: 2, marginTop: 5, overflow: 'hidden' },
-  budgetFill: { height: '100%', borderRadius: 2 },
-  budgetPct: { fontSize: 12, fontWeight: '700', color: '#8E8E93', minWidth: 36, textAlign: 'right' },
-
-  // Transaction item
-  txItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12 },
-  txInfo: { flex: 1, minWidth: 0 },
-  txDesc: { fontSize: 14, fontWeight: '600' },
-  txMeta: { fontSize: 11, marginTop: 2 },
-  txAmount: { fontSize: 14, fontWeight: '700', textAlign: 'right' },
+  content: { paddingHorizontal: 16 },
+  greeting: { fontSize: 15, fontWeight: '600', marginBottom: 12 },
+  whatsapp: { marginTop: 16 },
+  manual: { alignSelf: 'center', paddingVertical: 12 },
+  manualText: { fontSize: 15, fontWeight: '600' },
+  section: { marginTop: 24 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 12 },
+  noMargin: { marginBottom: 0 },
+  card: { borderRadius: 12, padding: 16 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  cardRow: { gap: 12 },
+  half: { flex: 1 },
+  flex: { flex: 1, minWidth: 0 },
+  divider: { width: 1, alignSelf: 'stretch', marginHorizontal: 16 },
+  label: { fontSize: 13, marginTop: 2 },
+  money: { fontSize: 20, fontWeight: '800', marginTop: 4 },
+  iconBadge: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

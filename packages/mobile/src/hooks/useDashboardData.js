@@ -3,28 +3,23 @@ import { supabase } from '../services/supabase';
 import { useOrganization } from './useOrganization';
 import { useTheme } from '../contexts/ThemeContext';
 import { orderTransactionsForDisplay } from '../utils/sortTransactions';
-import { formatBrazilDate, formatBrazilDayMonthShort } from '../utils/date';
+import { formatShortDate, formatDayMonthShort, formatMonthName } from '../utils/date';
 import { useAlert } from '../components/ui/AlertProvider';
+import { useI18n } from '../contexts/I18nContext';
+import { categoryLabel } from '../utils/categoryLabel';
+import { computeDailyAllowance, nextCardStatement } from '../utils/dailyAllowance';
+import { isFeatureEnabled } from '@fintrack/shared/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const PAYMENT_METHOD_LABELS = {
-  credit_card: 'Cartão de Crédito',
-  debit_card: 'Cartão de Débito',
-  pix: 'PIX',
-  bank_transfer: 'Transferência',
-  boleto: 'Boleto',
-  cash: 'Dinheiro',
-  other: 'Outros',
-};
-
+// Keyed by payment_method; labels come from t('transactions.paymentMethodsLong.*').
 const PAYMENT_METHOD_COLORS = {
-  'Cartão de Crédito': '#EF4444',
-  'Cartão de Débito': '#3B82F6',
-  'PIX': '#10B981',
-  'Transferência': '#06B6D4',
-  'Boleto': '#F59E0B',
-  'Dinheiro': '#8B5CF6',
-  'Outros': '#6B7280',
+  credit_card: '#EF4444',
+  debit_card: '#3B82F6',
+  pix: '#10B981',
+  bank_transfer: '#06B6D4',
+  boleto: '#F59E0B',
+  cash: '#8B5CF6',
+  other: '#6B7280',
 };
 
 const getCurrentMonth = () => {
@@ -47,6 +42,11 @@ export function useDashboardData(navigation) {
   const { organization, user, loading: orgLoading } = useOrganization();
   const { alert } = useAlert();
   const { colors } = useTheme();
+  const { t } = useI18n();
+  const paymentMethodLabel = useCallback(
+    (method) => t(`transactions.paymentMethodsLong.${method || 'other'}`, { defaultValue: method }),
+    [t],
+  );
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [refreshing, setRefreshing] = useState(false);
@@ -74,6 +74,11 @@ export function useDashboardData(navigation) {
   const [alarmingCategoriesExpanded, setAlarmingCategoriesExpanded] = useState(false);
   const [bankAccounts, setBankAccounts] = useState([]);
   const [scheduledPaymentsData, setScheduledPaymentsData] = useState([]);
+  // Home: signature number, next card bill, goals summary
+  const [allowance, setAllowance] = useState(null);
+  const [nextStatement, setNextStatement] = useState(null);
+  const [goalsSummary, setGoalsSummary] = useState(null);
+  const [loaded, setLoaded] = useState(false);
 
   // Sheet state
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -111,22 +116,25 @@ export function useDashboardData(navigation) {
 
       setTimeout(() => {
         alert({
-          title: 'Crie seu orçamento mensal',
-          message: 'Você ainda não criou um orçamento para este mês. Crie um para acompanhar melhor seus gastos!',
+          title: t('dashboard.budgetReminder.title'),
+          message: t('dashboard.budgetReminder.message'),
           type: 'info',
           buttons: [
             {
-              text: 'Criar Agora',
+              text: t('dashboard.budgetReminder.createNow'),
               onPress: () => navigation.navigate('Mais', { screen: 'Budgets', params: { openWizard: true } }),
             },
-            { text: 'Mais tarde', onPress: () => {} },
+            {
+              text: t('dashboard.budgetReminder.later'),
+              onPress: () => { AsyncStorage.setItem(dismissedKey, 'true').catch(() => {}); },
+            },
           ],
         });
       }, 1000);
     } catch (error) {
       // silently ignored
     }
-  }, [organization, selectedMonth, alert, navigation]);
+  }, [organization, selectedMonth, alert, navigation, t]);
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -195,12 +203,12 @@ export function useDashboardData(navigation) {
       const totalScheduledPayments = billsData?.reduce((sum, bill) => sum + (bill.amount || 0), 0) || 0;
 
       setScheduledPaymentsData((billsData || []).map(bill => ({
-        label: bill.description || 'Sem descrição',
+        label: bill.description || t('transactions.noDescription'),
         value: bill.amount || 0,
         subtitle: [
-          bill.due_date ? formatBrazilDate(bill.due_date) : '',
-          bill.status === 'overdue' ? 'Vencida' : '',
-          bill.category?.name || '',
+          bill.due_date ? formatShortDate(bill.due_date) : '',
+          bill.status === 'overdue' ? t('dashboard.sheets.overdue') : '',
+          bill.category?.name ? categoryLabel(bill.category.name, t) : '',
         ].filter(Boolean).join(' · '),
         color: bill.category?.color || colors.warning.main,
         status: bill.status,
@@ -215,13 +223,6 @@ export function useDashboardData(navigation) {
         bankAccountsTotal: accountsBalance,
         scheduledPayments: totalScheduledPayments,
       });
-
-      // Recent transactions (top 5)
-      const orderedTransactions = orderTransactionsForDisplay([
-        ...(expensesData || []).map(e => ({ ...e, type: 'expense' })),
-        ...(incomesData || []).map(i => ({ ...i, type: 'income' })),
-      ]);
-      setRecentTransactions(orderedTransactions.slice(0, 5));
 
       // Fetch categories with colors
       const { data: categories } = await supabase
@@ -246,7 +247,7 @@ export function useDashboardData(navigation) {
         if (!categoryExpenseMap[categoryName]) categoryExpenseMap[categoryName] = [];
         categoryExpenseMap[categoryName].push({
           id: e.id,
-          description: e.description || 'Sem descrição',
+          description: e.description || t('transactions.noDescription'),
           amount,
           date: e.date,
           payment_method: e.payment_method,
@@ -255,8 +256,19 @@ export function useDashboardData(navigation) {
         });
       });
 
+      // Recent transactions (top 5), with the category name resolved
+      const orderedTransactions = orderTransactionsForDisplay([
+        ...(expensesData || []).map(e => ({
+          ...e,
+          type: 'expense',
+          category_name: e.budget_category_name || categoryMap[e.budget_category_id || e.category_id] || e.category || null,
+        })),
+        ...(incomesData || []).map(i => ({ ...i, type: 'income' })),
+      ]);
+      setRecentTransactions(orderedTransactions.slice(0, 5));
+
       const categoryArray = Object.entries(expensesByCategory)
-        .map(([label, value]) => ({ label, value, color: categoryColorMap[label] || '#6366F1' }))
+        .map(([name, value]) => ({ name, label: categoryLabel(name, t), value, color: categoryColorMap[name] || '#6366F1' }))
         .sort((a, b) => b.value - a.value);
 
       setCategoryData(categoryArray);
@@ -278,7 +290,7 @@ export function useDashboardData(navigation) {
             return {
               id: budget.id,
               category_id: budget.category_id,
-              category_name: budget.category?.name || 'Sem categoria',
+              category_name: categoryLabel(budget.category?.name, t),
               color: budget.category?.color || colors.brand.primary,
               macro_group: budget.category?.macro_group || 'needs',
               spent, limit,
@@ -296,15 +308,40 @@ export function useDashboardData(navigation) {
         setAllAlarmingCategories([]);
       }
 
+      // Home: signature number (only meaningful for the current month)
+      const isCurrentMonth = selectedMonth === getCurrentMonth();
+      setAllowance(isCurrentMonth ? computeDailyAllowance({
+        incomes: incomesData || [],
+        expenses: expensesData || [],
+        bills: billsData || [],
+        budgets: budgetsData || [],
+        today: new Date(),
+      }) : null);
+      setNextStatement(isCurrentMonth ? nextCardStatement(cards || [], expensesData || [], new Date()) : null);
+
+      if (isFeatureEnabled('goals')) {
+        const { data: goals } = await supabase
+          .from('financial_goals')
+          .select('id, current_amount, target_amount')
+          .eq('organization_id', organization.id);
+        const list = goals || [];
+        setGoalsSummary(list.length > 0 ? {
+          total: list.length,
+          done: list.filter(g => Number(g.target_amount) > 0 && Number(g.current_amount) >= Number(g.target_amount)).length,
+        } : null);
+      } else {
+        setGoalsSummary(null);
+      }
+
       // Group expenses by payment method
       const expensesByPayment = {};
       expensesData?.forEach((e) => {
-        const methodName = PAYMENT_METHOD_LABELS[e.payment_method || 'other'] || e.payment_method;
-        expensesByPayment[methodName] = (expensesByPayment[methodName] || 0) + (e.amount || 0);
+        const method = e.payment_method || 'other';
+        expensesByPayment[method] = (expensesByPayment[method] || 0) + (e.amount || 0);
       });
       setPaymentMethodData(
         Object.entries(expensesByPayment)
-          .map(([label, value]) => ({ label, value, color: PAYMENT_METHOD_COLORS[label] || '#6366F1' }))
+          .map(([method, value]) => ({ label: paymentMethodLabel(method), value, color: PAYMENT_METHOD_COLORS[method] || '#6366F1' }))
           .sort((a, b) => b.value - a.value)
           .slice(0, 6)
       );
@@ -389,7 +426,7 @@ export function useDashboardData(navigation) {
       // Group incomes by owner
       const incomesByOwner = {};
       incomesData?.forEach(i => {
-        const owner = i.owner_name || i.owner || 'Sem Responsável';
+        const owner = i.owner_name || i.owner || t('dashboard.sheets.noOwner');
         incomesByOwner[owner] = (incomesByOwner[owner] || 0) + (i.amount || 0);
       });
       setIncomeOwnerData(
@@ -418,14 +455,16 @@ export function useDashboardData(navigation) {
       });
       setIncomeCategoryData(
         Object.entries(incomesByCategory)
-          .map(([label, value]) => ({ label, value, color: incomeCategoryColorMap[label] || '#10B981' }))
+          .map(([name, value]) => ({ label: categoryLabel(name, t), value, color: incomeCategoryColorMap[name] || '#10B981' }))
           .sort((a, b) => b.value - a.value)
           .slice(0, 6)
       );
     } catch (error) {
       // silently ignored
+    } finally {
+      setLoaded(true);
     }
-  }, [organization, selectedMonth, colors, alarmingCategoriesExpanded]);
+  }, [organization, selectedMonth, colors, alarmingCategoriesExpanded, t, paymentMethodLabel]);
 
   const loadMonthlyComparison = useCallback(async () => {
     try {
@@ -433,7 +472,6 @@ export function useDashboardData(navigation) {
 
       const comparisonData = [];
       const [currentYear, currentMonth] = selectedMonth.split('-').map(Number);
-      const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
       for (let i = 5; i >= 0; i--) {
         let month = currentMonth - i;
@@ -467,7 +505,7 @@ export function useDashboardData(navigation) {
         const totalIncome = (incomesData || []).reduce((sum, i) => sum + (i.amount || 0), 0);
 
         comparisonData.push({
-          month: monthNames[month - 1],
+          month: formatMonthName(`${year}-${String(month).padStart(2, '0')}-01`, { short: false }),
           credit: creditExpenses / 1000,
           cash: cashExpenses / 1000,
           income: totalIncome / 1000,
@@ -483,7 +521,6 @@ export function useDashboardData(navigation) {
   useEffect(() => {
     if (organization) {
       loadDashboardData();
-      loadMonthlyComparison();
       checkBudgetExists();
     }
   }, [organization, selectedMonth]);
@@ -507,37 +544,36 @@ export function useDashboardData(navigation) {
 
     const expenses = (categoryExpensesMap[categoryName] || [])
       .sort((a, b) => new Date(b.date) - new Date(a.date));
-    const categoryEntry = categoryData.find(c => c.label === categoryName);
+    const categoryEntry = categoryData.find(c => c.name === categoryName || c.label === categoryName);
 
     const formattedData = expenses.map(expense => {
       const subtitleParts = [];
-      if (expense.date) subtitleParts.push(formatBrazilDayMonthShort(expense.date));
-      subtitleParts.push(PAYMENT_METHOD_LABELS[expense.payment_method] || PAYMENT_METHOD_LABELS.other);
+      if (expense.date) subtitleParts.push(formatDayMonthShort(expense.date));
+      subtitleParts.push(paymentMethodLabel(expense.payment_method));
       if (expense.card_id && cardLookup[expense.card_id]?.name) subtitleParts.push(cardLookup[expense.card_id].name);
       if (expense.cost_center_id && costCenterLookup[expense.cost_center_id]?.name) subtitleParts.push(costCenterLookup[expense.cost_center_id].name);
 
       return {
-        label: expense.description || 'Sem descrição',
+        label: expense.description || t('transactions.noDescription'),
         subtitle: subtitleParts.join(' • '),
         value: expense.amount || 0,
         color: categoryEntry?.color,
       };
     });
 
-    setSheetData({ title: `Despesas • ${categoryName}`, data: formattedData });
+    setSheetData({ title: t('dashboard.sheets.expensesIn', { category: categoryLabel(categoryName, t) }), data: formattedData });
     setSheetVisible(true);
-  }, [categoryExpensesMap, categoryData, cardLookup, costCenterLookup]);
+  }, [categoryExpensesMap, categoryData, cardLookup, costCenterLookup, t, paymentMethodLabel]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadDashboardData();
-    await loadMonthlyComparison();
     setRefreshing(false);
-  }, [loadDashboardData, loadMonthlyComparison]);
+  }, [loadDashboardData]);
 
   const openIncomeSheet = useCallback(() => {
     setSheetData({
-      title: 'Receitas por Responsável',
+      title: t('dashboard.sheets.incomeByPerson'),
       data: incomeOwnerData.map(item => ({
         label: item.label,
         value: item.value,
@@ -546,12 +582,12 @@ export function useDashboardData(navigation) {
       })),
     });
     setSheetVisible(true);
-  }, [incomeOwnerData, stats.totalIncome]);
+  }, [incomeOwnerData, stats.totalIncome, t]);
 
   const openExpenseSheet = useCallback(() => {
     const cashAmount = stats.totalExpenses - stats.cardsTotal;
     setDetailedSheetData({
-      title: 'Total de Despesas',
+      title: t('dashboard.sheets.totalExpenses'),
       type: 'expense',
       paymentBreakdown: { cash: cashAmount, credit: stats.cardsTotal },
       responsibleData: ownerData.map(item => ({
@@ -565,7 +601,7 @@ export function useDashboardData(navigation) {
       totalAmount: stats.totalExpenses,
     });
     setDetailedSheetVisible(true);
-  }, [stats, ownerData]);
+  }, [stats, ownerData, t]);
 
   return {
     // Data
@@ -573,6 +609,8 @@ export function useDashboardData(navigation) {
     selectedMonth, setSelectedMonth,
     refreshing, onRefresh,
     stats, recentTransactions,
+    allowance, nextStatement, goalsSummary, loaded,
+    loadMonthlyComparison,
     categoryData, paymentMethodData, ownerData,
     incomeOwnerData, incomeCategoryData,
     monthlyComparison,

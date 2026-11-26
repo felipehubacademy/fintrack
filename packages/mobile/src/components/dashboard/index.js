@@ -1,3 +1,3 @@
-export { BalanceHero } from './BalanceHero';
+export { SpendPerDayHero } from './SpendPerDayHero';
 export { RecentTransactions } from './RecentTransactions';
-export { BudgetAlerts } from './BudgetAlerts';
+export { TransactionRow, transactionCategoryName, paymentLabel } from './TransactionRow';
