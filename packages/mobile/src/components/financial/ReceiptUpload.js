@@ -14,6 +14,7 @@ import { Text, Caption } from '../ui/Text';
 import { Button } from '../ui/Button';
 import { supabase } from '../../services/supabase';
 import { useToast } from '../ui/Toast';
+import { useI18n } from '../../contexts/I18nContext';
 
 // Lazy import do ImagePicker para evitar erro se módulo nativo não estiver disponível
 let ImagePicker = null;
@@ -35,6 +36,7 @@ const getImagePicker = async () => {
 
 export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, organizationId, userId }) {
   const { showToast } = useToast();
+  const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   const [imageUri, setImageUri] = useState(initialImageUrl || null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -43,7 +45,7 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
     if (Platform.OS !== 'web') {
       const ImagePickerModule = await getImagePicker();
       if (!ImagePickerModule) {
-        showToast('Funcionalidade de imagem não disponível', 'error');
+        showToast(t('finances.receipt.unavailable'), 'error');
         return false;
       }
       const { status: cameraStatus } = await ImagePickerModule.requestCameraPermissionsAsync();
@@ -51,9 +53,9 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
 
       if (cameraStatus !== 'granted' || mediaStatus !== 'granted') {
         Alert.alert(
-          'Permissões necessárias',
-          'Permissões de câmera e galeria são necessárias para fazer upload de comprovantes.',
-          [{ text: 'OK' }]
+          t('finances.receipt.permissionTitle'),
+          t('finances.receipt.permissionMessage'),
+          [{ text: t('common.ok') }]
         );
         return false;
       }
@@ -64,7 +66,7 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
   const pickImageFromGallery = async () => {
     const ImagePickerModule = await getImagePicker();
     if (!ImagePickerModule) {
-      showToast('Funcionalidade de imagem não disponível', 'error');
+      showToast(t('finances.receipt.unavailable'), 'error');
       return;
     }
     const hasPermission = await requestPermissions();
@@ -83,14 +85,14 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
       }
     } catch (error) {
       console.error('Erro ao selecionar imagem:', error);
-      showToast('Erro ao selecionar imagem', 'error');
+      showToast(t('finances.receipt.pickError'), 'error');
     }
   };
 
   const takePhoto = async () => {
     const ImagePickerModule = await getImagePicker();
     if (!ImagePickerModule) {
-      showToast('Funcionalidade de imagem não disponível', 'error');
+      showToast(t('finances.receipt.unavailable'), 'error');
       return;
     }
     const hasPermission = await requestPermissions();
@@ -108,7 +110,7 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
       }
     } catch (error) {
       console.error('Erro ao tirar foto:', error);
-      showToast('Erro ao tirar foto', 'error');
+      showToast(t('finances.receipt.photoError'), 'error');
     }
   };
 
@@ -119,7 +121,7 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
 
   const uploadImage = async (uri) => {
     if (!organizationId || !userId) {
-      showToast('Organização ou usuário não encontrado', 'error');
+      showToast(t('common.errorTryAgain'), 'error');
       return;
     }
 
@@ -158,10 +160,10 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
         onUploadComplete(publicUrl, filePath);
       }
 
-      showToast('Comprovante enviado com sucesso!', 'success');
+      showToast(t('finances.receipt.uploaded'), 'success');
     } catch (error) {
       console.error('Erro ao fazer upload:', error);
-      showToast('Erro ao fazer upload do comprovante', 'error');
+      showToast(t('finances.receipt.uploadError'), 'error');
       setImageUri(null);
     } finally {
       setUploading(false);
@@ -178,19 +180,19 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
 
   const showImagePickerOptions = () => {
     Alert.alert(
-      'Selecionar Comprovante',
-      'Escolha uma opção',
+      t('finances.receipt.chooseTitle'),
+      t('finances.receipt.chooseMessage'),
       [
         {
-          text: 'Tirar Foto',
+          text: t('finances.receipt.takePhoto'),
           onPress: takePhoto,
         },
         {
-          text: 'Escolher da Galeria',
+          text: t('finances.receipt.fromGallery'),
           onPress: pickImageFromGallery,
         },
         {
-          text: 'Cancelar',
+          text: t('common.cancel'),
           style: 'cancel',
         },
       ],
@@ -204,7 +206,7 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
         <View style={styles.imageContainer}>
           <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
           {!uploading && (
-            <TouchableOpacity style={styles.removeButton} onPress={handleRemove}>
+            <TouchableOpacity style={styles.removeButton} onPress={handleRemove} accessibilityRole="button" accessibilityLabel={t('finances.receipt.remove')}>
               <X size={20} color={colors.background.primary} />
             </TouchableOpacity>
           )}
@@ -213,7 +215,7 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
           <View style={styles.progressContainer}>
             <ActivityIndicator size="small" color={colors.brand.primary} />
             <Caption color="secondary" style={{ marginLeft: spacing[1] }}>
-              Enviando... {uploadProgress}%
+              {t('finances.receipt.uploading', { progress: uploadProgress })}
             </Caption>
           </View>
         )}
@@ -228,13 +230,15 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
         onPress={showImagePickerOptions}
         disabled={uploading}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={t('finances.receipt.add')}
       >
         {uploading ? (
           <ActivityIndicator size="small" color={colors.brand.primary} />
         ) : (
           <>
             <Upload size={24} color={colors.brand.primary} />
-            <Text style={styles.uploadButtonText}>Adicionar Comprovante</Text>
+            <Text style={styles.uploadButtonText}>{t('finances.receipt.add')}</Text>
           </>
         )}
       </TouchableOpacity>
@@ -244,18 +248,20 @@ export function ReceiptUpload({ onUploadComplete, onRemove, initialImageUrl, org
           onPress={takePhoto}
           disabled={uploading}
           activeOpacity={0.7}
+          accessibilityRole="button"
         >
           <Camera size={20} color={colors.brand.primary} />
-          <Caption color="secondary">Tirar Foto</Caption>
+          <Caption color="secondary">{t('finances.receipt.takePhoto')}</Caption>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.optionButton}
           onPress={pickImageFromGallery}
           disabled={uploading}
           activeOpacity={0.7}
+          accessibilityRole="button"
         >
           <ImageIcon size={20} color={colors.brand.primary} />
-          <Caption color="secondary">Galeria</Caption>
+          <Caption color="secondary">{t('finances.receipt.gallery')}</Caption>
         </TouchableOpacity>
       </View>
     </View>

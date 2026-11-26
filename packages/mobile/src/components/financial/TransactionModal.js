@@ -16,8 +16,15 @@ import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { formatCurrency } from '@fintrack/shared/utils';
 import { useToast } from '../ui/Toast';
+import { useI18n } from '../../contexts/I18nContext';
+import { categoryLabel } from '../../utils/categoryLabel';
+import {
+  amountDecimalSeparator,
+  sanitizeAmountInput,
+  formatAmountInput,
+  parseAmountInput,
+} from './amountInput';
 import { ReceiptUpload } from './ReceiptUpload';
 import { useOrganization } from '../../hooks/useOrganization';
 
@@ -26,34 +33,18 @@ const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
 
 const { height } = Dimensions.get('window');
 
-const PAYMENT_OPTIONS = [
-  { id: 'credit_card', label: 'Cartão de Crédito' },
-  { id: 'debit_card', label: 'Cartão de Débito' },
-  { id: 'pix', label: 'PIX' },
-  { id: 'cash', label: 'Dinheiro' },
-  { id: 'bank_transfer', label: 'Transferência' },
-  { id: 'boleto', label: 'Boleto' },
-];
+const PAYMENT_IDS = ['credit_card', 'debit_card', 'pix', 'cash', 'bank_transfer', 'boleto'];
 
-const getOrganizationName = (organization) => organization?.name || 'Organização';
+const getOrganizationName = (organization, fallback) => organization?.name || fallback;
 
 const formatAmountForInput = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '';
   }
-  return Number(value).toFixed(2).replace('.', ',');
+  return formatAmountInput(Number(value));
 };
 
-const parseAmountValue = (value) => {
-  if (typeof value === 'number') return value;
-  if (!value) return 0;
-  const normalized = String(value)
-    .replace(/\s/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.');
-  const parsed = Number(normalized);
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
+const parseAmountValue = (value) => parseAmountInput(value);
 
 const buildDefaultSplits = (centers = []) => {
   if (!centers.length) return [];
@@ -94,7 +85,7 @@ const mapSplitsFromExpense = (splits = [], centers = [], amount = 0) => {
 
     return {
       cost_center_id: split.cost_center_id,
-      name: center?.name || 'Responsável',
+      name: center?.name || '—',
       color: center?.color,
       percentage: Number(percentage),
     };
@@ -133,6 +124,7 @@ const OptionSheet = ({
   onSelect,
   onClose,
 }) => {
+  const { t } = useI18n();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={onClose}>
@@ -148,7 +140,7 @@ const OptionSheet = ({
           >
             {options.length === 0 ? (
               <Caption color="secondary" style={{ textAlign: 'center', marginBottom: spacing[2] }}>
-                Nenhuma opção disponível
+                {t('bills.form.noOptions')}
               </Caption>
             ) : (
               options.map((option) => {
@@ -202,9 +194,14 @@ export function TransactionModal({
   // Safe area apenas no Android
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
   const { showToast } = useToast();
+  const { t, language, formatMoney, formatPercent, currencySymbol } = useI18n();
   const { user, organization: orgData } = useOrganization();
   const isExpense = type === 'expense';
-  const organizationName = getOrganizationName(organization || orgData);
+  const organizationName = getOrganizationName(organization || orgData, t('bills.family'));
+  const PAYMENT_OPTIONS = useMemo(
+    () => PAYMENT_IDS.map((id) => ({ id, label: t(`bills.paymentMethods.${id}`) })),
+    [t]
+  );
   const costCentersKey = useMemo(
     () => (costCenters || []).map((cc) => cc.id).join('|'),
     [costCenters]
@@ -258,23 +255,23 @@ export function TransactionModal({
     });
 
     return [...filtered].sort((a, b) =>
-      (a?.name || '').localeCompare(b?.name || '', 'pt-BR', { sensitivity: 'base' })
+      categoryLabel(a?.name || '').localeCompare(categoryLabel(b?.name || ''), language, { sensitivity: 'base' })
     );
-  }, [categories, type]);
+  }, [categories, type, language]);
 
   const categoryOptions = useMemo(() => {
     if (!filteredCategories.length) return [];
     return filteredCategories.map((cat) => ({
       id: cat.id,
-      label: cat.name,
+      label: categoryLabel(cat.name),
       description:
         cat.type === 'income'
-          ? 'Entrada'
+          ? t('finances.tx.categoryIncome')
           : cat.type === 'expense'
-            ? 'Despesa'
-            : 'Entradas e despesas',
+            ? t('finances.tx.categoryExpense')
+            : t('finances.tx.categoryBoth'),
     }));
-  }, [filteredCategories]);
+  }, [filteredCategories, t]);
 
   const selectedCategory = useMemo(() => {
     return filteredCategories.find((cat) => cat.id === formData.category_id) || null;
@@ -286,13 +283,13 @@ export function TransactionModal({
         .map((option) => ({
           id: option.id || option.name,
           label: option.name,
-          description: option.isShared ? 'Despesa compartilhada' : 'Responsável individual',
+          description: option.isShared ? t('finances.tx.sharedExpense') : t('finances.tx.individualOwner'),
           data: option,
         }))
         .sort((a, b) =>
-          (a?.label || '').localeCompare(b?.label || '', 'pt-BR', { sensitivity: 'base' })
+          (a?.label || '').localeCompare(b?.label || '', language, { sensitivity: 'base' })
         ),
-    [ownerOptions]
+    [ownerOptions, t, language]
   );
 
   const ownerSelectionId = useMemo(() => {
@@ -303,19 +300,19 @@ export function TransactionModal({
   }, [ownerEntries, formData.owner_name]);
 
   const selectedOwnerLabel = formData.owner_name
-    ? `${formData.owner_name}${formData.is_shared ? ' · Compartilhado' : ''}`
+    ? (formData.is_shared ? t('finances.tx.ownerShared', { name: formData.owner_name }) : formData.owner_name)
     : '';
 
   const paymentSelection = useMemo(
     () => PAYMENT_OPTIONS.find((option) => option.id === formData.payment_method) || null,
-    [formData.payment_method]
+    [formData.payment_method, PAYMENT_OPTIONS]
   );
 
   const cardEntries = useMemo(
     () =>
       (cards || []).map((card) => ({
         id: card.id,
-        label: card.name || 'Cartão',
+        label: card.name || t('closing.card'),
         description: [card.bank, card.last_four ? `•••• ${card.last_four}` : null]
           .filter(Boolean)
           .join(' • '),
@@ -512,46 +509,46 @@ export function TransactionModal({
 
   const handleSave = () => {
     if (!formData.description?.trim() || !formData.amount) {
-      showToast('Preencha a descrição e o valor', 'warning');
+      showToast(t('finances.tx.descriptionAndAmount'), 'warning');
       return;
     }
 
     if (!formData.owner_name) {
-      showToast('Selecione um responsável', 'warning');
+      showToast(t('finances.tx.ownerRequired'), 'warning');
       return;
     }
 
     const amountValue = parseAmountValue(formData.amount);
 
     if (!amountValue || amountValue <= 0) {
-      showToast('Valor inválido', 'warning');
+      showToast(t('finances.form.amountPositive'), 'warning');
       return;
     }
 
     if (formData.is_shared) {
       if (!formData.splits || formData.splits.length === 0) {
-        showToast('Configure a divisão entre os responsáveis', 'warning');
+        showToast(t('finances.tx.splitRequired'), 'warning');
         return;
       }
 
       if (Math.round(totalSplitPercentage) !== 100) {
-        showToast('A divisão deve somar exatamente 100%', 'warning');
+        showToast(t('closing.allocation.splitMustBe100'), 'warning');
         return;
       }
     }
 
     if (isExpense && !formData.category_id) {
-      showToast('Selecione uma categoria', 'warning');
+      showToast(t('finances.form.categoryRequired'), 'warning');
       return;
     }
 
     if (isCreditPayment) {
       if (!formData.card_id) {
-        showToast('Selecione o cartão', 'warning');
+        showToast(t('finances.tx.cardRequired'), 'warning');
         return;
       }
       if (!formData.installments || installmentsValue < 1) {
-        showToast('Defina o número de parcelas', 'warning');
+        showToast(t('finances.tx.installmentsRequired'), 'warning');
         return;
       }
     }
@@ -589,9 +586,9 @@ export function TransactionModal({
           {/* Header */}
           <View style={styles.header}>
             <Title2 weight="semiBold">
-              {transaction ? 'Editar' : 'Nova'} {type === 'income' ? 'Entrada' : 'Despesa'}
+              {t(`finances.tx.${transaction ? 'edit' : 'new'}${type === 'income' ? 'Income' : 'Expense'}`)}
             </Title2>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -609,57 +606,59 @@ export function TransactionModal({
             <View style={styles.form}>
               {/* Description */}
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Descrição *</Caption>
+                <Caption color="secondary" weight="medium">{t('finances.form.description')}</Caption>
                 <Input
                   value={formData.description}
                   onChangeText={(text) =>
                     setFormData((prev) => ({ ...prev, description: text }))
                   }
-                  placeholder="Ex: Mercado"
+                  placeholder={t('finances.tx.descriptionPlaceholder')}
+                  accessibilityLabel={t('finances.form.description')}
                   icon={<Tag size={20} color={colors.text.secondary} />}
                 />
               </View>
 
               {/* Amount */}
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Valor *</Caption>
+                <Caption color="secondary" weight="medium">{t('finances.form.amount')}</Caption>
                 <Input
                   value={formData.amount}
                   onChangeText={(text) => {
-                    // Permitir apenas números e vírgula/ponto
-                    const cleaned = text.replace(/[^0-9,.]/g, '');
+                    const cleaned = sanitizeAmountInput(text);
                     setFormData((prev) => ({ ...prev, amount: cleaned }));
                   }}
-                  placeholder="0,00"
+                  placeholder={`0${amountDecimalSeparator()}00`}
                   keyboardType="decimal-pad"
-                  icon={<Text style={styles.currencyIcon}>R$</Text>}
+                  accessibilityLabel={t('finances.form.amount')}
+                  icon={<Text style={styles.currencyIcon}>{currencySymbol()}</Text>}
                 />
               </View>
 
               {/* Date */}
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Data *</Caption>
+                <Caption color="secondary" weight="medium">{t('finances.form.date')}</Caption>
                 <Input
                   value={formData.date}
                   onChangeText={(text) =>
                     setFormData((prev) => ({ ...prev, date: text }))
                   }
-                  placeholder="AAAA-MM-DD"
+                  placeholder={t('finances.form.datePlaceholder')}
+                  accessibilityLabel={t('finances.form.date')}
                   icon={<Calendar size={20} color={colors.text.secondary} />}
                 />
               </View>
 
               {/* Category */}
               <SelectField
-                label="Categoria"
+                label={t('bills.form.category')}
                 value={
-                  selectedCategory?.name ||
-                  (formData.category_id ? 'Categoria indisponível' : '')
+                  (selectedCategory?.name && categoryLabel(selectedCategory.name)) ||
+                  (formData.category_id ? t('finances.tx.categoryUnavailable') : '')
                 }
                 placeholder={
                   filteredCategories.length === 0
-                    ? 'Carregando categorias...'
-                    : 'Selecionar categoria'
+                    ? t('common.loading')
+                    : t('finances.form.chooseCategory')
                 }
                 disabled={filteredCategories.length === 0}
                 onPress={() =>
@@ -669,12 +668,12 @@ export function TransactionModal({
 
               {/* Responsible */}
               <SelectField
-                label="Responsável"
+                label={t('bills.markPaidModal.owner')}
                 value={selectedOwnerLabel}
                 placeholder={
                   ownerEntries.length === 0
-                    ? 'Carregando responsáveis...'
-                    : 'Selecionar responsável'
+                    ? t('common.loading')
+                    : t('bills.markPaidModal.ownerPlaceholder')
                 }
                 disabled={ownerEntries.length === 0}
                 onPress={() => ownerEntries.length > 0 && openSheet('owner')}
@@ -684,16 +683,16 @@ export function TransactionModal({
                 <View style={styles.splitSection}>
                   <View style={styles.splitHeader}>
                     <Caption color="secondary" weight="medium">
-                      Divisão entre responsáveis
+                      {t('finances.tx.split')}
                     </Caption>
-                    <TouchableOpacity onPress={resetSplits} disabled={!costCenters.length}>
+                    <TouchableOpacity onPress={resetSplits} disabled={!costCenters.length} accessibilityRole="button">
                       <Caption
                         style={[
                           styles.resetSplits,
                           !costCenters.length && styles.resetSplitsDisabled,
                         ]}
                       >
-                        Usar padrão
+                        {t('finances.tx.useDefaultSplit')}
                       </Caption>
                     </TouchableOpacity>
                   </View>
@@ -704,7 +703,7 @@ export function TransactionModal({
                         <View style={styles.splitInfo}>
                           <Callout weight="medium">{split.name}</Callout>
                           <Caption color="secondary">
-                            {formatCurrency(
+                            {formatMoney(
                               (numericAmount * Number(split.percentage || 0)) / 100 || 0
                             )}
                           </Caption>
@@ -721,6 +720,7 @@ export function TransactionModal({
                             }
                             keyboardType="numeric"
                             placeholder="0"
+                            accessibilityLabel={t('finances.tx.splitA11y', { name: split.name })}
                             style={styles.splitPercentageInput}
                           />
                           <Text style={styles.percentSuffix}>%</Text>
@@ -729,7 +729,7 @@ export function TransactionModal({
                     ))
                   ) : (
                     <Caption color="tertiary">
-                      Cadastre responsáveis individuais para configurar a divisão.
+                      {t('finances.tx.splitNoMembers')}
                     </Caption>
                   )}
 
@@ -739,7 +739,7 @@ export function TransactionModal({
                       Math.round(totalSplitPercentage) !== 100 && styles.splitTotalError,
                     ]}
                   >
-                    Total: {totalSplitPercentage.toFixed(1).replace('.', ',')}%
+                    {t('closing.member.total', { amount: formatPercent(totalSplitPercentage / 100, { maximumFractionDigits: 1 }) })}
                   </Caption>
                 </View>
               )}
@@ -747,9 +747,9 @@ export function TransactionModal({
               {/* Payment Method */}
               {isExpense && (
                 <SelectField
-                  label="Forma de Pagamento"
+                  label={t('bills.form.paymentMethod')}
                   value={paymentSelection?.label || ''}
-                  placeholder="Selecionar forma de pagamento"
+                  placeholder={t('bills.form.paymentMethodPlaceholder')}
                   onPress={() => openSheet('payment')}
                 />
               )}
@@ -757,12 +757,12 @@ export function TransactionModal({
               {/* Card Selector */}
               {isExpense && formData.payment_method === 'credit_card' && (
                 <SelectField
-                  label="Cartão"
+                  label={t('bills.form.card')}
                   value={selectedCard?.name || ''}
                   placeholder={
                     cardEntries.length === 0
-                      ? 'Carregando cartões...'
-                      : 'Selecionar cartão'
+                      ? t('common.loading')
+                      : t('bills.form.cardPlaceholder')
                   }
                   disabled={cardEntries.length === 0}
                   onPress={() =>
@@ -773,7 +773,7 @@ export function TransactionModal({
 
               {isCreditPayment && (
                 <View style={styles.field}>
-                  <Caption color="secondary" weight="medium">Parcelas</Caption>
+                  <Caption color="secondary" weight="medium">{t('finances.tx.installments')}</Caption>
                   <Input
                     value={String(formData.installments || '')}
                     onChangeText={(text) => {
@@ -782,6 +782,7 @@ export function TransactionModal({
                     }}
                     placeholder="1"
                     keyboardType="number-pad"
+                    accessibilityLabel={t('finances.tx.installments')}
                   />
                 </View>
               )}
@@ -789,7 +790,7 @@ export function TransactionModal({
               {/* Receipt Upload - apenas para despesas */}
               {isExpense && (
                 <View style={styles.field}>
-                  <Caption color="secondary" weight="medium">Comprovante</Caption>
+                  <Caption color="secondary" weight="medium">{t('finances.tx.receipt')}</Caption>
                   <ReceiptUpload
                     initialImageUrl={formData.receipt_url}
                     organizationId={(organization || orgData)?.id}
@@ -810,13 +811,13 @@ export function TransactionModal({
           {/* Footer */}
           <View style={[styles.footer, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, spacing[4]) : spacing[4] }]}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               style={{ flex: 1 }}
             />
             <Button
-              title="Salvar"
+              title={t('common.save')}
               variant="primary"
               onPress={handleSave}
               style={{ flex: 1 }}
@@ -825,7 +826,7 @@ export function TransactionModal({
 
           <OptionSheet
             visible={activeSheet === 'category'}
-            title="Categorias"
+            title={t('finances.form.categories')}
             options={categoryOptions}
             selectedId={formData.category_id || null}
             onSelect={handleSelectCategoryOption}
@@ -834,7 +835,7 @@ export function TransactionModal({
 
           <OptionSheet
             visible={activeSheet === 'owner'}
-            title="Responsáveis"
+            title={t('bills.markPaidModal.ownerSheetTitle')}
             options={ownerEntries}
             selectedId={ownerSelectionId}
             onSelect={handleSelectOwnerOption}
@@ -843,7 +844,7 @@ export function TransactionModal({
 
           <OptionSheet
             visible={activeSheet === 'payment'}
-            title="Forma de Pagamento"
+            title={t('bills.form.paymentMethod')}
             options={PAYMENT_OPTIONS}
             selectedId={paymentSelection?.id || null}
             onSelect={handleSelectPaymentOption}
@@ -852,7 +853,7 @@ export function TransactionModal({
 
           <OptionSheet
             visible={activeSheet === 'card'}
-            title="Selecionar cartão"
+            title={t('bills.form.cardPlaceholder')}
             options={cardEntries}
             selectedId={formData.card_id || null}
             onSelect={handleSelectCardOption}
