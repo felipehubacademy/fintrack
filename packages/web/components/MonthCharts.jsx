@@ -34,9 +34,13 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
   const userCostCenter = costCenters.find(cc => cc.user_id === user?.id);
 
   // Pizza 1: Divisão por Categorias (com breakdown Individual vs Org apenas para Family)
+  const rawCategoryByName = {};
   const categoryData = (expenses || []).reduce((acc, expense) => {
     if (!expense) return acc;
-    const category = expense.category || 'Outros';
+    const rawCategory = expense.category || 'Outros';
+    // Group PT/EN/ES rows of the same default category under one name
+    const category = categoryName(rawCategory);
+    if (!rawCategoryByName[category]) rawCategoryByName[category] = rawCategory;
     
     if (!acc[category]) {
       acc[category] = { individual: 0, org: 0, total: 0 };
@@ -77,7 +81,7 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
       } else {
         value = data.total;
       }
-      return { name: categoryName(name), rawName: name, value, individual: data.individual, org: data.org };
+      return { name, rawName: rawCategoryByName[name] || name, value, individual: data.individual, org: data.org };
     })
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);

@@ -32,6 +32,9 @@ import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
 import TransactionModal from './TransactionModal';
 import { useI18n } from '../contexts/I18nContext';
+import { isFeatureEnabled, zulChatLink } from '@fintrack/shared/config';
+import WhatsAppIcon from './WhatsAppIcon';
+import { contactLine } from '../lib/contact';
 
 const SIDEBAR_EXPANDED_WIDTH = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 80;
@@ -129,25 +132,29 @@ export default function Header({
           id: 'insights',
           label: t('web.header.insights'),
           href: '/dashboard/insights',
-          icon: BarChart3
+          icon: BarChart3,
+          feature: 'insights'
         },
         {
           id: 'goals',
           label: t('web.header.goals'),
           href: '/dashboard/goals',
-          icon: Flag
+          icon: Flag,
+          feature: 'goals'
         },
         {
           id: 'investments',
           label: t('web.shared.investments'),
           href: '/dashboard/investments',
-          icon: TrendingUp
+          icon: TrendingUp,
+          feature: 'investments'
         },
         {
           id: 'closing',
           label: t('web.header.monthClose'),
           href: '/dashboard/closing',
-          icon: ClipboardCheck
+          icon: ClipboardCheck,
+          feature: 'closing'
         }
       ]
     },
@@ -163,7 +170,12 @@ export default function Header({
         }
       ]
     }
-  ]), []);
+  ])
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.feature || isFeatureEnabled(item.feature))
+    }))
+    .filter((section) => section.items.length > 0), []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -361,6 +373,16 @@ export default function Header({
             </div>
 
               <div className="ml-auto flex items-center gap-3">
+                <a
+                  href={zulChatLink(t('web.zul.greeting'))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-whatsapp px-3 sm:px-4 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-whatsapp focus-visible:ring-offset-2"
+                  aria-label={t('web.zul.logOnWhatsapp')}
+                >
+                  <WhatsAppIcon className="h-5 w-5" />
+                  <span className="hidden sm:inline">{t('web.zul.logOnWhatsapp')}</span>
+                </a>
                 {orgUser && organization && (
                   <NotificationBell
                     userId={orgUser.id}
@@ -395,7 +417,7 @@ export default function Header({
                             />
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-gray-900">{orgUser.name}</p>
-                              <p className="truncate text-xs text-gray-500">{orgUser.email}</p>
+                              <p className="truncate text-xs text-gray-500">{contactLine(orgUser)}</p>
                             </div>
                           </div>
                         </div>

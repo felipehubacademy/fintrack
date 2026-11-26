@@ -38,6 +38,7 @@ import {
 import Link from 'next/link';
 import { useI18n } from '../../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
+import { WhatsAppButton } from '../../components/ZulHint';
 
 export default function CardsDashboard() {
   const { t } = useI18n();
@@ -865,6 +866,7 @@ export default function CardsDashboard() {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('web.cards.noCardsYet')}</h3>
               <p className="text-gray-600 mb-6">{t('web.cards.textZulTv1500In')}</p>
+              <WhatsAppButton text={t('web.zul.exampleCard')} className="mb-3 sm:mb-0 sm:mr-3" />
               <Button 
                 onClick={openAddModal}
                 className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"

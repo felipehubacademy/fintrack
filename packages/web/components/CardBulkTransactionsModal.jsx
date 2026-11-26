@@ -10,7 +10,7 @@ import FileUploadButton from './FileUploadButton';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { useI18n } from '../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
-import { categoryName } from '../lib/categoryName';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
 
 const MAX_INSTALLMENTS = 24;
 
@@ -524,7 +524,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                         className={`w-full h-10 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${showInvalidState && !transaction.category_id ? 'border-red-300' : 'border-gray-300'} ${specialCategoryLock ? 'bg-gray-100 text-gray-500' : ''}`}
                       >
                         <option value="">{specialCategoryLock ? t('web.cardBulkTransactionsModal.autoCategory') : t('web.shared.category')}</option>
-                        {expenseCategories.map((category) => (
+                        {dedupeCategories(expenseCategories, [transaction.category_id]).map((category) => (
                           <option key={category.id} value={category.id}>
                             {categoryName(category.name)}
                           </option>

@@ -27,9 +27,13 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
   const canon = normalizeKey;
 
   // Pizza 1: Entradas por Categorias
+  const rawCategoryByName = {};
   const categoryData = (incomes || []).reduce((acc, income) => {
     if (!income) return acc;
-    const category = income.category || 'Outros';
+    const rawCategory = income.category || 'Outros';
+    // Group PT/EN/ES rows of the same default category under one name
+    const category = categoryName(rawCategory);
+    if (!rawCategoryByName[category]) rawCategoryByName[category] = rawCategory;
     if (!acc[category]) {
       acc[category] = 0;
     }
@@ -38,7 +42,7 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
   }, {});
 
   const categoryChartData = Object.entries(categoryData)
-    .map(([name, value]) => ({ name: categoryName(name), rawName: name, value }))
+    .map(([name, value]) => ({ name, rawName: rawCategoryByName[name] || name, value }))
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 

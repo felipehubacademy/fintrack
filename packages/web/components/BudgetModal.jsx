@@ -6,7 +6,7 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
 import { currencySymbol } from '@fintrack/shared/i18n';
-import { categoryName } from '../lib/categoryName';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
 
 const BudgetModal = ({ 
   isOpen, 
@@ -123,7 +123,7 @@ const BudgetModal = ({
                 required
               >
                 <option value="">{t('web.budgetModal.pickACategory')}</option>
-                {[...categories].sort((a, b) => a.name.localeCompare(b.name, appLocale())).map(category => (
+                {dedupeCategories(categories, [formData.category_id]).sort((a, b) => categoryName(a.name).localeCompare(categoryName(b.name), appLocale())).map(category => (
                   <option key={category.id} value={category.id}>
                     {categoryName(category.name)}
                   </option>

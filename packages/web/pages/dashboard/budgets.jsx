@@ -31,6 +31,7 @@ import { useI18n } from '../../contexts/I18nContext';
 import { t, formatMoney, currencySymbol } from '@fintrack/shared/i18n';
 import { appLocale } from '../../lib/utils';
 import { categoryName } from '../../lib/categoryName';
+import { WhatsAppButton } from '../../components/ZulHint';
 
 const MACRO_ORDER = ['needs', 'wants', 'investments'];
 const MACRO_LABELS = {
@@ -1233,6 +1234,7 @@ export default function BudgetsDashboard() {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('web.budgets.noBudgetsYet')}</h3>
               <p className="text-gray-600 mb-6">{t('web.budgets.textZulBudgetFood600')}</p>
+              <WhatsAppButton text={t('web.zul.exampleBudget')} className="mb-3 sm:mb-0 sm:mr-3" />
               <Button 
                 onClick={() => setShowBudgetWizard(true)}
                 className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"

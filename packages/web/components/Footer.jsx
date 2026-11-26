@@ -3,6 +3,7 @@ import Link from 'next/link';
 import SupportModal from './SupportModal';
 import { supabase } from '../lib/supabaseClient';
 import { useI18n } from '../contexts/I18nContext';
+import { visibleEmail } from '../lib/contact';
 
 export default function Footer() {
   const { t } = useI18n();
@@ -17,7 +18,7 @@ export default function Footer() {
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (authUser) {
-          setUserEmail(authUser.email || '');
+          setUserEmail(visibleEmail(authUser.email));
           
           // Buscar nome do usuário na tabela users
           const { data: userData } = await supabase

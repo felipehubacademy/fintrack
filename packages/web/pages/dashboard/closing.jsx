@@ -24,8 +24,11 @@ import {
 import { useI18n } from '../../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
 import { appLocale } from '../../lib/utils';
+import { isFeatureEnabled } from '@fintrack/shared/config';
+import ComingSoon from '../../components/ComingSoon';
+import { useI18n as useI18nGate } from '../../contexts/I18nContext';
 
-export default function MonthlyClosing() {
+function MonthlyClosing() {
   const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
@@ -1353,4 +1356,11 @@ export default function MonthlyClosing() {
       </Header>
     </>
   );
+}
+
+// Launch flag: when 'closing' is off, a direct URL shows a friendly "coming soon".
+export default function MonthlyClosingGate(props) {
+  const { t: tGate } = useI18nGate();
+  if (!isFeatureEnabled('closing')) return <ComingSoon title={tGate('web.header.monthClose')} />;
+  return <MonthlyClosing {...props} />;
 }

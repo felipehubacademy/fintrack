@@ -25,6 +25,9 @@ import {
   ArrowDownRight,
   LineChart
 } from 'lucide-react';
+import { isFeatureEnabled } from '@fintrack/shared/config';
+import ComingSoon from '../../components/ComingSoon';
+import { useI18n as useI18nGate } from '../../contexts/I18nContext';
 
 const INVESTMENT_TYPE_LABELS = {
   stocks: 'Ações',
@@ -44,7 +47,7 @@ const INVESTMENT_TYPE_ICONS = {
   other: '💰'
 };
 
-export default function InvestmentsDashboard() {
+function InvestmentsDashboard() {
   const router = useRouter();
   const { organization, user: orgUser, loading: orgLoading, error: orgError } = useOrganization();
   const { success, showError } = useNotificationContext();
@@ -498,4 +501,11 @@ export default function InvestmentsDashboard() {
       </Header>
     </>
   );
+}
+
+// Launch flag: when 'investments' is off, a direct URL shows a friendly "coming soon".
+export default function InvestmentsDashboardGate(props) {
+  const { t: tGate } = useI18nGate();
+  if (!isFeatureEnabled('investments')) return <ComingSoon title={tGate('web.shared.investments')} />;
+  return <InvestmentsDashboard {...props} />;
 }

@@ -19,6 +19,23 @@ export default {
     fullManualControlYouAdd: 'Full manual control. You add the starting balance and log movements yourself.',
     greatForAccountsWithoutOpen: 'Great for accounts without Open Finance',
   },
+  allowance: {
+    label: 'This month',
+    headline: 'You can spend {{amount}} a day until the {{dayOrdinal}}',
+    overTitle: 'This month\'s money is already committed',
+    overBody: 'Bills, card charges and budgets go {{amount}} over this month\'s income.',
+    income: 'Income',
+    committed: 'Spent and committed',
+    left: 'Left',
+    daysLeftLabel: 'Days left',
+    daysLeft_one: '{{count}} day',
+    daysLeft_other: '{{count}} days',
+    howItWorks: 'Income minus what you\'ve spent, card charges, bills still to pay and what\'s left in your budgets, split over the days left.',
+    soFarLabel: 'Spent so far this month',
+    monthSpentLabel: 'Spent this month',
+    noIncomeHint: 'Tell Zul what came in and you will see how much you can spend per day.',
+    incomeExample: 'got paid 3200 salary',
+  },
   authCallback: {
     signInLinkIsIncomplete: 'Sign-in link is incomplete',
     noSignInCodeFound: 'No sign-in code found',
@@ -521,6 +538,7 @@ export default {
     transfer: 'Transfer',
     income: 'Income',
     uncategorized: 'No category',
+    beauty: 'Beauty',
   },
   categoriesStep: {
     tip: 'Tip',
@@ -613,6 +631,11 @@ export default {
     thisMonth: 'this month',
     nothingForThisMonth: 'Nothing for this month',
     nothingLoggedFor: 'Nothing logged for {{p0}}',
+  },
+  comingSoon: {
+    badge: 'Coming soon',
+    body: 'We\'re still building this. Meanwhile Zul on WhatsApp handles your expenses, cards and bills.',
+    backHome: 'Back to home',
   },
   completionStep: {
     allSet: 'All set!',
@@ -1091,6 +1114,10 @@ export default {
     balanceByAccount: 'Balance by account',
     noBankAccountsYet: 'No bank accounts yet',
   },
+  homeEmpty: {
+    title: 'Nothing logged this month yet',
+    body: 'Send Zul what you spent, the way you would tell a friend. It shows up here right away.',
+  },
   horizontalBarChart: {
     now: 'Now:',
     average: 'Average:',
@@ -1244,6 +1271,10 @@ export default {
     contact: 'Contact',
     signIn: 'Sign in',
     getStarted: 'Get started',
+  },
+  localeSettings: {
+    title: 'Language and currency',
+    note: 'Saved in this browser. Currency changes how amounts are shown; it doesn\'t convert them.',
   },
   macroAreaChart: {
     day: 'Day {{label}}',
@@ -1450,6 +1481,9 @@ export default {
   privacyToggle: {
     onlyMine: 'Only mine',
     only: 'Only {{orgName}}',
+  },
+  profileExtra: {
+    phone: 'Phone',
   },
   profileModal: {
     invalidFormatUseJpgPng: 'Invalid format. Use JPG, PNG or WebP.',
@@ -1932,6 +1966,17 @@ export default {
     yourAccountIsInactiveTalk: 'Your account is inactive. Talk to your household admin.',
     couldnTCheckYourAccess: 'Couldn\'t check your access. Please try again.',
     accessDenied: 'Access denied',
+  },
+  zul: {
+    greeting: 'Hi Zul',
+    logOnWhatsapp: 'Log it on WhatsApp',
+    openWhatsapp: 'Open WhatsApp',
+    textZul: 'Text Zul:',
+    exampleExpense: 'coffee 8',
+    exampleBudget: 'budget food 600',
+    exampleCard: 'tv 1500 in 5x on Visa',
+    exampleBill: 'rent 1500 due on the 10th',
+    exampleGoal: 'goal trip 5000 by December',
   },
   zulFloatingButton: {
     heyHowCanIHelp: 'Hey {{firstName}}! 👋 How can I help today?',

@@ -29,8 +29,11 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
+import { isFeatureEnabled } from '@fintrack/shared/config';
+import ComingSoon from '../../components/ComingSoon';
+import { useI18n as useI18nGate } from '../../contexts/I18nContext';
 
-export default function InsightsPage() {
+function InsightsPage() {
   const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, budgetCategories, loading: orgLoading, error: orgError } = useOrganization();
@@ -593,3 +596,9 @@ export default function InsightsPage() {
   );
 }
 
+// Launch flag: when 'insights' is off, a direct URL shows a friendly "coming soon".
+export default function InsightsPageGate(props) {
+  const { t: tGate } = useI18nGate();
+  if (!isFeatureEnabled('insights')) return <ComingSoon title={tGate('web.header.insights')} />;
+  return <InsightsPage {...props} />;
+}

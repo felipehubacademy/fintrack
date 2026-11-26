@@ -19,6 +19,23 @@ export default {
     fullManualControlYouAdd: 'Control manual total. Agregas el saldo inicial y registras tus movimientos tú mismo.',
     greatForAccountsWithoutOpen: 'Ideal para cuentas sin Open Finance',
   },
+  allowance: {
+    label: 'Este mes',
+    headline: 'Puedes gastar {{amount}} al día hasta el {{day}}',
+    overTitle: 'El dinero del mes ya está comprometido',
+    overBody: 'Cuentas, tarjeta y presupuestos superan en {{amount}} el ingreso del mes.',
+    income: 'Ingresos',
+    committed: 'Gastado y comprometido',
+    left: 'Disponible',
+    daysLeftLabel: 'Días restantes',
+    daysLeft_one: '{{count}} día',
+    daysLeft_other: '{{count}} días',
+    howItWorks: 'Ingresos menos lo que ya gastaste, la tarjeta, las cuentas por pagar y lo que queda en tus presupuestos, dividido por los días que faltan.',
+    soFarLabel: 'Gastado en lo que va del mes',
+    monthSpentLabel: 'Gastado en el mes',
+    noIncomeHint: 'Cuéntale a Zul lo que te entró y verás cuánto puedes gastar por día.',
+    incomeExample: 'recibí 3200 sueldo',
+  },
   authCallback: {
     signInLinkIsIncomplete: 'El enlace de acceso está incompleto',
     noSignInCodeFound: 'No se encontró código de acceso',
@@ -521,6 +538,7 @@ export default {
     transfer: 'Transferencia',
     income: 'Ingresos',
     uncategorized: 'Sin categoría',
+    beauty: 'Belleza',
   },
   categoriesStep: {
     tip: 'Consejo',
@@ -613,6 +631,11 @@ export default {
     thisMonth: 'mes actual',
     nothingForThisMonth: 'Nada para este mes',
     nothingLoggedFor: 'No hay nada registrado para {{p0}}',
+  },
+  comingSoon: {
+    badge: 'Muy pronto',
+    body: 'Todavía lo estamos construyendo. Mientras tanto, Zul en WhatsApp se encarga de tus gastos, tarjetas y cuentas.',
+    backHome: 'Volver al inicio',
   },
   completionStep: {
     allSet: '¡Todo listo!',
@@ -1091,6 +1114,10 @@ export default {
     balanceByAccount: 'Saldo por cuenta',
     noBankAccountsYet: 'Aún no hay cuentas bancarias',
   },
+  homeEmpty: {
+    title: 'Aún no hay nada anotado este mes',
+    body: 'Mándale a Zul lo que gastaste, como se lo contarías a un amigo. Aparece aquí al instante.',
+  },
   horizontalBarChart: {
     now: 'Actual:',
     average: 'Promedio:',
@@ -1244,6 +1271,10 @@ export default {
     contact: 'Contacto',
     signIn: 'Entrar',
     getStarted: 'Empezar',
+  },
+  localeSettings: {
+    title: 'Idioma y moneda',
+    note: 'Se guarda en este navegador. La moneda cambia cómo se muestran los montos; no los convierte.',
   },
   macroAreaChart: {
     day: 'Día {{label}}',
@@ -1450,6 +1481,9 @@ export default {
   privacyToggle: {
     onlyMine: 'Solo mías',
     only: 'Solo {{orgName}}',
+  },
+  profileExtra: {
+    phone: 'Teléfono',
   },
   profileModal: {
     invalidFormatUseJpgPng: 'Formato no válido. Usa JPG, PNG o WebP.',
@@ -1932,6 +1966,17 @@ export default {
     yourAccountIsInactiveTalk: 'Tu cuenta está inactiva. Habla con el admin de tu hogar.',
     couldnTCheckYourAccess: 'No pudimos verificar tu acceso. Inténtalo de nuevo.',
     accessDenied: 'Acceso denegado',
+  },
+  zul: {
+    greeting: 'Hola Zul',
+    logOnWhatsapp: 'Anotar en WhatsApp',
+    openWhatsapp: 'Abrir WhatsApp',
+    textZul: 'Escríbele a Zul:',
+    exampleExpense: 'café 8',
+    exampleBudget: 'presupuesto comida 600',
+    exampleCard: 'tv 1500 en 5 cuotas con Visa',
+    exampleBill: 'alquiler 1500 vence el 10',
+    exampleGoal: 'meta viaje 5000 para diciembre',
   },
   zulFloatingButton: {
     heyHowCanIHelp: '¡Hola, {{firstName}}! 👋 ¿En qué te ayudo hoy?',

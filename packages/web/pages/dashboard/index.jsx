@@ -28,6 +28,9 @@ import {
   DollarSign
 } from 'lucide-react';
 import Header from '../../components/Header';
+import DailyAllowanceCard from '../../components/dashboard/DailyAllowanceCard';
+import ZulHint from '../../components/ZulHint';
+import { isWhatsAppCreatedUser } from '../../lib/contact';
 import { useI18n } from '../../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
 import { appLocale } from '../../lib/utils';
@@ -110,7 +113,11 @@ export default function DashboardHome() {
     if (!organization || !orgUser) {
       return;
     }
-
+    // Users Zul created on WhatsApp already set things up in the chat:
+    // let them straight into the dashboard.
+    if (isWhatsAppCreatedUser(orgUser)) {
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -723,6 +730,23 @@ export default function DashboardHome() {
       pageTitle={t('web.home.home')}
     >
       <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-4 md:py-8 space-y-4 md:space-y-8">
+        {/* Signature number: how much can be spent per day until month end */}
+        <DailyAllowanceCard
+          organizationId={organization?.id}
+          selectedMonth={selectedMonth}
+          income={totalIncomes}
+          spentOutsideCards={cashTotal + unknownMethodTotal}
+          cardDue={cardTotal}
+        />
+
+        {monthExpenses.length === 0 && monthIncomes.length === 0 && (
+          <section className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center">
+            <h3 className="text-lg font-semibold text-ink-900">{t('web.homeEmpty.title')}</h3>
+            <p className="mx-auto mt-1 mb-4 max-w-md text-sm text-ink-500">{t('web.homeEmpty.body')}</p>
+            <ZulHint text={t('web.zul.exampleExpense')} />
+          </section>
+        )}
+
         {/* Header Actions */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>

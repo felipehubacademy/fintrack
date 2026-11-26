@@ -30,6 +30,7 @@ import {
 import { useI18n } from '../../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
 import { categoryName } from '../../lib/categoryName';
+import ZulHint from '../../components/ZulHint';
 
 export default function BillsDashboard() {
   const { t } = useI18n();
@@ -1437,7 +1438,8 @@ export default function BillsDashboard() {
                     renderEmptyState={() => (
                 <div className="p-8 text-center">
                   <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">{t('web.bills.noBillsToPay')}</p>
+                  <p className="text-gray-600 mb-4">{t('web.bills.noBillsToPay')}</p>
+                  <ZulHint text={t('web.zul.exampleBill')} />
                 </div>
               )}
                   />

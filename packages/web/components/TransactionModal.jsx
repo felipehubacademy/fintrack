@@ -8,7 +8,7 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, appLocale, formatCurrencyInput } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
 import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
-import { categoryName } from '../lib/categoryName';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -981,7 +981,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
               >
                 <option value="">{t('web.shared.select')}</option>
-                {[...expenseCategories].sort((a, b) => a.name.localeCompare(b.name, appLocale())).map(cat => (
+                {dedupeCategories(expenseCategories, [form.category_id]).sort((a, b) => categoryName(a.name).localeCompare(categoryName(b.name), appLocale())).map(cat => (
                   <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                 ))}
               </select>

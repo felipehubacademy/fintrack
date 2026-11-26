@@ -6,7 +6,7 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, appLocale, formatCurrencyInput } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
 import { currencySymbol } from '@fintrack/shared/i18n';
-import { categoryName } from '../lib/categoryName';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
 
 export default function BankIncomeModal({ 
   isOpen, 
@@ -231,8 +231,8 @@ export default function BankIncomeModal({
                 disabled={saving}
               >
                 <option value="">{t('web.shared.select')}</option>
-                {incomeCategories
-                  .sort((a, b) => a.name.localeCompare(b.name, appLocale()))
+                {dedupeCategories(incomeCategories, [form.category_id])
+                  .sort((a, b) => categoryName(a.name).localeCompare(categoryName(b.name), appLocale()))
                   .map(cat => (
                     <option key={cat.id} value={cat.id}>
                       {categoryName(cat.name)}

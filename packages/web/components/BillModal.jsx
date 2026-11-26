@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 import { getBrazilToday, createBrazilDate, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
 import { t, currencySymbol } from '@fintrack/shared/i18n';
-import { categoryName } from '../lib/categoryName';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
 
 const PAYMENT_METHODS = [
   { value: 'pix', label: 'PIX' },
@@ -384,7 +384,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                   >
                     <option value="">{t('web.shared.select')}</option>
                     {categories.length > 0 ? (
-                      categories.map(cat => (
+                      dedupeCategories(categories, [formData.category_id]).map(cat => (
                         <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                       ))
                     ) : (

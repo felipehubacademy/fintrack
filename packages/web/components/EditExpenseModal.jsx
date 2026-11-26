@@ -8,7 +8,7 @@ import { useOrganization } from '../hooks/useOrganization';
 import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
 import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
-import { categoryName } from '../lib/categoryName';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -855,7 +855,7 @@ export default function EditExpenseModal({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
                   <option value="">{t('web.shared.select')}</option>
-                  {categories?.map(cat => (
+                  {dedupeCategories(categories, [editData.category_id]).map(cat => (
                     <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                   ))}
                 </select>

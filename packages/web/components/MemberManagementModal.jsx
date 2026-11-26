@@ -7,6 +7,7 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import ConfirmationModal from './ConfirmationModal';
 import HelpTooltip from './ui/HelpTooltip';
 import { useI18n } from '../contexts/I18nContext';
+import { contactLine } from '../lib/contact';
 
 export default function MemberManagementModal({ isOpen, onClose, organization, orgUser }) {
   const { t } = useI18n();
@@ -491,7 +492,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                             </div>
                             <div>
                               <div className="font-medium text-gray-900">{member.name}</div>
-                              <div className="text-sm text-gray-500">{member.email}</div>
+                              <div className="text-sm text-gray-500">{contactLine(member)}</div>
                             </div>
                           </div>
                           <div className="flex items-center space-x-3">

@@ -22,6 +22,7 @@ import { useI18n } from '../../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
 import { appLocale } from '../../lib/utils';
 import { categoryName } from '../../lib/categoryName';
+import { WhatsAppButton } from '../../components/ZulHint';
 
 export default function TransactionsDashboard() {
   const { t: tr } = useI18n();
@@ -2002,7 +2003,8 @@ export default function TransactionsDashboard() {
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
-              <p className="text-gray-600">{tr('web.transactions.nothingHereYetTextZul')}</p>
+              <p className="text-gray-600 mb-4">{tr('web.transactions.nothingHereYetTextZul')}</p>
+              <WhatsAppButton text={tr('web.zul.exampleExpense')} />
             </div>
           )}
                 />

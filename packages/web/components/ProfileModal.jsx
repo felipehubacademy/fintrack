@@ -8,6 +8,7 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import Avatar from './Avatar';
 import WhatsAppVerificationModal from './WhatsAppVerificationModal';
 import { useI18n } from '../contexts/I18nContext';
+import { contactLine, isPlaceholderEmail } from '../lib/contact';
 
 const AVATAR_BUCKET = 'avatar';
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
@@ -43,7 +44,7 @@ export default function ProfileModal({ isOpen, onClose }) {
     if (isOpen && orgUser) {
       setFormData({
         name: orgUser.name || '',
-        email: orgUser.email || '',
+        email: contactLine(orgUser),
         avatar_url: orgUser.avatar_url || null,
         cost_center_color: userCostCenter?.color || '#3B82F6'
       });
@@ -351,10 +352,10 @@ export default function ProfileModal({ isOpen, onClose }) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('web.shared.email')}
+                  {isPlaceholderEmail(orgUser?.email) ? t('web.profileExtra.phone') : t('web.shared.email')}
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   value={formData.email}
                   disabled
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"

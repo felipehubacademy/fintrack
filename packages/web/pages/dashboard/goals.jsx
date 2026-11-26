@@ -40,6 +40,9 @@ import {
 import { useI18n } from '../../contexts/I18nContext';
 import { t, formatMoney } from '@fintrack/shared/i18n';
 import { appLocale } from '../../lib/utils';
+import { isFeatureEnabled } from '@fintrack/shared/config';
+import ComingSoon from '../../components/ComingSoon';
+import { useI18n as useI18nGate } from '../../contexts/I18nContext';
 
 const GOAL_TYPES = {
   emergency_fund: {
@@ -74,7 +77,7 @@ const GOAL_TYPES = {
   }
 };
 
-export default function GoalsPage() {
+function GoalsPage() {
   const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, loading: orgLoading, error: orgError } = useOrganization();
@@ -702,6 +705,7 @@ export default function GoalsPage() {
               icon={Flag}
               title={t('web.goals.noGoalsYet')}
               description={t('web.goals.setWhatYouReSaving')}
+              zulText={t('web.zul.exampleGoal')}
               actionLabel={t('web.goals.createFirstGoal')}
               onAction={() => setShowGoalModal(true)}
               secondaryActionLabel={t('web.goals.seeTutorial')}
@@ -982,3 +986,9 @@ export default function GoalsPage() {
   );
 }
 
+// Launch flag: when 'goals' is off, a direct URL shows a friendly "coming soon".
+export default function GoalsPageGate(props) {
+  const { t: tGate } = useI18nGate();
+  if (!isFeatureEnabled('goals')) return <ComingSoon title={tGate('web.header.goals')} />;
+  return <GoalsPage {...props} />;
+}
