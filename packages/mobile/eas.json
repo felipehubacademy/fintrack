@@ -7,6 +7,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
       "ios": {
         "simulator": true
       },
@@ -15,11 +16,12 @@
       },
       "env": {
         "APP_ENV": "development",
-        "SENTRY_DSN": ""
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
       "ios": {
         "simulator": false
       },
@@ -28,11 +30,12 @@
       },
       "env": {
         "APP_ENV": "preview",
-        "SENTRY_DSN": ""
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
       "ios": {
         "simulator": false
       },
@@ -41,7 +44,7 @@
       },
       "env": {
         "APP_ENV": "production",
-        "SENTRY_DSN": ""
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },
@@ -49,12 +52,12 @@
     "production": {
       "ios": {
         "appleId": "felipe.xavier1987@gmail.com",
-        "ascAppId": "CONFIGURE_ME",
-        "appleTeamId": "CONFIGURE_ME"
+        "ascAppId": "FILL_ME_APP_STORE_CONNECT_APPLE_ID",
+        "appleTeamId": "FILL_ME_APPLE_TEAM_ID"
       },
       "android": {
-        "serviceAccountKeyPath": "./google-services.json",
-        "track": "internal"
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }

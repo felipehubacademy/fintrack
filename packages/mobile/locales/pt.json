@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "MeuAzulão",
+    "NSCameraUsageDescription": "O MeuAzulão usa a câmera para você fotografar um comprovante e anexar a um gasto.",
+    "NSPhotoLibraryUsageDescription": "O MeuAzulão abre suas fotos para você anexar um comprovante a um gasto ou escolher a foto do perfil."
+  },
+  "android": {
+    "app_name": "MeuAzulão"
+  }
+}

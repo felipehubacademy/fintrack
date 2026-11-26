@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "Zul",
+    "NSCameraUsageDescription": "Zul usa la cámara para que tomes una foto de un recibo y la adjuntes a un gasto.",
+    "NSPhotoLibraryUsageDescription": "Zul abre tus fotos para que adjuntes un recibo a un gasto o elijas tu foto de perfil."
+  },
+  "android": {
+    "app_name": "Zul"
+  }
+}
