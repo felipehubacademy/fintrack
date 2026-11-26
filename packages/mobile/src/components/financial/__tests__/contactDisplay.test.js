@@ -3,6 +3,8 @@ import {
   formatPhone,
   isPlaceholderEmail,
   phoneFromPlaceholderEmail,
+  publicEmail,
+  shortDisplayName,
 } from '../contactDisplay';
 
 describe('contactDisplay', () => {
@@ -32,5 +34,19 @@ describe('contactDisplay', () => {
     expect(displayContact({ email: placeholder, phone: '5511912345678' })).toBe('+55 (11) 91234-5678');
     expect(displayContact({ email: placeholder })).toBe('+55 (11) 98765-4321');
     expect(displayContact({ email: 'waX@phone.meuazulao.invalid' })).toBe('');
+  });
+
+  it('never prefills a placeholder email', () => {
+    expect(publicEmail(placeholder)).toBe('');
+    expect(publicEmail(' ana@example.com ')).toBe('ana@example.com');
+    expect(publicEmail(undefined)).toBe('');
+  });
+
+  it('builds a short name without the placeholder email', () => {
+    expect(shortDisplayName({ name: 'Ana Souza', email: placeholder })).toBe('Ana');
+    expect(shortDisplayName({ user_metadata: { full_name: 'Bia Lima' } })).toBe('Bia');
+    expect(shortDisplayName({ email: 'carla@example.com' })).toBe('carla');
+    expect(shortDisplayName({ email: placeholder })).toBe('');
+    expect(shortDisplayName(null)).toBe('');
   });
 });

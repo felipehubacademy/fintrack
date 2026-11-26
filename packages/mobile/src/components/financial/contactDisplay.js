@@ -37,3 +37,20 @@ export function displayContact({ email, phone } = {}) {
   const digits = phone || phoneFromPlaceholderEmail(email);
   return formatPhone(digits);
 }
+
+/** A real email to show or prefill, or '' for a WhatsApp placeholder. */
+export function publicEmail(email) {
+  if (typeof email !== 'string' || isPlaceholderEmail(email)) return '';
+  return email.trim();
+}
+
+/**
+ * Short name for greetings and avatars: the first name, else the part of a
+ * real email before the @. Never derived from a placeholder email.
+ */
+export function shortDisplayName(user) {
+  const fullName = String(user?.name || user?.user_metadata?.full_name || '').trim();
+  if (fullName) return fullName.split(/\s+/)[0];
+  const email = publicEmail(user?.email);
+  return email ? email.split('@')[0] : '';
+}

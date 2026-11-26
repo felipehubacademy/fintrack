@@ -8,6 +8,7 @@ import { Title2 } from '../ui/Text';
 import { NotificationBell } from '../ui/NotificationBell';
 import Logo from '../ui/Logo';
 import { useI18n } from '../../contexts/I18nContext';
+import { displayContact, shortDisplayName } from '../financial/contactDisplay';
 
 /**
  * ScreenHeader: consistent header for every screen.
@@ -26,11 +27,16 @@ export function ScreenHeader({
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
 
+  // WhatsApp accounts have a placeholder email: never show it.
+  const userFallback = t('dashboard.ui.user');
+  const avatarName = user?.name || displayContact({ email: user?.email, phone: user?.phone }) || userFallback;
+  const avatarInitial = (shortDisplayName(user) || userFallback).charAt(0).toUpperCase();
+
   const renderAvatar = () => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.avatarContainer}
       accessibilityRole="button"
-      accessibilityLabel={t('dashboard.ui.profileLabel', { name: user?.name || user?.email || t('dashboard.ui.user') })}
+      accessibilityLabel={t('dashboard.ui.profileLabel', { name: avatarName })}
       accessibilityHint={t('dashboard.ui.profileHint')}
     >
       {user?.avatar_url ? (
@@ -42,7 +48,7 @@ export function ScreenHeader({
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder]}>
           <Title2 weight="semiBold" style={{ color: colors.neutral[0], fontSize: 16 }}>
-            {user?.email?.[0]?.toUpperCase() || 'U'}
+            {avatarInitial}
           </Title2>
         </View>
       )}

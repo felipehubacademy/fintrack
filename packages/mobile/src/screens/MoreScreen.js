@@ -31,6 +31,7 @@ import { Text } from '../components/ui/Text';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { ProfileModal } from '../components/settings/ProfileModal';
 import { legalUrl } from '../components/settings/accountApi';
+import { shortDisplayName } from '../components/financial/contactDisplay';
 import { isFeatureEnabled } from '@fintrack/shared/config';
 import { buildMoreSections } from '../navigation/routes';
 
@@ -81,8 +82,8 @@ export default function MoreScreen({ navigation }) {
     return navigation.navigate(item.screen);
   };
 
-  const fullName = user?.name || user?.user_metadata?.full_name || '';
-  const firstName = fullName.split(' ')[0] || user?.email?.split('@')[0] || '';
+  // Never derived from a WhatsApp placeholder email (wa<digits>@phone...).
+  const firstName = shortDisplayName(user);
   const sections = buildMoreSections(t, isFeatureEnabled);
   const version = Constants.expoConfig?.version || '1.0.0';
 

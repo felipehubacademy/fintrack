@@ -21,15 +21,17 @@ import { useOrganization } from '../hooks/useOrganization';
 import { useToast } from '../components/ui/Toast';
 import { supabase } from '../services/supabase';
 import { APP_CONFIG } from '@fintrack/shared/constants';
+import { publicEmail } from '../components/financial/contactDisplay';
 
 export default function SupportScreen({ navigation }) {
   const { colors } = useTheme();
   const { t } = useI18n();
   const { user } = useOrganization();
   const { showToast } = useToast();
+  // WhatsApp accounts have a placeholder email; leave the field empty for them.
   const [formData, setFormData] = useState({
     name: user?.name || '',
-    email: user?.email || '',
+    email: publicEmail(user?.email),
     subject: '',
     message: '',
   });
@@ -88,7 +90,7 @@ export default function SupportScreen({ navigation }) {
 
       setFormData({
         name: user?.name || '',
-        email: user?.email || '',
+        email: publicEmail(user?.email),
         subject: '',
         message: '',
       });
