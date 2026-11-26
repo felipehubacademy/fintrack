@@ -1,3 +1,32 @@
 // goals strings (en). Keys are referenced as t('goals.<key>').
 export default {
+  title: 'Goals',
+  loading: 'Loading goals…',
+  overall: 'Overall progress',
+  reachedLabel_one: 'goal reached',
+  reachedLabel_other: 'goals reached',
+  saved: 'Saved',
+  target: 'Goal',
+  toGo: '{{amount}} to go',
+  reached: 'Goal reached!',
+  over: '{{amount}} over the goal',
+  deadline: 'By {{date}}',
+  add: 'New goal',
+  edit: 'Edit goal',
+  remove: 'Delete goal',
+  created: 'Goal created',
+  updated: 'Goal updated',
+  saveError: "Couldn't save the goal. Try again.",
+  delete: {
+    title: 'Delete goal',
+    message: 'Delete the goal "{{name}}"?',
+    done: 'Goal deleted',
+    error: "Couldn't delete the goal. Try again.",
+  },
+  empty: {
+    title: 'No goals yet',
+    body: 'Create a goal here, then keep texting Zul what you spend, like "{{example}}", to see what is left to save.',
+    example: 'lunch 25',
+    create: 'Create a goal',
+  },
 };
