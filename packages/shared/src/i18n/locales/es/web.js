@@ -865,6 +865,7 @@ export default {
     goalsHow2: 'Calculamos cuándo lo lograrás',
     goalsHow3: 'Agrega aportes y mira tu progreso al momento',
     goalsHow4: 'Recibe un aviso si necesitas acelerar',
+    startingBalance: 'Saldo inicial *',
   },
   footer: {
     meuazulaoAllRightsReserved: '© {{currentYear}} MeuAzulão. Todos los derechos reservados.',
@@ -1249,6 +1250,65 @@ export default {
     theyLlGetAnEmail: 'Recibirá un correo con los pasos para registrarse.',
     theirEmail: 'Su correo',
     nameEmailCom: 'nombre@correo.com',
+  },
+  landing: {
+    heroTitle: 'Lo mandas por WhatsApp y queda anotado.',
+    heroSubtitle: 'Tus gastos, tarjetas y cuotas en orden, sin hojas de cálculo.',
+    ctaPrimary: 'Escribirle a Zul por WhatsApp',
+    ctaSecondary: 'Abrir panel',
+    ctaNote: 'Sin app que instalar. Sin tarjeta.',
+    earlyAccessBadge: 'Acceso anticipado gratis hasta el {{date}}',
+    featuresTitle: 'Por qué la gente se queda',
+    featuresSubtitle: 'Todo pasa en el chat que ya abres todo el día.',
+    diff: {
+      understands: {
+        title: 'Te entiende y corrige con una palabra',
+        body: 'Escribe como hablas: "almuerzo 35 con visa". ¿Se equivocó? Responde "fueron 45" y listo.',
+      },
+      noBank: {
+        title: 'Sin claves del banco',
+        body: 'Nunca entregas claves del banco. Le cuentas a Zul lo que gastaste y listo.',
+      },
+      cards: {
+        title: 'Tarjetas y cuotas',
+        body: 'Mira cada resumen y cuántos meses de cuotas ya tienes comprometidos.',
+      },
+      couples: {
+        title: 'En pareja',
+        body: 'Compartan el hogar y los gastos, y lo personal sigue siendo personal.',
+      },
+      free: {
+        title: 'Bot y panel, gratis de verdad',
+        body: 'Ambos son gratis durante el acceso anticipado, hasta el {{date}}. Sin tarjeta.',
+      },
+      cancel: {
+        title: 'Cancela con un mensaje',
+        body: 'Sin llamadas ni formularios. Dile a Zul que quieres salir y listo.',
+      },
+      languages: {
+        title: 'Tres idiomas',
+        body: 'Español, inglés y portugués. Zul te responde en el tuyo.',
+      },
+    },
+    howTitle: 'Cómo funciona',
+    how1Title: 'Salúdalo a Zul',
+    how1Body: 'Toca el botón y manda "Hola Zul" por WhatsApp. Sin descargas ni formularios largos.',
+    how2Title: 'Manda lo que gastas',
+    how2Body: 'Basta un mensaje corto: monto, qué fue y cómo pagaste.',
+    how3Title: 'Mira a dónde fue',
+    how3Body: 'Abre el panel y mira tarjetas, cuentas, presupuestos y cuánto puedes gastar por día.',
+    finalTitle: 'Tu próximo gasto ya puede quedar anotado',
+    finalBody: 'Acceso anticipado gratis hasta el {{date}}.',
+    deleteAccount: 'Eliminar cuenta',
+    demo: {
+      online: 'en línea',
+      user1: 'almuerzo 35 con visa',
+      zul1: 'Anotado: Almuerzo, {{amount}} con Visa, en Comida.',
+      user2: 'fueron 45',
+      zul2: 'Corregido. Ahora son {{amount}}.',
+      user3: 'tv 3000 en 10 cuotas con visa',
+      zul3: 'Anotado: 10 cuotas de {{amount}}, ya contadas en los próximos meses.',
+    },
   },
   landingFooter: {
     moneySortedOnWhatsapp: 'Tu dinero en orden por WhatsApp',

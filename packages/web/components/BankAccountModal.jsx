@@ -318,7 +318,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
               {!account && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('web.bankAccountModal.startingBalance')}
+                    {t('web.fixes.startingBalance')}
                   </label>
                   <input
                     type="number"

@@ -47,7 +47,7 @@ export default function DeleteAccountModal({
                 {t('web.deleteAccountModal.thisCanTBeUndone')}
               </p>
               <p className="text-red-800 text-sm">
-                {t('web.deleteAccountModal.ifYouDeleteYourAccount')} <strong>{t('web.deleteAccountModal.allYourDataWillBe')}</strong> {t('web.deleteAccountModal.text')}
+                {t('web.deleteAccountModal.ifYouDeleteYourAccount')} <strong>{t('web.deleteAccountModal.allYourDataWillBe')}</strong>{/^[.,]/.test(t('web.deleteAccountModal.text')) ? '' : ' '}{t('web.deleteAccountModal.text')}
               </p>
               <p className="text-red-800 text-sm mt-3 font-medium">
                 {t('web.deleteAccountModal.thisCanTBeUndone2')}

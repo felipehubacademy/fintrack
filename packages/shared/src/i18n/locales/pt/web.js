@@ -865,6 +865,7 @@ export default {
     goalsHow2: 'A gente calcula quando você vai chegar lá',
     goalsHow3: 'Adicione contribuições e acompanhe o progresso na hora',
     goalsHow4: 'Receba um aviso se precisar acelerar',
+    startingBalance: 'Saldo inicial *',
   },
   footer: {
     meuazulaoAllRightsReserved: '© {{currentYear}} MeuAzulão. Todos os direitos reservados.',
@@ -1249,6 +1250,65 @@ export default {
     theyLlGetAnEmail: 'A pessoa receberá um email com instruções para se cadastrar.',
     theirEmail: 'Email do convidado',
     nameEmailCom: 'convidado@email.com',
+  },
+  landing: {
+    heroTitle: 'Mandou no Zap, tá anotado.',
+    heroSubtitle: 'Seu dinheiro organizado sem planilha, com cartão, parcelas e o casal no mesmo lugar.',
+    ctaPrimary: 'Chamar o Zul no WhatsApp',
+    ctaSecondary: 'Abrir painel',
+    ctaNote: 'Sem app pra instalar. Sem cartão de crédito.',
+    earlyAccessBadge: 'Acesso antecipado grátis até {{date}}',
+    featuresTitle: 'Por que o pessoal não larga',
+    featuresSubtitle: 'Tudo acontece no chat que você já abre o dia inteiro.',
+    diff: {
+      understands: {
+        title: 'Entende de primeira e corrige com uma palavra',
+        body: 'Escreva do seu jeito: "almoço 35 no nubank". Errou? Responda "foi 45" e pronto.',
+      },
+      noBank: {
+        title: 'Sem senha de banco',
+        body: 'Você nunca entrega senha de banco. Conta pro Zul o que gastou e pronto.',
+      },
+      cards: {
+        title: 'Cartão e parcelas',
+        body: 'Veja cada fatura e quantos meses de parcelas já estão comprometidos.',
+      },
+      couples: {
+        title: 'O casal junto',
+        body: 'Divida a casa e as despesas, e o que é só seu continua só seu.',
+      },
+      free: {
+        title: 'Bot e painel, grátis de verdade',
+        body: 'Os dois são grátis no acesso antecipado, até {{date}}. Sem cartão.',
+      },
+      cancel: {
+        title: 'Cancela com uma mensagem',
+        body: 'Sem ligação e sem formulário. Avise o Zul que quer sair e pronto.',
+      },
+      languages: {
+        title: 'Três idiomas',
+        body: 'Português, inglês e espanhol. O Zul responde no seu.',
+      },
+    },
+    howTitle: 'Como funciona',
+    how1Title: 'Dê um oi pro Zul',
+    how1Body: 'Toque no botão e mande "Oi Zul" no WhatsApp. Sem download, sem cadastro longo.',
+    how2Title: 'Mande o que gastou',
+    how2Body: 'Uma mensagem curta resolve: valor, o que foi e como pagou.',
+    how3Title: 'Veja pra onde foi',
+    how3Body: 'Abra o painel e veja cartões, contas, orçamentos e quanto ainda dá pra gastar por dia.',
+    finalTitle: 'Seu próximo gasto já pode ficar anotado',
+    finalBody: 'Acesso antecipado grátis até {{date}}.',
+    deleteAccount: 'Excluir conta',
+    demo: {
+      online: 'online',
+      user1: 'almoço 35 no nubank',
+      zul1: 'Anotado: Almoço, {{amount}} no Nubank, em Alimentação.',
+      user2: 'foi 45',
+      zul2: 'Corrigido. Agora são {{amount}}.',
+      user3: 'tv 3000 em 10x no nubank',
+      zul3: 'Anotado: 10 parcelas de {{amount}}, já contando nos próximos meses.',
+    },
   },
   landingFooter: {
     moneySortedOnWhatsapp: 'Controle Financeiro Inteligente',

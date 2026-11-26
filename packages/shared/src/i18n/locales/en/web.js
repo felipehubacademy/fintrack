@@ -865,6 +865,7 @@ export default {
     goalsHow2: 'We work out when you\'ll reach it',
     goalsHow3: 'Add money and watch your progress live',
     goalsHow4: 'Get a heads-up if you need to speed up',
+    startingBalance: 'Starting balance *',
   },
   footer: {
     meuazulaoAllRightsReserved: '© {{currentYear}} MeuAzulão. All rights reserved.',
@@ -1249,6 +1250,65 @@ export default {
     theyLlGetAnEmail: 'They\'ll get an email with steps to sign up.',
     theirEmail: 'Their email',
     nameEmailCom: 'name@email.com',
+  },
+  landing: {
+    heroTitle: 'Text it. Done.',
+    heroSubtitle: 'The budget app that lives in your WhatsApp: no bank logins, no spreadsheets.',
+    ctaPrimary: 'Text Zul on WhatsApp',
+    ctaSecondary: 'Open dashboard',
+    ctaNote: 'No app to install. No card needed.',
+    earlyAccessBadge: 'Free early access until {{date}}',
+    featuresTitle: 'Why people stick with it',
+    featuresSubtitle: 'Everything happens in the chat you already open all day.',
+    diff: {
+      understands: {
+        title: 'Understands you, fixes with one word',
+        body: 'Write like you talk: "lunch 35 on visa". Got it wrong? Reply "it was 45" and it is fixed.',
+      },
+      noBank: {
+        title: 'No bank login needed',
+        body: 'You never hand over bank passwords. You tell Zul what you spent and that is it.',
+      },
+      cards: {
+        title: 'Cards and installments',
+        body: 'See each card bill and how many months of installments are already committed.',
+      },
+      couples: {
+        title: 'Couples included',
+        body: 'Share a household, split expenses and still keep what is personal personal.',
+      },
+      free: {
+        title: 'Bot and dashboard, really free',
+        body: 'Both are free during early access, until {{date}}. No card needed.',
+      },
+      cancel: {
+        title: 'Cancel with one message',
+        body: 'No calls and no forms. Tell Zul you want out and you are out.',
+      },
+      languages: {
+        title: 'Three languages',
+        body: 'English, Portuguese and Spanish. Zul answers in yours.',
+      },
+    },
+    howTitle: 'How it works',
+    how1Title: 'Say hi to Zul',
+    how1Body: 'Tap the button and send "Hi Zul" on WhatsApp. No download, no sign-up form.',
+    how2Title: 'Text what you spend',
+    how2Body: 'A short message is enough: amount, what it was and how you paid.',
+    how3Title: 'See where it went',
+    how3Body: 'Open the dashboard for cards, bills, budgets and how much you can still spend each day.',
+    finalTitle: 'Your next expense can already be logged',
+    finalBody: 'Free early access until {{date}}.',
+    deleteAccount: 'Delete account',
+    demo: {
+      online: 'online',
+      user1: 'lunch 35 on visa',
+      zul1: 'Logged: Lunch, {{amount}} on Visa, in Food.',
+      user2: 'it was 45',
+      zul2: 'Fixed. Now it is {{amount}}.',
+      user3: 'tv 3000 in 10x on visa',
+      zul3: 'Logged: 10 installments of {{amount}}, already counted in the coming months.',
+    },
   },
   landingFooter: {
     moneySortedOnWhatsapp: 'Money, sorted on WhatsApp',
