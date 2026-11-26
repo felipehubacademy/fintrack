@@ -78,9 +78,9 @@ Atalhos no `package.json`: `npm run build:ios`, `npm run build:android`, `npm ru
 
 Observações:
 - **iOS:** o primeiro `eas build -p ios` pergunta se pode criar certificados e provisioning profile na sua conta Apple. Responda sim (o EAS guarda tudo).
-- **Android, primeira vez:** o Google não deixa a API enviar o primeiro build de um app novo. Baixe o `.aab` do primeiro build no site do Expo e faça upload **manual** em Play Console → Teste → Teste interno → Criar versão. Depois disso o `eas submit` funciona.
-- **Android, status `draft`:** o `eas.json` envia para a faixa `internal` como rascunho (`releaseStatus: draft`), porque app que nunca passou por revisão só aceita rascunho. Depois da primeira revisão aprovada, troque para `"completed"` para liberar automaticamente.
-- **Teste fechado → produção:** conta pessoal nova no Google Play precisa de teste fechado com **12 testadores por 14 dias seguidos** antes de pedir produção. Comece o teste fechado o quanto antes (dá para usar o mesmo build do teste interno).
+- **Android, primeira vez:** o Google não deixa a API enviar o primeiro build de um app novo. Baixe o `.aab` do primeiro build no site do Expo e faça upload **manual** em Play Console → Produção → Criar versão. Depois disso o `eas submit` funciona.
+- **Android, status `draft`:** o `eas.json` envia para a faixa `production` como rascunho (`releaseStatus: draft`). Nada vai ao ar até você clicar em "Enviar para revisão" no Play Console. Depois da primeira aprovação, dá para trocar para `"completed"`.
+- **Sem teste fechado:** a conta do Google Play é de empresa e já publica apps, então a regra de 12 testadores por 14 dias (só para contas pessoais novas) não se aplica. Android vai para produção junto com o iOS.
 
 ---
 
@@ -352,4 +352,4 @@ A tela 1 mostra o WhatsApp: use uma imagem real da conversa com o Zul (sem núme
 - [ ] `eas build` iOS e Android → testar no celular (login por código, excluir conta numa conta de teste)
 - [ ] Screenshots e gráfico de destaque
 - [ ] App Privacy (Apple) e Data safety (Google) conforme as tabelas
-- [ ] `eas submit` iOS → enviar para revisão · Android → primeiro upload manual no teste interno, depois teste fechado com 12 testadores por 14 dias
+- [ ] `eas submit` iOS → enviar para revisão · Android → primeiro upload manual na faixa de produção e envio para revisão no mesmo dia do iOS

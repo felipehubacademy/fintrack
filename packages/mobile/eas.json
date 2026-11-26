@@ -56,7 +56,7 @@
         "appleTeamId": "FILL_ME_APPLE_TEAM_ID"
       },
       "android": {
-        "track": "internal",
+        "track": "production",
         "releaseStatus": "draft"
       }
     }
