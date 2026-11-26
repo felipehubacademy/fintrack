@@ -52,7 +52,7 @@ export async function monthlySummary(ctx) {
   const byCat = new Map();
   for (const e of expenses) {
     const k = e.category_id || e.category || '?';
-    const cur = byCat.get(k) || { name: e.category || '—', total: 0 };
+    const cur = byCat.get(k) || { name: e.category || f.t('other_category'), total: 0 };
     cur.total += Number(e.amount || 0);
     byCat.set(k, cur);
   }
