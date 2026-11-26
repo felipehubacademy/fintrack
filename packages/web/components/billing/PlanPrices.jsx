@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { pricesFor, annualSavingsPercent } from '@fintrack/shared/billing';
+import { getFixedT, formatMoney as formatMoneyCore, localeTagFor } from '@fintrack/shared/i18n';
 import { useI18n } from '../../contexts/I18nContext';
 
 /**
@@ -6,10 +8,15 @@ import { useI18n } from '../../contexts/I18nContext';
  * "save N%" badge. Prices come from @fintrack/shared/billing in the
  * visitor's currency (anything without its own table is charged in USD).
  */
-export default function PlanPrices({ currency: currencyProp, compact = false, className = '' }) {
-  const { t, formatMoney, currency: localeCurrency } = useI18n();
-  const prices = pricesFor(currencyProp || localeCurrency);
-  const money = (v) => formatMoney(v, { currency: prices.currency });
+export default function PlanPrices({ currency: currencyProp, lang, compact = false, className = '' }) {
+  const i18n = useI18n();
+  // Public pages pass their own language (it may differ from the app's).
+  const fixedT = useMemo(() => (lang ? getFixedT(lang) : null), [lang]);
+  const t = fixedT || i18n.t;
+  const prices = pricesFor(currencyProp || i18n.currency);
+  const money = (v) => (lang
+    ? formatMoneyCore(v, { currency: prices.currency, locale: localeTagFor(lang) })
+    : i18n.formatMoney(v, { currency: prices.currency }));
   const savings = annualSavingsPercent(prices.currency);
   const pad = compact ? 'p-4' : 'p-6';
   const amountSize = compact ? 'text-2xl' : 'text-3xl sm:text-4xl';
