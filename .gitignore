@@ -64,3 +64,6 @@ SETUP_NEW_SUPABASE.md
 MIGRATION_COMPLETE.md
 SUPABASE_SETUP.md
 
+
+# Claude worktrees
+.claude/worktrees/
