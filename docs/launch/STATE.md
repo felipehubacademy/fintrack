@@ -47,5 +47,6 @@ Plano de produto: doc "MeuAzulão: plano de produto e lançamento".
 - **Web:** painel e landing em EN/PT/ES, moeda e datas do usuário, "pode gastar X por dia", botões do WhatsApp, login por código, privacidade, termos, página pública de exclusão, PWA.
 - **App:** tudo traduzido, home nova, login por código com e-mail de reserva, onboarding de 2 passos, Investimentos escondido por flag, exclusão de conta completa, configuração das lojas e manifesto de privacidade do iOS. 164 testes.
 - **Lojas:** iOS e Android para produção na mesma data (contas de empresa). Textos e respostas em `STORES.md`.
+- **Assinatura (modelo aprovado em 26/11):** 7 dias grátis sem cartão, Plus mensal ou anual, oferta do primeiro mês no dia 8. RevenueCat no app (App Store e Google Play) e link de pagamento web (Stripe) no WhatsApp e no site. Depois do teste, os dados continuam visíveis e novos registros pedem assinatura. Produtos, preços e templates em `BILLING.md`.
 
 O que depende do Felipe: `CHECKLIST_FELIPE.md`.
