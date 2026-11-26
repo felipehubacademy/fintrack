@@ -1,54 +1,31 @@
 /**
- * API: Mark All Notifications as Read
- * Marcar todas as notificações do usuário como lidas
+ * PUT /api/notifications/mark-all-read  (Authorization: Bearer <token>)
+ * Marks all of the caller's notifications as read.
  */
 
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { requireUser } from '../../../lib/apiAuth.js';
+import { getSupabaseAdmin } from '../../../lib/supabaseAdmin.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'PUT') {
-    return res.status(405).json({ error: 'Método não permitido' });
+    return res.status(405).json({ error: 'method_not_allowed' });
   }
 
+  const ctx = await requireUser(req, res);
+  if (!ctx) return;
+
   try {
-    const { user_id, organization_id } = req.body;
-
-    if (!user_id || !organization_id) {
-      return res.status(400).json({ 
-        error: 'user_id e organization_id são obrigatórios' 
-      });
-    }
-
-    // Marcar todas como lidas
-    const { data: notifications, error } = await supabase
+    let query = getSupabaseAdmin()
       .from('notifications')
-      .update({ 
-        read_at: new Date().toISOString() 
-      })
-      .eq('user_id', user_id)
-      .eq('organization_id', organization_id)
-      .is('read_at', null)
-      .select();
-
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', ctx.userId)
+      .is('read_at', null);
+    if (ctx.organizationId) query = query.eq('organization_id', ctx.organizationId);
+    const { data, error } = await query.select('id');
     if (error) throw error;
-
-    return res.status(200).json({
-      success: true,
-      message: `${notifications.length} notificações marcadas como lidas`,
-      count: notifications.length
-    });
-
+    return res.status(200).json({ success: true, count: (data || []).length });
   } catch (error) {
-    console.error('Erro ao marcar todas as notificações como lidas:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Erro interno do servidor',
-      message: error.message
-    });
+    console.error('[notifications/mark-all-read] failed:', error?.message || error);
+    return res.status(500).json({ success: false, error: 'internal_error' });
   }
 }

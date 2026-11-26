@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+import { requireCronSecret } from '../../../lib/apiAuth.js';
 import { getBrazilTodayString, getBrazilTomorrowString } from '../../../lib/dateUtils';
 
 // Criar cliente Supabase com service role para API routes
@@ -169,25 +170,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed', method: req.method });
   }
 
-  // Verificar autenticação via secret
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log('❌ [check-bills-due-tomorrow] Unauthorized: missing or invalid auth header');
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const token = authHeader.split(' ')[1];
-  const expectedSecret = process.env.CRON_SECRET;
-  
-  if (!expectedSecret) {
-    console.error('❌ [check-bills-due-tomorrow] CRON_SECRET não configurado no Vercel');
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-
-  if (token !== expectedSecret) {
-    console.log('❌ [check-bills-due-tomorrow] Invalid token');
-    return res.status(401).json({ error: 'Invalid token' });
-  }
+  // Cron only: Authorization: Bearer <CRON_SECRET> (constant-time compare)
+  if (!requireCronSecret(req, res)) return;
 
   console.log('✅ [check-bills-due-tomorrow] Autenticação OK, processando...');
 

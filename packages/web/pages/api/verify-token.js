@@ -1,20 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
+import { rateLimit } from '../../lib/apiAuth.js';
+import { supabaseAdmin as supabase } from '../../lib/supabaseAdmin.js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
+// Public route: the 256-bit single-use token from the WhatsApp link is the
+// credential. Rate limited per IP and format-checked before any lookup.
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+  if (!rateLimit(req, res, { key: 'verify-token', limit: 10, windowMs: 10 * 60_000 })) return;
 
   try {
-    const { token } = req.body;
+    const { token } = req.body || {};
 
-    if (!token) {
-      return res.status(400).json({ error: 'Token é obrigatório' });
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/i.test(token)) {
+      return res.status(400).json({ error: 'Link inválido ou expirado' });
     }
 
     // Buscar token válido
@@ -62,8 +61,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ 
       success: true,
-      message: 'Telefone verificado com sucesso!',
-      userId: verificationCode.user_id
+      message: 'Telefone verificado com sucesso!'
     });
 
   } catch (error) {

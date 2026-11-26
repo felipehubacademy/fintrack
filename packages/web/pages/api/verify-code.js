@@ -1,9 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { requireUser, rateLimit } from '../../lib/apiAuth.js';
+import { supabaseAdmin as supabase } from '../../lib/supabaseAdmin.js';
 
 // Função para enviar mensagem de boas-vindas via WhatsApp
 async function sendWelcomeMessage(phone, userName) {
@@ -53,28 +49,28 @@ async function sendWelcomeMessage(phone, userName) {
   return await response.json();
 }
 
+/**
+ * POST /api/verify-code  (Authorization: Bearer <token>)
+ * Body: { code }. Verifies the caller's own phone; userId in the body is
+ * ignored. Rate limited to slow down guessing of the 6-digit code.
+ */
 export default async function handler(req, res) {
-  // Headers para evitar cache e permitir CORS
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // Permitir preflight requests (CORS)
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const { userId, code } = req.body;
+  const ctx = await requireUser(req, res);
+  if (!ctx) return;
+  if (!rateLimit(req, res, { key: `verify-code:${ctx.userId}`, limit: 10, windowMs: 10 * 60_000 })) return;
 
-    if (!userId || !code) {
-      return res.status(400).json({ error: 'userId e code são obrigatórios' });
+  try {
+    const userId = ctx.userId;
+    const code = String(req.body?.code || '').trim();
+
+    if (!/^\d{4,8}$/.test(code)) {
+      return res.status(400).json({ error: 'Código inválido ou expirado' });
     }
 
     // Buscar código válido
@@ -90,9 +86,6 @@ export default async function handler(req, res) {
       .single();
 
     if (codeError || !verificationCode) {
-      console.error('❌ Erro ao buscar código:', codeError);
-      console.log('📝 Código digitado:', code);
-      console.log('👤 User ID:', userId);
       return res.status(400).json({ 
         error: 'Código inválido ou expirado',
         details: 'Verifique se digitou corretamente ou solicite um novo código'

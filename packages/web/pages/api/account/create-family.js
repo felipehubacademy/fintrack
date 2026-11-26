@@ -4,7 +4,8 @@
  */
 
 import { randomUUID } from 'crypto';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { supabaseAdmin } from '../../../lib/supabaseAdmin.js';
+import { rateLimit, isValidEmail, isShortText } from '../../../lib/apiAuth.js';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -52,10 +53,11 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
+  // Public sign-up route: per-IP rate limit + input validation.
+  if (!rateLimit(req, res, { key: 'create-account', limit: 5, windowMs: 10 * 60_000 })) return;
 
   try {
     const {
-      organizationId,
       organizationName,
       adminEmail,
       adminName,
@@ -64,14 +66,17 @@ export default async function handler(req, res) {
       inviteCode
     } = req.body ?? {};
 
-    if (!organizationName || !adminEmail || !adminName || !password) {
+    if (!isShortText(organizationName, 120) || !isValidEmail(adminEmail) || !isShortText(adminName, 120)
+      || typeof password !== 'string' || password.length < 6 || password.length > 128) {
       return res.status(400).json({
         error: 'organizationName, adminEmail, adminName e password são obrigatórios'
       });
     }
 
     const normalizedPhone = normalizePhone(adminPhone);
-    const orgId = organizationId || randomUUID();
+    // Always server-generated; never let the client pick (or collide with)
+    // an organization id.
+    const orgId = randomUUID();
     const redirectTo = `${SITE_URL}/auth/email-confirmed`;
 
     const { data: createdUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({

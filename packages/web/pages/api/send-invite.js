@@ -1,17 +1,31 @@
-import { supabase } from '../../lib/supabaseClient';
-import { supabaseAdmin } from '../../lib/supabaseAdmin';
+import { requireUser, rateLimit, isValidEmail, isShortText } from '../../lib/apiAuth.js';
+import { supabaseAdmin as supabase } from '../../lib/supabaseAdmin.js';
 
+/**
+ * POST /api/send-invite  (Authorization: Bearer <token>)
+ * Invites someone to the CALLER's organization. organizationId/invitedBy in
+ * the body are ignored (a different organizationId is rejected).
+ */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const { email, name, organizationId, invitedBy, role = 'member', splitPercentage = 50, color = '#6366F1' } = req.body;
+  const ctx = await requireUser(req, res);
+  if (!ctx) return;
+  if (!rateLimit(req, res, { key: `send-invite:${ctx.userId}`, limit: 10, windowMs: 60 * 60_000 })) return;
 
-    if (!email || !name || !organizationId || !invitedBy) {
-      return res.status(400).json({ 
-        error: 'Email, name, organizationId e invitedBy são obrigatórios' 
+  try {
+    const { email, name, role = 'member', splitPercentage = 50, color = '#6366F1' } = req.body || {};
+    if (req.body?.organizationId && req.body.organizationId !== ctx.organizationId) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    const organizationId = ctx.organizationId;
+    const invitedBy = ctx.userId;
+
+    if (!isValidEmail(email) || !isShortText(name, 120) || !organizationId) {
+      return res.status(400).json({
+        error: 'Email e name são obrigatórios'
       });
     }
 
@@ -95,7 +109,7 @@ export default async function handler(req, res) {
       default_split_percentage: splitPercentage,
       color: color
     });
-    const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/signup-invite?email=${email}&invite_code=${inviteCode}`;
+    const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br'}/signup-invite?email=${encodeURIComponent(email)}&invite_code=${inviteCode}`;
 
     // Deletar convites antigos/expirados deste email nesta organização
     console.log('🗑️ Removendo convites antigos para:', email);
