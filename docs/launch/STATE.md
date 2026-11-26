@@ -1,0 +1,41 @@
+# MeuAzulão: estado do app (26/11/2026)
+
+Auditoria feita no branch `claude/project-thread-ov5j5l`, a partir da `main` em `469b1df`.
+Plano de produto: doc "MeuAzulão: plano de produto e lançamento".
+
+## O que funciona
+
+| Parte | Estado |
+|---|---|
+| Web (`packages/web`, Next 14) | Compila. Lint passa (só avisos). |
+| Mobile (`packages/mobile`, Expo SDK 54, RN 0.81) | Empacota para iOS e Android (`expo export`). 67 testes passam. |
+| Backend do Zul (`packages/backend`, Vercel) | 17 testes passam (verificação do webhook, parser). |
+| Shared (`packages/shared`) | i18n novo + testes. |
+
+## O que estava quebrado e já foi corrigido neste branch
+
+- **CI vermelho em todo push:** `setup-node` com cache exige lockfile, e `package-lock.json` estava no `.gitignore`. Lockfiles agora versionados; CI usa `npm ci`, Node 22, sem `continue-on-error`, e agora roda testes do backend e do shared e empacota o app.
+- **Segredos no repositório** (removidos do código; continuam no histórico do git, por isso precisam ser trocados):
+  - Token de acesso do WhatsApp (`EAA…`) em `docs/WHATSAPP_CONFIG.md`.
+  - `CRON_SECRET` (hex de 64 caracteres, o "Generic Encryption Key" do GitGuardian) em `docs/archive/scripts/test-all-endpoints.sh`.
+  - Verify token do webhook era o literal público `fintrack_verify_token`.
+  - Chave anon do Supabase (pública por natureza; removida só por higiene).
+- **Dependências fora da versão do Expo SDK 54:** `expo-image-picker` 16 → 17, `react-native-gesture-handler`, `react-native-svg`.
+- **Metro:** `blacklistRE` não existe mais no Metro 0.87; virou `blockList`.
+- **Teste do CategoryIcon** não rodava (import profundo do phosphor).
+
+## Riscos e lacunas encontrados (a corrigir)
+
+- **Segurança da API web (crítico):** `pages/api/account/delete.js` apaga qualquer organização e usuário só com o id no corpo, sem checar quem pede. Mesmo padrão em `notifications/*`, `zul-chat`, `parse-transactions`, `auth/check-duplicates`, `interested-users/*`, `verify-token`.
+- **Exclusão de conta no app:** o celular apaga dados tabela por tabela, não remove o usuário do Auth e bloqueia admins ("requer ação no web"). A Apple exige exclusão completa dentro do app.
+- **Zul:** `zulAssistant.js` tem 4.929 linhas; cache de thread em memória (`threadCache`), debounce com `setTimeout` depois da resposta (não confiável em serverless), Graph API v18, tudo em português.
+- **Idiomas:** nada traduzido; `R$`/`pt-BR` fixos em ~200 lugares.
+- **Investimentos:** tela teve crash (import do Badge, corrigido na main), escondida por flag até decisão.
+- **Lojas:** `eas.json` com `ascAppId` e `appleTeamId` = `CONFIGURE_ME`; Android aponta para `./google-services.json` (não existe no repo); `owner` Expo `felipexavier_kid`; bundle id `com.meuazulao.app` nos dois.
+- **Workflows desligados pelo GitHub:** Daily Notifications e Cleanup Abandoned Conversations (inatividade).
+
+## Base criada para o lançamento
+
+- `@fintrack/shared/i18n`: `t()`, EN/PT/ES, moeda pelo país, `formatMoney`, `formatDate`, `parseMoney`; o `formatCurrency` antigo passou a seguir a moeda e o idioma do usuário. Teste de paridade garante que toda chave existe nos 3 idiomas.
+- `@fintrack/shared/config`: flags de lançamento (`investments: false`, `paywall: false`, ...) e `zulChatLink()` para os botões "Registrar no WhatsApp".
+- Mobile: `I18nProvider` / `useI18n()` no `App.js`.
