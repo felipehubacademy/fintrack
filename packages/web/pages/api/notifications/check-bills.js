@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabaseClient';
 import axios from 'axios';
+import { requireCronSecret } from '../../../lib/apiAuth.js';
 import { getBrazilTodayString } from '../../../lib/dateUtils';
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
@@ -73,16 +74,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verificar autenticação via secret
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const token = authHeader.split(' ')[1];
-  if (token !== process.env.CRON_SECRET) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
+  // Cron only: Authorization: Bearer <CRON_SECRET> (constant-time compare)
+  if (!requireCronSecret(req, res)) return;
 
   try {
     // Usar fuso horário do Brasil

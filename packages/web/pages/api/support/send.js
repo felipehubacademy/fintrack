@@ -1,52 +1,46 @@
-import { supabase } from '../../../lib/supabaseClient';
 import { APP_CONFIG } from '../../../lib/constants';
+import { getUserFromRequest, rateLimit, isValidEmail, isShortText } from '../../../lib/apiAuth.js';
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+// Public route (support form). Auth is optional: a valid bearer token only
+// adds the caller's ids to the email. Rate limited; user input is escaped.
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+  if (!rateLimit(req, res, { key: 'support', limit: 5, windowMs: 10 * 60_000 })) return;
 
   try {
-    const { name, email, subject, message } = req.body;
+    const body = req.body || {};
 
-    if (!name || !email || !subject || !message) {
-      return res.status(400).json({ 
-        error: 'Todos os campos são obrigatórios' 
+    if (!isShortText(body.name, 120) || !isShortText(body.subject, 200) || !isShortText(body.message, 5000)) {
+      return res.status(400).json({
+        error: 'Todos os campos são obrigatórios'
       });
     }
 
     // Validar email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ 
-        error: 'Email inválido' 
+    if (!isValidEmail(body.email)) {
+      return res.status(400).json({
+        error: 'Email inválido'
       });
     }
 
+    const name = escapeHtml(body.name.trim());
+    const email = body.email.trim();
+    const subject = escapeHtml(body.subject.trim());
+    const message = escapeHtml(body.message.trim()).replace(/\n/g, '<br>');
+
     // Buscar informações do usuário se estiver logado
-    const authHeader = req.headers.authorization;
-    let userId = null;
-    let organizationId = null;
-    let userRole = null;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      
-      if (!authError && user) {
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id, organization_id, role')
-          .eq('id', user.id)
-          .single();
-
-        if (!userError && userData) {
-          userId = userData.id;
-          organizationId = userData.organization_id;
-          userRole = userData.role;
-        }
-      }
-    }
+    const caller = await getUserFromRequest(req).catch(() => null);
+    const userId = caller?.userId || null;
+    const organizationId = caller?.organizationId || null;
+    const userRole = caller?.role || null;
 
     // Preparar conteúdo do email
     const emailHtml = `
@@ -92,8 +86,8 @@ export default async function handler(req, res) {
                   E-mail:
                 </p>
                 <p style="margin: 0 0 24px; color: #4b5563; font-size: 16px;">
-                  <a href="mailto:${email}" style="color: #207DFF; text-decoration: none;">
-                    ${email}
+                  <a href="mailto:${escapeHtml(email)}" style="color: #207DFF; text-decoration: none;">
+                    ${escapeHtml(email)}
                   </a>
                 </p>
               </div>

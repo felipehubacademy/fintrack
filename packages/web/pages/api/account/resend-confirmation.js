@@ -1,4 +1,11 @@
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+/**
+ * POST /api/account/resend-confirmation
+ * Public (the user cannot sign in before confirming). Rate limited and
+ * always answers the same way, so it cannot be used to probe which emails
+ * have accounts. Supabase ignores unknown or already-confirmed emails.
+ */
+
+import { rateLimit, isValidEmail } from '../../../lib/apiAuth.js';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://meuazulao.com.br';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,36 +15,17 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
+  if (!rateLimit(req, res, { key: 'resend-confirmation', limit: 3, windowMs: 10 * 60_000 })) return;
+
+  const { email } = req.body ?? {};
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: 'email é obrigatório' });
+  }
+  if (!SUPABASE_URL || !SERVICE_KEY) {
+    return res.status(500).json({ error: 'Configuração do Supabase ausente' });
+  }
 
   try {
-    const { email } = req.body ?? {};
-
-    if (!email) {
-      return res.status(400).json({ error: 'email é obrigatório' });
-    }
-
-    if (!SUPABASE_URL || !SERVICE_KEY) {
-      return res.status(500).json({
-        error: 'Configuração do Supabase ausente'
-      });
-    }
-
-    const { data: userList, error: listError } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1,
-      email
-    });
-
-    if (listError) {
-      throw listError;
-    }
-
-    const user = userList?.users?.[0];
-
-    if (!user) {
-      return res.status(404).json({ error: 'Usuário não encontrado' });
-    }
-
     const response = await fetch(`${SUPABASE_URL}/auth/v1/resend`, {
       method: 'POST',
       headers: {
@@ -47,29 +35,15 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         type: 'signup',
-        email,
+        email: email.trim(),
         redirect_to: `${SITE_URL}/auth/email-confirmed`
       })
     });
-
     if (!response.ok) {
-      const body = await response.text();
-      return res.status(500).json({
-        error: 'Falha ao reenviar e-mail de confirmação',
-        details: body
-      });
+      console.warn('[resend-confirmation] Supabase answered', response.status);
     }
-
-    return res.status(200).json({ success: true });
   } catch (err) {
-    console.error('❌ [API] Erro ao reenviar confirmação:', err);
-    return res.status(500).json({
-      success: false,
-      error: 'Erro interno ao reenviar confirmação',
-      details: err.message
-    });
+    console.error('[resend-confirmation] failed:', err?.message || err);
   }
+  return res.status(200).json({ success: true });
 }
-
-
-

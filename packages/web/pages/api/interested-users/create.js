@@ -3,12 +3,8 @@
  * Salvar interessado na lista de espera
  */
 
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { rateLimit, isShortText } from '../../../lib/apiAuth.js';
+import { supabaseAdmin as supabase } from '../../../lib/supabaseAdmin.js';
 
 // Normalizar telefone: remover formatação e adicionar código do Brasil (55)
 function normalizePhone(phone) {
@@ -17,19 +13,21 @@ function normalizePhone(phone) {
   return `55${digits}`; // Adiciona código do Brasil
 }
 
+// Public route: per-IP rate limit + strict input validation.
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
+  if (!rateLimit(req, res, { key: 'interested-users', limit: 5, windowMs: 10 * 60_000 })) return;
 
   try {
-    const { name, email, phone, account_type } = req.body;
+    const { name, email, phone, account_type } = req.body || {};
 
     // Validações
-    if (!name || !email || !phone || !account_type) {
-      return res.status(400).json({ 
+    if (!isShortText(name, 120) || typeof email !== 'string' || typeof phone !== 'string' || !account_type) {
+      return res.status(400).json({
         success: false,
-        error: 'Campos obrigatórios: name, email, phone, account_type' 
+        error: 'Campos obrigatórios: name, email, phone, account_type'
       });
     }
 
@@ -43,7 +41,7 @@ export default async function handler(req, res) {
 
     // Validar email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (email.length > 254 || !emailRegex.test(email)) {
       return res.status(400).json({ 
         success: false,
         error: 'Email inválido' 
@@ -123,7 +121,7 @@ export default async function handler(req, res) {
 
     return res.status(201).json({
       success: true,
-      interested_user: interestedUser,
+      interested_user: { id: interestedUser.id, position: interestedUser.position },
       position: position
     });
 
@@ -131,8 +129,7 @@ export default async function handler(req, res) {
     console.error('Erro ao criar interessado:', error);
     return res.status(500).json({
       success: false,
-      error: 'Erro interno do servidor',
-      message: error.message
+      error: 'Erro interno do servidor'
     });
   }
 }
