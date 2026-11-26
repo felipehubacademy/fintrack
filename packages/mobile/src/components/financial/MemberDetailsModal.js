@@ -12,24 +12,24 @@ import { colors, spacing, radius } from '../../theme';
 import { Text, Title2, Headline, Callout, Caption, Subheadline } from '../ui/Text';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { formatCurrency } from '@fintrack/shared/utils';
-import { formatBrazilDate } from '../../utils/date';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function MemberDetailsModal({ isOpen, onClose, member, transactions }) {
+  const { t, formatMoney: formatCurrency, formatDate: formatLocaleDate } = useI18n();
   if (!isOpen || !member) return null;
 
   const { allocations = [], cashExpenses = [], creditExpenses = [] } = transactions || {};
 
-  const formatDate = (dateString) => formatBrazilDate(dateString);
+  const formatDate = (dateString) => formatLocaleDate(dateString, 'short');
 
   const getPaymentMethod = (expense) => {
-    if (expense.payment_method === 'cash') return 'À Vista';
+    if (expense.payment_method === 'cash') return t('closing.stats.paidNow');
     if (expense.payment_method === 'credit' && expense.card_name) {
-      return `Crédito - ${expense.card_name}`;
+      return t('closing.member.creditCard', { card: expense.card_name });
     }
-    return 'Não especificado';
+    return t('closing.member.notSpecified');
   };
 
   // Agrupar transações por forma de pagamento
@@ -64,10 +64,10 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
             <View>
               <Title2 weight="bold">{member.name}</Title2>
               <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                Detalhamento de transações do mês
+                {t('closing.member.subtitle')}
               </Caption>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -85,7 +85,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
             <View style={styles.summaryGrid}>
               <Card style={[styles.summaryCard, { backgroundColor: colors.brand.bg }]}>
                 <Caption color="secondary" style={{ marginBottom: spacing[1] }} numberOfLines={1}>
-                  Aportes
+                  {t('closing.contributionsShort')}
                 </Caption>
                 <Headline weight="bold" style={{ color: colors.brand.primary }} numberOfLines={1} adjustsFontSizeToFit>
                   {formatCurrency(member.totals?.allocations || 0)}
@@ -93,7 +93,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
               </Card>
               <Card style={styles.summaryCard}>
                 <Caption color="secondary" style={{ marginBottom: spacing[1] }} numberOfLines={1}>
-                  Saídas Individuais
+                  {t('closing.member.individualSpending')}
                 </Caption>
                 <Headline weight="bold" numberOfLines={1} adjustsFontSizeToFit>
                   -{formatCurrency(individualOut)}
@@ -101,7 +101,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
               </Card>
               <Card style={styles.summaryCard}>
                 <Caption color="secondary" style={{ marginBottom: spacing[1] }} numberOfLines={1}>
-                  Saídas Compartilhadas
+                  {t('closing.member.sharedSpending')}
                 </Caption>
                 <Headline weight="bold" numberOfLines={1} adjustsFontSizeToFit>
                   -{formatCurrency(sharedOut)}
@@ -112,7 +112,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                 { backgroundColor: member.totals?.balance >= 0 ? colors.success.bg : colors.error.bg }
               ]}>
                 <Caption color="secondary" style={{ marginBottom: spacing[1] }} numberOfLines={1}>
-                  Saldo
+                  {t('closing.balanceShort')}
                 </Caption>
                 <Headline weight="bold" style={{
                   color: member.totals?.balance >= 0 ? colors.success.main : colors.error.main
@@ -128,7 +128,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                 <View style={styles.sectionHeader}>
                   <View style={[styles.sectionDot, { backgroundColor: colors.brand.primary }]} />
                   <Subheadline weight="semiBold">
-                    Aportes ({allocations.length})
+                    {t('closing.member.withCount', { label: t('closing.contributionsShort'), count: allocations.length })}
                   </Subheadline>
                 </View>
                 <Card>
@@ -148,7 +148,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                       </View>
                       <View style={styles.transactionRight}>
                         <Caption color="secondary" style={{ marginBottom: spacing[0.5] }} numberOfLines={1}>
-                          {allocation.allocation_target === 'individual' ? 'Individual' : 'Compartilhado'}
+                          {allocation.allocation_target === 'individual' ? t('closing.individual') : t('closing.shared')}
                         </Caption>
                         <Callout weight="bold" style={{ color: colors.brand.primary }} numberOfLines={1} adjustsFontSizeToFit>
                           {formatCurrency(allocation.amount)}
@@ -166,7 +166,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                 <View style={styles.sectionHeader}>
                   <View style={[styles.sectionDot, { backgroundColor: colors.text.secondary }]} />
                   <Subheadline weight="semiBold">
-                    Saídas Individuais ({cashExpenses.filter(e => e.isIndividual).length + creditExpenses.filter(e => e.isIndividual).length})
+                    {t('closing.member.withCount', { label: t('closing.member.individualSpending'), count: cashExpenses.filter(e => e.isIndividual).length + creditExpenses.filter(e => e.isIndividual).length })}
                   </Subheadline>
                 </View>
                 {(() => {
@@ -178,7 +178,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                   return Object.entries(groupedExpenses).map(([paymentMethod, expenses]) => (
                     <View key={paymentMethod} style={styles.paymentGroup}>
                       <Caption weight="semiBold" style={{ marginBottom: spacing[1], paddingHorizontal: spacing[2] }}>
-                        {paymentMethod} ({expenses.length})
+                        {t('closing.member.withCount', { label: paymentMethod, count: expenses.length })}
                       </Caption>
                       <Card>
                         {expenses.map((expense, idx) => (
@@ -205,7 +205,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                         <View style={[styles.transactionRow, styles.subtotalRow]}>
                           <View style={styles.transactionLeft}>
                             <Callout weight="semiBold" numberOfLines={1}>
-                              Subtotal
+                              {t('closing.member.subtotal')}
                             </Callout>
                           </View>
                           <Callout weight="bold" numberOfLines={1}>
@@ -225,7 +225,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                 <View style={styles.sectionHeader}>
                   <View style={[styles.sectionDot, { backgroundColor: colors.text.secondary }]} />
                   <Subheadline weight="semiBold">
-                    Saídas Compartilhadas ({cashExpenses.filter(e => e.isShared).length + creditExpenses.filter(e => e.isShared).length})
+                    {t('closing.member.withCount', { label: t('closing.member.sharedSpending'), count: cashExpenses.filter(e => e.isShared).length + creditExpenses.filter(e => e.isShared).length })}
                   </Subheadline>
                 </View>
                 {(() => {
@@ -237,7 +237,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                   return Object.entries(groupedExpenses).map(([paymentMethod, expenses]) => (
                     <View key={paymentMethod} style={styles.paymentGroup}>
                       <Caption weight="semiBold" style={{ marginBottom: spacing[1], paddingHorizontal: spacing[2] }}>
-                        {paymentMethod} ({expenses.length})
+                        {t('closing.member.withCount', { label: paymentMethod, count: expenses.length })}
                       </Caption>
                       <Card>
                         {expenses.map((expense, idx) => (
@@ -256,10 +256,10 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                             </View>
                             <View style={styles.transactionRight}>
                               <Caption color="secondary" style={{ marginBottom: spacing[0.5] }} numberOfLines={1}>
-                                Total: -{formatCurrency(expense.totalAmount || expense.amount)}
+                                {t('closing.member.total', { amount: formatCurrency(-(expense.totalAmount || expense.amount)) })}
                               </Caption>
                               <Callout weight="bold" numberOfLines={1} adjustsFontSizeToFit>
-                                Sua parte: -{formatCurrency(expense.memberShare || expense.amount)}
+                                {t('closing.member.share', { amount: formatCurrency(-(expense.memberShare || expense.amount)) })}
                               </Callout>
                             </View>
                           </View>
@@ -267,15 +267,15 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
                         <View style={[styles.transactionRow, styles.subtotalRow]}>
                           <View style={styles.transactionLeft}>
                             <Callout weight="semiBold" numberOfLines={1}>
-                              Subtotal
+                              {t('closing.member.subtotal')}
                             </Callout>
                           </View>
                           <View style={styles.transactionRight}>
                             <Caption color="secondary" style={{ marginBottom: spacing[0.5] }} numberOfLines={1}>
-                              Total: -{formatCurrency(expenses.reduce((sum, e) => sum + Number(e.totalAmount || e.amount || 0), 0))}
+                              {t('closing.member.total', { amount: formatCurrency(-expenses.reduce((sum, e) => sum + Number(e.totalAmount || e.amount || 0), 0)) })}
                             </Caption>
                             <Callout weight="bold" numberOfLines={1}>
-                              Sua parte: -{formatCurrency(expenses.reduce((sum, e) => sum + Number(e.memberShare || e.amount || 0), 0))}
+                              {t('closing.member.share', { amount: formatCurrency(-expenses.reduce((sum, e) => sum + Number(e.memberShare || e.amount || 0), 0)) })}
                             </Callout>
                           </View>
                         </View>
@@ -291,7 +291,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
              cashExpenses.length === 0 && 
              creditExpenses.length === 0 && (
               <View style={styles.emptyState}>
-                <Caption color="secondary">Nenhuma transação registrada neste mês.</Caption>
+                <Caption color="secondary">{t('closing.member.empty')}</Caption>
               </View>
             )}
           </ScrollView>
@@ -299,7 +299,7 @@ export default function MemberDetailsModal({ isOpen, onClose, member, transactio
           {/* Footer */}
           <View style={styles.footer}>
             <Button
-              title="Fechar"
+              title={t('common.close')}
               variant="outline"
               onPress={onClose}
               style={styles.footerButton}

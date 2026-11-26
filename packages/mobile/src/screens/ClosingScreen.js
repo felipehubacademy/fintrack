@@ -24,8 +24,8 @@ import MemberDetailsModal from '../components/financial/MemberDetailsModal';
 import PaymentAllocationModal from '../components/financial/PaymentAllocationModal';
 import { useOrganization } from '../hooks/useOrganization';
 import { supabase } from '../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
-import { formatBrazilMonthShort } from '../utils/date';
+import { useI18n } from '../contexts/I18nContext';
+import { ZulEmptyState } from '../components/financial/ZulEmptyState';
 
 const { width } = Dimensions.get('window');
 const STAT_CARD_WIDTH = (width - spacing[2] * 3) / 2.2;
@@ -33,6 +33,7 @@ const MEMBER_CARD_WIDTH = width * 0.85; // 85% da largura da tela para cada card
 
 export default function ClosingScreen() {
   const { colors } = useTheme();
+  const { t, formatMoney: formatCurrency, formatDate: formatLocaleDate } = useI18n();
   const { organization, user, costCenters, loading: orgLoading, isSoloUser } = useOrganization();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -429,7 +430,7 @@ export default function ClosingScreen() {
 
       monthAllocations.forEach((allocation) => {
         const amount = Number(allocation.amount || 0);
-        const bank_account_name = allocation.bank_account?.name || 'Conta não informada';
+        const bank_account_name = allocation.bank_account?.name || t('closing.noAccount');
         
         if (allocation.ownership_type === 'member' && allocation.cost_center_id && memberTransactionsMap.has(allocation.cost_center_id)) {
           memberTransactionsMap.get(allocation.cost_center_id).allocations.push({
@@ -485,7 +486,7 @@ export default function ClosingScreen() {
       monthCreditCharges.forEach((expense) => {
         const amount = Number(expense.amount || 0);
         const card = activeCreditCards.find(c => c.id === expense.card_id);
-        const cardName = card ? card.name : 'Cartão';
+        const cardName = card ? card.name : t('closing.card');
         
         if (expense.cost_center_id && memberTransactionsMap.has(expense.cost_center_id)) {
           memberTransactionsMap.get(expense.cost_center_id).creditExpenses.push({
@@ -619,7 +620,7 @@ export default function ClosingScreen() {
 
         return {
           key: `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`,
-          label: formatBrazilMonthShort(new Date(targetYear, targetMonthIndex, 1)),
+          monthStart: `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}-01`,
           allocations: allocationsTotal,
           cash: cashTotalRange,
           credit: creditTotalRange,
@@ -692,7 +693,7 @@ export default function ClosingScreen() {
   };
 
   if (orgLoading || loading) {
-    return <LoadingLogo fullScreen message="Carregando fechamento..." />;
+    return <LoadingLogo fullScreen message={t('common.loading')} />;
   }
 
   const totalBalance = data.balance;
@@ -718,7 +719,7 @@ export default function ClosingScreen() {
     <View style={styles.container}>
       <ScreenHeader
         user={user}
-        title="Fechamento"
+        title={t('closing.title')}
         showLogo={true}
         rightIcon={<Plus size={24} color={colors.text.secondary} />}
         onRightIconPress={() => setShowAllocationModal(true)}
@@ -750,14 +751,14 @@ export default function ClosingScreen() {
             decelerationRate="fast"
           >
             <StatCard
-              label="Total de Aportes"
+              label={t('closing.stats.contributions')}
               value={formatCurrency(totalAllocations)}
               icon={<TrendingUp size={20} color={colors.brand.primary} />}
               variant="success"
               style={{ width: STAT_CARD_WIDTH }}
               onPress={() => {
                 setSheetData({
-                  title: 'Aportes por Responsável',
+                  title: t('closing.stats.contributionsByMember'),
                   data: memberSummaries.map(m => ({
                     label: m.name,
                     value: m.totals.allocations,
@@ -771,24 +772,24 @@ export default function ClosingScreen() {
               }}
             />
             <StatCard
-              label="Total de Saídas"
+              label={t('closing.stats.spending')}
               value={formatCurrency(totalExpense)}
               icon={<TrendingDown size={20} color={colors.error.main} />}
               variant="expense"
               style={{ width: STAT_CARD_WIDTH }}
               onPress={() => {
                 setSheetData({
-                  title: 'Saídas por Forma de Pagamento',
+                  title: t('closing.stats.spendingByMethod'),
                   data: [
-                    { label: 'À vista', value: totalCash, color: colors.text.primary, percentage: cashPercentage },
-                    { label: 'Faturas no mês', value: totalCredit, color: colors.text.secondary, percentage: creditPercentage },
+                    { label: t('closing.stats.paidNow'), value: totalCash, color: colors.text.primary, percentage: cashPercentage },
+                    { label: t('closing.stats.cardStatementsThisMonth'), value: totalCredit, color: colors.text.secondary, percentage: creditPercentage },
                   ],
                 });
                 setSheetVisible(true);
               }}
             />
             <StatCard
-              label="Faturas de Cartão"
+              label={t('closing.stats.cardStatements')}
               value={formatCurrency(totalCredit)}
               icon={<CreditCard size={20} color={colors.text.secondary} />}
               variant="neutral"
@@ -796,7 +797,7 @@ export default function ClosingScreen() {
               onPress={() => {
                 if (data.creditInvoices && data.creditInvoices.length > 0) {
                   setSheetData({
-                    title: 'Faturas por Cartão',
+                    title: t('closing.stats.statementsByCard'),
                     data: data.creditInvoices.map(invoice => ({
                       label: invoice.cardName,
                       value: invoice.total,
@@ -811,7 +812,7 @@ export default function ClosingScreen() {
               }}
             />
             <StatCard
-              label="Saldo Final"
+              label={t('closing.stats.finalBalance')}
               value={formatCurrency(totalBalance)}
               icon={totalBalance >= 0 
                 ? <DollarSign size={20} color={colors.success.main} /> 
@@ -821,11 +822,11 @@ export default function ClosingScreen() {
               style={{ width: STAT_CARD_WIDTH }}
               onPress={() => {
                 setSheetData({
-                  title: 'Composição do Saldo',
+                  title: t('closing.stats.balanceBreakdown'),
                   data: [
-                    { label: 'Total de Aportes', value: totalAllocations, color: colors.success.main },
-                    { label: 'Total de Saídas', value: -totalExpense, color: colors.error.main },
-                    { label: 'Saldo Final', value: totalBalance, color: totalBalance >= 0 ? colors.success.main : colors.error.main },
+                    { label: t('closing.stats.contributions'), value: totalAllocations, color: colors.success.main },
+                    { label: t('closing.stats.spending'), value: -totalExpense, color: colors.error.main },
+                    { label: t('closing.stats.finalBalance'), value: totalBalance, color: totalBalance >= 0 ? colors.success.main : colors.error.main },
                   ],
                 });
                 setSheetVisible(true);
@@ -840,14 +841,14 @@ export default function ClosingScreen() {
             <View style={styles.sectionHeader}>
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[1], marginBottom: spacing[0.5] }}>
-                  <Subheadline weight="semiBold">Responsabilidade por membro</Subheadline>
+                  <Subheadline weight="semiBold">{t('closing.members.title')}</Subheadline>
                   <Tooltip
-                    title="Responsabilidade por membro"
-                    content="Aportes e saídas atribuídas a cada responsável no mês. Toque para ver detalhes das transações."
+                    title={t('closing.members.title')}
+                    content={t('closing.members.tooltip')}
                   />
                 </View>
                 <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                  Aportes e saídas atribuídas a cada responsável no mês.
+                  {t('closing.members.subtitle')}
                 </Caption>
               </View>
             </View>
@@ -875,6 +876,8 @@ export default function ClosingScreen() {
                   activeOpacity={0.7}
                   onPress={() => handleMemberClick(summary)}
                   style={{ width: MEMBER_CARD_WIDTH, marginRight: spacing[2] }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('closing.members.cardA11y', { name: summary.name, amount: formatCurrency(balanceMember) })}
                 >
                   <Card style={styles.memberCard}>
                     <View style={styles.memberHeader}>
@@ -882,28 +885,28 @@ export default function ClosingScreen() {
                         <View style={[styles.memberDot, { backgroundColor: summary.color }]} />
                         <Callout weight="semiBold">{summary.name}</Callout>
                       </View>
-                      <Caption color="tertiary" style={{ fontSize: 10 }}>Toque para detalhes</Caption>
+                      <Caption color="tertiary" style={{ fontSize: 10 }}>{t('closing.members.tapForDetails')}</Caption>
                     </View>
 
                     {/* Individual */}
                     <View style={styles.memberSection}>
                       <View style={styles.memberSectionHeader}>
-                        <Caption weight="medium" style={{ color: colors.brand.primary }}>Individual</Caption>
+                        <Caption weight="medium" style={{ color: colors.brand.primary }}>{t('closing.individual')}</Caption>
                       </View>
                       <View style={styles.memberRow}>
-                        <Caption color="secondary">Aportes</Caption>
+                        <Caption color="secondary">{t('closing.contributionsShort')}</Caption>
                         <Callout weight="semiBold" style={{ color: colors.brand.primary }}>
                           {allocationsIndividual > 0 ? '+' : ''}{formatCurrency(allocationsIndividual)}
                         </Callout>
                       </View>
                       <View style={styles.memberRow}>
-                        <Caption color="secondary">Saídas</Caption>
+                        <Caption color="secondary">{t('closing.spendingShort')}</Caption>
                         <Callout weight="semiBold" style={{ color: colors.error.main }}>
                           -{formatCurrency(individualOut)}
                         </Callout>
                       </View>
                       <View style={[styles.memberRow, styles.memberRowBorder]}>
-                        <Caption weight="medium">Saldo</Caption>
+                        <Caption weight="medium">{t('closing.balanceShort')}</Caption>
                         <Callout weight="bold" style={{ color: balanceIndividual >= 0 ? colors.success.main : colors.error.main }}>
                           {balanceIndividual >= 0 ? '+' : '-'}{formatCurrency(Math.abs(balanceIndividual))}
                         </Callout>
@@ -913,22 +916,22 @@ export default function ClosingScreen() {
                     {/* Compartilhado */}
                     <View style={styles.memberSection}>
                       <View style={styles.memberSectionHeader}>
-                        <Caption weight="medium" style={{ color: colors.text.secondary }}>Compartilhado</Caption>
+                        <Caption weight="medium" style={{ color: colors.text.secondary }}>{t('closing.shared')}</Caption>
                       </View>
                       <View style={styles.memberRow}>
-                        <Caption color="secondary">Aportes</Caption>
+                        <Caption color="secondary">{t('closing.contributionsShort')}</Caption>
                         <Callout weight="semiBold" style={{ color: colors.brand.primary }}>
                           {allocationsShared > 0 ? '+' : ''}{formatCurrency(allocationsShared)}
                         </Callout>
                       </View>
                       <View style={styles.memberRow}>
-                        <Caption color="secondary">Saídas</Caption>
+                        <Caption color="secondary">{t('closing.spendingShort')}</Caption>
                         <Callout weight="semiBold" style={{ color: colors.error.main }}>
                           -{formatCurrency(sharedOut)}
                         </Callout>
                       </View>
                       <View style={[styles.memberRow, styles.memberRowBorder]}>
-                        <Caption weight="medium">Saldo</Caption>
+                        <Caption weight="medium">{t('closing.balanceShort')}</Caption>
                         <Callout weight="bold" style={{ color: balanceShared >= 0 ? colors.success.main : colors.error.main }}>
                           {balanceShared >= 0 ? '+' : '-'}{formatCurrency(Math.abs(balanceShared))}
                         </Callout>
@@ -937,7 +940,7 @@ export default function ClosingScreen() {
 
                     {/* Total */}
                     <View style={[styles.memberRow, styles.memberTotalRow]}>
-                      <Caption weight="semiBold" style={{ textTransform: 'uppercase', fontSize: 10 }}>Saldo Total</Caption>
+                      <Caption weight="semiBold" style={{ textTransform: 'uppercase', fontSize: 10 }}>{t('closing.totalBalance')}</Caption>
                       <Headline weight="bold" style={{ color: balancePositive ? colors.success.main : colors.error.main }}>
                         {balancePositive ? '+' : '-'}{formatCurrency(Math.abs(balanceMember))}
                       </Headline>
@@ -958,10 +961,12 @@ export default function ClosingScreen() {
                 style={styles.historicalHeader}
                 onPress={() => setHistoricalExpanded(!historicalExpanded)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: historicalExpanded }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
                   <Calendar size={20} color={colors.text.secondary} />
-                  <Subheadline weight="semiBold">Histórico do ano de</Subheadline>
+                  <Subheadline weight="semiBold">{t('closing.history.title')}</Subheadline>
                   <View style={styles.yearSelector}>
                     {/* Year selector - simplified for mobile */}
                     <Caption weight="medium">{selectedYear}</Caption>
@@ -987,12 +992,12 @@ export default function ClosingScreen() {
                         <View style={styles.historicalRowLeft}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[1] }}>
                             <Callout weight={isSelected ? "semiBold" : "medium"} style={{ color: isSelected ? colors.brand.primary : colors.text.primary }}>
-                              {row.label}
+                              {formatLocaleDate(row.monthStart, 'monthShort')}
                             </Callout>
                             {isSelected && (
                               <View style={styles.currentMonthBadge}>
                                 <Caption style={{ color: colors.brand.primary, fontSize: 9, fontWeight: '600' }}>
-                                  ATUAL
+                                  {t('closing.history.current')}
                                 </Caption>
                               </View>
                             )}
@@ -1000,19 +1005,19 @@ export default function ClosingScreen() {
                         </View>
                         <View style={styles.historicalRowRight}>
                           <View style={styles.historicalCell}>
-                            <Caption color="secondary" style={{ fontSize: 10 }}>Aportes</Caption>
+                            <Caption color="secondary" style={{ fontSize: 10 }}>{t('closing.contributionsShort')}</Caption>
                             <Caption weight="medium">{formatCurrency(row.allocations)}</Caption>
                           </View>
                           <View style={styles.historicalCell}>
-                            <Caption color="secondary" style={{ fontSize: 10 }}>À vista</Caption>
+                            <Caption color="secondary" style={{ fontSize: 10 }}>{t('closing.stats.paidNow')}</Caption>
                             <Caption weight="medium">{formatCurrency(row.cash)}</Caption>
                           </View>
                           <View style={styles.historicalCell}>
-                            <Caption color="secondary" style={{ fontSize: 10 }}>Faturas</Caption>
+                            <Caption color="secondary" style={{ fontSize: 10 }}>{t('closing.history.statements')}</Caption>
                             <Caption weight="medium">{formatCurrency(row.credit)}</Caption>
                           </View>
                           <View style={styles.historicalCell}>
-                            <Caption color="secondary" style={{ fontSize: 10 }}>Saldo</Caption>
+                            <Caption color="secondary" style={{ fontSize: 10 }}>{t('closing.balanceShort')}</Caption>
                             <Callout weight="bold" style={{ color: balancePositive ? colors.success.main : colors.error.main }}>
                               {balancePositive ? '+' : '-'}{formatCurrency(Math.abs(row.balance))}
                             </Callout>
@@ -1028,10 +1033,10 @@ export default function ClosingScreen() {
         )}
 
         {data.allocations.length === 0 && data.expenses.length === 0 && (
-          <EmptyState
-            icon={<BarChart3 size={48} color="#AEAEB2" />}
-            title="Nenhum dado para este mês"
-            description={`Não há entradas ou despesas registradas para ${selectedMonth}`}
+          <ZulEmptyState
+            icon={<BarChart3 size={40} color="#AEAEB2" />}
+            message={t('closing.emptyMessage', { month: formatLocaleDate(`${selectedMonth}-01`, 'monthYear') })}
+            example={t('closing.emptyExample')}
           />
         )}
 
