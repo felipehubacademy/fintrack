@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,18 +7,35 @@ import {
   TouchableOpacity,
   ScrollView,
   Linking,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ChevronDown, X, MessageCircle } from 'lucide-react-native';
+import { detectDeviceLocale } from '@fintrack/shared/i18n';
+import { zulChatLink } from '@fintrack/shared/config';
 import { supabase } from '../services/supabase';
 import { spacing, radius } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { Title1, Body, Headline, Caption } from '../components/ui/Text';
+import { useI18n } from '../contexts/I18nContext';
+import { Title1, Body, Headline, Caption, Text } from '../components/ui/Text';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { useToast } from '../components/ui/Toast';
-import { useAlert } from '../components/ui/AlertProvider';
-import { APP_CONFIG } from '@fintrack/shared/src/constants/config';
+import { legalUrl } from '../components/settings/accountApi';
+import {
+  COUNTRIES,
+  defaultCountryFor,
+  toE164,
+  formatPhoneForDisplay,
+  isValidOtp,
+  cleanOtp,
+  authErrorKey,
+} from '../components/onboarding/phoneLogin';
+
+const RESEND_SECONDS = 30;
+const WHATSAPP_GREEN = '#25D366';
 
 const logoSvg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0.00 0.00 512.00 512.00">
@@ -133,183 +150,332 @@ const logoSvg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
   Z"/>
 </svg>`;
 
-export default function LoginScreen({ navigation }) {
+/**
+ * Login: phone number -> 6-digit code that arrives on WhatsApp (Supabase
+ * phone OTP; the backend's Send SMS Hook delivers it through WhatsApp).
+ * Email + password stays as a fallback. People without an account start on
+ * WhatsApp, because accounts are created by chatting with Zul.
+ */
+export default function LoginScreen() {
   const { colors, isDark } = useTheme();
+  const { t, language } = useI18n();
+  const { showToast } = useToast();
+
+  const [mode, setMode] = useState('phone'); // 'phone' | 'code' | 'email'
+  const [country, setCountry] = useState(() => defaultCountryFor(detectDeviceLocale()));
+  const [showCountries, setShowCountries] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phone, setPhone] = useState(null); // E.164 the code was sent to
+  const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  const { showToast } = useToast();
-  const { alert } = useAlert();
+  const [error, setError] = useState(null); // key under auth.errors
+  const [resendIn, setResendIn] = useState(0);
+  const codeRef = useRef(null);
 
-  async function handleAuth() {
-    if (!email || !password) {
-      showToast('Preencha email e senha', 'warning');
-      return;
-    }
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const id = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
+
+  const sortedCountries = useMemo(() => {
+    const name = (c) => t(`auth.countries.${c.code}`);
+    const [first, ...rest] = COUNTRIES;
+    return [first, ...rest.sort((a, b) => name(a).localeCompare(name(b)))];
+  }, [t]);
+
+  const showError = (key) => {
+    setError(key);
+    showToast(t(`auth.errors.${key}`), 'error');
+  };
+
+  async function sendCode({ resend = false } = {}) {
+    setError(null);
+    const target = resend ? phone : toE164(country.code, phoneInput);
+    if (!target) return showError('invalidPhone');
+    if (!supabase) return showError('generic');
 
     setLoading(true);
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-        alert({
-          title: 'Sucesso',
-          message: 'Verifique seu email para confirmar o cadastro',
-          type: 'success',
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-      }
-    } catch (error) {
-      showToast(error.message || 'Erro ao autenticar', 'error');
+      const { error: err } = await supabase.auth.signInWithOtp({
+        phone: target,
+        // Accounts are created on WhatsApp, never from the login screen.
+        options: { shouldCreateUser: false },
+      });
+      if (err) throw err;
+      setPhone(target);
+      setCode('');
+      setMode('code');
+      setResendIn(RESEND_SECONDS);
+      if (resend) showToast(t('auth.code.resent'), 'success');
+    } catch (err) {
+      showError(authErrorKey(err));
     } finally {
       setLoading(false);
     }
+    return undefined;
   }
+
+  async function verifyCode(value = code) {
+    setError(null);
+    if (!isValidOtp(value)) return showError('invalidCode');
+    if (!supabase || !phone) return showError('generic');
+    setLoading(true);
+    try {
+      const { error: err } = await supabase.auth.verifyOtp({ phone, token: value, type: 'sms' });
+      if (err) throw err;
+      // AppNavigator switches to the app on the auth state change.
+    } catch (err) {
+      const key = authErrorKey(err);
+      showError(key === 'generic' ? 'wrongCode' : key);
+    } finally {
+      setLoading(false);
+    }
+    return undefined;
+  }
+
+  async function signInWithEmail() {
+    setError(null);
+    if (!email.trim() || !password) return showError('fillEmail');
+    if (!supabase) return showError('generic');
+    setLoading(true);
+    try {
+      const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (err) throw err;
+    } catch (err) {
+      showError(authErrorKey(err));
+    } finally {
+      setLoading(false);
+    }
+    return undefined;
+  }
+
+  const onCodeChange = (value) => {
+    const clean = cleanOtp(value);
+    setCode(clean);
+    if (clean.length === 6 && !loading) verifyCode(clean);
+  };
+
+  const openUrl = (url) => Linking.openURL(url).catch(() => showToast(t('auth.errors.generic'), 'error'));
+  const startOnWhatsApp = () => Linking.openURL(zulChatLink(t('auth.noAccount.greeting')))
+    .catch(() => showToast(t('auth.errors.openWhatsApp'), 'error'));
+
+  const cardStyle = [styles.formCard, { backgroundColor: colors.background.secondary, borderColor: colors.border.light }];
+  const errorText = error ? (
+    <Caption style={[styles.errorText, { color: colors.error.main }]} accessibilityLiveRegion="polite">
+      {t(`auth.errors.${error}`)}
+    </Caption>
+  ) : null;
 
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background.primary }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Hero section with gradient */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <LinearGradient
-          colors={isDark
-            ? [colors.brand.primaryDark, colors.background.primary]
-            : [colors.brand.primary, colors.brand.primaryLight]
-          }
+          colors={isDark ? [colors.brand.primaryDark, colors.background.primary] : [colors.brand.primary, colors.brand.primaryLight]}
           style={styles.hero}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <SvgXml
-            xml={logoSvg}
-            width={88}
-            height={88}
-            style={styles.logo}
-            accessibilityLabel="Logo MeuAzulão"
-          />
-          <Title1 style={[styles.title, { color: '#FFFFFF' }]}>
-            MeuAzulão
-          </Title1>
-          <Body style={[styles.subtitle, { color: 'rgba(255,255,255,0.85)' }]}>
-            Gestão Financeira Inteligente
-          </Body>
+          <SvgXml xml={logoSvg} width={88} height={88} style={styles.logo} accessibilityLabel={t('auth.logoLabel')} />
+          <Title1 style={[styles.title, { color: '#FFFFFF' }]}>{t('navigation.appName')}</Title1>
+          <Body style={[styles.subtitle, { color: 'rgba(255,255,255,0.85)' }]}>{t('auth.tagline')}</Body>
         </LinearGradient>
 
-        {/* Form card */}
-        <View style={[styles.formCard, {
-          backgroundColor: colors.background.secondary,
-          borderColor: colors.border.light,
-        }]}>
-          <Headline style={[styles.formTitle, { color: colors.text.primary }]}>
-            {isSignUp ? 'Criar conta' : 'Entrar na conta'}
-          </Headline>
+        {mode === 'phone' && (
+          <View style={cardStyle}>
+            <Headline style={[styles.formTitle, { color: colors.text.primary }]}>{t('auth.phone.title')}</Headline>
+            <Caption style={[styles.formSubtitle, { color: colors.text.secondary }]}>{t('auth.phone.subtitle')}</Caption>
 
-          <Input
-            placeholder="seu@email.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            style={styles.input}
-          />
+            <View style={styles.phoneRow}>
+              <TouchableOpacity
+                style={[styles.countryButton, { borderColor: colors.border.light, backgroundColor: colors.background.primary }]}
+                onPress={() => setShowCountries(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`${t('auth.phone.countryLabel')}: ${t(`auth.countries.${country.code}`)} +${country.dial}`}
+              >
+                <Text style={{ color: colors.text.primary, fontWeight: '600' }}>{`${country.code} +${country.dial}`}</Text>
+                <ChevronDown size={16} color={colors.text.secondary} />
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Input
+                  placeholder={t('auth.phone.placeholder')}
+                  value={phoneInput}
+                  onChangeText={setPhoneInput}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  textContentType="telephoneNumber"
+                  accessibilityLabel={t('auth.phone.placeholder')}
+                  onSubmitEditing={() => sendCode()}
+                />
+              </View>
+            </View>
+            {errorText}
 
-          <Input
-            placeholder="Sua senha"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="password"
-            style={styles.input}
-          />
+            <Button
+              title={loading ? t('auth.phone.sending') : t('auth.phone.send')}
+              onPress={() => sendCode()}
+              loading={loading}
+              disabled={loading || !phoneInput.trim()}
+              variant="primary"
+              size="lg"
+              fullWidth
+              style={styles.button}
+            />
+            <TouchableOpacity onPress={() => { setError(null); setMode('email'); }} style={styles.linkButton} accessibilityRole="button">
+              <Caption style={{ color: colors.brand.primary, fontWeight: '600', textAlign: 'center' }}>{t('auth.email.useEmail')}</Caption>
+            </TouchableOpacity>
+          </View>
+        )}
 
-          <Button
-            title={isSignUp ? 'Criar Conta' : 'Entrar'}
-            onPress={handleAuth}
-            loading={loading}
-            disabled={loading}
-            variant="primary"
-            size="lg"
-            fullWidth
-            style={styles.button}
-          />
-
-          <TouchableOpacity
-            onPress={() => {
-              if (isSignUp) {
-                setIsSignUp(false);
-              } else {
-                Linking.openURL(APP_CONFIG.BASE_URL).catch(() =>
-                  showToast('Não foi possível abrir a página', 'error')
-                );
-              }
-            }}
-            style={styles.switchButton}
-            accessibilityRole="button"
-          >
-            <Caption style={{ color: colors.text.secondary, textAlign: 'center' }}>
-              {isSignUp ? 'Já tem uma conta? ' : 'Não tem conta? '}
-              <Caption style={{ color: colors.brand.primary, fontWeight: '600' }}>
-                {isSignUp ? 'Entrar' : 'Criar agora'}
-              </Caption>
+        {mode === 'code' && (
+          <View style={cardStyle}>
+            <Headline style={[styles.formTitle, { color: colors.text.primary }]}>{t('auth.code.title')}</Headline>
+            <Caption style={[styles.formSubtitle, { color: colors.text.secondary }]}>
+              {t('auth.code.subtitle', { phone: formatPhoneForDisplay(phone) })}
             </Caption>
+            <TextInput
+              ref={codeRef}
+              value={code}
+              onChangeText={onCodeChange}
+              placeholder={t('auth.code.placeholder')}
+              placeholderTextColor={colors.text.tertiary}
+              keyboardType="number-pad"
+              textContentType="oneTimeCode"
+              autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+              maxLength={6}
+              autoFocus
+              accessibilityLabel={t('auth.code.title')}
+              style={[styles.codeInput, { color: colors.text.primary, borderColor: colors.border.light, backgroundColor: colors.background.primary }]}
+            />
+            {errorText}
+            <Button
+              title={loading ? t('auth.code.verifying') : t('auth.code.verify')}
+              onPress={() => verifyCode()}
+              loading={loading}
+              disabled={loading || code.length !== 6}
+              variant="primary"
+              size="lg"
+              fullWidth
+              style={styles.button}
+            />
+            <View style={styles.codeLinks}>
+              <TouchableOpacity onPress={() => { setError(null); setMode('phone'); }} accessibilityRole="button">
+                <Caption style={{ color: colors.brand.primary, fontWeight: '600' }}>{t('auth.code.changeNumber')}</Caption>
+              </TouchableOpacity>
+              {resendIn > 0 ? (
+                <Caption style={{ color: colors.text.tertiary }}>{t('auth.code.resendIn', { seconds: resendIn })}</Caption>
+              ) : (
+                <TouchableOpacity onPress={() => sendCode({ resend: true })} disabled={loading} accessibilityRole="button">
+                  <Caption style={{ color: colors.brand.primary, fontWeight: '600' }}>{t('auth.code.resend')}</Caption>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {mode === 'email' && (
+          <View style={cardStyle}>
+            <Headline style={[styles.formTitle, { color: colors.text.primary }]}>{t('auth.email.title')}</Headline>
+            <Input
+              placeholder={t('auth.email.emailPlaceholder')}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              style={styles.input}
+            />
+            <Input
+              placeholder={t('auth.email.passwordPlaceholder')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="password"
+              style={styles.input}
+              onSubmitEditing={signInWithEmail}
+            />
+            {errorText}
+            <Button
+              title={t('auth.email.submit')}
+              onPress={signInWithEmail}
+              loading={loading}
+              disabled={loading}
+              variant="primary"
+              size="lg"
+              fullWidth
+              style={styles.button}
+            />
+            <TouchableOpacity onPress={() => { setError(null); setMode('phone'); }} style={styles.linkButton} accessibilityRole="button">
+              <Caption style={{ color: colors.brand.primary, fontWeight: '600', textAlign: 'center' }}>{t('auth.email.usePhone')}</Caption>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.newHere}>
+          <Caption style={{ color: colors.text.secondary, textAlign: 'center' }}>{t('auth.noAccount.question')}</Caption>
+          <TouchableOpacity style={styles.whatsappButton} onPress={startOnWhatsApp} accessibilityRole="link">
+            <MessageCircle size={18} color="#FFFFFF" />
+            <Text style={styles.whatsappText}>{t('auth.noAccount.cta')}</Text>
           </TouchableOpacity>
+          <Caption style={{ color: colors.text.tertiary, textAlign: 'center' }}>{t('auth.noAccount.hint')}</Caption>
         </View>
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <Caption style={{ color: colors.text.tertiary, textAlign: 'center', lineHeight: 20 }}>
-          Ao continuar, você concorda com nossos{' '}
+          {t('auth.legal.prefix')}
         </Caption>
         <View style={styles.footerLinks}>
-          <TouchableOpacity
-            onPress={() => navigation?.navigate('TermsOfService')}
-            accessibilityRole="button"
-            accessibilityLabel="Ler Termos de Uso"
-          >
-            <Caption style={{ color: colors.text.link, fontWeight: '600', textDecorationLine: 'underline' }}>
-              Termos de Uso
-            </Caption>
+          <TouchableOpacity onPress={() => openUrl(legalUrl('terms', language))} accessibilityRole="link">
+            <Caption style={{ color: colors.text.link, fontWeight: '600', textDecorationLine: 'underline' }}>{t('auth.legal.terms')}</Caption>
           </TouchableOpacity>
-          <Caption style={{ color: colors.text.tertiary }}>{' e '}</Caption>
-          <TouchableOpacity
-            onPress={() => navigation?.navigate('PrivacyPolicy')}
-            accessibilityRole="button"
-            accessibilityLabel="Ler Política de Privacidade"
-          >
-            <Caption style={{ color: colors.text.link, fontWeight: '600', textDecorationLine: 'underline' }}>
-              Política de Privacidade
-            </Caption>
+          <Caption style={{ color: colors.text.tertiary }}>{` ${t('auth.legal.and')} `}</Caption>
+          <TouchableOpacity onPress={() => openUrl(legalUrl('privacy', language))} accessibilityRole="link">
+            <Caption style={{ color: colors.text.link, fontWeight: '600', textDecorationLine: 'underline' }}>{t('auth.legal.privacy')}</Caption>
           </TouchableOpacity>
         </View>
       </View>
+
+      <Modal visible={showCountries} animationType="slide" transparent onRequestClose={() => setShowCountries(false)}>
+        <View style={styles.overlay}>
+          <View style={[styles.sheet, { backgroundColor: colors.background.secondary }]}>
+            <View style={styles.sheetHeader}>
+              <Headline style={{ color: colors.text.primary }}>{t('auth.phone.countryPickerTitle')}</Headline>
+              <TouchableOpacity onPress={() => setShowCountries(false)} accessibilityRole="button" accessibilityLabel={t('common.close')}>
+                <X size={22} color={colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {sortedCountries.map((c) => (
+                <TouchableOpacity
+                  key={c.code}
+                  style={[styles.countryRow, { borderBottomColor: colors.border.light }]}
+                  onPress={() => { setCountry(c); setShowCountries(false); }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: c.code === country.code }}
+                >
+                  <Text style={{ color: colors.text.primary, flex: 1, fontWeight: c.code === country.code ? '700' : '400' }}>
+                    {t(`auth.countries.${c.code}`)}
+                  </Text>
+                  <Text style={{ color: colors.text.secondary }}>{`+${c.dial}`}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
+  container: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingBottom: spacing[3] },
   hero: {
     alignItems: 'center',
     paddingTop: 80,
@@ -317,17 +483,9 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
-  logo: {
-    marginBottom: spacing[2],
-  },
-  title: {
-    fontSize: 34,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-  },
+  logo: { marginBottom: spacing[2] },
+  title: { fontSize: 34, fontWeight: '700', marginBottom: 4 },
+  subtitle: { fontSize: 16, textAlign: 'center', paddingHorizontal: spacing[3] },
   formCard: {
     marginHorizontal: spacing[2],
     marginTop: -24,
@@ -340,31 +498,47 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-  formTitle: {
-    textAlign: 'center',
-    marginBottom: spacing[3],
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  input: {
-    marginBottom: spacing[1.5],
-  },
-  button: {
-    marginTop: spacing[2],
-  },
-  switchButton: {
-    marginTop: spacing[2],
-    paddingVertical: spacing[1.5],
-  },
-  footer: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    alignItems: 'center',
-  },
-  footerLinks: {
+  formTitle: { textAlign: 'center', marginBottom: spacing[1], fontSize: 20, fontWeight: '600' },
+  formSubtitle: { textAlign: 'center', marginBottom: spacing[3] },
+  phoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[1] },
+  countryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+    gap: 4,
+    height: 52,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
   },
+  codeInput: {
+    fontSize: 28,
+    letterSpacing: 8,
+    textAlign: 'center',
+    fontWeight: '700',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  codeLinks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing[2] },
+  input: { marginBottom: spacing[1.5] },
+  button: { marginTop: spacing[2] },
+  linkButton: { marginTop: spacing[2], paddingVertical: spacing[1] },
+  errorText: { marginTop: spacing[1] },
+  newHere: { alignItems: 'center', gap: spacing[1], marginTop: spacing[3], paddingHorizontal: spacing[3] },
+  whatsappButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: WHATSAPP_GREEN,
+    borderRadius: 999,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  whatsappText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  footer: { paddingHorizontal: spacing[3], paddingVertical: spacing[2], alignItems: 'center' },
+  footerLinks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { maxHeight: '75%', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, paddingBottom: 32 },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  countryRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
 });

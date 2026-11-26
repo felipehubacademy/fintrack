@@ -2,8 +2,8 @@ import 'react-native-url-polyfill/auto';
 import { createSupabaseClient } from '@fintrack/shared/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Configurar storage persistente usando AsyncStorage
-// AsyncStorage não tem limite de tamanho como SecureStore (2048 bytes)
+// Persist the session in AsyncStorage (SecureStore caps values at 2048 bytes,
+// too small for a Supabase session).
 const AsyncStorageAdapter = {
   getItem: async (key) => {
     try {
@@ -29,7 +29,8 @@ const AsyncStorageAdapter = {
   },
 };
 
-// Criar cliente Supabase com storage personalizado
+// Supabase client (null when EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY are missing;
+// callers must handle that). Login is phone + OTP on WhatsApp, email fallback.
 export const supabase = createSupabaseClient({
   auth: {
     storage: AsyncStorageAdapter,
