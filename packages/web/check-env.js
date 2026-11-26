@@ -60,7 +60,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://niyqusfrurutumqnopbm.supabase.co
 
 # Chave pública anon (anon public key)
 # Esta chave já está correta (aparece nos logs do WebSocket)
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5peXF1c2ZydXJ1dHVtcW5vcGJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NDMyODksImV4cCI6MjA3NzExOTI4OX0.hIfOF4Ee0GSH651j4K6-6fd-QgyRocw3fkdq2ZNFMxw
+NEXT_PUBLIC_SUPABASE_ANON_KEY=cole_aqui_a_anon_key_do_dashboard
 
 # ⚠️ Chave privada service_role (service_role key)
 # COPIE do dashboard: https://supabase.com/dashboard/project/niyqusfrurutumqnopbm/settings/api

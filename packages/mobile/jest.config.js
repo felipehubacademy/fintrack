@@ -4,6 +4,9 @@ module.exports = {
   moduleNameMapper: {
     '^@fintrack/shared/(.*)$': '<rootDir>/../shared/src/$1',
     '^@fintrack/shared$': '<rootDir>/../shared/src/index.js',
+    // App imports phosphor icons by deep path (Metro falls back to file resolution);
+    // Jest honours the package "exports" map, so stub them like the barrel mock.
+    '^phosphor-react-native/lib/module/icons/(.*)$': '<rootDir>/test-mocks/phosphorIcon.js',
   },
   testMatch: [
     '**/__tests__/**/*.test.js',

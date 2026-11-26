@@ -228,7 +228,7 @@ SUPABASE_KEY=...
 # WhatsApp
 WHATSAPP_ACCESS_TOKEN=EAA...
 PHONE_ID=801805679687987
-WHATSAPP_VERIFY_TOKEN=fintrack_verify_token
+WHATSAPP_VERIFY_TOKEN=<aleatorio>
 
 # Features
 USE_ZUL_ASSISTANT=false  # Feature flag para usar novo fluxo

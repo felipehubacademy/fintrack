@@ -6,47 +6,58 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint-web:
+  backend:
+    name: Backend tests (Zul / WhatsApp)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
+          cache-dependency-path: package-lock.json
       - run: npm ci
-        working-directory: packages/web
-      - run: npm run lint
-        working-directory: packages/web
-    continue-on-error: true
+      - run: npm test --workspace=packages/backend
 
-  build-web:
+  web:
+    name: Web lint + build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
+          cache-dependency-path: package-lock.json
       - run: npm ci
-        working-directory: packages/web
-      - run: npm run build
-        working-directory: packages/web
+      - run: npm run lint --workspace=packages/web
+      - run: npm run build --workspace=packages/web
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-    continue-on-error: true
+          # Real values live in Vercel. The build only needs something URL-shaped.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
 
-  test-mobile:
+  mobile:
+    name: Mobile tests + bundle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
-      - run: npm install
+          cache-dependency-path: packages/mobile/package-lock.json
+      - run: npm ci
         working-directory: packages/mobile
-      - run: npm test -- --passWithNoTests
+      - run: npx jest --ci
         working-directory: packages/mobile
+      # Bundling catches broken imports that would crash the app on launch.
+      - run: npx expo export --platform ios --platform android --output-dir /tmp/expo-export
+        working-directory: packages/mobile
+        env:
+          EXPO_NO_TELEMETRY: '1'
