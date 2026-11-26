@@ -17,6 +17,7 @@ import legal from './legal.js';
 import notifications from './notifications.js';
 import categories from './categories.js';
 import web from './web.js';
+import billing from './billing.js';
 
 export default {
   account,
@@ -38,4 +39,5 @@ export default {
   notifications,
   categories,
   web,
+  billing,
 };
