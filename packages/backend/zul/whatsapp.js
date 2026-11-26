@@ -7,6 +7,18 @@ export function graphBase() {
   return `https://graph.facebook.com/${process.env.WHATSAPP_GRAPH_VERSION || 'v21.0'}`;
 }
 
+const DEFAULT_TEMPLATE_LANGS = { pt: 'pt_BR', es: 'es', en: 'en' };
+
+/** Template language code for a Zul language (override with WHATSAPP_TEMPLATE_LANGS="pt:pt_BR,es:es,en:en_US"). */
+export function templateLanguage(lang) {
+  const map = { ...DEFAULT_TEMPLATE_LANGS };
+  for (const pair of String(process.env.WHATSAPP_TEMPLATE_LANGS || '').split(',')) {
+    const [k, v] = pair.split(':').map((s) => s && s.trim());
+    if (k && v) map[k] = v;
+  }
+  return map[lang] || map.en;
+}
+
 function credentials() {
   const phoneId = process.env.PHONE_ID || process.env.WHATSAPP_PHONE_ID;
   const token = process.env.WHATSAPP_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
@@ -57,6 +69,19 @@ export function createWhatsApp() {
           type: 'button',
           body: { text: String(body).slice(0, 1024) },
           action: { buttons: buttons.slice(0, 3).map((b) => ({ type: 'reply', reply: { id: b.id, title: b.title } })) },
+        },
+      });
+    },
+
+    /** Text with one link button (only inside the 24 h customer service window). */
+    sendCtaUrl(to, body, displayText, url) {
+      return send({
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'cta_url',
+          body: { text: String(body).slice(0, 1024) },
+          action: { name: 'cta_url', parameters: { display_text: String(displayText).slice(0, 20), url } },
         },
       });
     },

@@ -103,6 +103,7 @@ export function createFakeWa() {
     sent,
     async sendText(to, body) { const wid = `wamid.out${n++}`; sent.push({ to, body, id: wid }); return wid; },
     async sendButtons(to, body, buttons) { const wid = `wamid.out${n++}`; sent.push({ to, body, buttons, id: wid }); return wid; },
+    async sendCtaUrl(to, body, label, url) { const wid = `wamid.out${n++}`; sent.push({ to, body, cta: { label, url }, id: wid }); return wid; },
     async sendTemplate(to, name, lang, components) { sent.push({ to, template: name, lang, components }); return `wamid.out${n++}`; },
     async markRead() {},
     async downloadMedia() { return { buffer: Buffer.from('x'), mimeType: 'audio/ogg' }; },

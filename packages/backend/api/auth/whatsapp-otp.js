@@ -8,22 +8,13 @@
  * ("v1,whsec_..." exactly as Supabase shows it).
  */
 import { verifyStandardWebhook, readBody, send } from '../../zul/security.js';
-import { createWhatsApp } from '../../zul/whatsapp.js';
+import { createWhatsApp, templateLanguage } from '../../zul/whatsapp.js';
 import { createDb } from '../../zul/db.js';
 import { canonicalPhone, languageFromPhone, normalizeLanguage } from '../../zul/language.js';
 
 export const config = { api: { bodyParser: false } };
 
-const DEFAULT_TEMPLATE_LANGS = { pt: 'pt_BR', es: 'es', en: 'en' };
-
-export function templateLanguage(lang) {
-  const map = { ...DEFAULT_TEMPLATE_LANGS };
-  for (const pair of String(process.env.WHATSAPP_TEMPLATE_LANGS || '').split(',')) {
-    const [k, v] = pair.split(':').map((s) => s && s.trim());
-    if (k && v) map[k] = v;
-  }
-  return map[lang] || map.en;
-}
+export { templateLanguage };
 
 /** Authentication template: code in the body and in the copy-code button. */
 export function otpTemplateComponents(otp) {
