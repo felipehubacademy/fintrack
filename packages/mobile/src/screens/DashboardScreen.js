@@ -19,6 +19,8 @@ import { RecentTransactions } from '../components/dashboard/RecentTransactions';
 import { typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { TAB_ROUTES } from '../navigation/routes';
+import { useBilling } from '../hooks/useBilling';
+import { BillingBanner } from '../components/billing/BillingBanner';
 
 const ROUTES = {
   transactions: TAB_ROUTES.transactions,
@@ -42,6 +44,7 @@ export default function DashboardScreen() {
     stats, recentTransactions,
     allowance, nextStatement, goalsSummary,
   } = useDashboardData(navigation);
+  const { requireAccess } = useBilling();
 
   if (orgLoading) {
     return (
@@ -67,6 +70,9 @@ export default function DashboardScreen() {
           {firstName ? t('dashboard.hi', { name: firstName }) : t('dashboard.hiNoName')}
         </Text>
 
+        {/* Trial ending / ended (paywall flag) */}
+        <BillingBanner />
+
         {/* 1. The one number */}
         <SpendPerDayHero allowance={allowance} />
 
@@ -75,7 +81,7 @@ export default function DashboardScreen() {
         {isFeatureEnabled('manualEntry') && (
           <TouchableOpacity
             style={styles.manual}
-            onPress={() => navigation.navigate(ROUTES.addTransaction, { type: 'expense' })}
+            onPress={() => requireAccess(() => navigation.navigate(ROUTES.addTransaction, { type: 'expense' }))}
             accessibilityRole="button"
             hitSlop={8}
           >

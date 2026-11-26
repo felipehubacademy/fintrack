@@ -47,11 +47,13 @@ import { useToast } from '../components/ui/Toast';
 import { useAlert } from '../components/ui/AlertProvider';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { HapticFeedback } from '../utils/haptics';
+import { useBilling } from '../hooks/useBilling';
 
 export default function TransactionsScreen() {
   const { colors: themeColors, isDark } = useTheme();
   const { t, formatMoney, formatRelativeDay } = useI18n();
   const navigation = useNavigation();
+  const { requireAccess } = useBilling();
   const { organization, user, loading: orgLoading, costCenters } = useOrganization();
   const { showToast } = useToast();
   const { alert } = useAlert();
@@ -456,7 +458,7 @@ export default function TransactionsScreen() {
               description={t('transactions.empty.body', { example: t('transactions.empty.example') })}
               zulText={t('transactions.empty.example')}
               actionLabel={isFeatureEnabled('manualEntry') ? t('dashboard.manualAdd') : undefined}
-              onAction={isFeatureEnabled('manualEntry') ? () => navigation.navigate('AddTransaction', { type: 'expense' }) : undefined}
+              onAction={isFeatureEnabled('manualEntry') ? () => requireAccess(() => navigation.navigate('AddTransaction', { type: 'expense' })) : undefined}
             />
           )}
         </ScrollView>

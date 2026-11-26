@@ -13,6 +13,7 @@ import { X, AlertTriangle } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useI18n } from '../../contexts/I18nContext';
 import { Text } from '../ui/Text';
+import { isFeatureEnabled } from '@fintrack/shared/config';
 import { confirmationMatches } from './accountApi';
 
 const ITEM_KEYS = ['login', 'transactions', 'accounts', 'categories', 'receipts', 'chat'];
@@ -71,6 +72,11 @@ export function DeleteAccountModal({ visible, onClose, onConfirm, loading = fals
               ))}
               <Text style={[styles.note, { color: colors.text.secondary }]}>{t('settings.deleteAccount.sharedNote')}</Text>
               <Text style={[styles.note, { color: colors.text.secondary }]}>{t('settings.deleteAccount.keepNote')}</Text>
+              {isFeatureEnabled('paywall') ? (
+                <Text style={[styles.note, { color: colors.text.primary }]}>
+                  {t(Platform.OS === 'android' ? 'billing.deleteAccountNote.android' : 'billing.deleteAccountNote.ios')}
+                </Text>
+              ) : null}
             </View>
 
             <Text style={[styles.label, { color: colors.text.secondary }]}>

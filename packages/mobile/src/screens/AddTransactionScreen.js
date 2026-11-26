@@ -24,6 +24,7 @@ import { decimalSeparator } from '@fintrack/shared/i18n';
 import { categoryLabel } from '../utils/categoryLabel';
 import { sanitizeAmountInput, amountPlaceholder } from '../utils/amountInput';
 import { typography } from '../theme';
+import { useBilling } from '../hooks/useBilling';
 
 // Labels come from t('transactions.paymentMethodsLong.*').
 const PAYMENT_METHODS = ['pix', 'credit_card', 'debit_card', 'cash', 'bank_transfer', 'boleto'];
@@ -41,6 +42,15 @@ export default function AddTransactionScreen() {
   const sep = decimalSeparator();
   const { organization, costCenters, budgetCategories } = useOrganization();
   const amountRef = useRef(null);
+  const { gated, showPaywall } = useBilling();
+
+  // Reading stays open after the trial; adding does not. Any route into this
+  // screen (deep link, old button) lands on the paywall instead.
+  useEffect(() => {
+    if (!gated) return;
+    showPaywall();
+    if (navigation.canGoBack()) navigation.goBack();
+  }, [gated]);
 
   const initialType = route.params?.type || 'expense';
   const [type, setType] = useState(initialType);
@@ -85,6 +95,10 @@ export default function AddTransactionScreen() {
   const handleSave = async () => {
     if (amount <= 0) return;
     if (!organization?.id) return;
+    if (gated) {
+      showPaywall();
+      return;
+    }
 
     setSaving(true);
     try {

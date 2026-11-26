@@ -6,6 +6,7 @@ import { Text } from './Text';
 import { WHATSAPP_GREEN, WHATSAPP_TEXT } from '../../theme/colors';
 import { useI18n } from '../../contexts/I18nContext';
 import { HapticFeedback } from '../../utils/haptics';
+import { useBilling } from '../../hooks/useBilling';
 
 /** Opens a WhatsApp chat with Zul, with `text` pre-filled. */
 export function openZulChat(text) {
@@ -20,6 +21,7 @@ export function openZulChat(text) {
  */
 export function WhatsAppButton({ text, label, size = 'md', style }) {
   const { t } = useI18n();
+  const { requireAccess } = useBilling();
   const title = label || t('dashboard.whatsapp.button');
   const prefill = text ?? t('dashboard.whatsapp.example');
 
@@ -28,7 +30,8 @@ export function WhatsAppButton({ text, label, size = 'md', style }) {
       style={[styles.base, size === 'lg' ? styles.lg : styles.md, style]}
       onPress={() => {
         HapticFeedback.light();
-        openZulChat(prefill);
+        // After the trial, logging is blocked: show the paywall instead.
+        requireAccess(() => openZulChat(prefill));
       }}
       activeOpacity={0.8}
       accessibilityRole="button"

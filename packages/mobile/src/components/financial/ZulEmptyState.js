@@ -5,6 +5,7 @@ import { zulChatLink } from '@fintrack/shared/config';
 import { useI18n } from '../../contexts/I18nContext';
 import { spacing } from '../../theme';
 import { Text, Callout } from '../ui/Text';
+import { useBilling } from '../../hooks/useBilling';
 
 const WHATSAPP_GREEN = '#25D366';
 
@@ -16,9 +17,10 @@ const WHATSAPP_GREEN = '#25D366';
  */
 export function ZulEmptyState({ icon, message, example, style }) {
   const { t } = useI18n();
+  const { requireAccess } = useBilling();
 
   const openWhatsApp = () => {
-    Linking.openURL(zulChatLink(example)).catch(() => {});
+    requireAccess(() => Linking.openURL(zulChatLink(example)).catch(() => {}));
   };
 
   return (

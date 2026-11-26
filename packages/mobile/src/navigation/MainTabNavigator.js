@@ -7,6 +7,7 @@ import { LayoutGrid, List, PieChart, MoreHorizontal, Plus } from 'lucide-react-n
 import { useTheme } from '../contexts/ThemeContext';
 import { useI18n } from '../contexts/I18nContext';
 import { TAB_ROUTES } from './routes';
+import { useBilling } from '../hooks/useBilling';
 
 import DashboardScreen from '../screens/DashboardScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
@@ -21,6 +22,7 @@ export default function MainTabNavigator() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
+  const { requireAccess } = useBilling();
 
   // Route names stay fixed (other screens navigate by them); labels are translated.
   const label = (key) => ({
@@ -66,7 +68,7 @@ export default function MainTabNavigator() {
             <GoldFAB
               isDark={isDark}
               accessibilityLabel={t('navigation.tabs.add')}
-              onPress={() => navigation.getParent()?.navigate('AddTransaction')}
+              onPress={() => requireAccess(() => navigation.getParent()?.navigate('AddTransaction'))}
             />
           ),
         })}

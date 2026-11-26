@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Linking, Platform } from 'react-native';
 import {
   Bell,
   Users,
@@ -14,6 +14,9 @@ import {
   ChevronRight,
   Globe,
   Coins,
+  Crown,
+  CreditCard,
+  RotateCcw,
 } from 'lucide-react-native';
 import Constants from 'expo-constants';
 import { supabase } from '../services/supabase';
@@ -33,10 +36,15 @@ import { DeleteAccountModal } from '../components/settings/DeleteAccountModal';
 import { ProfileModal } from '../components/settings/ProfileModal';
 import { LanguagePickerModal, CurrencyPickerModal, currencyLabel } from '../components/settings/LocalePickers';
 import { legalUrl, deleteMyAccount } from '../components/settings/accountApi';
+import { isFeatureEnabled } from '@fintrack/shared/config';
+import { useBilling } from '../hooks/useBilling';
+import { openManageSubscriptions } from '../services/billing';
+import { planStatusText, canManageInStore } from '../components/billing/planStatus';
 
 export default function SettingsScreen({ navigation }) {
   const { colors } = useTheme();
-  const { t, language, currency, locale, setLanguage, setCurrency } = useI18n();
+  const { t, language, currency, locale, setLanguage, setCurrency, formatDate } = useI18n();
+  const billing = useBilling();
   const { organization, user, isSoloUser, refetch } = useOrganization();
   const { confirm } = useConfirmation();
   const { showToast } = useToast();
@@ -87,7 +95,50 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
+  const restorePurchases = async () => {
+    const result = await billing.restore();
+    if (result.ok && result.restored) showToast(t('billing.paywall.restored'), 'success');
+    else if (result.ok) showToast(t('billing.paywall.nothingToRestore'), 'info');
+    else showToast(t('billing.paywall.unavailable'), 'error');
+  };
+
+  const manageSubscription = () => {
+    openManageSubscriptions(billing.managementURL).catch(() => showToast(t('settings.openLinkError'), 'error'));
+  };
+
+  // Plan (7-day trial, then Plus). Hidden when the paywall flag is off.
+  const planSection = isFeatureEnabled('paywall') ? [{
+    key: 'plan',
+    title: t('billing.plan.section'),
+    items: [
+      {
+        key: 'plan',
+        icon: Crown,
+        label: t('billing.plan.label'),
+        description: planStatusText(billing, t, formatDate),
+        onPress: billing.isPlus ? (canManageInStore(billing) ? manageSubscription : undefined) : billing.showPaywall,
+        noChevron: billing.isPlus && !canManageInStore(billing),
+      },
+      ...(canManageInStore(billing) ? [{
+        key: 'manage',
+        icon: CreditCard,
+        label: t('billing.plan.manage'),
+        description: t(Platform.OS === 'android' ? 'billing.plan.manageAndroid' : 'billing.plan.manageIos'),
+        onPress: manageSubscription,
+      }] : []),
+      {
+        key: 'restore',
+        icon: RotateCcw,
+        label: billing.restoring ? t('billing.paywall.restoring') : t('billing.plan.restore'),
+        description: t('billing.plan.restoreDescription'),
+        onPress: restorePurchases,
+        noChevron: true,
+      },
+    ],
+  }] : [];
+
   const sections = [
+    ...planSection,
     {
       key: 'preferences',
       title: t('settings.sections.preferences'),
