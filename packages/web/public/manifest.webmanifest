@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "MeuAzulão",
+  "short_name": "Azulão",
+  "description": "Track your money by chatting with Zul on WhatsApp.",
+  "start_url": "/dashboard?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1F5BFF",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/images/logo_flat.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
