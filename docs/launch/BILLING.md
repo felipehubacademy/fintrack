@@ -117,3 +117,56 @@ A Meta pode reclassificar `fim_teste` como Marketing. Se isso acontecer, ele con
 3. Configurar o webhook do RevenueCat (seção 5) e as variáveis (seção 6).
 4. Criar os dois templates na Meta (seção 4).
 5. Na App Store Connect, preencher o contrato de apps pagos (Agreements, Tax and Banking); no Play Console, o perfil de pagamentos.
+
+## 8. Job diário
+
+O backend tem o endpoint `/api/cron/trial-funnel` (código em `packages/backend/zul/funnel.js`). Rodando uma vez por dia, ele:
+
+- manda o `fim_teste` para as organizações cujo teste termina **hoje** (no fuso do número do usuário), que não são Plus e ainda não receberam (`trial_ending_sent_at` vazio);
+- manda o `oferta_primeiro_mes` para quem terminou o teste **ontem** e não assinou (`winback_sent_at` vazio). Se um dia o job não rodar, a oferta ainda sai nos 2 dias seguintes;
+- envia para o usuário principal da organização que já conversou com o Zul (o admin, se ele tiver conversa). Se a pessoa escreveu nas últimas 24 h, vai o mesmo texto da seção 4 como mensagem livre com botão de link; senão, vai o template;
+- marca `trial_ending_sent_at` / `winback_sent_at` antes de enviar (cada mensagem sai no máximo uma vez) e desmarca se o envio falhar, para tentar de novo no dia seguinte;
+- não faz nada se a flag `paywall` estiver desligada (`FEATURE_PAYWALL=false` no backend) ou se a migração `2026-11-26-billing-01.sql` ainda não rodou.
+
+Autenticação: `Authorization: Bearer <CRON_SECRET>` ou `x-cron-secret: <CRON_SECRET>`. Para testar sem enviar nada, chame com `?dry_run=1` (ou deixe `WEBHOOK_DRY_RUN=1`): a resposta lista o que seria enviado.
+
+```bash
+curl -s "https://<domínio do backend>/api/cron/trial-funnel?dry_run=1" -H "Authorization: Bearer $CRON_SECRET"
+```
+
+Agendamento pelo GitHub Actions (todo dia às 15h UTC: 12h em Brasília, 9h na Cidade do México, 10h em Bogotá e Nova York). Crie o arquivo `.github/workflows/trial-funnel.yml` com o conteúdo abaixo e cadastre os secrets `BACKEND_URL` (ex.: `https://<domínio do backend>`, sem barra no fim) e `CRON_SECRET` (o mesmo valor da Vercel do backend):
+
+```yaml
+name: Trial funnel
+
+on:
+  schedule:
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Só simular (1) ou enviar de verdade (0)'
+        default: '1'
+
+jobs:
+  trial-funnel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run trial funnel
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+        run: |
+          if [ -z "$BACKEND_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "BACKEND_URL or CRON_SECRET not set, skipping"
+            exit 0
+          fi
+          curl -sS --fail-with-body -X POST "$BACKEND_URL/api/cron/trial-funnel?dry_run=$DRY_RUN" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -w "\nHTTP %{http_code}\n"
+```
+
+O job processa até 500 organizações por execução e para perto de 50 s; se a resposta vier com `"done": false`, rode de novo (é seguro repetir).
+
+**Templates:** nos dois templates, o botão de URL precisa ser o **primeiro** botão (índice 0). No `oferta_primeiro_mes`, deixe o botão de descadastro da Meta depois dele.

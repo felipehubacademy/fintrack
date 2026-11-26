@@ -75,6 +75,10 @@ Em **Vercel > projeto backend > Settings > Environment Variables**, cadastre em 
 | `WHATSAPP_OTP_TEMPLATE` | não | Nome do template de código. Padrão `codigo_login`. |
 | `WHATSAPP_TEMPLATE_LANGS` | não | Códigos de idioma dos templates. Padrão `pt:pt_BR,es:es,en:en`. Mude só se aprovar com outros códigos (ex.: `en:en_US`). |
 | `WEBHOOK_DRY_RUN` | não | `1` faz o webhook responder 200 sem processar nada. Use só em emergência. |
+| `CRON_SECRET` | sim | Segredo do job diário do teste grátis (`/api/cron/trial-funnel`, ver `BILLING.md` seção 8). Gere com `openssl rand -hex 32` e use o mesmo valor no secret `CRON_SECRET` do GitHub Actions. Com `WEBHOOK_DRY_RUN=1`, o job também só simula. |
+| `FEATURE_PAYWALL` | não | `false` desliga a cobrança no Zul: nada é bloqueado depois do teste e o job diário não envia nada. Padrão: ligada. |
+
+O link de assinatura que o Zul envia (`/assinar/<id da organização>` e `/oferta/<id da organização>`) usa a mesma `ZUL_DASHBOARD_URL`; sem ela, a base é `https://www.meuazulao.com.br`.
 
 Variáveis antigas `WHATSAPP_PHONE_ID` e `WHATSAPP_ACCESS_TOKEN` continuam funcionando como alternativa a `PHONE_ID` e `WHATSAPP_TOKEN`.
 
