@@ -115,3 +115,14 @@ test('GET /api/account/delete: 405', async () => {
   await handler({ method: 'GET', headers: {}, socket: {} }, res);
   assert.equal(res.statusCode, 405);
 });
+
+test('member deletion removes bills before expenses (bills.expense_id has no cascade)', async () => {
+  const admin = createMockSupabase({
+    resolve: membersResolver([{ id: 'u2', role: 'admin', created_at: '2025-01-01' }], { id: 'org1', admin_id: 'u2' }),
+  });
+  await deleteAccount(admin, ctxFor({ id: 'u1', organization_id: 'org1', role: 'member' }));
+  const billsDelete = admin.calls.findIndex((c) => c.table === 'bills' && c.action === 'delete');
+  const expensesDelete = admin.calls.findIndex((c) => c.table === 'expenses' && c.action === 'delete');
+  assert.ok(billsDelete >= 0 && expensesDelete >= 0);
+  assert.ok(billsDelete < expensesDelete, 'bills must be deleted before expenses');
+});
