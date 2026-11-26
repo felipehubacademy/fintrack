@@ -56,7 +56,7 @@ As variáveis de ambiente do Supabase não estão configuradas, causando erros d
 ```bash
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://niyqusfrurutumqnopbm.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5peXF1c2ZydXJ1dHVtcW5vcGJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NDMyODksImV4cCI6MjA3NzExOTI4OX0.hIfOF4Ee0GSH651j4K6-6fd-QgyRocw3fkdq2ZNFMxw
+NEXT_PUBLIC_SUPABASE_ANON_KEY=cole_aqui_a_anon_key_do_dashboard
 SUPABASE_SERVICE_ROLE_KEY=COLE_AQUI_A_CHAVE_DO_DASHBOARD
 ```
 

@@ -7,7 +7,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 BASE_URL="https://fintrack-web.vercel.app"
-CRON_SECRET="b80c03bc2196b3a78a386063a20ee36b563a05406414a8016fb361b3aa11dadc"
+CRON_SECRET="${CRON_SECRET:?defina CRON_SECRET no ambiente}"
 
 test_endpoint() {
   local method=$1
