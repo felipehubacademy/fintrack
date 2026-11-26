@@ -8,6 +8,7 @@ import { getBrazilToday, createBrazilDate, handleCurrencyChange, parseCurrencyIn
 import { useI18n } from '../contexts/I18nContext';
 import { t, currencySymbol } from '@fintrack/shared/i18n';
 import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
 const PAYMENT_METHODS = [
   { value: 'pix', label: 'PIX' },
@@ -28,7 +29,7 @@ const RECURRENCE_OPTIONS = [
   { value: 'yearly', get label() { return t('web.billModal.yearly'); } }
 ];
 
-export default function BillModal({ isOpen, onClose, onSave, editingBill = null, costCenters = [], categories = [], cards = [], organization = null, user = null }) {
+function BillModal({ isOpen, onClose, onSave, editingBill = null, costCenters = [], categories = [], cards = [], organization = null, user = null }) {
   const { t } = useI18n();
   const [formData, setFormData] = useState({
     description: '',
@@ -592,3 +593,4 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
   );
 }
 
+export default withPaywall(BillModal);

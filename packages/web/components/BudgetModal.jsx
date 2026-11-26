@@ -7,6 +7,7 @@ import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocal
 import { useI18n } from '../contexts/I18nContext';
 import { currencySymbol } from '@fintrack/shared/i18n';
 import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
 const BudgetModal = ({ 
   isOpen, 
@@ -195,4 +196,4 @@ const BudgetModal = ({
   );
 };
 
-export default BudgetModal;
+export default withPaywall(BudgetModal);

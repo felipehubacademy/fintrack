@@ -6,8 +6,9 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
 import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import withPaywall from './billing/withPaywall';
 
-export default function PaymentAllocationModal({ 
+function PaymentAllocationModal({ 
   isOpen, 
   onClose, 
   onSuccess, 
@@ -430,3 +431,4 @@ export default function PaymentAllocationModal({
   );
 }
 
+export default withPaywall(PaymentAllocationModal);

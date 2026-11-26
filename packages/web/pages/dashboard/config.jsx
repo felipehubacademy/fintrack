@@ -28,6 +28,7 @@ import DeleteAccountModal from '../../components/DeleteAccountModal';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 import { useI18n } from '../../contexts/I18nContext';
 import LanguageCurrencySettings from '../../components/LanguageCurrencySettings';
+import PlanCard from '../../components/billing/PlanCard';
 
 export default function ConfigPage() {
   const { t } = useI18n();
@@ -134,6 +135,12 @@ export default function ConfigPage() {
             </div>
           </CardHeader>
         </Card>
+
+        {/* Plan (trial / Plus) */}
+        <PlanCard
+          className="border-0 bg-white"
+          style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}
+        />
 
         {/* Configurações - Layout simples e limpo */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>

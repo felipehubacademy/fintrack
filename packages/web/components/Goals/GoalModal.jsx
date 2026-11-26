@@ -4,6 +4,7 @@ import { X, PiggyBank, CreditCard, ShoppingBag, TrendingUp, Wallet } from 'lucid
 import { useI18n } from '../../contexts/I18nContext';
 import { t, formatMoney, currencySymbol } from '@fintrack/shared/i18n';
 import { formatCurrencyInput } from '../../lib/utils';
+import withPaywall from '../billing/withPaywall';
 
 const GOAL_TYPES = {
   emergency_fund: {
@@ -43,7 +44,7 @@ const GOAL_TYPES = {
   }
 };
 
-export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null }) {
+function GoalModal({ isOpen, onClose, onSave, editingGoal = null }) {
   const { t } = useI18n();
   const [formData, setFormData] = useState({
     name: '',
@@ -335,3 +336,5 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
     </div>
   );
 }
+
+export default withPaywall(GoalModal);

@@ -10,6 +10,7 @@ import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatC
 import { useI18n } from '../contexts/I18nContext';
 import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
 import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -38,7 +39,7 @@ const aggregateSplits = (splits) => {
   return aggregated;
 };
 
-export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = [] }) {
+function ExpenseModal({ isOpen, onClose, onSuccess, categories = [] }) {
   const { t } = useI18n();
   
   const { organization, user: orgUser, costCenters, isSoloUser, loading: orgLoading, budgetCategories } = useOrganization();
@@ -814,4 +815,4 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
   );
 }
 
-
+export default withPaywall(ExpenseModal);

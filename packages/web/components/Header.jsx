@@ -31,6 +31,7 @@ import { useOrganization } from '../hooks/useOrganization';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
 import TransactionModal from './TransactionModal';
+import TrialBanner from './billing/TrialBanner';
 import { useI18n } from '../contexts/I18nContext';
 import { isFeatureEnabled, zulChatLink } from '@fintrack/shared/config';
 import WhatsAppIcon from './WhatsAppIcon';
@@ -480,6 +481,7 @@ export default function Header({
         </header>
 
         <div className="flex-1 flex flex-col bg-white">
+          <TrialBanner />
           {children}
         </div>
       </div>

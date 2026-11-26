@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { subscribeServerSideProps, subscribePageLanguage, purchaseBaseUrl } from '../billingPages.js';
+import { subscribeServerSideProps, subscribePageLanguage, purchaseBaseUrl, subscribePathFor } from '../billingPages.js';
 
 const ORG = '3f2a9c1e-1111-4222-8333-444455556666';
 
@@ -42,4 +42,11 @@ test('/oferta serves pt and es: browser language picks, ?lang= wins', () => {
   assert.equal(subscribePageLanguage({ query: {}, req: { headers: { 'accept-language': 'es-MX,es;q=0.9' } }, languages: langs }), 'es');
   assert.equal(subscribePageLanguage({ query: {}, req: { headers: { 'accept-language': 'en-US' } }, languages: langs }), 'pt');
   assert.equal(subscribePageLanguage({ query: { lang: 'en' }, req: { headers: {} }, languages: langs }), 'en');
+});
+
+test('subscribePathFor uses the localized path', () => {
+  assert.equal(subscribePathFor('pt', ORG), `/assinar/${ORG}`);
+  assert.equal(subscribePathFor('es', ORG), `/suscribirme/${ORG}`);
+  assert.equal(subscribePathFor('en', ORG), `/subscribe/${ORG}`);
+  assert.equal(subscribePathFor('pt', null), null);
 });

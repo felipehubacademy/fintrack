@@ -8,6 +8,7 @@ import { useNotificationContext } from '../../contexts/NotificationContext';
 import { useI18n } from '../../contexts/I18nContext';
 import { t, formatMoney, currencySymbol } from '@fintrack/shared/i18n';
 import { appLocale } from '../../lib/utils';
+import withPaywall from '../billing/withPaywall';
 
 const STEPS = {
   WELCOME: 0,
@@ -32,7 +33,7 @@ const MACRO_COLORS = {
   investments: '#10B981'
 };
 
-export default function BudgetWizard({
+function BudgetWizard({
   isOpen,
   onClose,
   organization,
@@ -889,3 +890,4 @@ function formatMonthYear(selectedMonth) {
   }
 }
 
+export default withPaywall(BudgetWizard);

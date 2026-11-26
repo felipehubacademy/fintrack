@@ -4,8 +4,9 @@ import { X, Plus, TrendingUp } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
 import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
 import { formatCurrencyInput } from '../../lib/utils';
+import withPaywall from '../billing/withPaywall';
 
-export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
+function ContributionModal({ isOpen, onClose, onSave, goal }) {
   const { t } = useI18n();
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -212,3 +213,5 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
     </div>
   );
 }
+
+export default withPaywall(ContributionModal);

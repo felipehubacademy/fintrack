@@ -7,8 +7,9 @@ import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, appLoca
 import { useI18n } from '../contexts/I18nContext';
 import { currencySymbol } from '@fintrack/shared/i18n';
 import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
-export default function BankIncomeModal({ 
+function BankIncomeModal({ 
   isOpen, 
   onClose, 
   onSuccess, 
@@ -267,3 +268,4 @@ export default function BankIncomeModal({
   );
 }
 
+export default withPaywall(BankIncomeModal);

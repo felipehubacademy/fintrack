@@ -127,6 +127,7 @@ test('status: reads the caller organization (expired trial)', async () => {
   assert.equal(res.body.hasAccess, false);
   assert.equal(res.body.currency, 'MXN');
   assert.equal(res.body.prices.monthly, 59);
+  assert.equal(res.body.organizationId, ORG);
   assert.equal(res.headers['cache-control'], 'no-store');
 });
 

@@ -4,7 +4,7 @@
  * Billing state of the caller's organization:
  * { status: 'trial'|'active'|'expired', isPlus, hasAccess, daysLeft,
  *   trialEndsAt, plusUntil, source, currency, prices: { monthly, annual,
- *   winback }, savingsPercent, paywallEnabled }
+ *   winback }, savingsPercent, paywallEnabled, organizationId }
  *
  * Currency: the caller's saved users.currency, else ?currency= (the web
  * app's current currency), mapped to a billing currency (USD fallback).

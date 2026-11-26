@@ -63,7 +63,8 @@ async function readUserCurrency(admin, userId) {
 /**
  * The GET /api/billing/status payload:
  * { status, isPlus, hasAccess, daysLeft, trialEndsAt, plusUntil, source,
- *   currency, prices, savingsPercent, paywallEnabled }.
+ *   currency, prices, savingsPercent, paywallEnabled } (plus organizationId
+ *   from getBillingStatusFor).
  * When the paywall flag is off, hasAccess is always true.
  */
 export function buildBillingStatus(org, { currency, now = new Date() } = {}) {
@@ -94,7 +95,7 @@ export async function getBillingStatusFor(admin, ctx, { requestedCurrency, now }
     readUserCurrency(admin, ctx?.userId),
   ]);
   const currency = billingCurrency(savedCurrency || requestedCurrency);
-  return buildBillingStatus(org, { currency, now });
+  return { organizationId: ctx?.organizationId || null, ...buildBillingStatus(org, { currency, now }) };
 }
 
 // ---------------------------------------------------------------------------

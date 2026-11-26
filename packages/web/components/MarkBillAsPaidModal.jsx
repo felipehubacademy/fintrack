@@ -3,8 +3,9 @@ import { Button } from './ui/Button';
 import { X, AlertCircle } from 'lucide-react';
 import { useI18n } from '../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
+import withPaywall from './billing/withPaywall';
 
-export default function MarkBillAsPaidModal({ 
+function MarkBillAsPaidModal({ 
   isOpen, 
   onClose, 
   onConfirm,
@@ -164,3 +165,4 @@ export default function MarkBillAsPaidModal({
   );
 }
 
+export default withPaywall(MarkBillAsPaidModal);

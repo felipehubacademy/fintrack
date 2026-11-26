@@ -6,8 +6,9 @@ import { processCurrencyInput, parseCurrencyInput, formatCurrencyInput, appLocal
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useI18n } from '../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
+import withPaywall from './billing/withPaywall';
 
-export default function MarkInvoiceAsPaidModal({
+function MarkInvoiceAsPaidModal({
   isOpen,
   onClose,
   onConfirm,
@@ -295,3 +296,5 @@ export default function MarkInvoiceAsPaidModal({
     </div>
   );
 }
+
+export default withPaywall(MarkInvoiceAsPaidModal);

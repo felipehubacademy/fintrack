@@ -11,6 +11,7 @@ import { useFileUpload } from '../hooks/useFileUpload';
 import { useI18n } from '../contexts/I18nContext';
 import { formatMoney } from '@fintrack/shared/i18n';
 import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
 const MAX_INSTALLMENTS = 24;
 
@@ -23,7 +24,7 @@ const createEmptyTransaction = () => ({
   installments: 1
 });
 
-export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuccess }) {
+function CardBulkTransactionsModal({ isOpen, onClose, card, onSuccess }) {
   const { t } = useI18n();
   const { organization, user: orgUser, costCenters, budgetCategories, isSoloUser } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
@@ -690,4 +691,4 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
   );
 }
 
-
+export default withPaywall(CardBulkTransactionsModal);

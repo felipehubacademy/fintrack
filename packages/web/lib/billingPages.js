@@ -13,6 +13,13 @@ import { webPurchaseLink } from '@fintrack/shared/billing';
 import { isUuid } from './billingServer.js';
 import { pickLanguage, languageFromAcceptLanguage } from './publicLocale.js';
 
+/** Subscribe link in the user's language (all of them redirect to the same offering). */
+export function subscribePathFor(language, organizationId) {
+  if (!organizationId) return null;
+  const base = language === 'pt' ? '/assinar' : language === 'es' ? '/suscribirme' : '/subscribe';
+  return `${base}/${encodeURIComponent(organizationId)}`;
+}
+
 export function purchaseBaseUrl(kind, env = process.env) {
   return kind === 'offer' ? env.RC_WEB_WINBACK_URL || '' : env.RC_WEB_PURCHASE_URL || '';
 }

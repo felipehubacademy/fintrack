@@ -8,8 +8,9 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import { useOrganization } from '../hooks/useOrganization';
 import { useI18n } from '../contexts/I18nContext';
 import { currencySymbol } from '@fintrack/shared/i18n';
+import withPaywall from './billing/withPaywall';
 
-export default function BankTransactionModal({ isOpen, onClose, account, organizationId, onSuccess }) {
+function BankTransactionModal({ isOpen, onClose, account, organizationId, onSuccess }) {
   const { t } = useI18n();
   const { organization } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
@@ -285,3 +286,4 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
   );
 }
 
+export default withPaywall(BankTransactionModal);

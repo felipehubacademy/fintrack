@@ -9,6 +9,7 @@ import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocal
 import { useI18n } from '../contexts/I18nContext';
 import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
 import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -37,7 +38,7 @@ const aggregateSplits = (splits) => {
   return aggregated;
 };
 
-export default function EditExpenseModal({ 
+function EditExpenseModal({ 
   isOpen, 
   expenseId,
   onClose, 
@@ -1025,3 +1026,4 @@ export default function EditExpenseModal({
   );
 }
 
+export default withPaywall(EditExpenseModal);
