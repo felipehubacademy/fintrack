@@ -10,6 +10,7 @@ import { HelpCircle, X } from 'lucide-react-native';
 import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Callout, Caption } from '../ui/Text';
 import { Card } from '../ui/Card';
+import { useI18n } from '../../contexts/I18nContext';
 
 export function Tooltip({ 
   title, 
@@ -19,6 +20,7 @@ export function Tooltip({
   style 
 }) {
   const [visible, setVisible] = useState(false);
+  const { t } = useI18n();
 
   return (
     <>
@@ -27,8 +29,8 @@ export function Tooltip({
         style={[styles.iconButton, style]}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel={`Informação sobre ${title || 'conteúdo'}`}
-        accessibilityHint="Toque para ver informações adicionais"
+        accessibilityLabel={title ? t('dashboard.ui.tooltipLabel', { title }) : t('dashboard.ui.tooltipLabelGeneric')}
+        accessibilityHint={t('dashboard.ui.tooltipHint')}
       >
         <HelpCircle size={iconSize} color={iconColor} />
       </TouchableOpacity>
@@ -53,8 +55,8 @@ export function Tooltip({
                   onPress={() => setVisible(false)} 
                   style={styles.closeButton}
                   accessibilityRole="button"
-                  accessibilityLabel="Fechar"
-                  accessibilityHint="Fechar dica"
+                  accessibilityLabel={t('common.close')}
+                  accessibilityHint={t('dashboard.ui.closeTip')}
                 >
                   <X size={20} color={colors.text.primary} />
                 </TouchableOpacity>

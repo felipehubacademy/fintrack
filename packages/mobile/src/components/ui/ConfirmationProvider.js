@@ -4,17 +4,16 @@ import ConfirmationModal from './ConfirmationModal';
 const ConfirmationContext = createContext(null);
 
 /**
- * Hook para usar o sistema de confirmação
+ * Confirmation dialogs (translated defaults when a string is omitted).
  * 
- * Uso:
+ * Usage:
  * const { confirm } = useConfirmation();
  * 
  * await confirm({
- *   title: 'Confirmar ação',
- *   message: 'Tem certeza?',
- *   type: 'warning',
- *   confirmText: 'Sim',
- *   cancelText: 'Não'
+ *   title: t('transactions.delete.title'),
+ *   message: t('transactions.delete.message'),
+ *   type: 'danger',            // warning | danger | info
+ *   confirmText: t('common.delete'), // optional, defaults to "Confirm"
  * });
  */
 export function useConfirmation() {
@@ -26,7 +25,7 @@ export function useConfirmation() {
 }
 
 /**
- * Provider para gerenciar confirmações globalmente
+ * Provider that renders one confirmation dialog for the whole app.
  */
 export function ConfirmationProvider({ children }) {
   const [confirmation, setConfirmation] = useState({
@@ -34,8 +33,8 @@ export function ConfirmationProvider({ children }) {
     title: '',
     message: '',
     type: 'warning',
-    confirmText: 'Confirmar',
-    cancelText: 'Cancelar',
+    confirmText: undefined,
+    cancelText: undefined,
     onConfirm: null,
     loading: false,
   });
@@ -58,11 +57,11 @@ export function ConfirmationProvider({ children }) {
 
       setConfirmation({
         visible: true,
-        title: options.title || 'Confirmar ação',
-        message: options.message || 'Tem certeza que deseja continuar?',
+        title: options.title,
+        message: options.message,
         type: options.type || 'warning',
-        confirmText: options.confirmText || 'Confirmar',
-        cancelText: options.cancelText || 'Cancelar',
+        confirmText: options.confirmText,
+        cancelText: options.cancelText,
         loading: false,
         onConfirm: handleConfirm,
       });

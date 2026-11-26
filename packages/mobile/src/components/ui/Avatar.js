@@ -13,7 +13,7 @@ import { colors } from '../../theme';
  */
 export function Avatar({ 
   src, 
-  name = 'Usuário', 
+  name, 
   size = 'md',
   color = '#3B82F6', // Azul primário padrão
   onPress,
@@ -23,7 +23,7 @@ export function Avatar({
 
   // Extrair primeira e segunda iniciais
   const getInitials = (name) => {
-    if (!name) return '??';
+    if (!name) return '?';
     
     const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {

@@ -7,9 +7,10 @@ import { colors, spacing, radius, shadows } from '../../theme';
 import { Title2 } from '../ui/Text';
 import { NotificationBell } from '../ui/NotificationBell';
 import Logo from '../ui/Logo';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
- * ScreenHeader - Header consistente para todas as telas
+ * ScreenHeader: consistent header for every screen.
  */
 export function ScreenHeader({ 
   user, 
@@ -18,24 +19,25 @@ export function ScreenHeader({
   onRightIconPress,
   showBackButton = false,
   showNotifications = false,
-  showLogo = false, // Nova prop para mostrar logo à esquerda
-  showAvatarOnRight = false, // Nova prop para mostrar avatar à direita
+  showLogo = false, // logo on the left
+  showAvatarOnRight = false, // avatar on the right
 }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   const renderAvatar = () => (
     <TouchableOpacity 
       style={styles.avatarContainer}
       accessibilityRole="button"
-      accessibilityLabel={`Perfil de ${user?.email || 'usuário'}`}
-      accessibilityHint="Abrir perfil do usuário"
+      accessibilityLabel={t('dashboard.ui.profileLabel', { name: user?.name || user?.email || t('dashboard.ui.user') })}
+      accessibilityHint={t('dashboard.ui.profileHint')}
     >
       {user?.avatar_url ? (
         <Image 
           source={{ uri: user.avatar_url }} 
           style={styles.avatar}
-          accessibilityLabel="Foto do perfil"
+          accessibilityLabel={t('dashboard.ui.profilePhoto')}
         />
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder]}>
@@ -65,8 +67,8 @@ export function ScreenHeader({
             style={styles.backButton} 
             onPress={() => navigation.goBack()}
             accessibilityRole="button"
-            accessibilityLabel="Voltar"
-            accessibilityHint="Voltar para a tela anterior"
+            accessibilityLabel={t('common.back')}
+            accessibilityHint={t('dashboard.ui.backHint')}
           >
             <ChevronLeft size={28} color={colors.text.primary} />
           </TouchableOpacity>
@@ -95,8 +97,8 @@ export function ScreenHeader({
               style={styles.iconButton}
               onPress={onRightIconPress}
               accessibilityRole="button"
-              accessibilityLabel="Ação adicional"
-              accessibilityHint="Executar ação adicional"
+              accessibilityLabel={t('dashboard.ui.moreActions')}
+              accessibilityHint={t('dashboard.ui.moreActionsHint')}
             >
               {rightIcon}
             </TouchableOpacity>

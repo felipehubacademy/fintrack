@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '../../theme';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function LoadingSpinner({ size = 'large', color, fullScreen = false, style }) {
+  const { t } = useI18n();
   const spinnerColor = color || colors.brand.primary;
   
   if (fullScreen) {
@@ -10,7 +12,7 @@ export default function LoadingSpinner({ size = 'large', color, fullScreen = fal
       <View 
         style={[styles.fullScreenContainer, style]}
         accessibilityRole="progressbar"
-        accessibilityLabel="Carregando"
+        accessibilityLabel={t('common.loading')}
         accessibilityLiveRegion="polite"
       >
         <ActivityIndicator size={size} color={spinnerColor} />
@@ -22,7 +24,7 @@ export default function LoadingSpinner({ size = 'large', color, fullScreen = fal
     <View 
       style={[styles.container, style]}
       accessibilityRole="progressbar"
-      accessibilityLabel="Carregando"
+      accessibilityLabel={t('common.loading')}
       accessibilityLiveRegion="polite"
     >
       <ActivityIndicator size={size} color={spinnerColor} />

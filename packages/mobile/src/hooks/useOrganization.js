@@ -23,7 +23,7 @@ export function useOrganization() {
       const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !currentUser) {
-        throw new Error('Usuário não autenticado');
+        throw new Error('Not authenticated');
       }
 
       // 2. Get user row from users table (by email - more reliable)
@@ -34,16 +34,16 @@ export function useOrganization() {
         .maybeSingle();
 
       if (userError) {
-        console.error('❌ Erro ao buscar usuário:', userError);
+        console.error('Error loading user:', userError);
         throw userError;
       }
 
       if (!userRow) {
-        throw new Error('Usuário não encontrado na base de dados');
+        throw new Error('User not found in the database');
       }
 
       if (!userRow.organization_id) {
-        throw new Error('Usuário sem organização vinculada');
+        throw new Error('User has no organization');
       }
 
       // Merge auth user data with DB user data
@@ -57,7 +57,7 @@ export function useOrganization() {
         .single();
 
       if (orgError) {
-        console.error('❌ Erro ao buscar organização:', orgError);
+        console.error('Error loading organization:', orgError);
         throw orgError;
       }
 
@@ -72,7 +72,7 @@ export function useOrganization() {
         .order('name');
       
       if (centersError) {
-        console.error('❌ Erro ao buscar cost centers:', centersError);
+        console.error('Error loading cost centers:', centersError);
         throw centersError;
       }
       setCostCenters(centers || []);
@@ -85,13 +85,13 @@ export function useOrganization() {
         .order('name');
       
       if (categoriesError) {
-        console.error('❌ Erro ao buscar categorias de orçamento:', categoriesError);
+        console.error('Error loading budget categories:', categoriesError);
       } else {
         setBudgetCategories(categories || []);
       }
 
     } catch (err) {
-      console.error('❌ Erro ao carregar organização:', err);
+      console.error('Error loading organization:', err);
       setError(err);
     } finally {
       setLoading(false);

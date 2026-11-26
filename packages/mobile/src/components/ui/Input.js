@@ -3,6 +3,7 @@ import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { colors, spacing, radius, typography } from '../../theme';
 import { Text } from './Text';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
  * Input Component - Apple-style text input
@@ -37,6 +38,7 @@ export function Input({
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
+  const { t } = useI18n();
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
   };
@@ -49,8 +51,8 @@ export function Input({
           style={styles.iconButton}
           hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
           accessibilityRole="button"
-          accessibilityLabel={isPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
-          accessibilityHint="Alternar visibilidade da senha"
+          accessibilityLabel={isPasswordVisible ? t('dashboard.ui.hidePassword') : t('dashboard.ui.showPassword')}
+          accessibilityHint={t('dashboard.ui.togglePasswordHint')}
         >
           {isPasswordVisible ? (
             <EyeOff size={20} color={colors.text.tertiary} />
@@ -68,8 +70,8 @@ export function Input({
           style={styles.iconButton}
           hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
           accessibilityRole="button"
-          accessibilityLabel="Ação adicional"
-          accessibilityHint="Executar ação adicional"
+          accessibilityLabel={t('dashboard.ui.moreActions')}
+          accessibilityHint={t('dashboard.ui.moreActionsHint')}
         >
           {rightIcon}
         </TouchableOpacity>
