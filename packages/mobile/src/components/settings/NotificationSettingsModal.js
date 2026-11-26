@@ -15,50 +15,23 @@ import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { supabase } from '../../services/supabase';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { height } = Dimensions.get('window');
 
+// Keys match user_preferences.settings; labels in settings.notificationsModal.types.
 const NOTIFICATION_TYPES = [
-  {
-    key: 'emailNotifications',
-    title: 'Notificações por Email',
-    description: 'Receber alertas e relatórios por email',
-    icon: Mail,
-  },
-  {
-    key: 'whatsappNotifications',
-    title: 'Notificações WhatsApp',
-    description: 'Receber confirmações via WhatsApp',
-    icon: MessageSquare,
-  },
-  {
-    key: 'budgetWarnings',
-    title: 'Alertas de Orçamento',
-    description: 'Avisos quando próximo do limite',
-    icon: AlertTriangle,
-  },
-  {
-    key: 'expenseAlerts',
-    title: 'Alertas de Despesas',
-    description: 'Confirmações de despesas registradas',
-    icon: Bell,
-  },
-  {
-    key: 'weeklyReports',
-    title: 'Relatórios Semanais',
-    description: 'Resumo semanal de gastos',
-    icon: Mail,
-  },
-  {
-    key: 'monthlyReports',
-    title: 'Relatórios Mensais',
-    description: 'Resumo mensal completo',
-    icon: Mail,
-  },
+  { key: 'emailNotifications', icon: Mail },
+  { key: 'whatsappNotifications', icon: MessageSquare },
+  { key: 'budgetWarnings', icon: AlertTriangle },
+  { key: 'expenseAlerts', icon: Bell },
+  { key: 'weeklyReports', icon: Mail },
+  { key: 'monthlyReports', icon: Mail },
 ];
 
 export function NotificationSettingsModal({ visible, onClose, organization, user }) {
   const { showToast } = useToast();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [settings, setSettings] = useState({
     emailNotifications: true,
@@ -92,7 +65,7 @@ export function NotificationSettingsModal({ visible, onClose, organization, user
         setSettings({ ...settings, ...data.settings });
       }
     } catch (error) {
-      console.error('Erro ao buscar configurações:', error);
+      console.error('Failed to load notification settings:', error);
     } finally {
       setLoading(false);
     }
@@ -113,11 +86,11 @@ export function NotificationSettingsModal({ visible, onClose, organization, user
 
       if (error) throw error;
 
-      showToast('Configurações salvas com sucesso!', 'success');
+      showToast(t('settings.notificationsModal.saved'), 'success');
       onClose();
     } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
-      showToast('Erro ao salvar configurações: ' + (error.message || 'Erro desconhecido'), 'error');
+      console.error('Failed to save notification settings:', error);
+      showToast(t('settings.notificationsModal.saveError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -148,8 +121,8 @@ export function NotificationSettingsModal({ visible, onClose, organization, user
         >
           {/* Header */}
           <View style={styles.header}>
-            <Title2 weight="bold">Configurações de Notificações</Title2>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Title2 weight="bold">{t('settings.notificationsModal.title')}</Title2>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -164,12 +137,12 @@ export function NotificationSettingsModal({ visible, onClose, organization, user
           >
             {loading ? (
               <View style={styles.loadingContainer}>
-                <Caption color="secondary">Carregando configurações...</Caption>
+                <Caption color="secondary">{t('settings.notificationsModal.loading')}</Caption>
               </View>
             ) : (
               <>
                 <Caption color="secondary" style={{ marginBottom: spacing[3] }}>
-                  Configure como deseja receber notificações e alertas sobre suas finanças.
+                  {t('settings.notificationsModal.intro')}
                 </Caption>
 
                 {NOTIFICATION_TYPES.map((type) => {
@@ -181,8 +154,8 @@ export function NotificationSettingsModal({ visible, onClose, organization, user
                           <Icon size={20} color={colors.brand.primary} />
                         </View>
                         <View style={styles.notificationInfo}>
-                          <Callout weight="medium">{type.title}</Callout>
-                          <Caption color="secondary">{type.description}</Caption>
+                          <Callout weight="medium">{t(`settings.notificationsModal.types.${type.key}.title`)}</Callout>
+                          <Caption color="secondary">{t(`settings.notificationsModal.types.${type.key}.description`)}</Caption>
                         </View>
                       </View>
                       <Switch
@@ -201,14 +174,14 @@ export function NotificationSettingsModal({ visible, onClose, organization, user
           {/* Footer */}
           <View style={styles.footer}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               disabled={saving}
               style={{ flex: 1, marginRight: spacing[2] }}
             />
             <Button
-              title={saving ? 'Salvando...' : 'Salvar'}
+              title={saving ? t('settings.notificationsModal.saving') : t('common.save')}
               onPress={handleSave}
               disabled={saving}
               style={{ flex: 1 }}

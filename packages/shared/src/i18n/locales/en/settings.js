@@ -23,6 +23,22 @@ export default {
     label: 'Zul notifications',
     description: 'Reminders and summaries on WhatsApp',
   },
+  notificationsModal: {
+    title: 'Zul notifications',
+    intro: 'Choose what Zul sends you and how.',
+    loading: 'Loading…',
+    saved: 'Saved.',
+    saveError: 'Could not save. Try again.',
+    saving: 'Saving…',
+    types: {
+      emailNotifications: { title: 'Email', description: 'Alerts and reports by email' },
+      whatsappNotifications: { title: 'WhatsApp', description: 'Confirmations on WhatsApp' },
+      budgetWarnings: { title: 'Budget alerts', description: 'A heads-up before you hit a limit' },
+      expenseAlerts: { title: 'Expense confirmations', description: 'A message for each expense logged' },
+      weeklyReports: { title: 'Weekly summary', description: 'Your week in one message' },
+      monthlyReports: { title: 'Monthly summary', description: 'Your full month in one message' },
+    },
+  },
   profile: {
     label: 'My profile',
     description: 'Name, photo and phone',
