@@ -17,6 +17,9 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { supabase } from '../../services/supabase';
+import { categoryLabel } from '../../utils/categoryLabel';
+import { sanitizeAmountInput, parseAmountInput, amountDecimalSeparator } from './amountInput';
+import { useI18n } from '../../contexts/I18nContext';
 
 // Usar ScrollView nativo no Android para melhor detecção de scroll
 const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
@@ -34,30 +37,9 @@ const getBrazilTodayString = () => {
   return `${year}-${month}-${day}`;
 };
 
-const parseAmountValue = (value) => {
-  if (typeof value === 'number') return value;
-  if (!value) return 0;
-  const normalized = String(value)
-    .replace(/\s/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.');
-  const parsed = Number(normalized);
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
+const parseAmountValue = (value) => parseAmountInput(value);
 
-const processCurrencyInput = (value) => {
-  if (!value) return '';
-  let cleaned = value.replace(/[^0-9,.]/g, '');
-  cleaned = cleaned.replace(/\./g, '');
-  const parts = cleaned.split(',');
-  if (parts.length > 2) {
-    cleaned = parts[0] + ',' + parts.slice(1).join('');
-  }
-  if (parts.length === 2 && parts[1].length > 2) {
-    cleaned = parts[0] + ',' + parts[1].substring(0, 2);
-  }
-  return cleaned;
-};
+const processCurrencyInput = (value) => sanitizeAmountInput(value);
 
 // Componente SelectField (igual ao TransactionModal)
 const SelectField = ({ label, value, placeholder, onPress, disabled }) => (
@@ -99,6 +81,7 @@ const InlineOptionSheet = ({
   onSelect,
   onClose,
 }) => {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
   if (!visible) return null;
@@ -119,7 +102,7 @@ const InlineOptionSheet = ({
         <View style={styles.sheetHandle} />
         <View style={styles.sheetHeader}>
           <Title2 weight="semiBold">{title}</Title2>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel={t('common.close')}>
             <X size={24} color={colors.text.secondary} />
           </TouchableOpacity>
         </View>
@@ -134,7 +117,7 @@ const InlineOptionSheet = ({
         >
           {options.length === 0 ? (
             <View style={styles.sheetEmpty}>
-              <Caption color="secondary">Nenhuma opção disponível</Caption>
+              <Caption color="secondary">{t('finances.form.noOptions')}</Caption>
             </View>
           ) : (
             options.map((option) => {
@@ -184,6 +167,7 @@ export default function BankIncomeModal({
   const insets = useSafeAreaInsets();
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
   const { showToast } = useToast();
+  const { t, currencySymbol, language } = useI18n();
   const [saving, setSaving] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
   const [form, setForm] = useState({
@@ -248,7 +232,7 @@ export default function BankIncomeModal({
     } catch (error) {
       console.error('Erro ao buscar contas:', error);
       setAvailableAccounts([]);
-      showToast('Erro ao carregar contas bancárias', 'error');
+      showToast(t('finances.form.accountsLoadError'), 'error');
     } finally {
       setLoadingAccounts(false);
     }
@@ -256,23 +240,23 @@ export default function BankIncomeModal({
 
   const handleSave = async () => {
     if (!form.description?.trim()) {
-      showToast('Informe uma descrição', 'error');
+      showToast(t('finances.form.descriptionRequired'), 'error');
       return;
     }
 
     const amount = parseAmountValue(form.amount);
     if (!form.amount || amount <= 0) {
-      showToast('Informe um valor válido', 'error');
+      showToast(t('finances.form.amountPositive'), 'error');
       return;
     }
 
     if (!form.category_id) {
-      showToast('Selecione uma categoria', 'error');
+      showToast(t('finances.form.categoryRequired'), 'error');
       return;
     }
 
     if (!form.bank_account_id) {
-      showToast('Selecione a conta de destino', 'error');
+      showToast(t('finances.income.accountRequired'), 'error');
       return;
     }
 
@@ -321,12 +305,12 @@ export default function BankIncomeModal({
 
       if (transactionError) throw transactionError;
 
-      showToast('Entrada registrada com sucesso!', 'success');
+      showToast(t('finances.income.saved'), 'success');
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('Erro ao registrar entrada:', error);
-      showToast(error.message || 'Erro ao registrar entrada', 'error');
+      showToast(t('finances.income.error'), 'error');
     } finally {
       setSaving(false);
     }
@@ -372,14 +356,14 @@ export default function BankIncomeModal({
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerTitleContainer}>
-                <Title2 weight="semiBold">Nova Entrada</Title2>
+                <Title2 weight="semiBold">{t('finances.income.title')}</Title2>
                 {selectedAccountObj && (
                   <Caption color="secondary" style={styles.accountName}>
                     {selectedAccountObj.name}
                   </Caption>
                 )}
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
                 <X size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
@@ -397,11 +381,11 @@ export default function BankIncomeModal({
               <View style={styles.form}>
                 {/* Description */}
                 <View style={styles.field}>
-                  <Caption color="secondary" weight="medium">Descrição *</Caption>
+                  <Caption color="secondary" weight="medium">{t('finances.form.description')}</Caption>
                   <Input
                     value={form.description}
                     onChangeText={(text) => setForm((prev) => ({ ...prev, description: text }))}
-                    placeholder="Ex: Salário Novembro, Freelance"
+                    placeholder={t('finances.income.descriptionPlaceholder')}
                     icon={<Tag size={20} color={colors.text.secondary} />}
                     editable={!saving}
                   />
@@ -409,26 +393,26 @@ export default function BankIncomeModal({
 
                 {/* Amount */}
                 <View style={styles.field}>
-                  <Caption color="secondary" weight="medium">Valor *</Caption>
+                  <Caption color="secondary" weight="medium">{t('finances.form.amount')}</Caption>
                   <Input
                     value={form.amount}
                     onChangeText={(text) =>
                       setForm((prev) => ({ ...prev, amount: processCurrencyInput(text) }))
                     }
-                    placeholder="0,00"
+                    placeholder={`0${amountDecimalSeparator()}00`}
                     keyboardType="decimal-pad"
-                    icon={<Text style={styles.currencyIcon}>R$</Text>}
+                    icon={<Text style={styles.currencyIcon}>{currencySymbol()}</Text>}
                     editable={!saving}
                   />
                 </View>
 
                 {/* Date */}
                 <View style={styles.field}>
-                  <Caption color="secondary" weight="medium">Data *</Caption>
+                  <Caption color="secondary" weight="medium">{t('finances.form.date')}</Caption>
                   <Input
                     value={form.date}
                     onChangeText={(text) => setForm((prev) => ({ ...prev, date: text }))}
-                    placeholder="AAAA-MM-DD"
+                    placeholder={t('finances.form.datePlaceholder')}
                     icon={<Calendar size={20} color={colors.text.secondary} />}
                     editable={!saving}
                   />
@@ -436,12 +420,12 @@ export default function BankIncomeModal({
 
                 {/* Category */}
                 <SelectField
-                  label="Categoria *"
-                  value={selectedCategory?.name || ''}
+                  label={t('finances.form.category')}
+                  value={selectedCategory?.name ? categoryLabel(selectedCategory.name) : ''}
                   placeholder={
                     !incomeCategories || incomeCategories.length === 0
-                      ? 'Nenhuma categoria de entrada disponível'
-                      : 'Selecionar categoria'
+                      ? t('finances.income.noCategories')
+                      : t('finances.form.chooseCategory')
                   }
                   disabled={!incomeCategories || incomeCategories.length === 0}
                   onPress={() => {
@@ -455,14 +439,14 @@ export default function BankIncomeModal({
                 {/* Bank Account */}
                 {!selectedAccount && (
                   <SelectField
-                    label="Conta Bancária *"
+                    label={t('finances.income.account')}
                     value={selectedAccountObj ? `${selectedAccountObj.name}${selectedAccountObj.bank ? ` - ${selectedAccountObj.bank}` : ''}` : ''}
                     placeholder={
                       loadingAccounts
-                        ? 'Carregando contas...'
+                        ? t('common.loading')
                         : availableAccounts.length === 0
-                          ? 'Nenhuma conta disponível'
-                          : 'Selecionar conta de destino'
+                          ? t('finances.form.noAccounts')
+                          : t('finances.form.chooseAccount')
                     }
                     disabled={loadingAccounts || availableAccounts.length === 0}
                     onPress={() => {
@@ -479,14 +463,14 @@ export default function BankIncomeModal({
             {/* Footer */}
             <View style={[styles.footer, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, spacing[4]) : spacing[4] }]}>
               <Button
-                title="Cancelar"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={onClose}
                 disabled={saving}
                 style={{ flex: 1 }}
               />
               <Button
-                title="Salvar"
+                title={t('common.save')}
                 variant="primary"
                 onPress={handleSave}
                 disabled={saving}
@@ -497,15 +481,15 @@ export default function BankIncomeModal({
             {activeSheet === 'category' && (
               <InlineOptionSheet
                 visible
-                title="Categorias"
+                title={t('finances.form.categories')}
                 options={
                   incomeCategories && incomeCategories.length > 0
                     ? incomeCategories
-                        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'))
                         .map((cat) => ({
                           id: cat.id,
-                          label: cat.name || 'Sem nome',
+                          label: cat.name ? categoryLabel(cat.name) : t('finances.form.noName'),
                         }))
+                        .sort((a, b) => a.label.localeCompare(b.label, language))
                     : []
                 }
                 selectedId={form.category_id}
@@ -520,12 +504,12 @@ export default function BankIncomeModal({
             {activeSheet === 'account' && !selectedAccount && (
               <InlineOptionSheet
                 visible
-                title="Contas Bancárias"
+                title={t('finances.accountsSheet.title')}
                 options={
                   availableAccounts && availableAccounts.length > 0
                     ? availableAccounts.map((acc) => ({
                         id: acc.id,
-                        label: `${acc.name || 'Sem nome'}${acc.bank ? ` - ${acc.bank}` : ''}`,
+                        label: `${acc.name || t('finances.form.noName')}${acc.bank ? ` - ${acc.bank}` : ''}`,
                       }))
                     : []
                 }

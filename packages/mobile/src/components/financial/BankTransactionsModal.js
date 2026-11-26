@@ -14,24 +14,16 @@ import { Text, Title2, Headline, Caption, Callout } from '../ui/Text';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { supabase } from '../../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
-import { formatBrazilDate } from '../../utils/date';
+import { useI18n } from '../../contexts/I18nContext';
 import { orderTransactionsForDisplay } from '../../utils/sortTransactions';
 import { getMonthRange } from '../../utils/monthRange';
 
 const { height } = Dimensions.get('window');
 
-const formatDate = (dateString) => formatBrazilDate(dateString);
-
-const getTransactionLabel = (type) => {
-  const creditTypes = ['income_deposit', 'transfer_in'];
-  if (creditTypes.includes(type)) {
-    return 'Entrada';
-  }
-  return 'Saída';
-};
+const isCreditType = (type) => ['income_deposit', 'transfer_in'].includes(type);
 
 export default function BankTransactionsModal({ visible, onClose, account, organization, selectedMonth }) {
+  const { t, formatMoney, formatDate } = useI18n();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const { startDate: monthStartDate, endDate: monthEndDate } = getMonthRange(selectedMonth);
@@ -83,10 +75,10 @@ export default function BankTransactionsModal({ visible, onClose, account, organ
             <View style={styles.headerContent}>
               <Headline weight="bold">{account.name}</Headline>
               <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                Histórico de transações - Saldo atual: {formatCurrency(account.current_balance || 0)}
+                {t('finances.history.subtitle', { amount: formatMoney(account.current_balance || 0) })}
               </Caption>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -105,13 +97,13 @@ export default function BankTransactionsModal({ visible, onClose, account, organ
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.brand.primary} />
                 <Caption color="secondary" style={{ marginTop: spacing[2] }}>
-                  Carregando transações...
+                  {t('common.loading')}
                 </Caption>
               </View>
             ) : transactions.length > 0 ? (
               <View style={styles.transactionsContainer}>
                 <Callout weight="semiBold" style={styles.transactionsTitle}>
-                  Transações ({transactions.length})
+                  {t('finances.history.count', { count: transactions.length })}
                 </Callout>
                 <Card style={styles.transactionsCard} padding="none">
                   {transactions.map((transaction, index) => {
@@ -129,7 +121,7 @@ export default function BankTransactionsModal({ visible, onClose, account, organ
                       >
                         <View style={styles.transactionLeft}>
                           <View style={styles.transactionRow}>
-                            <Caption color="secondary">{formatDate(transaction.date)}</Caption>
+                            <Caption color="secondary">{formatDate(transaction.date, 'dayMonth')}</Caption>
                             <View
                               style={[
                                 styles.transactionTypeBadge,
@@ -143,7 +135,7 @@ export default function BankTransactionsModal({ visible, onClose, account, organ
                                   fontSize: 10,
                                 }}
                               >
-                                {getTransactionLabel(transaction.transaction_type)}
+                                {t(isCreditType(transaction.transaction_type) ? 'finances.history.in' : 'finances.history.out')}
                               </Caption>
                             </View>
                           </View>
@@ -158,10 +150,10 @@ export default function BankTransactionsModal({ visible, onClose, account, organ
                               color: isCredit ? colors.brand.primary : colors.text.primary,
                             }}
                           >
-                            {isCredit ? '+' : '-'} {formatCurrency(transaction.amount)}
+                            {isCredit ? '+' : '-'} {formatMoney(transaction.amount)}
                           </Callout>
                           <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                            Saldo: {formatCurrency(transaction.balance_after)}
+                            {t('finances.accounts.balanceAfter', { amount: formatMoney(transaction.balance_after) })}
                           </Caption>
                         </View>
                       </View>
@@ -171,14 +163,14 @@ export default function BankTransactionsModal({ visible, onClose, account, organ
               </View>
             ) : (
               <View style={styles.emptyContainer}>
-                <Caption color="secondary">Nenhuma transação registrada.</Caption>
+                <Caption color="secondary" style={{ textAlign: 'center' }}>{t('finances.history.empty')}</Caption>
               </View>
             )}
           </ScrollView>
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Button title="Fechar" variant="outline" onPress={onClose} style={styles.footerButton} />
+            <Button title={t('common.close')} variant="outline" onPress={onClose} style={styles.footerButton} />
           </View>
         </TouchableOpacity>
       </TouchableOpacity>

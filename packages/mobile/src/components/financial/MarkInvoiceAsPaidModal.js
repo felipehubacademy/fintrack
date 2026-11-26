@@ -17,6 +17,8 @@ import { Button } from '../ui/Button';
 import { supabase } from '../../services/supabase';
 import { formatCurrency } from '@fintrack/shared/utils';
 import { useToast } from '../ui/Toast';
+import { sanitizeAmountInput, formatAmountInput, parseAmountInput, amountDecimalSeparator } from './amountInput';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { height } = Dimensions.get('window');
 
@@ -55,6 +57,7 @@ const OptionSheet = ({
   onSelect,
   onClose,
 }) => {
+  const { t } = useI18n();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={onClose}>
@@ -70,7 +73,7 @@ const OptionSheet = ({
           >
             {options.length === 0 ? (
               <Caption color="secondary" style={{ textAlign: 'center', marginBottom: spacing[2] }}>
-                Nenhuma opção disponível
+                {t('finances.form.noOptions')}
               </Caption>
             ) : (
               options.map((option) => {
@@ -120,6 +123,7 @@ export default function MarkInvoiceAsPaidModal({
   organization = null
 }) {
   const { showToast } = useToast();
+  const { t, formatMoney, currencySymbol } = useI18n();
   const [paymentMethod, setPaymentMethod] = useState('bank_account');
   const [bankAccounts, setBankAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState('');
@@ -139,21 +143,9 @@ export default function MarkInvoiceAsPaidModal({
     return Number(Number(value).toFixed(2));
   };
 
-  const formatAmountForInput = (value) => {
-    if (!value || value === 0) return '';
-    return Number(value).toFixed(2).replace('.', ',');
-  };
+  const formatAmountForInput = (value) => formatAmountInput(value);
 
-  const parseAmountValue = (value) => {
-    if (typeof value === 'number') return value;
-    if (!value) return 0;
-    const normalized = String(value)
-      .replace(/\s/g, '')
-      .replace(/\./g, '')
-      .replace(',', '.');
-    const parsed = Number(normalized);
-    return Number.isNaN(parsed) ? 0 : parsed;
-  };
+  const parseAmountValue = (value) => parseAmountInput(value);
 
   const isLessOrEqualWithTolerance = (value, limit, tolerance = 0.01) => {
     return value <= limit + tolerance;
@@ -194,36 +186,15 @@ export default function MarkInvoiceAsPaidModal({
       }
     } catch (error) {
       console.error('Erro ao carregar contas bancárias:', error);
-      setFetchError('Não foi possível carregar as contas bancárias. Tente novamente.');
+      setFetchError(t('finances.form.accountsLoadError'));
     } finally {
       setLoadingAccounts(false);
     }
   };
 
-  const processCurrencyInput = (value) => {
-    if (!value) return '';
-    // Remove tudo exceto números, vírgulas e pontos
-    let cleaned = value.replace(/[^0-9,.]/g, '');
-    // Remove pontos (milhares) e mantém apenas vírgula (decimal)
-    cleaned = cleaned.replace(/\./g, '');
-    // Garante apenas uma vírgula
-    const parts = cleaned.split(',');
-    if (parts.length > 2) {
-      cleaned = parts[0] + ',' + parts.slice(1).join('');
-    }
-    // Limita a 2 casas decimais
-    if (parts.length === 2 && parts[1].length > 2) {
-      cleaned = parts[0] + ',' + parts[1].substring(0, 2);
-    }
-    return cleaned;
-  };
+  const processCurrencyInput = (value) => sanitizeAmountInput(value);
 
-  const formatCurrencyInput = (value) => {
-    if (!value || value === 0) return '';
-    const num = typeof value === 'string' ? parseAmountValue(value) : value;
-    if (num === 0) return '';
-    return num.toFixed(2).replace('.', ',');
-  };
+  const formatCurrencyInput = (value) => formatAmountInput(typeof value === 'string' ? parseAmountValue(value) : value);
 
   const handleAmountChange = (text) => {
     const processed = processCurrencyInput(text);
@@ -264,9 +235,9 @@ export default function MarkInvoiceAsPaidModal({
         bank_account_id: paymentMethod === 'bank_account' ? selectedAccount : null,
         amount: normalizedRaw
       });
-      showToast('Pagamento registrado com sucesso!', 'success');
+      showToast(t('finances.payInvoice.saved'), 'success');
     } catch (error) {
-      showToast('Erro ao processar pagamento. Tente novamente.', 'error');
+      showToast(t('finances.invoice.paymentError'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -329,12 +300,12 @@ export default function MarkInvoiceAsPaidModal({
               </View>
               <View style={styles.headerText}>
                 <Caption weight="semiBold" style={styles.headerLabel}>
-                  PAGAMENTO DE FATURA
+                  {t('finances.payInvoice.eyebrow')}
                 </Caption>
                 <Headline weight="semiBold">{card.name}</Headline>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -356,25 +327,25 @@ export default function MarkInvoiceAsPaidModal({
               {/* Saldo restante */}
               <Card style={styles.infoCard}>
                 <Caption weight="semiBold" color="secondary" style={styles.infoLabel}>
-                  {invoicePaidAmount > 0 ? 'SALDO RESTANTE' : 'VALOR TOTAL DA FATURA'}
+                  {invoicePaidAmount > 0 ? t('finances.payInvoice.remaining') : t('finances.payInvoice.total')}
                 </Caption>
                 <Headline weight="bold" style={{ marginTop: spacing[1] }}>
-                  {formatCurrency(remainingAmount)}
+                  {formatMoney(remainingAmount)}
                 </Headline>
                 {invoicePaidAmount > 0 && (
                   <Caption style={{ color: colors.success.main, marginTop: spacing[0.5] }}>
-                    Já pago: {formatCurrency(invoicePaidAmount)}
+                    {t('finances.payInvoice.alreadyPaid', { amount: formatMoney(invoicePaidAmount) })}
                   </Caption>
                 )}
                 <Caption color="secondary" style={{ marginTop: spacing[2] }}>
-                  Ao confirmar, uma transação bancária será criada e o limite do cartão será atualizado.
+                  {t('finances.payInvoice.hint')}
                 </Caption>
               </Card>
 
               {/* Valor a pagar */}
               <Card style={styles.amountCard}>
                 <Caption weight="semiBold" color="secondary" style={styles.infoLabel}>
-                  VALOR A PAGAR AGORA
+                  {t('finances.payInvoice.payNow')}
                 </Caption>
                 <View style={styles.amountInputContainer}>
                   <View style={styles.inputFieldWrapper}>
@@ -383,18 +354,18 @@ export default function MarkInvoiceAsPaidModal({
                       onChangeText={handleAmountChange}
                       onFocus={handleAmountFocus}
                       onBlur={handleAmountBlur}
-                      placeholder="0,00"
+                      placeholder={`0${amountDecimalSeparator()}00`}
                       keyboardType="decimal-pad"
-                      icon={<Text style={styles.currencyIcon}>R$</Text>}
-                      error={!isAmountValid && amountInput ? `Informe um valor entre R$ 0,01 e ${formatCurrency(remainingAmount)}` : null}
+                      icon={<Text style={styles.currencyIcon}>{currencySymbol()}</Text>}
+                      error={!isAmountValid && amountInput ? t('finances.payInvoice.amountRange', { min: formatMoney(0.01), max: formatMoney(remainingAmount) }) : null}
                       inputStyle={styles.amountInput}
                       style={styles.inputField}
                     />
                   </View>
                 </View>
                 <View style={styles.remainingAfterPayment}>
-                  <Caption color="secondary">Saldo restante após este pagamento</Caption>
-                  <Callout weight="semiBold">{formatCurrency(remainingAfterPayment)}</Callout>
+                  <Caption color="secondary">{t('finances.payInvoice.remainingAfter')}</Caption>
+                  <Callout weight="semiBold">{formatMoney(remainingAfterPayment)}</Callout>
                 </View>
               </Card>
             </View>
@@ -402,19 +373,19 @@ export default function MarkInvoiceAsPaidModal({
             {/* Forma de pagamento */}
             <View style={styles.paymentMethodSection}>
               <SelectField
-                label="Forma de Pagamento"
-                value={paymentMethod === 'bank_account' ? 'Conta bancária' : paymentMethod === 'other' ? 'Outros' : ''}
-                placeholder="Selecionar forma de pagamento"
+                label={t('finances.payInvoice.method')}
+                value={paymentMethod === 'bank_account' ? t('finances.payInvoice.methodBank') : paymentMethod === 'other' ? t('finances.payInvoice.methodOtherShort') : ''}
+                placeholder={t('finances.payInvoice.methodPlaceholder')}
                 onPress={() => setActiveSheet('payment')}
               />
 
               {paymentMethod === 'bank_account' && (
                 <SelectField
-                  label="Debitar da Conta"
+                  label={t('finances.payInvoice.fromAccount')}
                   value={bankAccounts.find(acc => acc.id === selectedAccount)?.name ? 
                     `${bankAccounts.find(acc => acc.id === selectedAccount).name} • ${bankAccounts.find(acc => acc.id === selectedAccount).bank}` : 
                     ''}
-                  placeholder={loadingAccounts ? 'Carregando contas...' : bankAccounts.length === 0 ? 'Nenhuma conta disponível' : 'Selecionar conta'}
+                  placeholder={loadingAccounts ? t('common.loading') : bankAccounts.length === 0 ? t('finances.form.noAccounts') : t('finances.form.chooseAccount')}
                   disabled={loadingAccounts || bankAccounts.length === 0}
                   onPress={() => bankAccounts.length > 0 && setActiveSheet('account')}
                 />
@@ -423,7 +394,7 @@ export default function MarkInvoiceAsPaidModal({
               {paymentMethod === 'other' && (
                 <Card style={styles.infoCard}>
                   <Caption color="secondary">
-                    ℹ️ O pagamento será registrado na fatura, mas nenhuma transação bancária será criada.
+                    {t('finances.payInvoice.otherHint')}
                   </Caption>
                 </Card>
               )}
@@ -433,13 +404,13 @@ export default function MarkInvoiceAsPaidModal({
           {/* Footer */}
           <View style={styles.footer}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               style={styles.cancelButton}
             />
             <Button
-              title={isSubmitting ? 'Processando...' : 'Confirmar'}
+              title={isSubmitting ? t('common.loading') : t('common.confirm')}
               onPress={handleConfirm}
               disabled={!canConfirm}
               loading={isSubmitting}
@@ -452,10 +423,10 @@ export default function MarkInvoiceAsPaidModal({
       {/* Option Sheets */}
       <OptionSheet
         visible={activeSheet === 'payment'}
-        title="Forma de Pagamento"
+        title={t('finances.payInvoice.method')}
         options={[
-          { id: 'bank_account', label: 'Conta bancária' },
-          { id: 'other', label: 'Outros (dinheiro, pix externo, etc.)' },
+          { id: 'bank_account', label: t('finances.payInvoice.methodBank') },
+          { id: 'other', label: t('finances.payInvoice.methodOther') },
         ]}
         selectedId={paymentMethod}
         onSelect={(option) => {
@@ -469,7 +440,7 @@ export default function MarkInvoiceAsPaidModal({
 
       <OptionSheet
         visible={activeSheet === 'account'}
-        title="Selecionar Conta"
+        title={t('finances.form.chooseAccount')}
         options={bankAccounts.map(acc => ({
           id: acc.id,
           label: `${acc.name} • ${acc.bank}`,

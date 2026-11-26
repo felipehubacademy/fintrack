@@ -17,7 +17,6 @@ import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { BankIcon } from '../components/financial/BankIcon';
 import { useOrganization } from '../hooks/useOrganization';
 import { supabase } from '../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
 import BankTransactionModal from '../components/financial/BankTransactionModal';
 import BankIncomeModal from '../components/financial/BankIncomeModal';
 import BankTransactionsModal from '../components/financial/BankTransactionsModal';
@@ -26,33 +25,26 @@ import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { useToast } from '../components/ui/Toast';
 import { orderTransactionsForDisplay } from '../utils/sortTransactions';
 import { getMonthRange, getCurrentMonthKey } from '../utils/monthRange';
-import { formatBrazilDate } from '../utils/date';
+import { useI18n } from '../contexts/I18nContext';
+import { accountTypeLabel } from '../components/financial/accountTypes';
+import { bankTransactionTypeLabel } from '../components/financial/bankTransactionTypes';
+import { ZulEmptyState } from '../components/financial/ZulEmptyState';
 import { MonthSelector } from '../components/financial/MonthSelector';
 
 // Removido ACCOUNT_COLORS - usando apenas cores da app
 
-const getAccountTypeLabel = (type) => {
-  const typeLabels = {
-    'checking': 'Conta Corrente',
-    'savings': 'Poupança',
-    'pension': 'Previdência',
-    'investment': 'Investimento',
-    'loan': 'Empréstimo'
-  };
-  return typeLabels[type] || 'Conta';
-};
-
-const getOwnerLabel = (account) => {
+const getOwnerLabel = (account, t) => {
   if (account.owner_type === 'individual') {
-    return account.cost_center?.name || 'Individual';
+    return account.cost_center?.name || t('finances.accounts.individual');
   } else {
     const shares = account.bank_account_shares || [];
-    return shares.map(s => s.cost_center?.name).filter(Boolean).join(', ') || 'Compartilhada';
+    return shares.map(s => s.cost_center?.name).filter(Boolean).join(', ') || t('finances.accounts.shared');
   }
 };
 
 export default function BankAccountDetailScreen({ route, navigation }) {
   const { colors } = useTheme();
+  const { t, formatMoney, formatDate } = useI18n();
   const { accountId } = route.params;
   const [selectedMonth, setSelectedMonth] = useState(() => route.params?.selectedMonth || getCurrentMonthKey());
   const { startDate: monthStartDate, endDate: monthEndDate, monthKey: normalizedMonthKey } = useMemo(
@@ -169,10 +161,10 @@ export default function BankAccountDetailScreen({ route, navigation }) {
   const handleDeleteAccount = async () => {
     try {
       await confirm({
-        title: 'Excluir conta',
-        message: `Tem certeza que deseja excluir a conta "${account.name}"?\n\nEsta ação não pode ser desfeita.`,
+        title: t('finances.accounts.deleteTitle'),
+        message: t('finances.accounts.deleteMessage', { name: account.name }),
         type: 'danger',
-        confirmText: 'Excluir',
+        confirmText: t('common.delete'),
         onConfirm: async () => {
           try {
             const { error } = await supabase
@@ -182,7 +174,7 @@ export default function BankAccountDetailScreen({ route, navigation }) {
 
             if (error) throw error;
 
-            showToast('Conta excluída com sucesso', 'success');
+            showToast(t('finances.accounts.deleted'), 'success');
             navigation.goBack();
             await refetchOrganization();
           } catch (error) {throw error;
@@ -192,7 +184,7 @@ export default function BankAccountDetailScreen({ route, navigation }) {
     } catch (error) {
       // Usuário cancelou ou erro ocorreu
       if (error.message) {
-        showToast('Erro ao excluir conta: ' + error.message, 'error');
+        showToast(t('finances.accounts.deleteError'), 'error');
       }
     }
   };
@@ -203,7 +195,7 @@ export default function BankAccountDetailScreen({ route, navigation }) {
         name: formValues.name,
         bank: formValues.bank,
         account_type: formValues.account_type,
-        current_balance: formValues.current_balance ? parseFloat(formValues.current_balance) : 0,
+        current_balance: Number(formValues.current_balance || 0),
         is_active: formValues.is_active,
       };
 
@@ -214,23 +206,23 @@ export default function BankAccountDetailScreen({ route, navigation }) {
 
       setEditModalVisible(false);
       await fetchAccountDetails();
-      showToast('Conta atualizada com sucesso', 'success');
-    } catch (error) {showToast('Erro ao salvar conta', 'error');
+      showToast(t('finances.accounts.updated'), 'success');
+    } catch (error) {showToast(t('finances.overview.saveAccountError'), 'error');
     }
   };
 
   if (orgLoading || loading) {
-    return <LoadingLogo fullScreen message="Carregando detalhes..." />;
+    return <LoadingLogo fullScreen message={t('common.loading')} />;
   }
 
   if (!account) {
     return (
       <View style={styles.container}>
-        <ScreenHeader user={user} title="Conta Bancária" showLogo={true} />
+        <ScreenHeader user={user} title={t('finances.accounts.title')} showBackButton={true} />
         <EmptyState
           icon={<Landmark size={48} color="#AEAEB2" />}
-          title="Conta não encontrada"
-          description="A conta bancária que você procura não existe."
+          title={t('finances.accounts.notFoundTitle')}
+          description={t('finances.accounts.notFoundMessage')}
         />
       </View>
     );
@@ -240,10 +232,15 @@ export default function BankAccountDetailScreen({ route, navigation }) {
     <View style={styles.container}>
       <ScreenHeader
         user={user}
-        title="Detalhes da Conta"
+        title={t('finances.accounts.detailsTitle')}
         showBackButton={true}
         rightIcon={
-          <TouchableOpacity onPress={() => setEditModalVisible(true)} style={{ padding: spacing[1] }}>
+          <TouchableOpacity
+            onPress={() => setEditModalVisible(true)}
+            style={{ padding: spacing[1] }}
+            accessibilityRole="button"
+            accessibilityLabel={t('finances.accounts.editA11y')}
+          >
             <Edit size={24} color={colors.text.secondary} />
           </TouchableOpacity>
         }
@@ -275,10 +272,10 @@ export default function BankAccountDetailScreen({ route, navigation }) {
               </View>
               <View style={styles.accountCardRight}>
                 <Text variant="headline" weight="semiBold" style={styles.accountCardName}>
-                  {account.name || account.nickname || 'Conta'}
+                  {account.name || account.nickname || t('finances.accountTypes.default')}
                 </Text>
                 <Caption color="secondary" style={styles.accountCardBank}>
-                  {account.bank || account.institution_name || 'Banco'}
+                  {account.bank || account.institution_name || t('finances.accounts.bank')}
                 </Caption>
               </View>
             </View>
@@ -296,7 +293,7 @@ export default function BankAccountDetailScreen({ route, navigation }) {
               {!account.is_active && (
                 <View style={[styles.accountBadge, { backgroundColor: colors.error.bg }]}>
                   <Caption weight="semiBold" style={{ color: colors.error.main }}>
-                    Inativa
+                    {t('finances.accounts.inactive')}
                   </Caption>
                 </View>
               )}
@@ -305,15 +302,15 @@ export default function BankAccountDetailScreen({ route, navigation }) {
             {/* Informações */}
             <View style={styles.accountCardInfo}>
               <View style={styles.accountCardInfoLeft}>
-                <Caption color="secondary">{getAccountTypeLabel(account.account_type)}</Caption>
+                <Caption color="secondary">{accountTypeLabel(account.account_type, t)}</Caption>
                 <Caption color="tertiary" style={{ marginTop: spacing[0.5] }}>
-                  {getOwnerLabel(account)}
+                  {getOwnerLabel(account, t)}
                 </Caption>
               </View>
               <View style={styles.accountCardInfoRight}>
-                <Caption color="secondary">Saldo</Caption>
+                <Caption color="secondary">{t('finances.accounts.balance')}</Caption>
                 <Text variant="headline" weight="bold" style={styles.accountCardBalance}>
-                  {formatCurrency(balance)}
+                  {formatMoney(balance)}
                 </Text>
               </View>
             </View>
@@ -327,37 +324,45 @@ export default function BankAccountDetailScreen({ route, navigation }) {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => setIncomeModalVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('finances.accounts.income')}
               >
                 <TrendingUp size={18} color={colors.success.main} />
                 <Caption weight="semiBold" style={{ color: colors.success.main, marginTop: spacing[0.5], fontSize: 11 }}>
-                  Entrada
+                  {t('finances.accounts.income')}
                 </Caption>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => setTransactionModalVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('finances.accounts.transfer')}
               >
                 <ArrowRightLeft size={18} color={colors.brand.primary} />
                 <Caption weight="semiBold" style={{ color: colors.brand.primary, marginTop: spacing[0.5], fontSize: 11 }}>
-                  Transferir
+                  {t('finances.accounts.transfer')}
                 </Caption>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => setTransactionsHistoryModalVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('finances.accounts.history')}
               >
                 <List size={18} color={colors.text.primary} />
                 <Caption weight="semiBold" style={{ marginTop: spacing[0.5], fontSize: 11 }}>
-                  Histórico
+                  {t('finances.accounts.history')}
                 </Caption>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={handleDeleteAccount}
+                accessibilityRole="button"
+                accessibilityLabel={t('finances.accounts.deleteTitle')}
               >
                 <Trash2 size={18} color={colors.error.main} />
                 <Caption weight="semiBold" style={{ color: colors.error.main, marginTop: spacing[0.5], fontSize: 11 }}>
-                  Excluir
+                  {t('common.delete')}
                 </Caption>
               </TouchableOpacity>
             </>
@@ -366,10 +371,12 @@ export default function BankAccountDetailScreen({ route, navigation }) {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => setTransactionsHistoryModalVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('finances.accounts.history')}
               >
                 <List size={18} color={colors.text.primary} />
                 <Caption weight="semiBold" style={{ marginTop: spacing[0.5], fontSize: 11 }}>
-                  Histórico
+                  {t('finances.accounts.history')}
                 </Caption>
               </TouchableOpacity>
             </>
@@ -380,25 +387,13 @@ export default function BankAccountDetailScreen({ route, navigation }) {
         {/* Recent Transactions */}
         <View style={styles.section}>
           <Subheadline weight="semiBold" style={styles.sectionTitle}>
-            Movimentações Recentes
+            {t('finances.accounts.movementsOf', { month: formatDate(`${normalizedMonthKey}-01`, 'monthYear') })}
           </Subheadline>
 
           {transactions.length > 0 ? (
             <Card style={{ padding: 0 }}>
               {transactions.map((transaction, index) => {
                 const isCredit = ['income_deposit', 'transfer_in'].includes(transaction.transaction_type);
-                const getTransactionTypeLabel = (type) => {
-                  const labels = {
-                    'manual_credit': 'Crédito Manual',
-                    'manual_debit': 'Débito Manual',
-                    'expense_payment': 'Pagamento de Despesa',
-                    'bill_payment': 'Pagamento de Conta',
-                    'income_deposit': 'Depósito de Receita',
-                    'transfer_in': 'Transferência Recebida',
-                    'transfer_out': 'Transferência Enviada',
-                  };
-                  return labels[type] || type;
-                };
 
                 return (
                   <View
@@ -414,10 +409,10 @@ export default function BankAccountDetailScreen({ route, navigation }) {
                       </Callout>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing[0.5], gap: spacing[1] }}>
                           <Caption color="secondary">
-                            {formatBrazilDate(transaction.date)}
+                            {formatDate(transaction.date, 'dayMonth')}
                           </Caption>
                         <Caption color="tertiary" style={{ fontSize: 10 }}>
-                          {getTransactionTypeLabel(transaction.transaction_type)}
+                          {bankTransactionTypeLabel(transaction.transaction_type, t)}
                         </Caption>
                       </View>
                     </View>
@@ -429,10 +424,10 @@ export default function BankAccountDetailScreen({ route, navigation }) {
                           marginLeft: spacing[2],
                         }}
                       >
-                        {isCredit ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        {isCredit ? '+' : '-'}{formatMoney(transaction.amount)}
                       </Callout>
                       <Caption color="secondary" style={{ marginTop: spacing[0.5], fontSize: 11 }}>
-                        Saldo: {formatCurrency(transaction.balance_after)}
+                        {t('finances.accounts.balanceAfter', { amount: formatMoney(transaction.balance_after) })}
                       </Caption>
                     </View>
                   </View>
@@ -440,10 +435,10 @@ export default function BankAccountDetailScreen({ route, navigation }) {
               })}
             </Card>
           ) : (
-            <EmptyState
-              icon={<ClipboardList size={48} color="#AEAEB2" />}
-              title="Nenhuma movimentação"
-              description="Ainda não há transações nesta conta."
+            <ZulEmptyState
+              icon={<ClipboardList size={40} color="#AEAEB2" />}
+              message={t('finances.empty.accountTxMessage', { example: t('finances.empty.accountTxExample', { bank: account.name || account.bank || '' }) })}
+              example={t('finances.empty.accountTxExample', { bank: account.name || account.bank || '' })}
             />
           )}
         </View>
@@ -452,10 +447,10 @@ export default function BankAccountDetailScreen({ route, navigation }) {
         <View style={styles.section}>
           <Card style={styles.openFinanceCard}>
             <Callout weight="semiBold" style={{ marginBottom: spacing[1] }}>
-              🔗 Conectar Open Finance
+              {t('finances.accounts.openFinanceTitle')}
             </Callout>
             <Footnote color="secondary">
-              Sincronize automaticamente suas transações e saldo diretamente do seu banco.
+              {t('finances.accounts.openFinanceMessage')}
             </Footnote>
             <TouchableOpacity 
               style={styles.connectButton}
@@ -463,7 +458,7 @@ export default function BankAccountDetailScreen({ route, navigation }) {
               disabled
             >
               <Callout weight="semiBold" style={{ color: colors.neutral[400] }}>
-                Em breve
+                {t('finances.accounts.comingSoon')}
               </Callout>
             </TouchableOpacity>
           </Card>

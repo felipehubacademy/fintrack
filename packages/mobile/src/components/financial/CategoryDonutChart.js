@@ -5,11 +5,14 @@ import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text, Caption } from '../ui/Text';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { categoryLabel } from '../../utils/categoryLabel';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
  * CategoryDonutChart - Gráfico donut minimalista
  */
 export const CategoryDonutChart = React.memo(function CategoryDonutChart({ data, title, onCategoryPress }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [activeSlice, setActiveSlice] = useState(null);
 
@@ -153,7 +156,7 @@ export const CategoryDonutChart = React.memo(function CategoryDonutChart({ data,
             {formatCurrency(activeSlice?.value ?? total)}
           </Text>
           <Caption color="secondary" style={{ fontSize: 11 }}>
-            {activeSlice?.name || 'Total'}
+            {activeSlice?.name ? categoryLabel(activeSlice.name) : t('finances.accounts.total')}
           </Caption>
         </View>
       </View>
@@ -172,8 +175,8 @@ export const CategoryDonutChart = React.memo(function CategoryDonutChart({ data,
                 activeOpacity={0.7}
                 onPress={() => handleLegendPress(slice.name, slice.value)}
                 accessibilityRole="button"
-                accessibilityLabel={`${slice.name}: ${formatCurrency(slice.value)} (${slice.percentage}%)`}
-                accessibilityHint="Toque para ver detalhes desta categoria"
+                accessibilityLabel={`${categoryLabel(slice.name)}: ${formatCurrency(slice.value)} (${slice.percentage}%)`}
+                accessibilityHint={t('finances.charts.tapForDetails')}
               >
                 <View style={styles.legendRow}>
                   <View style={[styles.legendDot, { backgroundColor: color }]} />
@@ -211,11 +214,10 @@ export const CategoryDonutChart = React.memo(function CategoryDonutChart({ data,
             onPress={() => setExpanded(!expanded)}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel={expanded ? "Ver menos categorias" : `Ver todas as ${data.length} categorias`}
-            accessibilityHint={expanded ? "Recolher lista de categorias" : "Expandir para ver todas as categorias"}
+            accessibilityLabel={expanded ? t('finances.charts.showLess') : t('finances.charts.showAll', { count: data.length })}
           >
             <Text variant="footnote" weight="semiBold" style={{ color: colors.brand.primary }}>
-              {expanded ? 'Ver menos' : `Ver todas (${data.length})`}
+              {expanded ? t('finances.charts.showLess') : t('finances.charts.showAll', { count: data.length })}
             </Text>
             {expanded ? (
               <ChevronUp size={16} color={colors.brand.primary} strokeWidth={2.5} />

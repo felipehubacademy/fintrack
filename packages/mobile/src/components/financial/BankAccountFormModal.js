@@ -17,17 +17,17 @@ import { Text, Title2, Caption } from '../ui/Text';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { ALL_BANK_OPTIONS, getBankLabel } from '../../assets/banks/availableBanks';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { height } = Dimensions.get('window');
 
 // Usar ScrollView nativo no Android para melhor detecção de scroll
 const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
 
-const ACCOUNT_TYPES = [
-  { id: 'checking', label: 'Conta Corrente' },
-  { id: 'savings', label: 'Poupança' },
-  { id: 'investment', label: 'Investimento' },
-];
+const ACCOUNT_TYPE_IDS = ['checking', 'savings', 'investment'];
+
+// Bank names stay as they are; only the "Other" option is translated.
+const bankLabel = (id, t) => (id === 'other' ? t('finances.accountForm.otherBank') : getBankLabel(id));
 
 // Componente SelectField
 const SelectField = ({ label, value, placeholder, onPress, disabled }) => (
@@ -54,6 +54,7 @@ const SelectField = ({ label, value, placeholder, onPress, disabled }) => (
 
 // Componente OptionSheet
 const OptionSheet = ({ visible, title, options = [], selectedId, onSelect, onClose }) => {
+  const { t } = useI18n();
   if (!visible) return null;
 
   return (
@@ -69,7 +70,7 @@ const OptionSheet = ({ visible, title, options = [], selectedId, onSelect, onClo
             <TouchableOpacity 
               onPress={onClose}
               accessibilityRole="button"
-              accessibilityLabel="Fechar"
+              accessibilityLabel={t('common.close')}
             >
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -113,7 +114,10 @@ const defaultForm = {
 };
 
 export function BankAccountFormModal({ visible, onClose, onSave, account }) {
+  const { t, parseMoney, formatMoney } = useI18n();
   const insets = useSafeAreaInsets();
+  const accountTypeOptions = ACCOUNT_TYPE_IDS.map((id) => ({ id, label: t(`finances.accountTypes.${id}`) }));
+  const bankOptions = ALL_BANK_OPTIONS.map((b) => (b.id === 'other' ? { ...b, label: bankLabel('other', t) } : b));
   // Safe area apenas no Android
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
   const [formData, setFormData] = useState(defaultForm);
@@ -150,7 +154,7 @@ export function BankAccountFormModal({ visible, onClose, onSave, account }) {
 
   const handleSubmit = () => {
     if (!formData.name.trim()) {
-      alert('Informe o nome da conta.');
+      alert(t('finances.accountForm.nameRequired'));
       return;
     }
 
@@ -160,6 +164,7 @@ export function BankAccountFormModal({ visible, onClose, onSave, account }) {
     onSave({
       ...formData,
       bank: bankValue,
+      current_balance: parseMoney(formData.current_balance),
     });
   };
 
@@ -180,14 +185,13 @@ export function BankAccountFormModal({ visible, onClose, onSave, account }) {
           <View style={styles.handle} />
           <View style={styles.header}>
             <Title2 weight="semiBold">
-              {account ? 'Editar Conta' : 'Nova Conta'}
+              {account ? t('finances.accountForm.editTitle') : t('finances.accountForm.newTitle')}
             </Title2>
             <TouchableOpacity 
               onPress={onClose} 
               style={styles.closeButton}
               accessibilityRole="button"
-              accessibilityLabel="Fechar"
-              accessibilityHint="Fechar formulário de conta bancária"
+              accessibilityLabel={t('common.close')}
             >
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -205,42 +209,42 @@ export function BankAccountFormModal({ visible, onClose, onSave, account }) {
             {...(Platform.OS === 'android' ? { nestedScrollEnabled: true } : {})}
           >
             <View style={styles.field}>
-              <Caption color="secondary" weight="medium">Nome *</Caption>
+              <Caption color="secondary" weight="medium">{t('finances.accountForm.name')}</Caption>
               <Input
                 value={formData.name}
                 onChangeText={(text) => handleChange('name', text)}
-                placeholder="Ex: Conta Principal"
+                placeholder={t('finances.accountForm.namePlaceholder')}
               />
             </View>
 
             <SelectField
-              label="Banco"
-              value={formData.bank ? getBankLabel(formData.bank) : ''}
-              placeholder="Selecione o banco"
+              label={t('finances.accountForm.bank')}
+              value={formData.bank ? bankLabel(formData.bank, t) : ''}
+              placeholder={t('finances.accountForm.bankPlaceholder')}
               onPress={() => setActiveSheet('bank')}
             />
 
             <SelectField
-              label="Tipo *"
-              value={ACCOUNT_TYPES.find(t => t.id === formData.account_type)?.label || ''}
-              placeholder="Selecione o tipo de conta"
+              label={t('finances.accountForm.type')}
+              value={accountTypeOptions.find((o) => o.id === formData.account_type)?.label || ''}
+              placeholder={t('finances.accountForm.typePlaceholder')}
               onPress={() => setActiveSheet('accountType')}
             />
 
             {!account && (
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Saldo Atual</Caption>
+                <Caption color="secondary" weight="medium">{t('finances.accountForm.balance')}</Caption>
                 <Input
                   value={formData.current_balance}
                   onChangeText={(text) => handleChange('current_balance', text.replace(/[^0-9.,-]/g, ''))}
-                  keyboardType="numeric"
-                  placeholder="0,00"
+                  keyboardType="decimal-pad"
+                  placeholder={formatMoney(0)}
                 />
               </View>
             )}
 
             <View style={styles.switchRow}>
-              <Caption color="secondary" weight="medium">Conta ativa</Caption>
+              <Caption color="secondary" weight="medium">{t('finances.accountForm.active')}</Caption>
               <Switch
                 value={formData.is_active}
                 onValueChange={(value) => handleChange('is_active', value)}
@@ -254,13 +258,13 @@ export function BankAccountFormModal({ visible, onClose, onSave, account }) {
             { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, spacing[4]) : spacing[4] }
           ]}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               style={{ flex: 1 }}
             />
             <Button
-              title={account ? 'Salvar' : 'Adicionar'}
+              title={account ? t('common.save') : t('finances.accountForm.add')}
               variant="primary"
               onPress={handleSubmit}
               style={{ flex: 1 }}
@@ -272,16 +276,16 @@ export function BankAccountFormModal({ visible, onClose, onSave, account }) {
       {/* Option Sheets */}
       <OptionSheet
         visible={activeSheet === 'accountType'}
-        title="Selecione o Tipo de Conta"
-        options={ACCOUNT_TYPES}
+        title={t('finances.accountForm.typePlaceholder')}
+        options={accountTypeOptions}
         selectedId={formData.account_type}
         onSelect={(option) => handleChange('account_type', option.id)}
         onClose={() => setActiveSheet(null)}
       />
       <OptionSheet
         visible={activeSheet === 'bank'}
-        title="Selecione o Banco"
-        options={ALL_BANK_OPTIONS}
+        title={t('finances.accountForm.bankPlaceholder')}
+        options={bankOptions}
         selectedId={formData.bank}
         onSelect={(option) => handleChange('bank', option.id)}
         onClose={() => setActiveSheet(null)}

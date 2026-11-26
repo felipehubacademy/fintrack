@@ -15,6 +15,7 @@ import { X } from 'lucide-react-native';
 import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Title2, Headline, Callout, Caption } from '../ui/Text';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { useI18n } from '../../contexts/I18nContext';
 
 // Usar ScrollView nativo no Android para melhor detecção de scroll
 const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
@@ -25,6 +26,7 @@ const { height } = Dimensions.get('window');
  * StatsDetailSheet - Bottom Sheet para detalhes dos StatCards
  */
 export function StatsDetailSheet({ visible, onClose, title, data = [], type = 'default' }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   // Safe area apenas no Android
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
@@ -63,7 +65,7 @@ export function StatsDetailSheet({ visible, onClose, title, data = [], type = 'd
       >
         {data.length === 0 ? (
           <View style={styles.emptyState}>
-            <Caption color="secondary">Nenhum dado disponível</Caption>
+            <Caption color="secondary">{t('finances.charts.nothingYet')}</Caption>
           </View>
         ) : (
           <View style={styles.list}>

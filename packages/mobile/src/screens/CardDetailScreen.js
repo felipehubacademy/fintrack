@@ -31,7 +31,7 @@ import { useI18n } from '../contexts/I18nContext';
 import { CommittedMonthsCard } from '../components/financial/CommittedMonthsCard';
 import { useCommittedInstallments } from '../components/financial/useCommittedInstallments';
 import { ZulEmptyState } from '../components/financial/ZulEmptyState';
-import { statementRange, isInstallment } from '../components/financial/cardStatements';
+import { statementRange, statementMonthKey, isInstallment } from '../components/financial/cardStatements';
 
 const CARD_COLOR_MAP = {
   'bg-blue-600': '#2563EB',
@@ -78,6 +78,17 @@ export default function CardDetailScreen({ route, navigation }) {
   const { data: committed, reload: reloadCommitted } = useCommittedInstallments(committedCards, {
     organizationId: organization?.id,
   });
+  // Open on the statement that is currently open for this card (with a closing
+  // day, purchases after it already belong to next month's statement).
+  const initialStatementSet = React.useRef(false);
+  useEffect(() => {
+    if (!card || initialStatementSet.current) return;
+    initialStatementSet.current = true;
+    if (!route.params?.selectedMonth || route.params.selectedMonth === getCurrentMonthKey()) {
+      const openKey = statementMonthKey(new Date(), card.closing_day);
+      if (openKey) setSelectedMonth(openKey);
+    }
+  }, [card, route.params?.selectedMonth]);
   const statement = useMemo(
     () => (card ? statementRange(selectedMonth, card.closing_day) : { startDate: monthStartDate, endDate: monthEndDate }),
     [card, selectedMonth, monthStartDate, monthEndDate]
@@ -467,7 +478,7 @@ const formatBillingCycleLabel = (dateStr) => formatDate(dateStr, 'monthYear');
       />
 
       <View style={styles.monthSelectorWrapper}>
-        <MonthSelector selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
+        <MonthSelector selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} allowFuture />
       </View>
 
       <ScrollView

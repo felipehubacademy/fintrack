@@ -4,16 +4,18 @@ import { LineChart } from 'react-native-chart-kit';
 import { colors, spacing, radius } from '../../theme';
 import { Caption } from '../ui/Text';
 import { Card } from '../ui/Card';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { width } = Dimensions.get('window');
 
 export function MacroAreaChart({ data, height = 200 }) {
+  const { t, currencySymbol } = useI18n();
   // data: { labels: ['1', '5', '10', '15', ...], datasets: [{ data: [100, 120, ...] }] }
   
   if (!data || !data.datasets || data.datasets.length === 0) {
     return (
       <Card style={styles.container}>
-        <Caption color="secondary">Sem dados de ondas de gastos</Caption>
+        <Caption color="secondary">{t('finances.charts.noDaily')}</Caption>
       </Card>
     );
   }
@@ -60,7 +62,7 @@ export function MacroAreaChart({ data, height = 200 }) {
 
   return (
     <Card style={styles.container}>
-      <Caption color="secondary" style={styles.title}>Ondas de Gastos Diários</Caption>
+      <Caption color="secondary" style={styles.title}>{t('finances.charts.dailyTitle')}</Caption>
       <LineChart
         data={chartData}
         width={width - spacing[2] * 4}
@@ -73,7 +75,7 @@ export function MacroAreaChart({ data, height = 200 }) {
         withVerticalLines={false}
         withHorizontalLines={false}
         fromZero={true}
-        yAxisLabel="R$ "
+        yAxisLabel={`${currencySymbol()} `}
         yAxisSuffix=""
         withShadow={true}
         withDots={false}
