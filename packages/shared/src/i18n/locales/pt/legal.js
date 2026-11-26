@@ -191,7 +191,7 @@ export default {
       {
         title: '6. Preço: acesso antecipado grátis',
         items: [
-          'O MeuAzulão é grátis durante o acesso antecipado, até 31 de janeiro de 2027.',
+          'O MeuAzulão é grátis durante o acesso antecipado, até {{earlyAccessEnd}}.',
           'Antes de qualquer plano pago começar, avisaremos com antecedência, com o preço e o que ele inclui. Nada é cobrado automaticamente: você escolhe se quer assinar.',
           'Planos pagos comprados pela App Store ou pelo Google Play seguem as regras de cobrança e cancelamento dessas lojas.',
         ],

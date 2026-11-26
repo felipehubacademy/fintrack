@@ -10,14 +10,13 @@ import {
   Languages,
   Sparkles,
 } from 'lucide-react';
-import { zulChatLink } from '@fintrack/shared/config';
+import { zulChatLink, EARLY_ACCESS_END } from '@fintrack/shared/config';
 import LandingHeader from '../components/LandingHeader';
 import LandingFooter from '../components/LandingFooter';
 import WhatsAppIcon from '../components/WhatsAppIcon';
 import { useI18n } from '../contexts/I18nContext';
 
 // Free early access ends on this date (inclusive).
-const EARLY_ACCESS_END = new Date(2027, 0, 31);
 
 const DIFFERENTIATORS = [
   { key: 'understands', icon: CheckCircle },

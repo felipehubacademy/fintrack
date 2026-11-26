@@ -1069,7 +1069,7 @@ export default {
     isMyDataSafe: 'Is my data safe?',
     yesYourDataIsEncrypted: 'Yes. Your data is encrypted in transit, access is restricted, and we never ask for your bank login. We don\'t sell or share your data.',
     isMeuazulaoFree: 'Is MeuAzulão free?',
-    yesDuringEarlyAccessEverything: 'Yes. During early access everything is free until January 31, 2027. We\'ll let you know well in advance before anything changes.',
+    yesDuringEarlyAccessEverything: 'Yes. During early access everything is free until {{date}}. We\'ll let you know well in advance before anything changes.',
     whatCanISeeIn: 'What can I see in the dashboard?',
     howMuchYouCanSpend: 'How much you can spend per day, your spending by category, cards and installments, bills coming up, budgets and more.',
     canIExportMyData: 'Can I export my data?',

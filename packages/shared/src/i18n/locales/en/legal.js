@@ -191,7 +191,7 @@ export default {
       {
         title: '6. Price: free early access',
         items: [
-          'MeuAzulão is free during early access, until January 31, 2027.',
+          'MeuAzulão is free during early access, until {{earlyAccessEnd}}.',
           'Before any paid plan starts, we will tell you in advance, with the price and what it includes. Nothing is charged automatically: you choose whether to subscribe.',
           'Paid plans bought through the App Store or Google Play follow those stores’ billing and cancellation rules.',
         ],

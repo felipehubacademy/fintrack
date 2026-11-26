@@ -2,7 +2,8 @@ import { Fragment, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { Shield, FileText } from 'lucide-react';
-import { getFixedT } from '@fintrack/shared/i18n';
+import { getFixedT, formatDate, localeTagFor } from '@fintrack/shared/i18n';
+import { EARLY_ACCESS_END } from '@fintrack/shared/config';
 import LandingHeader from '../components/LandingHeader';
 import { localeServerSideProps, useApplyLanguage } from '../lib/publicLocale';
 
@@ -50,6 +51,7 @@ export function LegalDocument({ doc, lang }) {
     email: LEGAL.privacyEmail,
     contactEmail: LEGAL.contactEmail,
     deleteUrl: `meuazulao.com.br${LEGAL_PATHS.deleteAccount[lang]}`,
+    earlyAccessEnd: formatDate(EARLY_ACCESS_END, 'long', { locale: localeTagFor(lang) }),
   };
   const sections = t(`legal.${doc}.sections`);
   const list = Array.isArray(sections) ? sections : [];

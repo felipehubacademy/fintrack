@@ -8,6 +8,12 @@
  * To flip a flag for launch, change FEATURE_DEFAULTS. FEATURE_<NAME> env
  * vars override it on the server only (bundlers don't inline dynamic keys).
  */
+/**
+ * Last day of free early access (YYYY-MM-DD). Shown on the landing page,
+ * help and terms. Pending Felipe's decision: change the date here only.
+ */
+export const EARLY_ACCESS_END = '2027-01-31';
+
 export const FEATURE_DEFAULTS = {
   investments: false, // screen crashed before; hidden unless decided otherwise
   goals: true,

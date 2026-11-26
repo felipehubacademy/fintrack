@@ -10,9 +10,10 @@ import {
 } from 'lucide-react';
 import LandingHeader from '../components/LandingHeader';
 import { useI18n } from '../contexts/I18nContext';
+import { EARLY_ACCESS_END } from '@fintrack/shared/config';
 
 export default function HelpPage() {
-  const { t } = useI18n();
+  const { t, formatDate } = useI18n();
   const [openFaq, setOpenFaq] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -87,7 +88,7 @@ export default function HelpPage() {
       id: 12,
       category: 'Segurança',
       question: t('web.help.isMeuazulaoFree'),
-      answer: t('web.help.yesDuringEarlyAccessEverything')
+      answer: t('web.help.yesDuringEarlyAccessEverything', { date: formatDate(EARLY_ACCESS_END, 'long') })
     },
     {
       id: 13,

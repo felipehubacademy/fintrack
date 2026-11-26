@@ -191,7 +191,7 @@ export default {
       {
         title: '6. Precio: acceso anticipado gratis',
         items: [
-          'MeuAzulão es gratis durante el acceso anticipado, hasta el 31 de enero de 2027.',
+          'MeuAzulão es gratis durante el acceso anticipado, hasta el {{earlyAccessEnd}}.',
           'Antes de que empiece cualquier plan de pago, te avisaremos con anticipación, con el precio y lo que incluye. No se cobra nada automáticamente: tú eliges si quieres suscribirte.',
           'Los planes de pago comprados por App Store o Google Play siguen las reglas de cobro y cancelación de esas tiendas.',
         ],
