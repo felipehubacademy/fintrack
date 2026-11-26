@@ -46,8 +46,12 @@ async function deleteOrgExtras(admin, orgId, log) {
 export async function deleteMemberData(admin, profile, log = []) {
   const uid = profile.id;
 
+  // bills.expense_id references expenses without ON DELETE CASCADE, so bills go first:
+  // the member's own bills are deleted, and other members' bills only lose the link.
+  await tolerant('bills', admin.from('bills').delete().eq('user_id', uid), log);
   const expenseIds = await idsOf(admin, 'expenses', 'user_id', uid);
   if (expenseIds.length) {
+    await tolerant('bills.expense_id', admin.from('bills').update({ expense_id: null }).in('expense_id', expenseIds), log);
     await tolerant('expense_splits', admin.from('expense_splits').delete().in('expense_id', expenseIds), log);
   }
   await tolerant('expenses', admin.from('expenses').delete().eq('user_id', uid), log);
