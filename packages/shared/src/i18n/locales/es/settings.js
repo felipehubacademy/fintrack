@@ -238,7 +238,7 @@ export default {
       },
       price: {
         q: '¿Cuánto cuesta?',
-        a: 'Es gratis durante el acceso anticipado. Te avisaremos con tiempo antes de cualquier plan de pago.',
+        a: 'Los primeros 7 días son gratis, sin tarjeta. Después, Plus es mensual o anual, y cancelas cuando quieras.',
       },
       delete: {
         q: '¿Cómo elimino mi cuenta?',

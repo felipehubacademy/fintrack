@@ -238,7 +238,7 @@ export default {
       },
       price: {
         q: 'How much does it cost?',
-        a: 'It is free during early access. We will tell you well in advance before any paid plan starts.',
+        a: 'The first 7 days are free, no card needed. After that, Plus is monthly or yearly, and you can cancel anytime.',
       },
       delete: {
         q: 'How do I delete my account?',
