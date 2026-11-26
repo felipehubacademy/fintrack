@@ -8,13 +8,14 @@ Ordem pensada pelo que demora mais. Detalhes de cada passo em `META_SETUP.md` (W
 2. **Templates do WhatsApp:** criar os 8, começando por `codigo_login`. A aprovação costuma levar de minutos a 1 dia. (`META_SETUP.md` §9)
 3. **Trocar segredos que vazaram no git:** token do WhatsApp, `CRON_SECRET` (Vercel e GitHub Secrets) e `WHATSAPP_VERIFY_TOKEN`.
 4. **Advogado:** revisar política de privacidade e termos (`/privacy`, `/terms`). Preencher razão social e CNPJ em `packages/web/pages/privacy.jsx` (`LEGAL`).
-5. **Decidir:** acesso antecipado grátis até 31/01/2027? A data é uma linha só: `EARLY_ACCESS_END` em `packages/shared/src/config/features.js`.
+5. **Assinatura (decidida: 7 dias grátis, Plus mensal ou anual, oferta no dia 8):** criar a conta no RevenueCat (com Stripe para o link do WhatsApp), os produtos nas duas lojas e os templates `fim_teste` e `oferta_primeiro_mes`. Tudo em `BILLING.md`.
 
 ## Antes do merge na main
 
-6. **Supabase:** rodar as migrações `docs/migrations/2026-11-26-zul-01-core.sql` e `-02-link-phone-auth.sql`, nessa ordem (ver a prévia do backfill antes). Ligar o provedor Phone e o Send SMS Hook. (`META_SETUP.md` §7 e §8)
+6. **Supabase:** rodar as migrações `docs/migrations/2026-11-26-zul-01-core.sql`, `-zul-02-link-phone-auth.sql` e `-billing-01.sql`, nessa ordem (ver a prévia do backfill antes). Ligar o provedor Phone e o Send SMS Hook. (`META_SETUP.md` §7 e §8)
 7. **Vercel, projeto web:** `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_ZUL_WHATSAPP` (só dígitos).
-8. **Vercel, projeto backend:** variáveis listadas em `META_SETUP.md` §5 (inclui `OPENAI_API_KEY`, `WHATSAPP_APP_SECRET`, `SEND_SMS_HOOK_SECRET`).
+8. **Vercel, projeto backend:** variáveis listadas em `META_SETUP.md` §5 (inclui `OPENAI_API_KEY`, `WHATSAPP_APP_SECRET`, `SEND_SMS_HOOK_SECRET`, `CRON_SECRET`).
+8a. **GitHub Secrets:** `CRON_SECRET` e `BACKEND_URL` (para o job diário do teste grátis). **Vercel web e EAS:** variáveis do RevenueCat em `BILLING.md` §6.
 
 ## Lojas (builds prontos até sábado; envio só com o seu ok)
 
