@@ -353,3 +353,56 @@ A tela 1 mostra o WhatsApp: use uma imagem real da conversa com o Zul (sem núme
 - [ ] Screenshots e gráfico de destaque
 - [ ] App Privacy (Apple) e Data safety (Google) conforme as tabelas
 - [ ] `eas submit` iOS → enviar para revisão · Android → primeiro upload manual na faixa de produção e envio para revisão no mesmo dia do iOS
+
+---
+
+## 7. Assinatura (Plus) na revisão das lojas
+
+Produtos, preços e RevenueCat: `docs/launch/BILLING.md`. No app, a compra é só pela loja (RevenueCat SDK, `react-native-purchases`); não há link de pagamento externo dentro do app.
+
+### Onde fica o paywall no app
+
+- **Ao tentar adicionar algo depois do teste:** botão **+** da barra de abas, "Adicionar à mão" no Início e os botões "Registrar no WhatsApp". A leitura (Início, Movimentos, Orçamentos) continua liberada.
+- **Mais → Ajustes → Plano → Seu plano** (abre o paywall; também tem "Restaurar compras" e, para quem assinou pela loja, "Gerenciar assinatura").
+- **Aviso no Início:** nos 3 últimos dias do teste ("Seu teste termina em N dias") e sempre depois que ele termina, com o botão "Ver planos"/"Assinar".
+- O paywall mostra mensal e anual (anual em destaque com "Economize N%"), os preços vindos da loja, "Restaurar compras", o texto de renovação automática e os links de Termos e Privacidade. Se o teste acabou e a offering `winback` existe no RevenueCat, a oferta do primeiro mês aparece primeiro.
+- Excluir a conta (Ajustes → Excluir conta) avisa que isso **não** cancela a assinatura da loja e diz onde cancelar.
+
+### Estado da conta de demonstração
+
+Para o revisor ver e testar a compra, deixe a organização da conta de demonstração **com o teste vencido e sem Plus**:
+
+```sql
+update organizations
+set trial_ends_at = now() - interval '1 day', plus_until = null, plus_source = null
+where id = '<id da organização da conta de demonstração>';
+```
+
+Os dados de exemplo continuam visíveis; tocar em **+** abre o paywall. A compra na revisão é sandbox (não cobra). Depois de cada revisão, se o revisor assinou, volte a conta para esse estado antes do próximo envio (apague o cliente no RevenueCat ou espere a assinatura sandbox expirar, e rode o SQL de novo).
+
+Acrescente às **Notes** da seção 3 (em inglês):
+
+```
+Subscriptions: new accounts get a 7-day free trial (no payment details). After it, reading stays available but adding entries requires Plus (monthly or annual auto-renewable subscription, bought in the app with In-App Purchase).
+The demo account's trial has already ended, so the paywall appears when you tap the + button in the tab bar or "Add by hand" on Home. It is also in More > Settings > Plan > Your plan. "Restore purchases" is on the paywall and in More > Settings > Plan.
+Terms of Use (EULA): https://www.meuazulao.com.br/terms — Privacy Policy: https://www.meuazulao.com.br/privacy
+```
+
+No Google Play (Acesso ao app), use o mesmo texto. Para testar compras no Android antes da revisão, cadastre seu e-mail em **Configuração → Teste de licença** no Play Console.
+
+### O que a Apple exige para as assinaturas
+
+- **Envie as assinaturas junto com a versão:** a primeira compra no app só é revisada junto com um build. Em App Store Connect → app → versão → **In-App Purchases and Subscriptions**, selecione `meuazulao_plus_monthly` e `meuazulao_plus_annual` antes de enviar a versão. As duas precisam estar em "Ready to Submit" (nome, descrição e preço preenchidos nos três idiomas).
+- **Screenshot da assinatura (obrigatório):** cada assinatura tem um campo **Review Information → Screenshot**. Use uma captura do paywall no iPhone (o mesmo tamanho das screenshots da seção 5, 1320 × 2868 px, serve; a Apple aceita a partir de 640 × 920 px). Pode ser a mesma imagem nos dois produtos. Tire com a conta de demonstração vencida, em inglês, mostrando os dois planos, o preço e o botão Assinar. Sem essa imagem o produto não sai de "Missing Metadata".
+- **Termos de uso (EULA):** a Apple exige o link dos termos para apps com assinatura. Coloque `https://www.meuazulao.com.br/terms` no fim da descrição de cada idioma ("Terms of Use: …" / "Termos de Uso: …" / "Términos de uso: …") **ou** em App Information → License Agreement (EULA). O link de privacidade já está no campo Privacy Policy URL.
+- **Contrato de apps pagos:** Agreements, Tax and Banking precisa estar ativo antes do envio (BILLING.md, seção 7).
+- **Assinaturas no Google Play:** não pedem screenshot; precisam estar ativas e o perfil de pagamentos configurado.
+
+Checklist extra:
+
+- [ ] `EXPO_PUBLIC_RC_IOS_KEY` e `EXPO_PUBLIC_RC_ANDROID_KEY` no EAS (production) antes do `eas build` (sem elas o app abre normalmente, mas não vende)
+- [ ] Assinaturas "Ready to Submit" e selecionadas na versão (App Store)
+- [ ] Screenshot do paywall em Review Information de cada assinatura
+- [ ] Link dos Termos na descrição ou no campo EULA
+- [ ] Conta de demonstração com o teste vencido e sem Plus
+- [ ] Testar compra e restauração em sandbox (TestFlight) e com licença de teste (Play)
