@@ -16,25 +16,24 @@ import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
+import { useI18n } from '../../contexts/I18nContext';
+import { categoryLabel } from '../../utils/categoryLabel';
+import {
+  amountDecimalSeparator,
+  sanitizeAmountInput,
+  formatAmountInput,
+  parseAmountInput,
+} from './amountInput';
 
 const { height } = Dimensions.get('window');
 
 // Usar ScrollView nativo no Android para melhor detecção de scroll
 const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
 
-// Funções de formatação de moeda
-const parseCurrencyInput = (value) => {
-  if (!value) return 0;
-  const cleaned = value.replace(/[^\d,]/g, '').replace(',', '.');
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
-};
-
+const parseCurrencyInput = (value) => parseAmountInput(value);
 const formatCurrencyInput = (value) => {
-  if (!value || value === 0) return '';
   const num = typeof value === 'string' ? parseCurrencyInput(value) : value;
-  if (num === 0) return '';
-  return num.toFixed(2).replace('.', ',');
+  return num ? formatAmountInput(num) : '';
 };
 
 // Componente SelectField
@@ -61,6 +60,7 @@ const SelectField = ({ label, value, placeholder, onPress, disabled }) => (
 
 // Componente OptionSheet
 const OptionSheet = ({ visible, onClose, title, options = [], selectedValue, onSelect }) => {
+  const { t } = useI18n();
   if (!visible) return null;
 
   return (
@@ -73,7 +73,7 @@ const OptionSheet = ({ visible, onClose, title, options = [], selectedValue, onS
         >
           <View style={selectStyles.sheetHeader}>
             <Title2 weight="semiBold">{title}</Title2>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -96,7 +96,7 @@ const OptionSheet = ({ visible, onClose, title, options = [], selectedValue, onS
                   onClose();
                 }}
               >
-                <Text variant="callout">{option.name}</Text>
+                <Text variant="callout">{categoryLabel(option.name)}</Text>
                 {selectedValue === option.id && (
                   <View style={selectStyles.checkmark}>
                     <Text style={{ color: colors.brand.primary }}>✓</Text>
@@ -120,6 +120,7 @@ export function BudgetModal({
   selectedMonth,
 }) {
   const { showToast } = useToast();
+  const { t, language, currencySymbol } = useI18n();
   const insets = useSafeAreaInsets();
   // Safe area apenas no Android
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
@@ -154,13 +155,13 @@ export function BudgetModal({
 
   const handleSave = async () => {
     if (!formData.category_id || !formData.limit_amount) {
-      showToast('Preencha todos os campos obrigatórios', 'warning');
+      showToast(t('finances.form.fillRequired'), 'warning');
       return;
     }
 
     const parsedAmount = parseCurrencyInput(formData.limit_amount);
     if (!parsedAmount || parsedAmount <= 0) {
-      showToast('Valor deve ser maior que zero', 'warning');
+      showToast(t('finances.form.amountPositive'), 'warning');
       return;
     }
 
@@ -179,15 +180,14 @@ export function BudgetModal({
       onClose();
     } catch (error) {
       console.error('Erro ao salvar orçamento:', error);
-      showToast('Erro ao salvar orçamento: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('finances.budget.saveError'), 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleAmountChange = (text) => {
-    const cleaned = text.replace(/[^\d,]/g, '');
-    setFormData({ ...formData, limit_amount: cleaned });
+    setFormData({ ...formData, limit_amount: sanitizeAmountInput(text) });
   };
 
   const handleAmountBlur = () => {
@@ -201,7 +201,7 @@ export function BudgetModal({
 
   const isEdit = !!(budget && budget.id);
   const selectedCategory = categories.find(c => c.id === formData.category_id);
-  const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  const sortedCategories = [...categories].sort((a, b) => categoryLabel(a.name).localeCompare(categoryLabel(b.name), language));
 
   if (!visible) return null;
 
@@ -215,8 +215,8 @@ export function BudgetModal({
         >
           {/* Header */}
           <View style={styles.header}>
-            <Title2 weight="bold">{isEdit ? 'Editar Orçamento' : 'Novo Orçamento'}</Title2>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Title2 weight="bold">{isEdit ? t('finances.budget.editTitle') : t('finances.budget.newTitle')}</Title2>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -236,15 +236,15 @@ export function BudgetModal({
             {/* Categoria */}
             <View style={styles.field}>
               <SelectField
-                label="Categoria *"
-                value={selectedCategory?.name || ''}
-                placeholder="Selecione uma categoria..."
+                label={t('finances.form.category')}
+                value={selectedCategory?.name ? categoryLabel(selectedCategory.name) : ''}
+                placeholder={t('finances.form.chooseCategory')}
                 onPress={() => setShowCategorySheet(true)}
                 disabled={isEdit}
               />
               {isEdit && (
                 <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                  A categoria não pode ser alterada. Para mudar, exclua e crie um novo orçamento.
+                  {t('finances.budget.categoryLocked')}
                 </Caption>
               )}
             </View>
@@ -252,14 +252,15 @@ export function BudgetModal({
             {/* Valor */}
             <View style={styles.field}>
               <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                Valor do Orçamento (R$) *
+                {t('finances.budget.amount', { symbol: currencySymbol() })}
               </Caption>
               <Input
                 value={formData.limit_amount}
                 onChangeText={handleAmountChange}
                 onBlur={handleAmountBlur}
-                placeholder="0,00"
-                keyboardType="numeric"
+                placeholder={`0${amountDecimalSeparator()}00`}
+                accessibilityLabel={t('finances.budget.amount', { symbol: currencySymbol() })}
+                keyboardType="decimal-pad"
                 editable={!saving}
               />
             </View>
@@ -271,14 +272,14 @@ export function BudgetModal({
             { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, spacing[4]) : spacing[4] }
           ]}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               disabled={saving}
               style={{ flex: 1, marginRight: spacing[2] }}
             />
             <Button
-              title={saving ? 'Salvando...' : (isEdit ? 'Atualizar' : 'Criar Orçamento')}
+              title={saving ? t('investments.form.saving') : (isEdit ? t('common.save') : t('finances.budget.create'))}
               onPress={handleSave}
               disabled={saving || !formData.category_id || !formData.limit_amount}
               style={{ flex: 1 }}
@@ -289,7 +290,7 @@ export function BudgetModal({
           <OptionSheet
             visible={showCategorySheet}
             onClose={() => setShowCategorySheet(false)}
-            title="Selecione a categoria"
+            title={t('finances.form.chooseCategory')}
             options={sortedCategories}
             selectedValue={formData.category_id}
             onSelect={(categoryId) => {

@@ -15,64 +15,53 @@ import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
+import { useI18n } from '../../contexts/I18nContext';
+import {
+  amountDecimalSeparator,
+  sanitizeAmountInput,
+  formatAmountInput,
+  parseAmountInput,
+} from './amountInput';
 
 const { height } = Dimensions.get('window');
 
 const GOAL_TYPES = {
   emergency_fund: {
-    label: 'Reserva de Emergência',
     icon: PiggyBank,
     color: '#10B981',
-    description: '3-6 meses de despesas',
     suggestedAmount: 20000
   },
   debt_payment: {
-    label: 'Quitação de Dívida',
     icon: CreditCard,
     color: '#EF4444',
-    description: 'Elimine dívidas',
     suggestedAmount: 5000
   },
   purchase: {
-    label: 'Compra Planejada',
     icon: ShoppingBag,
     color: '#8B5CF6',
-    description: 'Carro, casa, viagem',
     suggestedAmount: 50000
   },
   investment: {
-    label: 'Investimento',
     icon: TrendingUp,
     color: '#3B82F6',
-    description: 'Construa patrimônio',
     suggestedAmount: 100000
   },
   savings: {
-    label: 'Poupança Geral',
     icon: Wallet,
     color: '#F59E0B',
-    description: 'Meta livre',
     suggestedAmount: 10000
   }
 };
 
-// Funções de formatação de moeda
-const parseCurrencyInput = (value) => {
-  if (!value) return 0;
-  const cleaned = value.replace(/[^\d,]/g, '').replace(',', '.');
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
-};
-
+const parseCurrencyInput = (value) => parseAmountInput(value);
 const formatCurrencyInput = (value) => {
-  if (!value || value === 0) return '';
   const num = typeof value === 'string' ? parseCurrencyInput(value) : value;
-  if (num === 0) return '';
-  return num.toFixed(2).replace('.', ',');
+  return num ? formatAmountInput(num) : '';
 };
 
 export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
   const { showToast } = useToast();
+  const { t, formatMoney, currencySymbol } = useI18n();
   const insets = useSafeAreaInsets();
   const [formData, setFormData] = useState({
     name: '',
@@ -90,9 +79,9 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
       setFormData({
         name: editingGoal.name || '',
         goal_type: editingGoal.goal_type || 'savings',
-        target_amount: editingGoal.target_amount?.toString() || '',
-        current_amount: editingGoal.current_amount?.toString() || '0',
-        monthly_contribution: editingGoal.monthly_contribution?.toString() || '',
+        target_amount: formatCurrencyInput(Number(editingGoal.target_amount) || 0),
+        current_amount: formatCurrencyInput(Number(editingGoal.current_amount) || 0) || '0',
+        monthly_contribution: formatCurrencyInput(Number(editingGoal.monthly_contribution) || 0),
         target_date: editingGoal.target_date || '',
         description: editingGoal.description || ''
       });
@@ -111,7 +100,7 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
 
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.target_amount) {
-      showToast('Preencha todos os campos obrigatórios', 'warning');
+      showToast(t('finances.form.fillRequired'), 'warning');
       return;
     }
 
@@ -129,7 +118,7 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
       onClose();
     } catch (error) {
       console.error('Erro ao salvar meta:', error);
-      showToast('Erro ao salvar meta: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('finances.goal.saveError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -139,13 +128,12 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
     setFormData(prev => ({
       ...prev,
       goal_type: type,
-      target_amount: prev.target_amount || GOAL_TYPES[type].suggestedAmount.toString()
+      target_amount: prev.target_amount || formatCurrencyInput(GOAL_TYPES[type].suggestedAmount)
     }));
   };
 
   const handleAmountChange = (field, text) => {
-    const cleaned = text.replace(/[^\d,]/g, '');
-    setFormData(prev => ({ ...prev, [field]: cleaned }));
+    setFormData(prev => ({ ...prev, [field]: sanitizeAmountInput(text) }));
   };
 
   const handleAmountBlur = (field) => {
@@ -159,7 +147,7 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
 
   if (!visible) return null;
 
-  const selectedType = GOAL_TYPES[formData.goal_type];
+  const selectedType = GOAL_TYPES[formData.goal_type] || GOAL_TYPES.savings;
   const GoalIcon = selectedType.icon;
   const remaining = parseCurrencyInput(formData.target_amount) - parseCurrencyInput(formData.current_amount);
   const monthlyContribution = parseCurrencyInput(formData.monthly_contribution);
@@ -181,8 +169,8 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Title2 weight="bold">{editingGoal ? 'Editar Meta' : 'Nova Meta Financeira'}</Title2>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Title2 weight="bold">{editingGoal ? t('finances.goal.editTitle') : t('finances.goal.newTitle')}</Title2>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -199,7 +187,7 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
             {/* Goal Type Selection */}
             <View style={styles.field}>
               <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[2] }}>
-                Tipo de Meta
+                {t('finances.goal.type')}
               </Caption>
               <View style={styles.typeGrid}>
                 {Object.entries(GOAL_TYPES).map(([key, type]) => {
@@ -211,32 +199,34 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
                       key={key}
                       style={[
                         styles.typeButton,
-                        isSelected && { borderColor: colors.brand.primary, backgroundColor: colors.brand.bg }
+                        isSelected && { borderColor: colors.brand.primary, backgroundColor: colors.info.bg }
                       ]}
                       onPress={() => handleTypeChange(key)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: isSelected }}
                     >
                       <View style={[styles.typeIcon, { backgroundColor: `${type.color}20` }]}>
                         <Icon size={20} color={type.color} />
                       </View>
                       <Caption style={{ marginTop: spacing[0.5], textAlign: 'center' }} numberOfLines={2}>
-                        {type.label}
+                        {t(`finances.goal.types.${key}.label`)}
                       </Caption>
                     </TouchableOpacity>
                   );
                 })}
               </View>
               <Caption color="secondary" style={{ marginTop: spacing[1] }}>
-                {selectedType.description}
+                {t(`finances.goal.types.${formData.goal_type in GOAL_TYPES ? formData.goal_type : 'savings'}.description`)}
               </Caption>
             </View>
 
             {/* Goal Name */}
             <View style={styles.field}>
               <Input
-                label="Nome da Meta *"
+                label={t('finances.goal.name')}
                 value={formData.name}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
-                placeholder="Ex: Reserva de emergência, Viagem para Europa, etc."
+                placeholder={t('finances.goal.namePlaceholder')}
               />
             </View>
 
@@ -244,38 +234,38 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
             <View style={styles.row}>
               <View style={styles.halfField}>
                 <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                  Valor Alvo (R$) *
+                  {t('finances.goal.target')}
                 </Caption>
                 <View style={styles.currencyInput}>
-                  <Caption style={{ marginRight: spacing[1] }}>R$</Caption>
+                  <Caption style={{ marginRight: spacing[1] }}>{currencySymbol()}</Caption>
                   <TextInput
                     style={styles.amountInput}
                     value={formData.target_amount}
                     onChangeText={(text) => handleAmountChange('target_amount', text)}
                     onBlur={() => handleAmountBlur('target_amount')}
-                    placeholder="0,00"
-                    keyboardType="numeric"
+                    placeholder={`0${amountDecimalSeparator()}00`}
+                    keyboardType="decimal-pad"
                   />
                 </View>
               </View>
 
               <View style={styles.halfField}>
                 <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                  Valor Atual (R$)
+                  {t('finances.goal.current')}
                 </Caption>
                 <View style={styles.currencyInput}>
-                  <Caption style={{ marginRight: spacing[1] }}>R$</Caption>
+                  <Caption style={{ marginRight: spacing[1] }}>{currencySymbol()}</Caption>
                   <TextInput
                     style={styles.amountInput}
                     value={formData.current_amount}
                     onChangeText={(text) => handleAmountChange('current_amount', text)}
                     onBlur={() => handleAmountBlur('current_amount')}
-                    placeholder="0,00"
-                    keyboardType="numeric"
+                    placeholder={`0${amountDecimalSeparator()}00`}
+                    keyboardType="decimal-pad"
                   />
                 </View>
                 <Caption color="secondary" style={{ marginTop: spacing[0.5], fontSize: 11 }}>
-                  Quanto você já tem economizado?
+                  {t('finances.goal.currentHint')}
                 </Caption>
               </View>
             </View>
@@ -284,32 +274,33 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
             <View style={styles.row}>
               <View style={styles.halfField}>
                 <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                  Contribuição Mensal (R$)
+                  {t('finances.goal.monthly')}
                 </Caption>
                 <View style={styles.currencyInput}>
-                  <Caption style={{ marginRight: spacing[1] }}>R$</Caption>
+                  <Caption style={{ marginRight: spacing[1] }}>{currencySymbol()}</Caption>
                   <TextInput
                     style={styles.amountInput}
                     value={formData.monthly_contribution}
                     onChangeText={(text) => handleAmountChange('monthly_contribution', text)}
                     onBlur={() => handleAmountBlur('monthly_contribution')}
-                    placeholder="0,00"
-                    keyboardType="numeric"
+                    placeholder={`0${amountDecimalSeparator()}00`}
+                    keyboardType="decimal-pad"
                   />
                 </View>
                 <Caption color="secondary" style={{ marginTop: spacing[0.5], fontSize: 11 }}>
-                  Quanto pretende guardar por mês?
+                  {t('finances.goal.monthlyHint')}
                 </Caption>
               </View>
 
               <View style={styles.halfField}>
                 <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                  Data Alvo (opcional)
+                  {t('finances.goal.targetDate')}
                 </Caption>
                 <Input
                   value={formData.target_date}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, target_date: text }))}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t('finances.form.datePlaceholder')}
+                  accessibilityLabel={t('finances.goal.targetDate')}
                 />
               </View>
             </View>
@@ -317,13 +308,14 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
             {/* Description */}
             <View style={styles.field}>
               <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                Descrição (opcional)
+                {t('finances.form.descriptionOptional')}
               </Caption>
               <TextInput
                 style={styles.textArea}
                 value={formData.description}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
-                placeholder="Adicione detalhes sobre sua meta..."
+                placeholder={t('finances.goal.descriptionPlaceholder')}
+                accessibilityLabel={t('finances.form.descriptionOptional')}
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
@@ -333,14 +325,14 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
             {/* Projection Preview */}
             {formData.target_amount && formData.monthly_contribution && monthlyContribution > 0 && (
               <View style={styles.projectionCard}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing[1] }}><BarChart3 size={16} color="#1A6AFF" /><Callout weight="semiBold">Projeção</Callout></View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing[1] }}><BarChart3 size={16} color="#1A6AFF" /><Callout weight="semiBold">{t('finances.goal.projection')}</Callout></View>
                 <View style={styles.projectionRow}>
-                  <Caption color="secondary">Falta economizar:</Caption>
-                  <Callout weight="bold">{formatCurrencyInput(remaining)}</Callout>
+                  <Caption color="secondary">{t('finances.goal.remaining')}</Caption>
+                  <Callout weight="bold">{formatMoney(Math.max(remaining, 0))}</Callout>
                 </View>
                 <View style={styles.projectionRow}>
-                  <Caption color="secondary">Tempo estimado:</Caption>
-                  <Callout weight="bold">{estimatedMonths} meses</Callout>
+                  <Caption color="secondary">{t('finances.goal.estimatedTime')}</Caption>
+                  <Callout weight="bold">{t('finances.goal.months', { count: estimatedMonths })}</Callout>
                 </View>
               </View>
             )}
@@ -349,14 +341,14 @@ export function GoalModal({ visible, onClose, onSave, editingGoal = null }) {
           {/* Footer */}
           <View style={styles.footer}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               disabled={saving}
               style={{ flex: 1, marginRight: spacing[2] }}
             />
             <Button
-              title={saving ? 'Salvando...' : (editingGoal ? 'Salvar Alterações' : 'Criar Meta')}
+              title={saving ? t('investments.form.saving') : (editingGoal ? t('common.save') : t('finances.goal.create'))}
               onPress={handleSubmit}
               disabled={saving || !formData.name || !formData.target_amount}
               style={{ flex: 1 }}
