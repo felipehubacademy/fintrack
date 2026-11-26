@@ -10,6 +10,7 @@ import { categoryLabel } from '../utils/categoryLabel';
 import { computeDailyAllowance, nextCardStatement } from '../utils/dailyAllowance';
 import { isFeatureEnabled } from '@fintrack/shared/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TAB_ROUTES } from '../navigation/routes';
 
 // Keyed by payment_method; labels come from t('transactions.paymentMethodsLong.*').
 const PAYMENT_METHOD_COLORS = {
@@ -122,7 +123,7 @@ export function useDashboardData(navigation) {
           buttons: [
             {
               text: t('dashboard.budgetReminder.createNow'),
-              onPress: () => navigation.navigate('Mais', { screen: 'Budgets', params: { openWizard: true } }),
+              onPress: () => navigation.navigate(TAB_ROUTES.more, { screen: 'Budgets', params: { openWizard: true } }),
             },
             {
               text: t('dashboard.budgetReminder.later'),

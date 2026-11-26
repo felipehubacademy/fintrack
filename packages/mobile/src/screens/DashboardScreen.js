@@ -18,11 +18,11 @@ import { SpendPerDayHero } from '../components/dashboard/SpendPerDayHero';
 import { RecentTransactions } from '../components/dashboard/RecentTransactions';
 import { typography } from '../theme';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { TAB_ROUTES } from '../navigation/routes';
 
-// Route names live in the navigators (owned elsewhere); kept in one place here.
 const ROUTES = {
-  transactions: 'Transações',
-  more: 'Mais',
+  transactions: TAB_ROUTES.transactions,
+  more: TAB_ROUTES.more,
   addTransaction: 'AddTransaction',
 };
 

@@ -7,7 +7,7 @@ export function useOnboarding(user, organization) {
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  const totalSteps = 6; // 0-5
+  const totalSteps = 2; // language/currency, then open Zul
 
   // Fetch progress from database
   const fetchProgress = useCallback(async () => {
