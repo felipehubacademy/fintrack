@@ -3,30 +3,17 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, spacing } from '../../theme';
 import { Caption, Footnote } from '../ui/Text';
 import { StatsDetailSheet } from './StatsDetailSheet';
+import { useI18n } from '../../contexts/I18nContext';
 
 export const MonthlyComparisonChart = React.memo(function MonthlyComparisonChart({ data }) {
   const [sheetVisible, setSheetVisible] = useState(false);
   const [selectedData, setSelectedData] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState('');
+  const { t } = useI18n();
   
-  // Função para abreviar mês (para o gráfico) - memoizada
-  const abbreviateMonth = useCallback((fullMonth) => {
-    const abbreviations = {
-      'Janeiro': 'Jan',
-      'Fevereiro': 'Fev',
-      'Março': 'Mar',
-      'Abril': 'Abr',
-      'Maio': 'Mai',
-      'Junho': 'Jun',
-      'Julho': 'Jul',
-      'Agosto': 'Ago',
-      'Setembro': 'Set',
-      'Outubro': 'Out',
-      'Novembro': 'Nov',
-      'Dezembro': 'Dez',
-    };
-    return abbreviations[fullMonth] || fullMonth.substring(0, 3);
-  }, []);
+  // Callers pass month names already formatted for the active language;
+  // the chart only needs a short form of them.
+  const abbreviateMonth = useCallback((fullMonth = '') => String(fullMonth).substring(0, 3), []);
 
   // Processar dados - memoizado
   const processedData = useMemo(() => {
@@ -49,34 +36,34 @@ export const MonthlyComparisonChart = React.memo(function MonthlyComparisonChart
     return realMax * 1.2;
   }, [processedData]);
   
-  if (!data || data.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Caption color="secondary">Sem dados para comparação</Caption>
-      </View>
-    );
-  }
-
   const handleMonthPress = useCallback((item) => {
     setSelectedMonth(item.month); // Guardar o mês clicado
     setSelectedData([
       {
-        label: 'Entradas',
+        label: t('finances.filters.typeIncome'),
         value: item.income * 1000,
         color: colors.brand.primary,
       },
       {
-        label: 'Saídas',
+        label: t('closing.spendingShort'),
         value: item.expense * 1000,
         color: colors.neutral[400],
         breakdown: [
-          { label: 'Crédito', value: item.credit * 1000 },
-          { label: 'À Vista', value: item.cash * 1000 },
+          { label: t('finances.charts.credit'), value: item.credit * 1000 },
+          { label: t('closing.stats.paidNow'), value: item.cash * 1000 },
         ],
       },
     ]);
     setSheetVisible(true);
-  }, []);
+  }, [t]);
+
+  if (!data || data.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Caption color="secondary">{t('finances.charts.noComparison')}</Caption>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -131,16 +118,16 @@ export const MonthlyComparisonChart = React.memo(function MonthlyComparisonChart
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.dot, { backgroundColor: colors.brand.primary }]} />
-          <Footnote color="secondary">Entradas</Footnote>
+          <Footnote color="secondary">{t('finances.filters.typeIncome')}</Footnote>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.dot, { backgroundColor: colors.neutral[400] }]} />
-          <Footnote color="secondary">Saídas</Footnote>
+          <Footnote color="secondary">{t('closing.spendingShort')}</Footnote>
         </View>
       </View>
       
       <Caption color="secondary" style={styles.hint}>
-        Toque em um mês para ver detalhes
+        {t('finances.charts.tapMonth')}
       </Caption>
 
       {/* Modal */}
@@ -148,7 +135,7 @@ export const MonthlyComparisonChart = React.memo(function MonthlyComparisonChart
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
         data={selectedData || []}
-        title={selectedMonth ? `Detalhes de ${selectedMonth}` : 'Detalhes do Mês'}
+        title={selectedMonth ? t('finances.charts.monthDetails', { month: selectedMonth }) : t('finances.charts.monthDetailsGeneric')}
       />
     </View>
   );

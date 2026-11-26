@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text, Caption } from '../ui/Text';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { width } = Dimensions.get('window');
 const CHART_SIZE = width - spacing[2] * 4;
@@ -11,11 +12,12 @@ const CHART_SIZE = width - spacing[2] * 4;
  * Exibe categorias com suas porcentagens
  */
 export function SimplePieChart({ data, title }) {
+  const { t } = useI18n();
   if (!data || data.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Text variant="callout" color="secondary" align="center">
-          Sem dados para exibir
+          {t('finances.charts.noSplit')}
         </Text>
       </View>
     );
