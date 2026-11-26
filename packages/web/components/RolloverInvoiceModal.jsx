@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useI18n } from '../contexts/I18nContext';
+import { appLocale, appCurrency } from '../lib/utils';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function RolloverInvoiceModal({
   isOpen,
@@ -26,10 +28,10 @@ export default function RolloverInvoiceModal({
   if (!isOpen || !invoice || !card) return null;
 
   const formatCurrency = (value) => {
-    if (Number.isNaN(value)) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
+    if (Number.isNaN(value)) return formatMoney(0);
+    return new Intl.NumberFormat(appLocale(), {
       style: 'currency',
-      currency: 'BRL'
+      currency: appCurrency()
     }).format(value);
   };
 

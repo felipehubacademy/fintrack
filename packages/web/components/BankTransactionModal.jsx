@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader } from './ui/Card';
 import { X, ArrowRight } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useOrganization } from '../hooks/useOrganization';
 import { useI18n } from '../contexts/I18nContext';
+import { currencySymbol } from '@fintrack/shared/i18n';
 
 export default function BankTransactionModal({ isOpen, onClose, account, organizationId, onSuccess }) {
   const { t } = useI18n();
@@ -181,10 +182,10 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
               {/* Valor */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor (R$) *
+                  {t('web.bankTransactionModal.amount')}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="text"
                     value={formData.amount}
@@ -198,13 +199,13 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
                       }
                       const parsed = parseCurrencyInput(value);
                       if (parsed > 0) {
-                        const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         handleChange('amount', formatted);
                       } else {
                         handleChange('amount', '');
                       }
                     }}
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                     required
                   />

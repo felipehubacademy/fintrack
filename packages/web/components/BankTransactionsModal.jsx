@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { X, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { useI18n } from '../contexts/I18nContext';
+import { appLocale } from '../lib/utils';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
   const { t: tr } = useI18n();
@@ -46,16 +48,13 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
   if (!isOpen || !account) return null;
 
   const formatCurrency = (value) => {
-    return Number(value || 0).toLocaleString('pt-BR', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    });
+    return formatMoney(Number(value || 0));
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const getTransactionLabel = (type) => {
@@ -89,7 +88,7 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{account.name}</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Histórico de transações - Saldo atual: R$ {formatCurrency(account.current_balance || 0)}
+              {tr('web.bankTransactionsModal.transactionHistoryCurrentBalance', { p0: formatCurrency(account.current_balance || 0) })}
             </p>
           </div>
           <button
@@ -110,7 +109,7 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
                 <TrendingUp className="h-4 w-4 text-flight-blue" />
               </div>
               <p className="text-xl font-bold text-flight-blue">
-                R$ {formatCurrency(totalCredits)}
+                {formatCurrency(totalCredits)}
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -119,7 +118,7 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
                 <TrendingDown className="h-4 w-4 text-gray-600" />
               </div>
               <p className="text-xl font-bold text-gray-900">
-                R$ {formatCurrency(totalDebits)}
+                {formatCurrency(totalDebits)}
               </p>
             </div>
             <div className={`p-4 rounded-lg border ${balance >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
@@ -128,7 +127,7 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
                 <DollarSign className={`h-4 w-4 ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
               </div>
               <p className={`text-xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {balance >= 0 ? '+' : '-'} R$ {formatCurrency(Math.abs(balance))}
+                {balance >= 0 ? '+' : '-'} {formatCurrency(Math.abs(balance))}
               </p>
             </div>
           </div>
@@ -171,10 +170,10 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
                           <td className={`px-4 py-3 text-sm text-right font-semibold ${
                             isCredit ? 'text-flight-blue' : 'text-gray-900'
                           }`}>
-                            {isCredit ? '+' : '-'} R$ {formatCurrency(transaction.amount)}
+                            {isCredit ? '+' : '-'} {formatCurrency(transaction.amount)}
                           </td>
                           <td className="px-4 py-3 text-sm text-right text-gray-600">
-                            R$ {formatCurrency(transaction.balance_after)}
+                            {formatCurrency(transaction.balance_after)}
                           </td>
                         </tr>
                       );

@@ -3,8 +3,10 @@ import { X } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
+import { currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 const BudgetModal = ({ 
   isOpen, 
@@ -121,9 +123,9 @@ const BudgetModal = ({
                 required
               >
                 <option value="">{t('web.budgetModal.pickACategory')}</option>
-                {[...categories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(category => (
+                {[...categories].sort((a, b) => a.name.localeCompare(b.name, appLocale())).map(category => (
                   <option key={category.id} value={category.id}>
-                    {category.name}
+                    {categoryName(category.name)}
                   </option>
                 ))}
               </select>
@@ -137,10 +139,10 @@ const BudgetModal = ({
             {/* Valor */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valor do Orçamento (R$) *
+                {t('web.budgetModal.budgetAmount')}
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                 <input
                   type="text"
                   value={formData.limit_amount}
@@ -154,13 +156,13 @@ const BudgetModal = ({
                     }
                     const parsed = parseCurrencyInput(value);
                     if (parsed > 0) {
-                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       setFormData({ ...formData, limit_amount: formatted });
                     } else {
                       setFormData({ ...formData, limit_amount: '' });
                     }
                   }}
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                   className="w-full pl-10 pr-3 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 />

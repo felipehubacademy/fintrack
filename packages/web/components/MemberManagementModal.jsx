@@ -635,7 +635,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                           <HelpTooltip 
                             wide={true}
                             position="left"
-                            content="Este é o percentual que será aplicado automaticamente quando este membro criar transações compartilhadas (despesas ou receitas). Por exemplo, 50% significa que 50% do valor será atribuído a este membro e 50% aos outros." 
+                            content={t('web.memberManagementModal.theShareAppliedAutomaticallyWhen')} 
                           />
                         </label>
                         <input
@@ -729,7 +729,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
                       <span>{t('web.shared.profileColor')}</span>
-                      <HelpTooltip content="Esta cor será usada para identificar este membro em gráficos, cards e análises visuais da organização." />
+                      <HelpTooltip content={t('web.memberManagementModal.thisColorIdentifiesThisMember')} />
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {colors.map((color) => (

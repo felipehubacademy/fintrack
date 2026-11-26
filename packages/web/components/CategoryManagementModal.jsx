@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import ConfirmationModal from './ConfirmationModal';
 import { useI18n } from '../contexts/I18nContext';
+import { categoryName } from '../lib/categoryName';
 
 export default function CategoryManagementModal({ isOpen, onClose, organization, preSelectedMacro = null, preSelectedTab = 'expense' }) {
   const { t } = useI18n();
@@ -396,7 +397,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
                         />
                         <div>
                           <div className="flex items-center space-x-2">
-                            <p className="font-medium text-gray-900">{category.name}</p>
+                            <p className="font-medium text-gray-900">{categoryName(category.name)}</p>
                             {category.is_default && (
                               <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
                                 {t('web.categoryManagementModal.default')}

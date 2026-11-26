@@ -18,6 +18,7 @@ import Tooltip from '../../components/ui/Tooltip';
 import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2, ArrowRightLeft, List, Link2, ExternalLink } from 'lucide-react';
 import StatsCard from '../../components/ui/StatsCard';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function BankAccounts() {
   const { t } = useI18n();
@@ -243,19 +244,19 @@ export default function BankAccounts() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <StatsCard
             title={t('web.bankAccounts.totalInAccounts')}
-            value={`R$ ${stats.totalBalance.toFixed(2)}`}
+            value={formatMoney(stats.totalBalance)}
             icon={DollarSign}
             trend={stats.totalBalance >= 0 ? 'up' : 'down'}
           />
           <StatsCard
             title={t('web.bankAccounts.positiveBalance')}
-            value={`R$ ${stats.positiveBalance.toFixed(2)}`}
+            value={formatMoney(stats.positiveBalance)}
             icon={TrendingUp}
             trend="up"
           />
           <StatsCard
             title={t('web.bankAccounts.negativeBalance')}
-            value={`R$ ${stats.negativeBalance.toFixed(2)}`}
+            value={formatMoney(stats.negativeBalance)}
             icon={TrendingDown}
             trend="down"
           />
@@ -291,7 +292,7 @@ export default function BankAccounts() {
                         </span>
                       )}
                         {account.provider === 'belvo' && (
-                          <Tooltip content="Conectada via Open Finance - Sincronização automática (somente leitura)" position="top">
+                          <Tooltip content={t('web.bankAccounts.connectedViaOpenFinanceSyncs')} position="top">
                             <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded flex items-center gap-1">
                               <Link2 className="w-3 h-3" />
                               Open Finance
@@ -317,7 +318,7 @@ export default function BankAccounts() {
                           ? 'text-flight-blue'
                           : 'text-red-600'
                       }`}>
-                        R$ {parseFloat(account.current_balance || 0).toFixed(2)}
+                        {formatMoney(parseFloat(account.current_balance || 0))}
                       </p>
                     </div>
                     <div>
@@ -327,7 +328,7 @@ export default function BankAccounts() {
                     {account.provider === 'belvo' ? (
                       /* Open Finance accounts: Read-only, show only history and remove */
                       <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
-                        <Tooltip content="Ver histórico de transações" position="top">
+                        <Tooltip content={t('web.bankAccounts.seeTransactionHistory')} position="top">
                           <Button
                             variant="outline"
                             size="icon"
@@ -341,7 +342,7 @@ export default function BankAccounts() {
                             <List className="h-4 w-4" />
                           </Button>
                         </Tooltip>
-                        <Tooltip content="Remover do app" position="top">
+                        <Tooltip content={t('web.bankAccounts.removeFromApp')} position="top">
                           <Button
                             variant="outline"
                             size="icon"
@@ -356,7 +357,7 @@ export default function BankAccounts() {
                     ) : (
                       /* Manual accounts: Full control */
                     <div className="flex justify-center space-x-2 pt-4 border-t border-gray-200">
-                      <Tooltip content="Adicionar Entrada" position="top">
+                      <Tooltip content={t('web.bankAccounts.addIncome')} position="top">
                         <Button
                           variant="outline"
                           size="icon"
@@ -370,7 +371,7 @@ export default function BankAccounts() {
                           <TrendingUp className="h-4 w-4" />
                         </Button>
                       </Tooltip>
-                      <Tooltip content="Transferir" position="top">
+                      <Tooltip content={t('web.bankAccounts.transfer')} position="top">
                       <Button
                           variant="outline"
                           size="icon"
@@ -384,7 +385,7 @@ export default function BankAccounts() {
                           <ArrowRightLeft className="h-4 w-4" />
                       </Button>
                       </Tooltip>
-                      <Tooltip content="Ver histórico" position="top">
+                      <Tooltip content={t('web.bankAccounts.seeHistory')} position="top">
                         <Button
                           variant="outline"
                           size="icon"
@@ -398,7 +399,7 @@ export default function BankAccounts() {
                           <List className="h-4 w-4" />
                         </Button>
                       </Tooltip>
-                      <Tooltip content="Editar" position="top">
+                      <Tooltip content={t('web.bankAccounts.edit')} position="top">
                       <Button
                         variant="outline"
                           size="icon"
@@ -408,7 +409,7 @@ export default function BankAccounts() {
                           <Edit className="h-4 w-4" />
                       </Button>
                       </Tooltip>
-                      <Tooltip content="Desativar" position="top">
+                      <Tooltip content={t('web.bankAccounts.deactivate')} position="top">
                       <Button
                         variant="outline"
                           size="icon"

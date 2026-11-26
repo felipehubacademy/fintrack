@@ -28,13 +28,15 @@ import Header from '../../components/Header';
 import BudgetWizard from '../../components/BudgetWizard';
 import CategoryManagementModal from '../../components/CategoryManagementModal';
 import { useI18n } from '../../contexts/I18nContext';
-import { t } from '@fintrack/shared/i18n';
+import { t, formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
+import { categoryName } from '../../lib/categoryName';
 
 const MACRO_ORDER = ['needs', 'wants', 'investments'];
 const MACRO_LABELS = {
-  needs: 'Necessidades',
-  wants: 'Desejos',
-  get investments() { return t('web.shared.investments'); }
+  get needs() { return t('web.shared.needs'); },
+  get wants() { return t('web.shared.wants'); },
+  get investments() { return t('web.shared.investments'); },
 };
 const MACRO_COLORS = {
   needs: '#2563EB',
@@ -43,17 +45,14 @@ const MACRO_COLORS = {
 };
 
 const formatCurrency = (value) =>
-  `R$ ${Number(value || 0).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })}`;
+  `${formatMoney(Number(value || 0))}`;
 
 // Formata valor para input (1000.5 -> "1.000,50")
 const formatCurrencyInput = (value) => {
   if (!value && value !== 0) return '';
   const numValue = typeof value === 'string' ? parseFloat(value) : value;
   if (isNaN(numValue)) return '';
-  return numValue.toLocaleString('pt-BR', {
+  return numValue.toLocaleString(appLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
@@ -514,7 +513,7 @@ export default function BudgetsDashboard() {
     return (budgetCategories || [])
       .filter((category) => category.macro_group === editingMacroKey)
       .filter((category) => !macroDraft.some((entry) => entry.categoryId === category.id))
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      .sort((a, b) => a.name.localeCompare(b.name, appLocale()));
   }, [budgetCategories, editingMacroKey, macroDraft]);
 
   const macroDraftTotal = useMemo(
@@ -603,7 +602,7 @@ export default function BudgetsDashboard() {
         amount: 0,
         spent: 0,
         color: category.color || MACRO_COLORS[category.macro_group] || '#2563EB'
-      }].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+      }].sort((a, b) => a.name.localeCompare(b.name, appLocale()))
     );
     setCategoryToAdd('');
   };
@@ -746,7 +745,7 @@ export default function BudgetsDashboard() {
       const group = groups[key];
       const remaining = group.totalBudget - group.totalSpent;
       const progress = group.totalBudget > 0 ? (group.totalSpent / group.totalBudget) * 100 : 0;
-      group.categories.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      group.categories.sort((a, b) => a.name.localeCompare(b.name, appLocale()));
       return {
         ...group,
         remaining,
@@ -843,7 +842,7 @@ export default function BudgetsDashboard() {
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {totalBudgetValue.toLocaleString('pt-BR')}
+                {formatMoney(totalBudgetValue)}
               </div>
             </CardContent>
           </Card>
@@ -859,7 +858,7 @@ export default function BudgetsDashboard() {
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-700 mb-1">
-                - R$ {totalSpentValue.toLocaleString('pt-BR')}
+                -{formatMoney(totalSpentValue)}
               </div>
             </CardContent>
           </Card>
@@ -885,7 +884,7 @@ export default function BudgetsDashboard() {
               <div className={`text-2xl font-bold mb-1 ${
                 totalRemainingValue < 0 ? 'text-red-600' : 'text-gray-900'
               }`}>
-                R$ {totalRemainingValue.toLocaleString('pt-BR')}
+                {formatMoney(totalRemainingValue)}
               </div>
             </CardContent>
           </Card>
@@ -931,19 +930,19 @@ export default function BudgetsDashboard() {
                   <div>
                     <p className="text-gray-500">{t('web.budgets.budgeted')}</p>
                     <p className="font-semibold text-gray-900">
-                      R$ {macro.totalBudget.toLocaleString('pt-BR')}
+                      {formatMoney(macro.totalBudget)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-500">{t('web.budgets.spent')}</p>
                     <p className="font-semibold text-gray-900">
-                      R$ {macro.totalSpent.toLocaleString('pt-BR')}
+                      {formatMoney(macro.totalSpent)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-500">{t('web.budgets.left')}</p>
                     <p className={`font-semibold ${macro.remaining < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      R$ {macro.remaining.toLocaleString('pt-BR')}
+                      {formatMoney(macro.remaining)}
                     </p>
                   </div>
                 </div>
@@ -995,14 +994,14 @@ export default function BudgetsDashboard() {
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="text-sm font-medium text-gray-600">{t('web.budgets.totalPlanned')}</div>
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-500">R$</span>
+                          <span className="text-gray-500">{currencySymbol()}</span>
                           <input
                             type="text"
                             value={typeof macroDraftTarget === 'number' ? formatCurrencyInput(macroDraftTarget) : macroDraftTarget}
                             onChange={(event) => handleMacroTargetChange(event.target.value)}
                             onBlur={handleMacroTargetBlur}
                             className="w-40 rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
-                            placeholder="0,00"
+                            placeholder={formatCurrencyInput(0)}
                           />
                         </div>
                       </div>
@@ -1033,7 +1032,7 @@ export default function BudgetsDashboard() {
                                 onChange={(event) => handleMacroAmountChange(index, event.target.value)}
                                 onBlur={() => handleMacroAmountBlur(index)}
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
-                                placeholder="0,00"
+                                placeholder={formatCurrencyInput(0)}
                               />
                               {entry.spent > entry.amount && (
                                 <div className="flex items-start gap-2 text-xs text-red-600">
@@ -1068,7 +1067,7 @@ export default function BudgetsDashboard() {
                               <option value="">{t('web.budgets.addAnExistingCategory')}</option>
                               {availableMacroCategories.map((category) => (
                                 <option key={category.id} value={category.id}>
-                                  {category.name}
+                                  {categoryName(category.name)}
                                 </option>
                               ))}
                             </select>
@@ -1158,7 +1157,7 @@ export default function BudgetsDashboard() {
                             
                             {/* Nome */}
                             <div className="truncate">
-                              <p className="text-sm font-semibold text-gray-900 truncate">{categoryItem.name}</p>
+                              <p className="text-sm font-semibold text-gray-900 truncate">{categoryName(categoryItem.name)}</p>
                             </div>
 
                             {/* Barra de Progresso */}
@@ -1282,7 +1281,7 @@ export default function BudgetsDashboard() {
                   {t('web.budgets.adjustTotalPlanned')}
                 </label>
                 <div className="flex items-center gap-2 max-w-xs">
-                  <span className="text-gray-500">R$</span>
+                  <span className="text-gray-500">{currencySymbol()}</span>
                   <input
                     id="macro-total-input"
                     type="text"
@@ -1290,7 +1289,7 @@ export default function BudgetsDashboard() {
                     onChange={(event) => handleMacroTargetChange(event.target.value)}
                     onBlur={handleMacroTargetBlur}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                   />
                 </div>
               </div>
@@ -1322,7 +1321,7 @@ export default function BudgetsDashboard() {
                           onChange={(event) => handleMacroAmountChange(index, event.target.value)}
                           onBlur={() => handleMacroAmountBlur(index)}
                           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
-                          placeholder="0,00"
+                          placeholder={formatCurrencyInput(0)}
                         />
                         {entry.spent > entry.amount && (
                           <div className="flex items-start gap-2 text-xs text-red-600">
@@ -1358,7 +1357,7 @@ export default function BudgetsDashboard() {
                       <option value="">{t('web.budgets.addAnExistingCategory')}</option>
                       {availableMacroCategories.map((category) => (
                         <option key={category.id} value={category.id}>
-                          {category.name}
+                          {categoryName(category.name)}
                         </option>
                       ))}
                     </select>

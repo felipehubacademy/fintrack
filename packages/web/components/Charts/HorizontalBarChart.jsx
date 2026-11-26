@@ -1,10 +1,12 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { categoryName } from '../../lib/categoryName';
 
 export default function HorizontalBarChart({ data }) {
   const { t } = useI18n();
   const formatCurrency = (value) => {
-    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `${formatMoney(value)}`;
   };
 
   const getColor = (status) => {
@@ -20,7 +22,7 @@ export default function HorizontalBarChart({ data }) {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-        <p className="font-semibold text-gray-900 mb-2">{data.category}</p>
+        <p className="font-semibold text-gray-900 mb-2">{categoryName(data.category)}</p>
         <div className="space-y-1">
           <div className="flex justify-between space-x-4">
             <span className="text-sm text-gray-600">{t('web.horizontalBarChart.now')}</span>

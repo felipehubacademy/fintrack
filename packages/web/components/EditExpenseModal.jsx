@@ -5,8 +5,10 @@ import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useOrganization } from '../hooks/useOrganization';
-import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
+import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -804,7 +806,7 @@ export default function EditExpenseModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.amount')}</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="text"
                     value={editData.amount}
@@ -818,14 +820,14 @@ export default function EditExpenseModal({
                       }
                       const parsed = parseCurrencyInput(value);
                       if (parsed > 0) {
-                        const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         setEditData({ ...editData, amount: formatted });
                       } else {
                         setEditData({ ...editData, amount: '' });
                       }
                     }}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                   />
                 </div>
               </div>
@@ -854,7 +856,7 @@ export default function EditExpenseModal({
                 >
                   <option value="">{t('web.shared.select')}</option>
                   {categories?.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                   ))}
                 </select>
               </div>
@@ -965,7 +967,7 @@ export default function EditExpenseModal({
                           />
                           <span className="text-sm text-gray-500 w-6">%</span>
                           <span className="text-sm text-gray-600 w-24 text-right">
-                            R$ {split.amount.toFixed(2)}
+                            {formatMoney(split.amount)}
                           </span>
                         </div>
                       </div>
@@ -990,7 +992,7 @@ export default function EditExpenseModal({
                           <span className="text-gray-700">{split.name}</span>
                         </div>
                         <span className="text-gray-600 font-medium">
-                          {split.percentage}% (R$ {split.amount.toFixed(2)})
+                          {split.percentage}% ({formatMoney(split.amount)})
                         </span>
                       </div>
                     ))}

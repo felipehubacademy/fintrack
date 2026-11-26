@@ -203,7 +203,7 @@ export default function WhatsAppVerificationModal({
           
           if (minutes >= 60) {
             const hours = Math.ceil(minutes / 60);
-            setError(`⏰ Muitas tentativas. Aguarde ${hours} hora${hours > 1 ? 's' : ''} para tentar novamente.`);
+            setError(t('web.whatsAppVerificationModal.tooManyTriesWaitH', { hours, p1: hours > 1 ? 's' : '' }));
           } else if (minutes > 1) {
             setError(t('web.whatsAppVerificationModal.tooManyTriesWaitMinutes', { minutes }));
           } else {

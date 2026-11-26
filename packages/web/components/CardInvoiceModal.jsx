@@ -7,8 +7,9 @@ import MarkInvoiceAsPaidModal from './MarkInvoiceAsPaidModal';
 import RolloverInvoiceModal from './RolloverInvoiceModal';
 import { useOrganization } from '../hooks/useOrganization';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { getBrazilToday, getBrazilTodayString, createBrazilDate, isDateBeforeOrEqualToday } from '../lib/utils';
+import { getBrazilToday, getBrazilTodayString, createBrazilDate, isDateBeforeOrEqualToday, appLocale, appCurrency } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
+import { formatDate as formatLocaleDate } from '@fintrack/shared/i18n';
 
 export default function CardInvoiceModal({ isOpen, onClose, card }) {
   const { t } = useI18n();
@@ -117,16 +118,16 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
   const formatDate = (dateStr) => {
     // Parse a data como UTC para evitar problemas de fuso horário
     const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('pt-BR', { 
+    return date.toLocaleDateString(appLocale(), { 
       month: 'long', 
       year: 'numeric' 
     });
   };
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat(appLocale(), {
       style: 'currency',
-      currency: 'BRL'
+      currency: appCurrency()
     }).format(value);
   };
 
@@ -544,9 +545,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                   // Para faturas não atuais, usar o mês de VENCIMENTO (não o mês de fechamento)
                   // Exemplo: período 26/10 - 25/11, fecha 26/11, vence 03/12 → "Fatura de Dezembro"
                   // Exemplo: período 26/11 - 25/12, fecha 26/12, vence 03/01 → "Fatura de Janeiro"
-                  const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-                  const monthName = monthNames[dueDate.getMonth()];
+                  const monthName = formatLocaleDate(dueDate, 'month');
                   statusLabel = t('web.cardInvoiceModal.bill', { monthName });
                 }
                 
@@ -611,15 +610,15 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                             )}
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
-                            {new Date(invoice.startDate + 'T00:00:00').toLocaleDateString('pt-BR')} - {new Date(invoice.endDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            {new Date(invoice.startDate + 'T00:00:00').toLocaleDateString(appLocale())} - {new Date(invoice.endDate + 'T00:00:00').toLocaleDateString(appLocale())}
                             {hasClosed && !isFuture && (
                               <span className="ml-2 text-yellow-600 font-medium">
-                                {t('web.cardInvoiceModal.closedOn')} {closingDate.toLocaleDateString('pt-BR')}
+                                {t('web.cardInvoiceModal.closedOn')} {closingDate.toLocaleDateString(appLocale())}
                               </span>
                             )}
                             {expenses.length > 0 && (
                               <span className="ml-2 text-gray-400">
-                                • {expenses.length} {expenses.length === 1 ? 'transação' : t('web.cardInvoiceModal.transactions')}
+                                • {t('web.fixes.transactionsCount', { count: expenses.length })}
                               </span>
                             )}
                           </p>
@@ -665,7 +664,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                                     className="flex items-center text-sm text-gray-700 py-1.5 px-2 hover:bg-gray-50 rounded transition-colors"
                                   >
                                     <span className="text-gray-600">
-                                      {expenseDate.toLocaleDateString('pt-BR')}
+                                      {expenseDate.toLocaleDateString(appLocale())}
                                     </span>
                                     <span className="mx-2 text-gray-400">-</span>
                                     <span className="flex-1 text-gray-900">

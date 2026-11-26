@@ -3,6 +3,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildCategoryColorMap, paymentMethodColor, normalizeKey, resolveColor } from '../lib/colors';
 import { useResponsiveChart } from '../hooks/useResponsiveChart';
 import { useI18n } from '../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 export default function MonthCharts({ expenses, costCenters = [], categories = [], organization = null, user = null, isSoloUser = false }) {
   const { t } = useI18n();
@@ -75,7 +77,7 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
       } else {
         value = data.total;
       }
-      return { name, value, individual: data.individual, org: data.org };
+      return { name: categoryName(name), rawName: name, value, individual: data.individual, org: data.org };
     })
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
@@ -312,11 +314,11 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
               {chartData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
-                  fill={title === 'Despesas por Responsável'
+                  fill={title === t('web.monthCharts.expensesByPerson')
                     ? resolveColor(entry.name, ownerColorMap)
-                    : title === 'Despesas por Formas de Pagamento'
+                    : title === t('web.monthCharts.expensesByPaymentMethod')
                       ? paymentMethodColor(entry.key || entry.name)
-                      : resolveColor(entry.name, categoryColorMap)
+                      : resolveColor(entry.rawName || entry.name, categoryColorMap)
                   }
                   style={{ opacity: 1, cursor: isMobile ? 'pointer' : 'default' }}
                 />
@@ -330,7 +332,7 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
             <div className={`text-center px-2 ${isMobile ? 'max-w-[120px]' : 'max-w-[140px]'} mx-auto`}>
               <p className={`text-[11px] font-semibold text-gray-900 truncate`}>{hovered.name}</p>
-              <p className={`text-sm font-bold text-gray-900`}>{`- R$ ${Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</p>
+              <p className={`text-sm font-bold text-gray-900`}>{`- ${formatMoney(Number(hovered.value || 0))}`}</p>
               <p className={`text-[10px] text-gray-500 font-medium`}>{total > 0 ? t('web.monthCharts.ofTotal', { p0: ((hovered.value / total) * 100).toFixed(1) }) : ''}</p>
             </div>
           </div>

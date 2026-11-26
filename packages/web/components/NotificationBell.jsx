@@ -4,6 +4,7 @@ import { useNotifications } from '../hooks/useNotifications';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { useI18n } from '../contexts/I18nContext';
+import { appLocale } from '../lib/utils';
 
 export default function NotificationBell({ userId, organizationId }) {
   const { t } = useI18n();
@@ -84,7 +85,7 @@ export default function NotificationBell({ userId, organizationId }) {
     if (diffInMinutes < 1) return t('web.notificationBell.now');
     if (diffInMinutes < 60) return `${diffInMinutes}m`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
-    return date.toLocaleDateString('pt-BR');
+    return date.toLocaleDateString(appLocale());
   };
 
   const handleMarkAsRead = async (notificationId) => {

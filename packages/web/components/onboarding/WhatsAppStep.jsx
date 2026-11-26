@@ -6,6 +6,7 @@ import ZulFloatingButton from '../ZulFloatingButton';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function WhatsAppStep({ user, onComplete, onDataChange }) {
   const { t } = useI18n();
@@ -199,7 +200,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
           
           if (minutes >= 60) {
             const hours = Math.ceil(minutes / 60);
-            setError(`⏰ Muitas tentativas. Aguarde ${hours} hora${hours > 1 ? 's' : ''} para tentar novamente.`);
+            setError(t('web.whatsAppStep.tooManyTriesWaitH', { hours, p1: hours > 1 ? 's' : '' }));
           } else if (minutes > 1) {
             setError(t('web.whatsAppStep.tooManyTriesWaitMinutes', { minutes }));
           } else {
@@ -337,7 +338,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
 
             <div className="flex justify-start">
               <div className="max-w-[85%] px-3 py-2 rounded-2xl text-sm shadow-md bg-white text-gray-800 rounded-bl-none">
-                {t('web.whatsAppStep.logged')} <strong>R$ 45,00</strong> {t('web.shared.at')} <strong>{t('web.whatsAppStep.groceries')}</strong><br/>
+                {t('web.whatsAppStep.logged')} <strong>{formatMoney(45)}</strong> {t('web.shared.at')} <strong>{t('web.whatsAppStep.groceries')}</strong><br/>
                 {t('web.whatsAppStep.wantToAddMoreDetails')}
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { BADGE_DEFINITIONS } from '../components/Goals/GoalBadges';
-import { t } from '@fintrack/shared/i18n';
+import { t, formatMoney } from '@fintrack/shared/i18n';
 
 /**
  * Calcula quais badges o usuário conquistou baseado nas metas e contribuições
@@ -140,7 +140,7 @@ export function generateGamificationInsights(goals = [], contributions = [], bad
   } else if (streak > 0 && streak < 3) {
     insights.push({
       type: 'tip',
-      message: `${3 - streak} ${3 - streak === 1 ? 'mês' : 'meses'} até conquistar o badge "Consistente"!`
+      message: t('web.fixes.monthsToConsistent', { count: 3 - streak })
     });
   } else if (streak >= 3 && streak < 6) {
     insights.push({
@@ -153,7 +153,7 @@ export function generateGamificationInsights(goals = [], contributions = [], bad
   if (totalSaved >= 9000 && totalSaved < 10000) {
     insights.push({
       type: 'tip',
-      message: `Faltam apenas R$ ${(10000 - totalSaved).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para o badge "Poupador"!`
+      message: t('web.fixes.amountToSaver', { amount: formatMoney(10000 - totalSaved) })
     });
   }
 

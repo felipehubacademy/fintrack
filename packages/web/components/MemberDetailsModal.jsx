@@ -1,6 +1,8 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { useI18n } from '../contexts/I18nContext';
+import { appLocale } from '../lib/utils';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
   const { t } = useI18n();
@@ -9,16 +11,13 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
   const { allocations = [], cashExpenses = [], creditExpenses = [] } = transactions || {};
 
   const formatCurrency = (value) => {
-    return Number(value || 0).toLocaleString('pt-BR', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    });
+    return formatMoney(Number(value || 0));
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const getPaymentMethod = (expense) => {
@@ -66,25 +65,25 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <p className="text-sm text-gray-600 mb-1">{t('web.memberDetailsModal.contributions')}</p>
               <p className="text-xl font-bold text-flight-blue">
-                R$ {formatCurrency(member.totals?.allocations || 0)}
+                {formatCurrency(member.totals?.allocations || 0)}
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-600 mb-1">{t('web.memberDetailsModal.individualExpenses')}</p>
               <p className="text-xl font-bold text-gray-900">
-                - R$ {formatCurrency((member.cash?.individual || 0) + (member.credit?.individual || 0))}
+                - {formatCurrency((member.cash?.individual || 0) + (member.credit?.individual || 0))}
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-600 mb-1">{t('web.memberDetailsModal.sharedExpenses')}</p>
               <p className="text-xl font-bold text-gray-900">
-                - R$ {formatCurrency((member.cash?.shared || 0) + (member.credit?.shared || 0))}
+                - {formatCurrency((member.cash?.shared || 0) + (member.credit?.shared || 0))}
               </p>
             </div>
             <div className={`p-4 rounded-lg border ${member.totals?.balance >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
               <p className="text-sm text-gray-600 mb-1">{t('web.shared.balance')}</p>
               <p className={`text-xl font-bold ${member.totals?.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {member.totals?.balance >= 0 ? '+' : '-'} R$ {formatCurrency(Math.abs(member.totals?.balance || 0))}
+                {member.totals?.balance >= 0 ? '+' : '-'} {formatCurrency(Math.abs(member.totals?.balance || 0))}
               </p>
             </div>
           </div>
@@ -101,7 +100,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                   <thead className="bg-gray-100">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{t('web.shared.date2')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Conta Bancária</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{t('web.memberDetailsModal.bankAccount')}</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{t('web.memberDetailsModal.destination')}</th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">{t('web.shared.amount2')}</th>
                     </tr>
@@ -115,7 +114,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                           {allocation.allocation_target === 'individual' ? t('web.shared.individual') : t('web.shared.shared2')}
                         </td>
                         <td className="px-4 py-3 text-sm text-right font-semibold text-flight-blue">
-                          R$ {formatCurrency(allocation.amount)}
+                          {formatCurrency(allocation.amount)}
                         </td>
                       </tr>
                     ))}
@@ -156,7 +155,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                               <td className="px-4 py-3 text-sm text-gray-600">{formatDate(expense.date)}</td>
                               <td className="px-4 py-3 text-sm text-gray-900">{expense.description || '-'}</td>
                               <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
-                                - R$ {formatCurrency(expense.amount)}
+                                - {formatCurrency(expense.amount)}
                               </td>
                             </tr>
                           ))}
@@ -165,7 +164,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                           <tr>
                             <td colSpan="2" className="px-4 py-3 text-sm font-semibold text-gray-900">{t('web.memberDetailsModal.subtotal', { paymentMethod })}</td>
                             <td className="px-4 py-3 text-sm text-right font-bold text-gray-900">
-                              - R$ {formatCurrency(expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0))}
+                              - {formatCurrency(expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0))}
                             </td>
                           </tr>
                         </tfoot>
@@ -209,10 +208,10 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                               <td className="px-4 py-3 text-sm text-gray-600">{formatDate(expense.date)}</td>
                               <td className="px-4 py-3 text-sm text-gray-900">{expense.description || '-'}</td>
                               <td className="px-4 py-3 text-sm text-right text-gray-500">
-                                - R$ {formatCurrency(expense.totalAmount || expense.amount)}
+                                - {formatCurrency(expense.totalAmount || expense.amount)}
                               </td>
                               <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
-                                - R$ {formatCurrency(expense.memberShare || expense.amount)}
+                                - {formatCurrency(expense.memberShare || expense.amount)}
                               </td>
                             </tr>
                           ))}
@@ -221,10 +220,10 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                           <tr>
                             <td colSpan="2" className="px-4 py-3 text-sm font-semibold text-gray-900">{t('web.memberDetailsModal.subtotal', { paymentMethod })}</td>
                             <td className="px-4 py-3 text-sm text-right text-gray-500">
-                              - R$ {formatCurrency(expenses.reduce((sum, e) => sum + Number(e.totalAmount || e.amount || 0), 0))}
+                              - {formatCurrency(expenses.reduce((sum, e) => sum + Number(e.totalAmount || e.amount || 0), 0))}
                             </td>
                             <td className="px-4 py-3 text-sm text-right font-bold text-gray-900">
-                              - R$ {formatCurrency(expenses.reduce((sum, e) => sum + Number(e.memberShare || e.amount || 0), 0))}
+                              - {formatCurrency(expenses.reduce((sum, e) => sum + Number(e.memberShare || e.amount || 0), 0))}
                             </td>
                           </tr>
                         </tfoot>

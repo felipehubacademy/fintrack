@@ -19,6 +19,9 @@ import ResponsiveTable from '../../components/ui/ResponsiveTable';
 import Tooltip from '../../components/ui/Tooltip';
 import Footer from '../../components/Footer';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
+import { categoryName } from '../../lib/categoryName';
 
 export default function TransactionsDashboard() {
   const { t: tr } = useI18n();
@@ -1034,11 +1037,11 @@ export default function TransactionsDashboard() {
                 {/* Ícone de ajuda discreto */}
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(
+                  {formatMoney(Number(
                     incomes
                       .filter(i => i.status === 'confirmed')
                       .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0)
-                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {tr('web.transactions.allIncome')}
@@ -1082,7 +1085,7 @@ export default function TransactionsDashboard() {
                         <span className="text-gray-700">{cc.name}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="text-gray-900 font-semibold">{formatMoney(Number(total))}</span>
                         <span className="text-gray-500 ml-2">{percentage}%</span>
                       </div>
                     </div>
@@ -1109,7 +1112,7 @@ export default function TransactionsDashboard() {
                 {/* Ícone de ajuda discreto */}
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  - R$ {Number(
+                  -{formatMoney(Number(
                     expenses
                       .filter(e => {
                         if (e.status !== 'confirmed') return false;
@@ -1124,7 +1127,7 @@ export default function TransactionsDashboard() {
                         return true;
                       })
                       .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
-                  ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {tr('web.transactions.allExpenses')}
@@ -1168,7 +1171,7 @@ export default function TransactionsDashboard() {
                           <span className="text-gray-700 font-medium">{tr('web.shared.paidNow')}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">-{formatMoney(Number(totalAVista))}</span>
                           <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
                         </div>
                       </div>
@@ -1178,7 +1181,7 @@ export default function TransactionsDashboard() {
                           <span className="text-gray-700 font-medium">{tr('web.shared.credit')}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">-{formatMoney(Number(totalCredito))}</span>
                           <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
                         </div>
                       </div>
@@ -1207,7 +1210,7 @@ export default function TransactionsDashboard() {
                 <CardContent className="p-3 pt-0 relative">
                   <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                   <div className="text-2xl font-bold text-gray-900 mb-1">
-                    - R$ {Number(
+                    -{formatMoney(Number(
                       expenses
                         .filter(e => {
                           if (e.status !== 'confirmed') return false;
@@ -1222,7 +1225,7 @@ export default function TransactionsDashboard() {
                           return true;
                         })
                         .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
-                    ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ))}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {tr('web.transactions.allExpenses')}
@@ -1264,7 +1267,7 @@ export default function TransactionsDashboard() {
                             <span className="text-gray-700 font-medium">{tr('web.shared.paidNow')}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="text-gray-900 font-semibold">-{formatMoney(Number(totalAVista))}</span>
                             <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
                           </div>
                         </div>
@@ -1274,7 +1277,7 @@ export default function TransactionsDashboard() {
                             <span className="text-gray-700 font-medium">{tr('web.shared.credit')}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="text-gray-900 font-semibold">-{formatMoney(Number(totalCredito))}</span>
                             <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
                           </div>
                         </div>
@@ -1439,7 +1442,7 @@ export default function TransactionsDashboard() {
                   <CardContent className="p-3 pt-0 relative">
                     <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                     <div className="text-2xl font-bold text-gray-900 mb-1">
-                      - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      -{formatMoney(Number(totalExpenses))}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
                       {tr('web.transactions.ofTotal', { percentage })}
@@ -1461,7 +1464,7 @@ export default function TransactionsDashboard() {
                       </div>
                       <div className="text-right">
                         <span className="text-gray-900 font-semibold">
-                          - R$ {Number(individualExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          -{formatMoney(Number(individualExpenses))}
                         </span>
                         {totalExpenses > 0 && (
                           <span className="text-gray-500 ml-2">
@@ -1477,7 +1480,7 @@ export default function TransactionsDashboard() {
                       </div>
                       <div className="text-right">
                         <span className="text-gray-900 font-semibold">
-                          - R$ {Number(sharedExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          -{formatMoney(Number(sharedExpenses))}
                         </span>
                         {totalExpenses > 0 && (
                           <span className="text-gray-500 ml-2">
@@ -1490,7 +1493,7 @@ export default function TransactionsDashboard() {
                       <div className="flex items-center justify-between text-sm font-semibold">
                         <span className="text-gray-900">{tr('web.shared.total2')}</span>
                         <span className="text-gray-900">
-                          - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          -{formatMoney(Number(totalExpenses))}
                         </span>
                       </div>
                     </div>
@@ -1606,7 +1609,7 @@ export default function TransactionsDashboard() {
                   >
                     <option value="all">{tr('web.transactions.allCategories')}</option>
                     {categories.map(category => (
-                      <option key={category.id} value={category.id}>{category.name}</option>
+                      <option key={category.id} value={category.id}>{categoryName(category.name)}</option>
                     ))}
                   </select>
                 </div>
@@ -1826,7 +1829,7 @@ export default function TransactionsDashboard() {
                   sortable: true,
                   render: (transaction) => (
                     <span className="text-sm text-gray-900">
-                      {transaction.date ? new Date(transaction.date + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                      {transaction.date ? new Date(transaction.date + 'T00:00:00').toLocaleDateString(appLocale()) : '-'}
                     </span>
                   )
                 },
@@ -1871,7 +1874,7 @@ export default function TransactionsDashboard() {
                     const isIncome = transaction.type === 'income';
                     return (
                       <span className="text-sm text-gray-600">
-                        {isIncome ? transaction.category : (transaction.category?.name || '-')}
+                        {isIncome ? categoryName(transaction.category) : (categoryName(transaction.category?.name) || '-')}
                       </span>
                     );
                   }
@@ -1930,7 +1933,7 @@ export default function TransactionsDashboard() {
                     return (
                       <span className={`text-sm font-medium ${isIncome ? 'text-flight-blue font-semibold' : 'text-gray-900'}`}>
                       {!isIncome && '- '}
-                      R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatMoney(Number(transaction.amount))}
                       </span>
                     );
                   },
@@ -1940,7 +1943,7 @@ export default function TransactionsDashboard() {
                     return (
                       <span>
                         {!isIncome && '- '}
-                        R$ {Number(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatMoney(Number(transaction.amount))}
                       </span>
                     );
                   }

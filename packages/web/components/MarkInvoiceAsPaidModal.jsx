@@ -2,13 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button } from './ui/Button';
 import { X, CreditCard, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import {
-  processCurrencyInput,
-  parseCurrencyInput,
-  formatCurrencyInput
-} from '../lib/utils';
+import { processCurrencyInput, parseCurrencyInput, formatCurrencyInput, appLocale, appCurrency } from '../lib/utils';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useI18n } from '../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function MarkInvoiceAsPaidModal({
   isOpen,
@@ -118,10 +115,10 @@ export default function MarkInvoiceAsPaidModal({
   const remainingAfterPayment = Math.max(normalizedRemainingAmount - normalizedRawAmount, 0);
 
   const formatCurrency = (value) => {
-    if (Number.isNaN(value)) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
+    if (Number.isNaN(value)) return formatMoney(0);
+    return new Intl.NumberFormat(appLocale(), {
       style: 'currency',
-      currency: 'BRL'
+      currency: appCurrency()
     }).format(value);
   };
 
@@ -196,7 +193,7 @@ export default function MarkInvoiceAsPaidModal({
                   className={`w-full rounded-xl border px-4 py-2.5 font-semibold text-gray-900 focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                     isAmountValid ? 'border-gray-300' : 'border-red-300'
                   }`}
-                  placeholder="R$ 0,00"
+                  placeholder={formatMoney(0)}
                   inputMode="decimal"
                 />
               </div>

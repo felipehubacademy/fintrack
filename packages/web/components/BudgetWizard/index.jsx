@@ -6,7 +6,8 @@ import { calculateBudgetDistribution, adjustTo100Percent, validateDistribution }
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 import { useI18n } from '../../contexts/I18nContext';
-import { t } from '@fintrack/shared/i18n';
+import { t, formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
 
 const STEPS = {
   WELCOME: 0,
@@ -20,9 +21,9 @@ const PROGRESS_STEPS = [STEPS.WELCOME, STEPS.INCOME, STEPS.INVESTMENT, STEPS.SUB
 const PROGRESS_TOTAL = PROGRESS_STEPS.length;
 
 const MACRO_LABELS = {
-  needs: 'Necessidades',
-  wants: 'Desejos',
-  get investments() { return t('web.shared.investments'); }
+  get needs() { return t('web.shared.needs'); },
+  get wants() { return t('web.shared.wants'); },
+  get investments() { return t('web.shared.investments'); },
 };
 
 const MACRO_COLORS = {
@@ -503,13 +504,13 @@ export default function BudgetWizard({
             </div>
             <div className="max-w-sm w-full">
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">R$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">{currencySymbol()}</span>
                 <input
                   type="text"
                   value={monthlyIncome}
                   onChange={handleIncomeChange}
                   onBlur={handleIncomeBlur}
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                   className="w-full pl-12 pr-4 py-4 text-2xl border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-center"
                   autoFocus
                 />
@@ -572,7 +573,7 @@ export default function BudgetWizard({
                       <li key={item.key} className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">{item.label}</span>
                         <span className="text-sm font-semibold text-gray-900">
-                          {item.percentage.toFixed(1)}% · R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          {item.percentage.toFixed(1)}% · {formatMoney(item.amount)}
                         </span>
                       </li>
                     ))}
@@ -633,13 +634,13 @@ export default function BudgetWizard({
                           {MACRO_LABELS[macroKey]}
                         </span>
                         <span className="text-gray-600">
-                          · R$ {macroTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          · {formatMoney(macroTotal)}
                         </span>
                       </div>
                       <div className="flex items-center space-x-3">
                         {!isBalanced && (
                           <span className="text-xs text-orange-600 font-medium">
-                            Ajustar: R$ {Math.abs(macroDiff).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            {t('web.budgetWizard.adjust', { p0: formatMoney(Math.abs(macroDiff)) })}
                           </span>
                         )}
                         <ChevronLeft 
@@ -688,7 +689,7 @@ export default function BudgetWizard({
                                     onChange={(e) => handleSubcategoryChange(category.categoryId, e.target.value, macroKey)}
                                     onBlur={() => handleSubcategoryBlur(category.categoryId, macroKey)}
                                     className="w-full px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-1 focus:ring-flight-blue"
-                                    placeholder="0,00"
+                                    placeholder={formatCurrencyInput(0)}
                                   />
                                   <input
                                     type="range"
@@ -707,7 +708,7 @@ export default function BudgetWizard({
 
                         {!isBalanced && (
                           <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs text-orange-700">
-                            ⚠️ A soma das subcategorias deve totalizar R$ {macroTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            {t('web.budgetWizard.categoriesMustAddUpTo', { p0: formatMoney(macroTotal) })}
                           </div>
                         )}
                       </div>
@@ -850,7 +851,7 @@ function parseCurrency(value) {
 
 function formatCurrency(value) {
   const number = Number(value) || 0;
-  return number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return number.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // Formata valor para input (1000.5 -> "1.000,50")
@@ -858,7 +859,7 @@ function formatCurrencyInput(value) {
   if (!value && value !== 0) return '';
   const numValue = typeof value === 'string' ? parseFloat(value) : value;
   if (isNaN(numValue)) return '';
-  return numValue.toLocaleString('pt-BR', {
+  return numValue.toLocaleString(appLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });

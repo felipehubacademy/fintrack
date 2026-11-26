@@ -17,37 +17,8 @@ export default function NotificationModal({ isOpen, onClose, onUnreadCountChange
 
   useEffect(() => {
     if (isOpen) {
-      // Simular notificações (em produção viria da API)
-      const mockNotifications = [
-        {
-          id: 1,
-          type: 'budget',
-          title: 'Orçamento Atingido',
-          message: 'Você atingiu 80% do orçamento de alimentação este mês.',
-          time: '2 horas atrás',
-          read: false,
-          priority: 'alta'
-        },
-        {
-          id: 2,
-          type: 'payment',
-          title: 'Lembrete de Pagamento',
-          message: 'Fatura do cartão vence em 3 dias.',
-          time: '1 dia atrás',
-          read: false,
-          priority: 'média'
-        },
-        {
-          id: 3,
-          type: 'info',
-          title: 'Relatório Mensal',
-          message: 'Seu relatório de outubro está disponível.',
-          time: '3 dias atrás',
-          read: true,
-          priority: 'baixa'
-        }
-      ];
-      setNotifications(mockNotifications);
+      // No notifications feed yet: never show placeholder data to users.
+      setNotifications([]);
       
       // Atualizar contador no header
       const unreadCount = mockNotifications.filter(n => !n.read).length;

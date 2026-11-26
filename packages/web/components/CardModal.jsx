@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X, AlertCircle } from 'lucide-react';
-import { formatCurrencyInput, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
+import { formatCurrencyInput, handleCurrencyChange, parseCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
-import { t } from '@fintrack/shared/i18n';
+import { t, currencySymbol } from '@fintrack/shared/i18n';
 
 const CARD_COLORS = [
   { value: 'bg-blue-600', get label() { return t('web.cardModal.blue'); }, preview: 'bg-blue-600', hex: '#2563EB' },
@@ -258,7 +258,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                 {t('web.cardModal.creditLimit')}
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                 <input
                   type="text"
                   value={formData.credit_limit}
@@ -272,13 +272,13 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                     }
                     const parsed = parseCurrencyInput(value);
                     if (parsed > 0) {
-                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       handleChange('credit_limit', formatted);
                     } else {
                       handleChange('credit_limit', '');
                     }
                   }}
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                   className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                     errors.credit_limit ? 'border-red-500' : 'border-gray-300'
                   }`}

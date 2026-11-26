@@ -1117,7 +1117,7 @@ export default function ZulFloatingButton() {
             // Adicionar nome da categoria aos budgets
             budgets = budgets.map(b => ({
               ...b,
-              category_name: budgetCategoryMap[b.category_id] || 'Sem categoria'
+              category_name: budgetCategoryMap[b.category_id] || t('web.zulFloatingButton.noCategory')
             }));
           }
         }

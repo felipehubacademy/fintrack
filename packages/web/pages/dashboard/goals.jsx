@@ -38,7 +38,8 @@ import {
   Flag
 } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
-import { t } from '@fintrack/shared/i18n';
+import { t, formatMoney } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
 
 const GOAL_TYPES = {
   emergency_fund: {
@@ -210,7 +211,7 @@ export default function GoalsPage() {
         isViable: isViable,
         message: isViable 
           ? t('web.goals.youLlReachYourGoal', { p0: Math.ceil(remaining / goal.monthly_contribution) })
-          : `Atenção: Para atingir até ${targetDate.toLocaleDateString('pt-BR')}, você precisa contribuir R$ ${requiredMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`
+          : t('web.goals.headsUpToMakeIt', { p0: targetDate.toLocaleDateString(appLocale()), p1: formatMoney(requiredMonthly) })
       };
     }
 
@@ -224,7 +225,7 @@ export default function GoalsPage() {
         type: 'monthly_only',
         monthsRemaining: monthsRemaining,
         estimatedDate: estimatedDate,
-        message: t('web.goals.expected', { p0: estimatedDate.toLocaleDateString('pt-BR') })
+        message: t('web.goals.expected', { p0: estimatedDate.toLocaleDateString(appLocale()) })
       };
     }
 
@@ -240,7 +241,7 @@ export default function GoalsPage() {
         monthsRemaining: monthsDiff,
         targetDate: targetDate,
         requiredMonthly: requiredMonthly,
-        message: `Contribua R$ ${requiredMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês para atingir no prazo`
+        message: t('web.goals.saveMonthToMakeIt', { p0: formatMoney(requiredMonthly) })
       };
     }
 
@@ -260,12 +261,12 @@ export default function GoalsPage() {
   };
 
   const formatCurrency = (value) => {
-    return `R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    return `${formatMoney(Number(value || 0))}`;
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    return new Date(dateString).toLocaleDateString(appLocale());
   };
 
   const handleSaveGoal = async (goalData) => {
@@ -687,10 +688,10 @@ export default function GoalsPage() {
               }}
             >
               <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>Defina o <strong>valor alvo</strong> e a <strong>contribuição mensal</strong></li>
-                <li>O sistema calcula automaticamente <strong>quando você atingirá</strong> a meta</li>
-                <li>Adicione contribuições e acompanhe o <strong>progresso em tempo real</strong></li>
-                <li>Receba <strong>alertas</strong> se precisar ajustar o ritmo</li>
+                <li>{t('web.fixes.goalsHow1')}</li>
+                <li>{t('web.fixes.goalsHow2')}</li>
+                <li>{t('web.fixes.goalsHow3')}</li>
+                <li>{t('web.fixes.goalsHow4')}</li>
               </ul>
             </HelpCard>
           )}
@@ -849,7 +850,7 @@ export default function GoalsPage() {
                               )}
                               <div className="flex justify-between">
                                 <span>{t('web.goals.expectedFinish')}</span>
-                                <span className="font-semibold">{projection.estimatedDate?.toLocaleDateString('pt-BR')}</span>
+                                <span className="font-semibold">{projection.estimatedDate?.toLocaleDateString(appLocale())}</span>
                               </div>
                             </div>
                           )}
@@ -871,7 +872,7 @@ export default function GoalsPage() {
                             <div className="space-y-1 text-xs text-gray-600 pl-6">
                               <div className="flex justify-between">
                                 <span>{t('web.goals.deadline')}</span>
-                                <span className="font-semibold">{projection.targetDate?.toLocaleDateString('pt-BR')}</span>
+                                <span className="font-semibold">{projection.targetDate?.toLocaleDateString(appLocale())}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span>{t('web.goals.monthsLeft')}</span>

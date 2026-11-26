@@ -28,6 +28,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function InsightsPage() {
   const { t } = useI18n();
@@ -329,7 +330,7 @@ export default function InsightsPage() {
                 <CardContent className="p-3 pt-0 relative">
                   <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                   <div className="text-2xl font-bold text-gray-900 mb-1">
-                    R$ {totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {formatMoney(totalSpent)}
                   </div>
                   <div className="flex items-center text-xs space-x-2">
                     {monthChange >= 0 ? (
@@ -377,7 +378,7 @@ export default function InsightsPage() {
                     {spentPercentage.toFixed(0)}%
                   </div>
                   <div className="text-xs text-gray-600 mt-1">
-                    R$ {(totalBudgeted - totalSpent).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} {t('web.insights.left')}
+                    {formatMoney((totalBudgeted - totalSpent))} {t('web.insights.left')}
                   </div>
                 </CardContent>
               </Card>
@@ -411,7 +412,7 @@ export default function InsightsPage() {
                     {prediction?.daysRemaining || 0}
                   </div>
                   <div className="text-xs text-gray-600 mt-1">
-                    Média diária: R$ {(prediction?.dailyAverage || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {t('web.insights.dailyAverage', { p0: formatMoney((prediction?.dailyAverage || 0)) })}
                   </div>
                 </CardContent>
               </Card>
@@ -466,7 +467,7 @@ export default function InsightsPage() {
                       : 'text-gray-400'
                   }`} />
                   <div className="text-2xl font-bold text-gray-900 mb-1">
-                    R$ {(prediction?.projected || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                    {formatMoney((prediction?.projected || 0))}
                   </div>
                   <div className={`text-xs mt-1 ${
                     prediction?.pace === 'high' ? 'text-orange-600' : 
@@ -491,7 +492,7 @@ export default function InsightsPage() {
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                 {t('web.insights.trendsByGroupLast6')}
-                <HelpTooltip content="Evolução dos seus gastos nos últimos 6 meses, agrupados por macro categorias (Necessidades, Desejos, Investimentos)" wide />
+                <HelpTooltip content={t('web.insights.yourSpendingOverTheLast')} wide />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -506,7 +507,7 @@ export default function InsightsPage() {
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                 {t('web.insights.whatWeNoticed')}
-                <HelpTooltip content="Análise automática dos seus hábitos financeiros, identificando padrões, alertas e oportunidades de economia" wide />
+                <HelpTooltip content={t('web.insights.automaticReadOfYourMoney')} wide />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -532,7 +533,7 @@ export default function InsightsPage() {
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                   {t('web.insights.categoriesCompared')}
-                  <HelpTooltip content="Comparação dos gastos por categoria entre este mês e o anterior, mostrando variações percentuais" wide />
+                  <HelpTooltip content={t('web.insights.spendingByCategoryThisMonth')} wide />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -553,7 +554,7 @@ export default function InsightsPage() {
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                   {t('web.insights.moneyHealthScore')}
-                  <HelpTooltip content="Pontuação de 0-100 que avalia sua saúde financeira baseada em orçamento, investimentos, reserva de emergência e mais" wide />
+                  <HelpTooltip content={t('web.insights.a0100ScoreFor')} wide />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -570,7 +571,7 @@ export default function InsightsPage() {
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                 {t('web.insights.spendingThisMonthDayBy')}
-                <HelpTooltip content="Visualização das ondas de gastos ao longo do mês, mostrando picos e vales por macro categoria" wide />
+                <HelpTooltip content={t('web.insights.howYourSpendingRisesAnd')} wide />
               </CardTitle>
             </CardHeader>
             <CardContent>

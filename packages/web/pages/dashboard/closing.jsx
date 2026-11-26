@@ -22,6 +22,8 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
 
 export default function MonthlyClosing() {
   const { t } = useI18n();
@@ -608,7 +610,7 @@ export default function MonthlyClosing() {
 
         return {
           key: `${targetYear}-${String(targetMonthIndex + 1).padStart(2, '0')}`,
-          label: new Date(targetYear, targetMonthIndex, 1).toLocaleDateString('pt-BR', {
+          label: new Date(targetYear, targetMonthIndex, 1).toLocaleDateString(appLocale(), {
             month: 'short',
             year: 'numeric'
           }),
@@ -667,7 +669,7 @@ export default function MonthlyClosing() {
   const getMonthName = () => {
     const [year, month] = selectedMonth.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return date.toLocaleDateString(appLocale(), { month: 'long', year: 'numeric' });
   };
 
   const handleOpenAllocationModal = () => {
@@ -746,7 +748,7 @@ export default function MonthlyClosing() {
     if (!isoDate) return '-';
     const parsed = new Date(`${isoDate}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return '-';
-    return parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    return parsed.toLocaleDateString(appLocale(), { day: '2-digit', month: 'short' });
   };
   const historicalSeriesData = Array.isArray(data.historicalSeries) ? data.historicalSeries : [];
   const hasHistoricalData = historicalSeriesData.length > 0;
@@ -821,7 +823,7 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {totalAllocations.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(totalAllocations)}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {totalAllocations > 0 
@@ -867,16 +869,16 @@ export default function MonthlyClosing() {
                         </div>
                         <div className="text-right">
                                   <span className="text-gray-900 font-semibold">
-                                    R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {formatMoney(total)}
                                   </span>
                           <span className="text-gray-500 ml-2">{percentage}%</span>
                         </div>
                       </div>
                       {(individualTotal > 0 || sharedTotal > 0) && (
                         <div className="text-xs text-gray-500 ml-5">
-                          {individualTotal > 0 && t('web.closing.individual', { p0: individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
+                          {individualTotal > 0 && t('web.closing.individual', { p0: individualTotal.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                           {individualTotal > 0 && sharedTotal > 0 && ' • '}
-                                  {sharedTotal > 0 && t('web.closing.shared', { p0: sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
+                                  {sharedTotal > 0 && t('web.closing.shared', { p0: sharedTotal.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                         </div>
                       )}
                     </div>
@@ -888,7 +890,7 @@ export default function MonthlyClosing() {
                 )}
                   {!isSoloUser && familyAllocations > 0 && (
                     <div className="pt-2 border-t border-gray-200 text-xs text-gray-500">
-                      {organization?.name || t('web.shared.household')}: R$ {familyAllocations.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {t('web.closing.sharedPartNotAssigned')}
+                      {organization?.name || t('web.shared.household')}: {formatMoney(familyAllocations)} {t('web.closing.sharedPartNotAssigned')}
                     </div>
                 )}
                 </>
@@ -913,7 +915,7 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(totalExpense)}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {totalExpense > 0 
@@ -940,7 +942,7 @@ export default function MonthlyClosing() {
                     </div>
                     <div className="text-right">
                       <span className="text-gray-900 font-semibold">
-                        R$ {totalCash.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatMoney(totalCash)}
                       </span>
                       <span className="text-gray-500 ml-2">{cashPercentage}%</span>
                     </div>
@@ -952,7 +954,7 @@ export default function MonthlyClosing() {
                     </div>
                     <div className="text-right">
                       <span className="text-gray-900 font-semibold">
-                        R$ {totalCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatMoney(totalCredit)}
                       </span>
                       <span className="text-gray-500 ml-2">{creditPercentage}%</span>
                     </div>
@@ -981,11 +983,11 @@ export default function MonthlyClosing() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {totalCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(totalCredit)}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {data.creditInvoices && data.creditInvoices.length > 0 
-                    ? `${data.creditInvoices.length} ${data.creditInvoices.length === 1 ? 'fatura' : 'faturas'} com vencimento neste mês`
+                    ? t('web.fixes.cardBillsDueThisMonth', { count: data.creditInvoices.length })
                     : t('web.closing.noCardBillsDueThis')}
                 </p>
               </CardContent>
@@ -1010,7 +1012,7 @@ export default function MonthlyClosing() {
                         <span className="text-gray-700 font-medium">{invoice.cardName}</span>
                         <div className="text-right">
                           <span className="text-gray-900 font-semibold">
-                            R$ {invoiceTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(invoiceTotal)}
                           </span>
                           <span className="text-gray-500 ml-2">{percentage}%</span>
                         </div>
@@ -1021,7 +1023,7 @@ export default function MonthlyClosing() {
                     <div className="flex items-center justify-between text-sm font-semibold">
                       <span className="text-gray-900">{t('web.shared.total2')}</span>
                       <span className="text-gray-900">
-                        R$ {totalCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatMoney(totalCredit)}
                       </span>
                     </div>
                   </div>
@@ -1059,7 +1061,7 @@ export default function MonthlyClosing() {
                 <div className={`text-2xl font-bold mb-1 ${
                   totalBalance >= 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
-                  {totalBalance >= 0 ? '+' : '-'} R$ {Math.abs(totalBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {totalBalance >= 0 ? '+' : '-'} {formatMoney(Math.abs(totalBalance))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {totalBalance >= 0 ? t('web.closing.positiveBalance') : t('web.closing.negativeBalance')}
@@ -1074,13 +1076,13 @@ export default function MonthlyClosing() {
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
                   <span className="text-gray-700">{t('web.closing.totalContributions')}</span>
                   <span className="text-gray-900 font-semibold text-green-600">
-                    R$ {totalAllocations.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatMoney(totalAllocations)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
                   <span className="text-gray-700">{t('web.closing.totalExpenses')}</span>
                   <span className="text-gray-900 font-semibold">
-                    R$ {totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatMoney(totalExpense)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm py-2">
@@ -1088,7 +1090,7 @@ export default function MonthlyClosing() {
                   <span className={`font-bold ${
                     totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'
                   }`}>
-                    {totalBalance >= 0 ? '+' : '-'} R$ {Math.abs(totalBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {totalBalance >= 0 ? '+' : '-'} {formatMoney(Math.abs(totalBalance))}
                   </span>
                 </div>
               </div>
@@ -1157,19 +1159,19 @@ export default function MonthlyClosing() {
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">{t('web.closing.contributions')}</span>
                           <span className="text-sm font-semibold text-flight-blue">
-                            {allocationsIndividual > 0 ? '+' : ''} R$ {allocationsIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {allocationsIndividual > 0 ? '+' : ''} {formatMoney(allocationsIndividual)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">{t('web.shared.spending')}</span>
                           <span className="text-sm font-semibold text-red-600">
-                            - R$ {individualOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            -{formatMoney(individualOut)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-blue-200">
                           <span className="text-xs font-medium text-gray-700">{t('web.shared.balance')}</span>
                           <span className={`text-sm font-bold ${balanceIndividual >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {balanceIndividual >= 0 ? '+' : '-'} R$ {Math.abs(balanceIndividual).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {balanceIndividual >= 0 ? '+' : '-'} {formatMoney(Math.abs(balanceIndividual))}
                           </span>
                         </div>
                       </div>
@@ -1182,19 +1184,19 @@ export default function MonthlyClosing() {
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">{t('web.closing.contributions')}</span>
                           <span className="text-sm font-semibold text-flight-blue">
-                            {allocationsShared > 0 ? '+' : ''} R$ {allocationsShared.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {allocationsShared > 0 ? '+' : ''} {formatMoney(allocationsShared)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">{t('web.shared.spending')}</span>
                           <span className="text-sm font-semibold text-red-600">
-                            - R$ {sharedOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            -{formatMoney(sharedOut)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-gray-200">
                           <span className="text-xs font-medium text-gray-700">{t('web.shared.balance')}</span>
                           <span className={`text-sm font-bold ${balanceShared >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {balanceShared >= 0 ? '+' : '-'} R$ {Math.abs(balanceShared).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {balanceShared >= 0 ? '+' : '-'} {formatMoney(Math.abs(balanceShared))}
                           </span>
                         </div>
                       </div>
@@ -1203,7 +1205,7 @@ export default function MonthlyClosing() {
                       <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                         <span className="text-xs uppercase tracking-wide font-semibold text-gray-700">{t('web.closing.totalBalance')}</span>
                         <span className={`text-lg font-bold ${balancePositive ? 'text-green-600' : 'text-red-600'}`}>
-                          {balancePositive ? '+' : '-'} R$ {Math.abs(balanceMember).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {balancePositive ? '+' : '-'} {formatMoney(Math.abs(balanceMember))}
                         </span>
                       </div>
                     </CardContent>
@@ -1285,16 +1287,16 @@ export default function MonthlyClosing() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-700">
-                            R$ {Number(row.allocations || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(Number(row.allocations || 0))}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-700">
-                            R$ {Number(row.cash || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(Number(row.cash || 0))}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-700">
-                            R$ {Number(row.credit || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(Number(row.credit || 0))}
                           </td>
                           <td className={`px-4 py-3 text-right font-semibold ${balancePositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {balancePositive ? '+' : '-'} R$ {Math.abs(Number(row.balance || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {balancePositive ? '+' : '-'} {formatMoney(Math.abs(Number(row.balance || 0)))}
                           </td>
                         </tr>
                       );

@@ -4,9 +4,10 @@ import { Button } from './ui/Button';
 import ConfirmationModal from './ConfirmationModal';
 import { X, AlertCircle, Calendar, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { getBrazilToday, createBrazilDate, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { getBrazilToday, createBrazilDate, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
-import { t } from '@fintrack/shared/i18n';
+import { t, currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 const PAYMENT_METHODS = [
   { value: 'pix', label: 'PIX' },
@@ -315,7 +316,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                     {t('web.shared.amount')}
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                     <input
                       type="text"
                       value={formData.amount}
@@ -329,13 +330,13 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                         }
                         const parsed = parseCurrencyInput(value);
                         if (parsed > 0) {
-                          const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           handleChange('amount', formatted);
                         } else {
                           handleChange('amount', '');
                         }
                       }}
-                      placeholder="0,00"
+                      placeholder={formatCurrencyInput(0)}
                       className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                         errors.amount ? 'border-red-500' : 'border-gray-300'
                       }`}
@@ -384,7 +385,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                     <option value="">{t('web.shared.select')}</option>
                     {categories.length > 0 ? (
                       categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                       ))
                     ) : (
                       <option value="" disabled>{t('web.billModal.loadingCategories')}</option>

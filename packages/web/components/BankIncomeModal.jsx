@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, appLocale, formatCurrencyInput } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
+import { currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 export default function BankIncomeModal({ 
   isOpen, 
@@ -176,7 +178,7 @@ export default function BankIncomeModal({
                 {t('web.shared.amount')}
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                 <input
                   type="text"
                   value={form.amount}
@@ -190,13 +192,13 @@ export default function BankIncomeModal({
                     }
                     const parsed = parseCurrencyInput(value);
                     if (parsed > 0) {
-                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       setForm(prev => ({ ...prev, amount: formatted }));
                     } else {
                       setForm(prev => ({ ...prev, amount: '' }));
                     }
                   }}
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   disabled={saving}
                 />
@@ -230,10 +232,10 @@ export default function BankIncomeModal({
               >
                 <option value="">{t('web.shared.select')}</option>
                 {incomeCategories
-                  .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+                  .sort((a, b) => a.name.localeCompare(b.name, appLocale()))
                   .map(cat => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.name}
+                      {categoryName(cat.name)}
                     </option>
                   ))}
               </select>

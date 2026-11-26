@@ -1,5 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 const COLORS = {
   needs: '#2563EB',
@@ -10,7 +11,7 @@ const COLORS = {
 export default function MacroAreaChart({ data }) {
   const { t } = useI18n();
   const formatCurrency = (value) => {
-    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `${formatMoney(value)}`;
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -79,7 +80,7 @@ export default function MacroAreaChart({ data }) {
           stackId="1"
           stroke={COLORS.needs} 
           fill="url(#colorNeeds)"
-          name="Necessidades"
+          name={t('web.shared.needs')}
         />
         <Area 
           type="monotone" 
@@ -87,7 +88,7 @@ export default function MacroAreaChart({ data }) {
           stackId="1"
           stroke={COLORS.wants} 
           fill="url(#colorWants)"
-          name="Desejos"
+          name={t('web.shared.wants')}
         />
         <Area 
           type="monotone" 
@@ -95,7 +96,7 @@ export default function MacroAreaChart({ data }) {
           stackId="1"
           stroke={COLORS.investments} 
           fill="url(#colorInvestments)"
-          name="Investimentos"
+          name={t('web.shared.investments')}
         />
       </AreaChart>
     </ResponsiveContainer>

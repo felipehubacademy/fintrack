@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Clock, CreditCard, Wallet, User } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
 
 export default function RecentActivity({ expenses = [] }) {
   const { t } = useI18n();
@@ -83,7 +85,7 @@ export default function RecentActivity({ expenses = [] }) {
                       {expense.description}
                     </p>
                     <p className="text-sm font-semibold text-gray-900">
-                      R$ {parseFloat(expense.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {formatMoney(parseFloat(expense.amount))}
                     </p>
                   </div>
                   <div className="flex items-center space-x-2 mt-1">
@@ -92,7 +94,7 @@ export default function RecentActivity({ expenses = [] }) {
                     </Badge>
                     <span className="text-xs text-gray-500">•</span>
                     <span className="text-xs text-gray-500">
-                      {new Date(expense.date).toLocaleDateString('pt-BR')}
+                      {new Date(expense.date).toLocaleDateString(appLocale())}
                     </span>
                     <span className="text-xs text-gray-500">•</span>
                     <div className="flex items-center space-x-1">

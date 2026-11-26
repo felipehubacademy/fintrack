@@ -1,13 +1,14 @@
 import { Award, TrendingUp, Target, Calendar, Zap } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
 import { t } from '@fintrack/shared/i18n';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 // Sistema de badges profissional e elegante
 const BADGE_DEFINITIONS = {
   // Disciplina e Consistência
   first_goal: {
     id: 'first_goal',
-    name: 'Planejador',
+    get name() { return t('web.goalBadges.names.planner'); },
     get description() { return t('web.goalBadges.firstGoalCreated'); },
     icon: Target,
     color: '#3B82F6',
@@ -15,7 +16,7 @@ const BADGE_DEFINITIONS = {
   },
   first_contribution: {
     id: 'first_contribution',
-    name: 'Comprometido',
+    get name() { return t('web.goalBadges.names.committed'); },
     get description() { return t('web.goalBadges.firstDepositMade'); },
     icon: TrendingUp,
     color: '#3B82F6',
@@ -23,7 +24,7 @@ const BADGE_DEFINITIONS = {
   },
   streak_3: {
     id: 'streak_3',
-    name: 'Consistente',
+    get name() { return t('web.goalBadges.names.consistent'); },
     get description() { return t('web.goalBadges.n3MonthsInARow'); },
     icon: Calendar,
     color: '#8B5CF6',
@@ -31,7 +32,7 @@ const BADGE_DEFINITIONS = {
   },
   streak_6: {
     id: 'streak_6',
-    name: 'Disciplinado',
+    get name() { return t('web.goalBadges.names.disciplined'); },
     get description() { return t('web.goalBadges.n6MonthsInARow'); },
     icon: Calendar,
     color: '#8B5CF6',
@@ -39,7 +40,7 @@ const BADGE_DEFINITIONS = {
   },
   streak_12: {
     id: 'streak_12',
-    name: 'Inabalável',
+    get name() { return t('web.goalBadges.names.unshakable'); },
     get description() { return t('web.goalBadges.n1YearInARow'); },
     icon: Zap,
     color: '#F59E0B',
@@ -49,24 +50,24 @@ const BADGE_DEFINITIONS = {
   // Conquistas de Valor
   saved_10k: {
     id: 'saved_10k',
-    name: 'Poupador',
-    description: 'Economizou R$ 10.000',
+    get name() { return t('web.goalBadges.names.saver'); },
+    get description() { return t('web.goalBadges.saved', { amount: formatMoney(10000, { maximumFractionDigits: 0 }) }); },
     icon: Award,
     color: '#3B82F6',
     tier: 'bronze'
   },
   saved_50k: {
     id: 'saved_50k',
-    name: 'Investidor',
-    description: 'Economizou R$ 50.000',
+    get name() { return t('web.goalBadges.names.investor'); },
+    get description() { return t('web.goalBadges.saved', { amount: formatMoney(50000, { maximumFractionDigits: 0 }) }); },
     icon: Award,
     color: '#8B5CF6',
     tier: 'silver'
   },
   saved_100k: {
     id: 'saved_100k',
-    name: 'Patrimônio Sólido',
-    description: 'Economizou R$ 100.000',
+    get name() { return t('web.goalBadges.names.solidWealth'); },
+    get description() { return t('web.goalBadges.saved', { amount: formatMoney(100000, { maximumFractionDigits: 0 }) }); },
     icon: Award,
     color: '#F59E0B',
     tier: 'gold'
@@ -75,7 +76,7 @@ const BADGE_DEFINITIONS = {
   // Metas Atingidas
   goal_completed_1: {
     id: 'goal_completed_1',
-    name: 'Realizador',
+    get name() { return t('web.goalBadges.names.achiever'); },
     get description() { return t('web.goalBadges.reachedYourFirstGoal'); },
     icon: Target,
     color: '#10B981',
@@ -83,7 +84,7 @@ const BADGE_DEFINITIONS = {
   },
   goal_completed_3: {
     id: 'goal_completed_3',
-    name: 'Determinado',
+    get name() { return t('web.goalBadges.names.determined'); },
     get description() { return t('web.goalBadges.reached3Goals'); },
     icon: Target,
     color: '#10B981',
@@ -91,7 +92,7 @@ const BADGE_DEFINITIONS = {
   },
   goal_completed_10: {
     id: 'goal_completed_10',
-    name: 'Mestre Financeiro',
+    get name() { return t('web.goalBadges.names.moneyMaster'); },
     get description() { return t('web.goalBadges.reached10Goals'); },
     icon: Target,
     color: '#10B981',
@@ -101,7 +102,7 @@ const BADGE_DEFINITIONS = {
   // Velocidade
   goal_early: {
     id: 'goal_early',
-    name: 'Acelerado',
+    get name() { return t('web.goalBadges.names.fastTrack'); },
     get description() { return t('web.goalBadges.reachedAGoalEarly'); },
     icon: Zap,
     color: '#F59E0B',

@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X, Users, User } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, appLocale, formatCurrencyInput } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
+import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -934,7 +936,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.amount')}</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                 <input
                   type="text"
                   value={form.amount}
@@ -948,14 +950,14 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                     }
                     const parsed = parseCurrencyInput(value);
                     if (parsed > 0) {
-                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       setForm({ ...form, amount: formatted });
                     } else {
                       setForm({ ...form, amount: '' });
                     }
                   }}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                 />
               </div>
             </div>
@@ -979,8 +981,8 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
               >
                 <option value="">{t('web.shared.select')}</option>
-                {[...expenseCategories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                {[...expenseCategories].sort((a, b) => a.name.localeCompare(b.name, appLocale())).map(cat => (
+                  <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                 ))}
               </select>
             </div>
@@ -1090,7 +1092,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                         />
                         <span className="text-sm text-gray-500 w-6">%</span>
                         <span className="text-sm text-gray-600 w-24 text-right">
-                          R$ {split.amount.toFixed(2)}
+                          {formatMoney(split.amount)}
                         </span>
                       </div>
                     </div>
@@ -1115,7 +1117,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                         <span className="text-gray-700">{split.name}</span>
                       </div>
                       <span className="text-gray-600 font-medium">
-                        {split.percentage}% (R$ {split.amount.toFixed(2)})
+                        {split.percentage}% ({formatMoney(split.amount)})
                       </span>
                     </div>
                   ))}

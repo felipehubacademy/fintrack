@@ -3,6 +3,7 @@ import { Button } from '../ui/Button';
 import { TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function StatsCards({ 
   totalExpenses = 0,
@@ -30,7 +31,7 @@ export default function StatsCards({
   const stats = [
     {
       title: t('web.shared.totalIncome'),
-      value: `R$ ${(totalIncomes || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      value: `${formatMoney((totalIncomes || 0))}`,
       icon: ArrowDownCircle,
       trend: incomesGrowth > 0 ? "up" : incomesGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(incomesGrowth || 0).toFixed(1)}%`,
@@ -40,7 +41,7 @@ export default function StatsCards({
     },
     {
       title: t('web.shared.totalExpenses'),
-      value: `- R$ ${(totalExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      value: `- ${formatMoney((totalExpenses || 0))}`,
       icon: ArrowUpCircle,
       trend: expensesGrowth > 0 ? "up" : expensesGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(expensesGrowth || 0).toFixed(1)}%`,
@@ -50,7 +51,7 @@ export default function StatsCards({
     },
     {
       title: t('web.statsCards.monthBalance'),
-      value: `${balance >= 0 ? '' : '-'} R$ ${Math.abs(balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      value: `${balance >= 0 ? '' : '-'} ${formatMoney(Math.abs(balance))}`,
       icon: DollarSign,
       trend: balanceGrowth > 0 ? "up" : balanceGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(balanceGrowth || 0).toFixed(1)}%`,

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { X, PiggyBank, CreditCard, ShoppingBag, TrendingUp, Wallet } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
-import { t } from '@fintrack/shared/i18n';
+import { t, formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { formatCurrencyInput } from '../../lib/utils';
 
 const GOAL_TYPES = {
   emergency_fund: {
@@ -199,17 +200,17 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor Alvo (R$) *
+                  {t('web.goalModal.targetAmount')}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={formData.target_amount}
                     onChange={(e) => setFormData(prev => ({ ...prev, target_amount: e.target.value }))}
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                     required
                   />
@@ -218,17 +219,17 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor Atual (R$)
+                  {t('web.goalModal.currentAmount')}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={formData.current_amount}
                     onChange={(e) => setFormData(prev => ({ ...prev, current_amount: e.target.value }))}
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   />
                 </div>
@@ -242,17 +243,17 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contribuição Mensal (R$)
+                  {t('web.goalModal.monthlyAmount')}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={formData.monthly_contribution}
                     onChange={(e) => setFormData(prev => ({ ...prev, monthly_contribution: e.target.value }))}
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   />
                 </div>
@@ -296,7 +297,7 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
                   <div className="flex justify-between">
                     <span>{t('web.goalModal.stillToSave')}</span>
                     <span className="font-semibold">
-                      R$ {(parseFloat(formData.target_amount) - parseFloat(formData.current_amount || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {formatMoney((parseFloat(formData.target_amount) - parseFloat(formData.current_amount || 0)))}
                     </span>
                   </div>
                   <div className="flex justify-between">

@@ -6,8 +6,10 @@ import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import HelpTooltip from './ui/HelpTooltip';
-import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
+import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -593,7 +595,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.amount')}</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="text"
                     value={form.amount}
@@ -607,14 +609,14 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                       }
                       const parsed = parseCurrencyInput(value);
                       if (parsed > 0) {
-                        const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         setForm({ ...form, amount: formatted });
                       } else {
                         setForm({ ...form, amount: '' });
                       }
                     }}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                   />
                 </div>
               </div>
@@ -638,7 +640,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                 >
                   <option value="">{t('web.shared.select')}</option>
                   {expenseCategories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                   ))}
                 </select>
               </div>
@@ -648,7 +650,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                   <div className="flex items-center gap-2 mb-2">
                     <label className="block text-sm font-medium text-gray-700">{t('web.shared.owner')}</label>
                     <HelpTooltip 
-                      content={`Individual: só você vê. ${organization?.name || 'Organização'}: todos veem.`}
+                      content={t('web.expenseModal.individualOnlyYouSeeIt', { p0: organization?.name || t('web.shared.household') })}
                       autoOpen={true}
                     />
                   </div>
@@ -754,7 +756,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                           />
                           <span className="text-sm text-gray-500 w-6">%</span>
                           <span className="text-sm text-gray-600 w-24 text-right">
-                            R$ {split.amount.toFixed(2)}
+                            {formatMoney(split.amount)}
                           </span>
                         </div>
                       </div>
@@ -779,7 +781,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                           <span className="text-gray-700">{split.name}</span>
                         </div>
                         <span className="text-gray-600 font-medium">
-                          {split.percentage}% (R$ {split.amount.toFixed(2)})
+                          {split.percentage}% ({formatMoney(split.amount)})
                         </span>
                       </div>
                     ))}

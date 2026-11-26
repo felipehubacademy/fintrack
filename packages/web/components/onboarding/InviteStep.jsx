@@ -200,7 +200,7 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
 
           <div>
             <label className="block text-gray-700 text-sm xl:text-base font-medium mb-2">
-              Nome Completo
+              {t('web.inviteStep.fullName')}
             </label>
             <input
               type="text"

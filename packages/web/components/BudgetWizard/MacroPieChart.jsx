@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { t } from '@fintrack/shared/i18n';
+import { t, formatMoney } from '@fintrack/shared/i18n';
 
 const COLORS = {
   needs: '#2563EB',
@@ -21,7 +21,7 @@ function CustomTooltip({ active, payload }) {
     <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-md text-xs text-gray-700">
       <p className="font-semibold">{item.label}</p>
       <p>{item.percentage.toFixed(1)}%</p>
-      <p>R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+      <p>{formatMoney(item.amount)}</p>
     </div>
   );
 }

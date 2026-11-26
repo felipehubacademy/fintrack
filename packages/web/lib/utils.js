@@ -1,5 +1,6 @@
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { getLocaleSettings, parseMoney, decimalSeparator } from "@fintrack/shared/i18n";
 
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -140,148 +141,97 @@ export function getBrazilTodayString() {
  */
 
 /**
- * Formata um número para formato monetário brasileiro
- * @param {number|string} value - Valor numérico ou string numérica
- * @returns {string} Valor formatado (ex: "1.000,50")
+ * Active app locale tag ("pt-BR", "en-US", "es-419"...), for Intl/localeCompare.
+ */
+export function appLocale() {
+  return getLocaleSettings().locale;
+}
+
+/** Active app currency code ("BRL", "USD"...). */
+export function appCurrency() {
+  return getLocaleSettings().currency;
+}
+
+/**
+ * Format a number for a money input in the active locale, without the
+ * currency symbol: 1000.5 -> "1.000,50" (pt) / "1,000.50" (en).
+ * @param {number|string} value
+ * @returns {string}
  */
 export function formatCurrencyInput(value) {
   if (!value && value !== 0) return '';
-  
-  // Converter para número
-  const numValue = typeof value === 'string' ? parseFloat(value.replace(/\./g, '').replace(',', '.')) : value;
-  
+  const numValue = typeof value === 'string' ? parseMoney(value) : value;
   if (isNaN(numValue)) return '';
-  
-  // Formatar com 2 casas decimais
-  return numValue.toLocaleString('pt-BR', {
+  return numValue.toLocaleString(appLocale(), {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   });
 }
 
 /**
- * Parseia um valor formatado (ex: "1.000,50") de volta para número
- * @param {string} formattedValue - Valor formatado (ex: "1.000,50")
- * @returns {number} Valor numérico (ex: 1000.50)
+ * Parse a money input typed in the active locale back into a number,
+ * rounded to cents. Accepts "1.000,50", "1,000.50", "12,5", "12.5".
+ * @param {string|number} formattedValue
+ * @returns {number}
  */
 export function parseCurrencyInput(formattedValue) {
   if (!formattedValue) return 0;
-  
-  // Remover tudo que não for número, vírgula, ponto ou sinal
-  const sanitized = formattedValue.replace(/[^\d,.-]/g, '');
-  
-  // Remover múltiplos sinais e manter apenas o primeiro
-  const normalized = sanitized.replace(/(?!^)-/g, '');
-  
-  // Remover pontos (separadores de milhar) e substituir vírgula por ponto
-  const cleaned = normalized.replace(/\./g, '').replace(',', '.');
-  const parsed = parseFloat(cleaned);
-  
+  if (typeof formattedValue === 'number') return Math.round(formattedValue * 100) / 100;
+  const negative = /^\s*-/.test(formattedValue);
+  const parsed = parseMoney(formattedValue.replace(/-/g, ''));
   if (isNaN(parsed)) return 0;
-  // Garantir precisão: arredondar para 2 casas decimais
-  return Math.round(parsed * 100) / 100;
+  const rounded = Math.round(parsed * 100) / 100;
+  return negative ? -rounded : rounded;
 }
 
 /**
- * Processa valor de moeda diretamente (sem evento)
- * Remove formatação e mantém apenas números e vírgula
- * @param {string} value - Valor do input
- * @returns {string} Valor processado (sem R$)
+ * Clean a money input while typing: keeps digits and one decimal separator
+ * (the active locale's), at most 2 decimals. A separator followed by more
+ * than 2 digits is treated as a thousands separator and dropped.
+ * @param {string} value
+ * @param {{ allowNegative?: boolean }} [opts]
+ * @returns {string}
+ */
+export function cleanCurrencyTyping(value, opts = {}) {
+  if (!value) return '';
+  const dec = decimalSeparator();
+  const negative = Boolean(opts.allowNegative) && /^\s*-/.test(value);
+  const cleaned = String(value).replace(/[^\d,.]/g, '');
+  if (!cleaned) return negative ? '-' : '';
+  const lastSep = Math.max(cleaned.lastIndexOf(','), cleaned.lastIndexOf('.'));
+  let out;
+  if (lastSep === -1) {
+    out = cleaned;
+  } else {
+    const intPart = cleaned.slice(0, lastSep).replace(/[,.]/g, '');
+    const fracPart = cleaned.slice(lastSep + 1).replace(/[,.]/g, '');
+    out = fracPart.length > 2 ? intPart + fracPart : `${intPart}${dec}${fracPart}`;
+  }
+  return negative ? `-${out}` : out;
+}
+
+/**
+ * Process a money value directly (no event): keeps digits, sign and one
+ * decimal separator in the active locale.
+ * @param {string} value
+ * @returns {string}
  */
 export function processCurrencyInput(value) {
-  if (value === '') {
-    return '';
-  }
-
-  // Remover qualquer coisa que não seja número, vírgula, ponto ou sinal
-  let cleaned = value.replace(/[^\d,.-]/g, '');
-
-  if (!cleaned) {
-    return '';
-  }
-
-  // Normalizar múltiplos sinais
-  cleaned = cleaned.replace(/(?!^)-/g, '');
-
-  // Garantir apenas um separador decimal
-  const parts = cleaned.split(/[,.]/);
-  if (parts.length > 2) {
-    const integerPart = parts.slice(0, -1).join('');
-    const decimalPart = parts[parts.length - 1];
-    cleaned = integerPart + ',' + decimalPart.slice(0, 2);
-  } else if (parts.length === 2) {
-    cleaned = parts[0] + ',' + parts[1].slice(0, 2);
-  }
-
-  return cleaned;
+  if (value === '') return '';
+  return cleanCurrencyTyping(value, { allowNegative: true });
 }
 
 /**
- * Handler para onChange de campos monetários
- * Permite digitação livre, apenas limpa e valida
- * A formatação completa é feita no onBlur
- * @param {Event} e - Evento do input
- * @param {Function} setValue - Função para atualizar o valor
- * @param {string} fieldName - Nome do campo (opcional, para objetos)
+ * onChange handler for money inputs. Lets the user type freely in their
+ * locale; full formatting happens on blur (formatCurrencyInput).
+ * @param {Event} e
+ * @param {Function} setValue
+ * @param {string} fieldName - optional, for object state
  */
 export function handleCurrencyChange(e, setValue, fieldName = null) {
-  const inputValue = e.target.value;
-  
-  // Permitir apagar completamente
-  if (inputValue === '') {
-    if (fieldName) {
-      setValue(prev => ({ ...prev, [fieldName]: '' }));
-    } else {
-      setValue('');
-    }
-    return;
-  }
-  
-  // Remover tudo exceto números, vírgula e ponto
-  let cleaned = inputValue.replace(/[^\d,.]/g, '');
-  
-  // Se não tem nada, retornar vazio
-  if (!cleaned) {
-    if (fieldName) {
-      setValue(prev => ({ ...prev, [fieldName]: '' }));
-    } else {
-      setValue('');
-    }
-    return;
-  }
-  
-  // Garantir apenas uma vírgula ou ponto (para decimal)
-  const hasComma = cleaned.includes(',');
-  const hasDot = cleaned.includes('.');
-  
-  if (hasComma && hasDot) {
-    // Se tem ambos, manter apenas o último
-    const lastComma = cleaned.lastIndexOf(',');
-    const lastDot = cleaned.lastIndexOf('.');
-    if (lastComma > lastDot) {
-      cleaned = cleaned.replace(/\./g, '');
-    } else {
-      cleaned = cleaned.replace(/,/g, '');
-      cleaned = cleaned.replace('.', ',');
-    }
-  } else if (hasDot && !hasComma) {
-    // Converter ponto para vírgula (padrão brasileiro)
-    cleaned = cleaned.replace('.', ',');
-  }
-  
-  // Limitar a 2 casas decimais
-  if (cleaned.includes(',')) {
-    const parts = cleaned.split(',');
-    if (parts[1] && parts[1].length > 2) {
-      parts[1] = parts[1].substring(0, 2);
-      cleaned = parts.join(',');
-    }
-  }
-  
-  // Durante a digitação, apenas limpar e validar, sem formatar
-  // A formatação completa será feita no onBlur
+  const cleaned = cleanCurrencyTyping(e.target.value);
   if (fieldName) {
-    setValue(prev => ({ ...prev, [fieldName]: cleaned }));
+    setValue((prev) => ({ ...prev, [fieldName]: cleaned }));
   } else {
     setValue(cleaned);
   }

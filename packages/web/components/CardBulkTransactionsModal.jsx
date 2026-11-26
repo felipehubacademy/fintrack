@@ -5,15 +5,12 @@ import { Button } from './ui/Button';
 import { useOrganization } from '../hooks/useOrganization';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
-import {
-  getBrazilTodayString,
-  handleCurrencyChange,
-  parseCurrencyInput,
-  formatCurrencyInput
-} from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale, appCurrency } from '../lib/utils';
 import FileUploadButton from './FileUploadButton';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { useI18n } from '../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 const MAX_INSTALLMENTS = 24;
 
@@ -303,7 +300,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
       if (error) throw error;
 
       if (existing && existing.length > 0) {
-        const monthYear = oldestDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        const monthYear = oldestDate.toLocaleDateString(appLocale(), { month: 'long', year: 'numeric' });
         return {
           count: existing.length,
           monthYear,
@@ -434,8 +431,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
           {transactions.length > 0 && (
             <div className="flex items-center gap-4 text-xs text-gray-600">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-gray-900">{transactions.length}</span>
-                <span>transaç{transactions.length === 1 ? 'ão' : 'ões'}</span>
+                <span>{t('web.fixes.transactionsCount', { count: transactions.length })}</span>
               </div>
               <div className="h-3 w-px bg-gray-300" />
               <div className="flex items-center gap-1.5">
@@ -446,9 +442,9 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                       if (tx._isRefund) return sum - amount;
                       return sum + amount;
                     }, 0);
-                    return new Intl.NumberFormat('pt-BR', {
+                    return new Intl.NumberFormat(appLocale(), {
                       style: 'currency',
-                      currency: 'BRL'
+                      currency: appCurrency()
                     }).format(total);
                   })()}
                 </span>
@@ -530,7 +526,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                         <option value="">{specialCategoryLock ? t('web.cardBulkTransactionsModal.autoCategory') : t('web.shared.category')}</option>
                         {expenseCategories.map((category) => (
                           <option key={category.id} value={category.id}>
-                            {category.name}
+                            {categoryName(category.name)}
                           </option>
                         ))}
                       </select>
@@ -577,7 +573,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                           const parsed = parseCurrencyInput(e.target.value);
                           handleFieldChange(index, 'amount', parsed ? formatCurrencyInput(parsed) : '');
                         }}
-                        placeholder="R$ 0,00"
+                        placeholder={formatMoney(0)}
                         className={`w-full h-10 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${showInvalidState && parseCurrencyInput(transaction.amount) <= 0 ? 'border-red-300' : 'border-gray-300'}`}
                       />
                     </div>
@@ -647,8 +643,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
               {t('web.cardBulkTransactionsModal.existingTransactionsFound')}
             </h3>
             <p className="text-sm text-gray-700 mb-4">
-              Já existem <strong>{duplicateInfo.count} transações</strong> para o cartão{' '}
-              <strong>{duplicateInfo.cardName}</strong> {t('web.shared.at')} <strong>{duplicateInfo.monthYear}</strong>.
+              {t('web.fixes.duplicatesFound', { count: duplicateInfo.count, card: duplicateInfo.cardName, month: duplicateInfo.monthYear })}
             </p>
             <p className="text-sm text-gray-600 mb-6">
               {t('web.cardBulkTransactionsModal.whatDoYouWantTo')}

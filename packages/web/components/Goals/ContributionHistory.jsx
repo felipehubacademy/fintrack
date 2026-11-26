@@ -7,6 +7,8 @@ import EmptyState from '../ui/EmptyState';
 import HelpTooltip from '../ui/HelpTooltip';
 import { Calendar, Download, Filter, TrendingUp, DollarSign, History } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
 
 export default function ContributionHistory({ organizationId }) {
   const { t } = useI18n();
@@ -87,11 +89,11 @@ export default function ContributionHistory({ organizationId }) {
     : 0;
 
   const formatCurrency = (value) => {
-    return `R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    return `${formatMoney(Number(value || 0))}`;
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    return new Date(dateString).toLocaleDateString(appLocale());
   };
 
   const exportToCSV = () => {
@@ -133,7 +135,7 @@ export default function ContributionHistory({ organizationId }) {
               <div>
                 <p className="text-sm text-gray-600 flex items-center">
                   {t('web.contributionHistory.totalSaved')}
-                  <HelpTooltip content="Soma de todas as contribuições no período selecionado" />
+                  <HelpTooltip content={t('web.contributionHistory.sumOfEveryDepositIn')} />
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {formatCurrency(totalContributed)}
@@ -150,7 +152,7 @@ export default function ContributionHistory({ organizationId }) {
               <div>
                 <p className="text-sm text-gray-600 flex items-center">
                   {t('web.contributionHistory.averagePerDeposit')}
-                  <HelpTooltip content="Valor médio de cada contribuição" />
+                  <HelpTooltip content={t('web.contributionHistory.averageAmountPerDeposit')} />
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {formatCurrency(avgContribution)}
@@ -167,7 +169,7 @@ export default function ContributionHistory({ organizationId }) {
               <div>
                 <p className="text-sm text-gray-600 flex items-center">
                   {t('web.contributionHistory.largestDeposit')}
-                  <HelpTooltip content="Maior contribuição única registrada" />
+                  <HelpTooltip content={t('web.contributionHistory.largestSingleDeposit')} />
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {formatCurrency(largestContribution)}

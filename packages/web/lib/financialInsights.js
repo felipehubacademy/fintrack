@@ -1,13 +1,15 @@
 import { t } from '@fintrack/shared/i18n';
+import { appLocale } from './utils';
+import { formatMoney } from '@fintrack/shared/i18n';
 // ============================================================================
 // Financial Insights Library
 // Calculates trends, patterns, and generates insights for budget planning
 // ============================================================================
 
 const MACRO_LABELS = {
-  needs: 'Necessidades',
-  wants: 'Desejos',
-  get investments() { return t('web.shared.investments'); }
+  get needs() { return t('web.shared.needs'); },
+  get wants() { return t('web.shared.wants'); },
+  get investments() { return t('web.shared.investments'); },
 };
 
 /**
@@ -24,7 +26,7 @@ export function calculateTrends(expenses, budgets, months = 6) {
   for (let i = months - 1; i >= 0; i--) {
     const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
     const monthKey = targetDate.toISOString().slice(0, 7);
-    const monthLabel = targetDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    const monthLabel = targetDate.toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' });
     
     // Filter expenses for this month
     const monthExpenses = expenses.filter(e => {
@@ -146,7 +148,7 @@ export function detectPatterns(expenses, budgets) {
       insights.push({
         type: 'alert',
         title: t('web.financialInsights.budgetCloseToTheLimit'),
-        message: t('web.financialInsights.isAtOfItsBudget', { p0: budget.category_name || 'Uma categoria', p1: percentage.toFixed(0) }),
+        message: t('web.financialInsights.isAtOfItsBudget', { p0: budget.category_name || t('web.fixes.aCategory'), p1: percentage.toFixed(0) }),
         severity: 'high',
         categoryId: budget.category_id
       });
@@ -272,11 +274,11 @@ export function generateInsights(data) {
   patterns.slice(0, 5).forEach(p => insights.push(p.message));
   
   // Add score insight
-  insights.push(`Sua saúde financeira está ${score.rating.toLowerCase()} (${score.total}/100 pontos)`);
+  insights.push(t('web.insightsLib.healthScore', { score: score.total }));
   
   // Add prediction insight
   if (prediction.pace === 'high') {
-    insights.push(`No ritmo atual, você vai gastar R$ ${prediction.projected.toFixed(2)} até o fim do mês`);
+    insights.push(t('web.insightsLib.projected', { amount: formatMoney(prediction.projected) }));
   }
   
   return insights;

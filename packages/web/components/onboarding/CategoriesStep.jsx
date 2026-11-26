@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import ZulFloatingButton from '../ZulFloatingButton';
 import { useI18n } from '../../contexts/I18nContext';
+import { categoryName } from '../../lib/categoryName';
 
 const defaultCategories = [
   { name: 'Alimentação', color: '#EF4444' },
@@ -306,7 +307,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
                 style={{ backgroundColor: category.color }}
               />
               <div className="text-left flex-1">
-                <div className="font-semibold text-gray-900 text-sm">{category.name}</div>
+                <div className="font-semibold text-gray-900 text-sm">{categoryName(category.name)}</div>
               </div>
               <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#207DFF] rounded-full flex items-center justify-center">
                 <Check className="w-2.5 h-2.5 text-white" />
@@ -335,7 +336,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
                   style={{ backgroundColor: category.color }}
                 />
                 <div className="flex-1 text-left">
-                  <div className="font-semibold text-gray-900 text-sm">{category.name}</div>
+                  <div className="font-semibold text-gray-900 text-sm">{categoryName(category.name)}</div>
                 </div>
                 <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2.5 h-2.5 text-white" />
@@ -358,7 +359,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
                   style={{ backgroundColor: category.color }}
                 />
                 <div className="flex-1 text-left">
-                  <div className="font-semibold text-gray-900 text-sm">{category.name}</div>
+                  <div className="font-semibold text-gray-900 text-sm">{categoryName(category.name)}</div>
                 </div>
                 <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2.5 h-2.5 text-white" />
@@ -456,7 +457,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
                     className="w-6 h-6 rounded-full flex-shrink-0"
                     style={{ backgroundColor: category.color }}
                   />
-                  <div className="font-semibold text-gray-900 text-xs sm:text-sm text-left">{category.name}</div>
+                  <div className="font-semibold text-gray-900 text-xs sm:text-sm text-left">{categoryName(category.name)}</div>
                 </button>
               ))}
           </div>

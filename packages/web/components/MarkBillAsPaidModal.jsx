@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from './ui/Button';
 import { X, AlertCircle } from 'lucide-react';
 import { useI18n } from '../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function MarkBillAsPaidModal({ 
   isOpen, 
@@ -69,7 +70,7 @@ export default function MarkBillAsPaidModal({
         {/* Content */}
         <div className="p-4 sm:p-5 md:p-6 overflow-y-auto flex-1">
           <p className="text-gray-600 mb-4">
-            {t('web.markBillAsPaidModal.mark')} <strong>{bill.description}</strong> (R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{t('web.markBillAsPaidModal.asPaid')}
+            {t('web.markBillAsPaidModal.mark')} <strong>{bill.description}</strong> ({formatMoney(Number(bill.amount))}{t('web.markBillAsPaidModal.asPaid')}
           </p>
           <p className="text-sm text-gray-500 mb-6">
             {t('web.markBillAsPaidModal.thisCreatesAnExpenseAutomatically')}

@@ -218,7 +218,7 @@ export default function CreateAccount() {
                     {t('web.createAccount.dashboardName')}
                   </label>
                   <HelpTooltip 
-                    content="Este será o nome da sua área de controle financeiro"
+                    content={t('web.createAccount.thisIsTheNameOf')}
                     autoOpen={true}
                   />
                 </div>
@@ -308,7 +308,7 @@ export default function CreateAccount() {
                     {t('web.shared.yourWhatsapp')}
                   </label>
                   <HelpTooltip 
-                    content="Este será o número permitido a usar com o Zul no WhatsApp. Seu assistente de IA para controle financeiro."
+                    content={t('web.createAccount.thisIsTheNumberThat')}
                     autoOpen={true}
                   />
                 </div>

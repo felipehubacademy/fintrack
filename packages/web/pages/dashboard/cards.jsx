@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function CardsDashboard() {
   const { t } = useI18n();
@@ -505,7 +506,7 @@ export default function CardsDashboard() {
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatMoney(cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0))}
               </div>
             </CardContent>
           </Card>
@@ -521,7 +522,7 @@ export default function CardsDashboard() {
             </CardHeader>
             <CardContent className="p-3 pt-0">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                R$ {(totalCreditLimit - totalCreditUsed).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatMoney((totalCreditLimit - totalCreditUsed))}
               </div>
             </CardContent>
           </Card>
@@ -540,7 +541,7 @@ export default function CardsDashboard() {
                 {totalCreditUsagePct.toFixed(1)}%
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                R$ {totalCreditUsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} de R$ {totalCreditLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {t('web.cards.of', { p0: formatMoney(totalCreditUsed), p1: formatMoney(totalCreditLimit) })}
               </p>
             </CardContent>
           </Card>
@@ -562,7 +563,7 @@ export default function CardsDashboard() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {totalCurrentInvoices.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(totalCurrentInvoices)}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {t('web.cards.totalOfOpenCardBills')}
@@ -625,7 +626,7 @@ export default function CardsDashboard() {
                             </div>
                             <div className="text-right">
                               <p className="text-sm font-semibold text-gray-900">
-                                R$ {invoice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {formatMoney(invoice)}
                               </p>
                             </div>
                           </div>
@@ -635,7 +636,7 @@ export default function CardsDashboard() {
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-semibold text-gray-900">{t('web.shared.total2')}</p>
                           <p className="text-sm font-bold text-gray-900">
-                            R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(total)}
                           </p>
                         </div>
                       </div>
@@ -713,18 +714,18 @@ export default function CardsDashboard() {
                       <>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">{t('web.cards.limit')}</span>
-                          <span className="font-semibold">R$ {limit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-semibold">{formatMoney(limit)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">{t('web.cards.limitUsed2')}</span>
                           <span className="font-semibold">
-                            R$ {Number(usageByCardId[card.id]?.used || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(Number(usageByCardId[card.id]?.used || 0))}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">{t('web.cards.currentBill')}</span>
                           <span className="font-semibold">
-                            R$ {Number(currentInvoiceByCardId[card.id] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(Number(currentInvoiceByCardId[card.id] || 0))}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -733,7 +734,7 @@ export default function CardsDashboard() {
                             {(() => {
                               const used = Number(usageByCardId[card.id]?.used || 0);
                               const available = Math.max(0, Number(limit) - used);
-                              return `R$ ${available.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                              return `${formatMoney(available)}`;
                             })()}
                           </span>
                         </div>
@@ -766,7 +767,7 @@ export default function CardsDashboard() {
                     /* Open Finance cards: Read-only, show only invoices and remove */
                     <div className="flex justify-center space-x-2 pt-4 border-t">
                       {card.type === 'credit' && (
-                        <Tooltip content="Ver faturas" position="top">
+                        <Tooltip content={t('web.cards.seeCardBills')} position="top">
                           <Button 
                             variant="outline" 
                             size="icon"
@@ -781,7 +782,7 @@ export default function CardsDashboard() {
                           </Button>
                         </Tooltip>
                       )}
-                      <Tooltip content="Remover do app" position="top">
+                      <Tooltip content={t('web.cards.removeFromApp')} position="top">
                         <Button
                           variant="outline"
                           size="icon"
@@ -797,7 +798,7 @@ export default function CardsDashboard() {
                     /* Manual cards: Full control */
                     <div className="flex justify-center space-x-2 pt-4 border-t">
                       {card.type === 'credit' && (
-                        <Tooltip content="Ver faturas" position="right">
+                        <Tooltip content={t('web.cards.seeCardBills')} position="right">
                         <Button 
                           variant="outline" 
                             size="icon"
@@ -812,7 +813,7 @@ export default function CardsDashboard() {
                           </Button>
                         </Tooltip>
                       )}
-                      <Tooltip content="Editar" position="top">
+                      <Tooltip content={t('web.cards.edit')} position="top">
                         <Button 
                           variant="outline" 
                           size="icon"
@@ -822,7 +823,7 @@ export default function CardsDashboard() {
                           <Edit className="h-4 w-4" />
                         </Button>
                       </Tooltip>
-                      <Tooltip content="Lançar em massa" position="top">
+                      <Tooltip content={t('web.cards.addInBulk')} position="top">
                       <Button 
                         variant="outline" 
                           size="icon"
@@ -836,7 +837,7 @@ export default function CardsDashboard() {
                           <Plus className="h-4 w-4" />
                       </Button>
                       </Tooltip>
-                      <Tooltip content="Excluir" position="left">
+                      <Tooltip content={t('web.shared.delete')} position="left">
                       <Button 
                         variant="outline" 
                           size="icon"

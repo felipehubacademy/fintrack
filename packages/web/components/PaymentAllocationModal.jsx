@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
 import { useI18n } from '../contexts/I18nContext';
+import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
 
 export default function PaymentAllocationModal({ 
   isOpen, 
@@ -203,7 +204,7 @@ export default function PaymentAllocationModal({
 
       // 3. Criar transação bancária (debitar da conta)
       const transactionDescription = form.description?.trim() 
-        || t('web.paymentAllocationModal.contributionTo', { p0: form.allocation_target === 'individual' ? 'despesas individuais' : 'despesas compartilhadas' });
+        || t('web.paymentAllocationModal.contributionTo', { p0: form.allocation_target === 'individual' ? t('web.fixes.individualExpensesLower') : t('web.fixes.sharedExpensesLower') });
 
       const { error: transactionError } = await supabase.rpc('create_bank_transaction', {
         p_bank_account_id: form.bank_account_id,
@@ -265,7 +266,7 @@ export default function PaymentAllocationModal({
                 {t('web.paymentAllocationModal.contributionAmount')}
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                 <input
                   type="text"
                   value={form.amount}
@@ -279,13 +280,13 @@ export default function PaymentAllocationModal({
                     }
                     const parsed = parseCurrencyInput(value);
                     if (parsed > 0) {
-                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       setForm(prev => ({ ...prev, amount: formatted }));
                     } else {
                       setForm(prev => ({ ...prev, amount: '' }));
                     }
                   }}
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   disabled={saving}
                 />
@@ -395,7 +396,7 @@ export default function PaymentAllocationModal({
                     <div key={split.cost_center_id} className="flex justify-between items-center text-sm">
                       <span className="text-gray-700">{split.cost_center_name}</span>
                       <span className="font-medium text-gray-900">
-                        {split.percentage.toFixed(1)}% = R$ {split.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {split.percentage.toFixed(1)}% = {formatMoney(split.amount)}
                       </span>
                     </div>
                   )

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useOrganization } from '../../hooks/useOrganization';
 import { useNotificationContext } from '../../contexts/NotificationContext';
-import { getBrazilToday, createBrazilDate } from '../../lib/utils';
+import { getBrazilToday, createBrazilDate, appLocale } from '../../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -28,6 +28,8 @@ import {
   CreditCard
 } from 'lucide-react';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { categoryName } from '../../lib/categoryName';
 
 export default function BillsDashboard() {
   const { t } = useI18n();
@@ -1029,7 +1031,7 @@ export default function BillsDashboard() {
 
           <StatsCard
             title={t('web.bills.totalPending')}
-            value={`R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            value={`${formatMoney(totalPending)}`}
             icon={DollarSign}
             color="text-gray-600"
             bgColor="bg-gray-50"
@@ -1110,7 +1112,7 @@ export default function BillsDashboard() {
                   >
                     <option value="all">{t('web.bills.allCategories')}</option>
                     {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                     ))}
                   </select>
                 </div>
@@ -1169,10 +1171,10 @@ export default function BillsDashboard() {
               {filteredBills.length !== bills.filter(b => b.status !== 'cancelled').length && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="text-sm text-gray-600">
-                    {filteredBills.length} conta{filteredBills.length !== 1 ? 's' : ''} encontrada{filteredBills.length !== 1 ? 's' : ''}
+                    {t('web.fixes.billsFound', { count: filteredBills.length })}
                     {filteredBills.length > 0 && (
                       <span className="ml-2 text-gray-500">
-                        (Total: R$ {filteredBills.reduce((sum, b) => sum + parseFloat(b.amount || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
+                        ({t('web.fixes.totalLabel')} {formatMoney(filteredBills.reduce((sum, b) => sum + parseFloat(b.amount || 0), 0))})
                       </span>
                     )}
                   </p>
@@ -1258,7 +1260,7 @@ export default function BillsDashboard() {
                       return (
                         <div>
                             <div className="text-sm text-gray-900">
-                              {new Date(bill.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                              {new Date(bill.due_date + 'T00:00:00').toLocaleDateString(appLocale())}
                             </div>
                             {daysUntil >= 0 && (
                               <div className={`text-xs mt-1 font-medium ${
@@ -1271,7 +1273,7 @@ export default function BillsDashboard() {
                             )}
                             {daysUntil < 0 && (
                               <div className="text-xs mt-1 font-medium text-red-600">
-                                Vencido há {Math.abs(daysUntil)} {Math.abs(daysUntil) === 1 ? 'dia' : 'dias'}
+                                {t('web.fixes.overdueDays', { count: Math.abs(daysUntil) })}
                               </div>
                             )}
                         </div>
@@ -1309,7 +1311,7 @@ export default function BillsDashboard() {
                     sortable: false,
                     render: (bill) => (
                             <span className="text-sm text-gray-600">
-                              {bill.category ? bill.category.name : '—'}
+                              {bill.category ? categoryName(bill.category.name) : '—'}
                             </span>
                     )
                   },
@@ -1364,7 +1366,7 @@ export default function BillsDashboard() {
                     sortable: true,
                     render: (bill) => (
                             <div className="text-sm font-semibold text-gray-900">
-                              R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {formatMoney(Number(bill.amount))}
                             </div>
                     )
                   },

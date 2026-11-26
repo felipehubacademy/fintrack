@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import Header from '../../components/Header';
 import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
 
 export default function DashboardHome() {
   const { t } = useI18n();
@@ -505,7 +507,7 @@ export default function DashboardHome() {
           const incomeTotal = confirmedIncomes.reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
 
           months.push({
-            month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+            month: date.toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' }),
             cartoes: cardTotal,
             despesas: cashTotal,
             entradas: incomeTotal
@@ -520,7 +522,7 @@ export default function DashboardHome() {
       const previousMonthStr = previousMonth.toISOString().slice(0, 7);
       
       const previousMonthData = months.find(month => 
-        month.month === previousMonth.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+        month.month === previousMonth.toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' })
       );
       
       if (previousMonthData) {
@@ -629,7 +631,7 @@ export default function DashboardHome() {
     
     const [year, month] = selectedMonth.split('-').map(Number);
     const previousDate = new Date(year, month - 2, 1); // month - 2 porque month está 1-indexed
-    const previousMonthStr = previousDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    const previousMonthStr = previousDate.toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' });
     
     const previousData = monthlyData.find(m => m.month === previousMonthStr);
     
@@ -771,7 +773,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(totalIncomes).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(Number(totalIncomes))}
                 </div>
                 <div className="flex items-center space-x-2 text-xs">
                   {incomesGrowth > 0 && (
@@ -845,15 +847,15 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium">{cc.name}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">{formatMoney(Number(total))}</span>
                           <span className="text-gray-500 ml-2">{percentage}%</span>
                         </div>
                       </div>
                       {(individualTotal > 0 || sharedTotal > 0) && (
                         <div className="text-xs text-gray-500 ml-5">
-                          {individualTotal > 0 && t('web.home.individual', { p0: individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
+                          {individualTotal > 0 && t('web.home.individual', { p0: individualTotal.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                           {individualTotal > 0 && sharedTotal > 0 && ' • '}
-                          {sharedTotal > 0 && t('web.home.shared', { p0: sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
+                          {sharedTotal > 0 && t('web.home.shared', { p0: sharedTotal.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                         </div>
                       )}
                     </div>
@@ -885,7 +887,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  - R$ {Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  -{formatMoney(Number(grandTotal))}
                 </div>
                 <div className="flex items-center space-x-2 text-xs">
                   {expensesGrowth > 0 && (
@@ -945,7 +947,7 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium">{t('web.shared.paidNow')}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">-{formatMoney(Number(totalAVista))}</span>
                           <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
                         </div>
                       </div>
@@ -955,7 +957,7 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium">{t('web.shared.credit')}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">-{formatMoney(Number(totalCredito))}</span>
                           <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
                         </div>
                       </div>
@@ -990,7 +992,7 @@ export default function DashboardHome() {
               <div className={`text-2xl font-bold mb-1 ${
                 balance >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {balance >= 0 ? '' : '-'} R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {balance >= 0 ? '' : '-'} {formatMoney(Number(Math.abs(balance)))}
               </div>
               <div className="flex items-center space-x-2 text-xs">
                 {balanceGrowth > 0 && (
@@ -1032,7 +1034,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(totalCreditUsed).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(Number(totalCreditUsed))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {t('web.home.acrossAllCards')}
@@ -1066,7 +1068,7 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium truncate">{card.name || t('web.home.noName')}</span>
                         </div>
                         <div className="text-right ml-2">
-                          <span className="text-gray-900 font-semibold">R$ {Number(usage.used).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">{formatMoney(Number(usage.used))}</span>
                           <span className="text-gray-500 ml-2 text-xs">({percentage}%)</span>
                         </div>
                       </div>
@@ -1094,7 +1096,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(totalCreditAvailable).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(Number(totalCreditAvailable))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {t('web.home.availableLimit')}
@@ -1128,7 +1130,7 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium truncate">{card.name || t('web.home.noName')}</span>
                         </div>
                         <div className="text-right ml-2">
-                          <span className="text-gray-900 font-semibold">R$ {Number(available).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">{formatMoney(Number(available))}</span>
                         </div>
                       </div>
                     );
@@ -1169,7 +1171,7 @@ export default function DashboardHome() {
                 <div className={`text-2xl font-bold mb-1 ${
                   totalBankBalance < 0 ? 'text-red-600' : 'text-gray-900'
                 }`}>
-                  {totalBankBalance < 0 ? '-' : ''} R$ {Number(Math.abs(totalBankBalance)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {totalBankBalance < 0 ? '-' : ''} {formatMoney(Number(Math.abs(totalBankBalance)))}
                 </div>
                 <p className={`text-xs mt-1 ${
                   totalBankBalance < 0 ? 'text-red-600' : 'text-gray-500'
@@ -1200,7 +1202,7 @@ export default function DashboardHome() {
                           <span className={`font-semibold ${
                             balance < 0 ? 'text-red-600' : 'text-gray-900'
                           }`}>
-                            R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(Number(Math.abs(balance)))}
                             {balance < 0 && <span className="ml-1">-</span>}
                           </span>
                         </div>
