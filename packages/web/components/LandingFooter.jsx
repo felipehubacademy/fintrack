@@ -29,6 +29,7 @@ export default function LandingFooter() {
             <ul className="space-y-3">
               <li><a href="#features" className="hover:text-white transition-colors">{t('web.landingFooter.features')}</a></li>
               <li><a href="#how-it-works" className="hover:text-white transition-colors">{t('web.landingFooter.howItWorks')}</a></li>
+              <li><a href="#pricing" className="hover:text-white transition-colors">{t('web.landingFooter.pricing')}</a></li>
               <li><Link href="/login" className="hover:text-white transition-colors">{t('web.landingFooter.dashboard')}</Link></li>
             </ul>
           </div>

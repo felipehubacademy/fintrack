@@ -29,6 +29,7 @@ export default {
           'Lo que nos cuentas: transacciones y otras notas financieras que escribes o le dices a Zul o que registras en la app, como montos, descripciones, categorías, nombres de tarjetas y cuentas, cuentas por pagar, presupuestos y metas.',
           'Audios y fotos (por ejemplo, recibos) que le envías a Zul. Los usamos para entender la transacción y luego los descartamos en un plazo de 30 días.',
           'Datos de uso y de fallos: versión de la app y del dispositivo, reportes de errores, registros de acceso y dirección IP, para que el servicio funcione y sea seguro.',
+          'Datos de la suscripción: tu plan, la tienda donde compraste y las fechas de compra y renovación. Los datos de la tarjeta van directo al procesador de pagos; nunca recibimos el número completo de tu tarjeta.',
         ],
         after: [
           'Nunca te pedimos contraseñas del banco ni números completos de tarjeta, y no los necesitamos. Por favor, no se los envíes a Zul.',
@@ -55,6 +56,9 @@ export default {
           'Vercel: aloja nuestro sitio web y nuestros servidores.',
           'Sentry: recibe reportes de errores y fallos para que podamos corregir problemas.',
           'Twilio SendGrid: envía correos de la cuenta, como invitaciones, cuando usas correo.',
+          'RevenueCat: administra las suscripciones y nos informa si tu hogar tiene Plus (id del hogar, producto, tienda y fechas).',
+          'Stripe: procesa los pagos hechos en nuestro sitio web o con un enlace enviado por WhatsApp.',
+          'Apple (App Store) y Google (Google Play): procesan las compras hechas en la app, según sus propios términos y políticas de privacidad.',
         ],
         after: [
           'En una cuenta compartida (familiar), los miembros que invites pueden ver los datos financieros compartidos de la organización.',
@@ -64,7 +68,7 @@ export default {
       {
         title: '5. Transferencias internacionales',
         body: [
-          'Algunos proveedores (como Meta, OpenAI, Vercel y Sentry) pueden tratar datos fuera de Brasil, incluso en Estados Unidos. Estas transferencias siguen el art. 33 de la LGPD, con base en cláusulas contractuales estándar y compromisos de protección de datos equivalentes.',
+          'Algunos proveedores (como Meta, OpenAI, Vercel, Sentry, RevenueCat y Stripe) pueden tratar datos fuera de Brasil, incluso en Estados Unidos. Estas transferencias siguen el art. 33 de la LGPD, con base en cláusulas contractuales estándar y compromisos de protección de datos equivalentes.',
         ],
       },
       {
@@ -189,11 +193,16 @@ export default {
         after: ['Si no cumples estas reglas, podemos suspender o cerrar tu cuenta.'],
       },
       {
-        title: '6. Precio: acceso anticipado gratis',
+        title: '6. Precio, prueba gratis y suscripción',
         items: [
-          'MeuAzulão es gratis durante el acceso anticipado, hasta el {{earlyAccessEnd}}.',
-          'Antes de que empiece cualquier plan de pago, te avisaremos con anticipación, con el precio y lo que incluye. No se cobra nada automáticamente: tú eliges si quieres suscribirte.',
-          'Los planes de pago comprados por App Store o Google Play siguen las reglas de cobro y cancelación de esas tiendas.',
+          'Prueba gratis: cada cuenta nueva tiene 7 días de MeuAzulão gratis, sin tarjeta. No se cobra nada cuando termina la prueba. Para seguir registrando, tú eliges si te suscribes a MeuAzulão Plus.',
+          'Planes: Plus se vende por mes o por año. El precio, el período de cobro y la moneda siempre se muestran antes de que confirmes la compra. Los precios pueden variar según la tienda (App Store, Google Play o nuestro sitio web) y el país, y pueden incluir impuestos.',
+          'Renovación automática: Plus se renueva automáticamente al final de cada período, al precio vigente, hasta que lo canceles. Si el precio cambia, nosotros o la tienda te avisaremos antes, como exigen las reglas de la tienda y la ley.',
+          'Cancelación: puedes cancelar cuando quieras y conservas Plus hasta el final del período que ya pagaste. Si te suscribiste desde la app en iPhone o Android, cancela en la configuración de suscripciones de App Store o Google Play (no podemos cancelar suscripciones de las tiendas por ti). Si pagaste en nuestro sitio web o con un enlace enviado por WhatsApp, cancela con el enlace “Administrar suscripción” del correo de recibo o escríbenos a {{contactEmail}}.',
+          'Derecho de arrepentimiento: si compraste Plus por internet como consumidor en Brasil, puedes desistir dentro de los 7 días posteriores a la compra y recibir el reembolso total (Código de Defensa del Consumidor de Brasil, art. 49). Para compras en nuestro sitio web, escríbenos a {{contactEmail}}. Para compras en App Store o Google Play, pide el reembolso a la tienda, que procesa esos pagos; si necesitas ayuda, escríbenos.',
+          'Fuera de esos casos, los reembolsos siguen las reglas de la tienda donde compraste y las leyes de tu país.',
+          'Los pagos en nuestro sitio web los procesa Stripe, a través de RevenueCat. Nunca vemos ni guardamos el número completo de tu tarjeta.',
+          'Si no te suscribes después de la prueba, tus datos no se borran: puedes seguir viéndolos, pero no puedes registrar nuevos movimientos hasta suscribirte. Puedes eliminar tu cuenta en cualquier momento (sección 10).',
         ],
       },
       {

@@ -9,6 +9,7 @@ import { I18nProvider, useI18n, resolveInitialLocale } from '../contexts/I18nCon
 import { APP_CONFIG, redirectToCorrectDomain, getCanonicalUrl } from '../lib/constants';
 import ZulFloatingButton from '../components/ZulFloatingButton';
 import { installApiAuthFetch } from '../lib/apiFetch';
+import { pricesFor } from '@fintrack/shared/billing';
 
 // API routes require the session token; attach it to every same-origin /api/* call.
 if (typeof window !== 'undefined') installApiAuthFetch();
@@ -58,7 +59,11 @@ function SeoHead() {
             applicationCategory: 'FinanceApplication',
             operatingSystem: 'Web, WhatsApp',
             inLanguage: ['en', 'pt-BR', 'es'],
-            offers: { '@type': 'Offer', price: '0', priceCurrency: currency },
+            offers: {
+              '@type': 'Offer',
+              price: String(pricesFor(currency).monthly),
+              priceCurrency: pricesFor(currency).currency,
+            },
             creator: { '@type': 'Organization', name: 'MeuAzulão' },
           }),
         }}

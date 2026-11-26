@@ -56,6 +56,9 @@ export default function LandingHeader({ currentPage = 'home' }) {
                 <a href="#how-it-works" className={`transition-colors text-sm font-medium ${linkColor}`}>
                   {t('web.landingHeader.howItWorks')}
                 </a>
+                <a href="#pricing" className={`transition-colors text-sm font-medium ${linkColor}`}>
+                  {t('web.landingHeader.pricing')}
+                </a>
               </>
             )}
             {(currentPage === 'privacy' || currentPage === 'terms' || currentPage === 'help' || currentPage === 'contact') && (

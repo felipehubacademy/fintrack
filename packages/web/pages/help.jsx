@@ -10,10 +10,12 @@ import {
 } from 'lucide-react';
 import LandingHeader from '../components/LandingHeader';
 import { useI18n } from '../contexts/I18nContext';
-import { EARLY_ACCESS_END } from '@fintrack/shared/config';
+import { pricesFor } from '@fintrack/shared/billing';
 
 export default function HelpPage() {
-  const { t, formatDate } = useI18n();
+  const { t, formatMoney, currency } = useI18n();
+  const prices = pricesFor(currency);
+  const money = (v) => formatMoney(v, { currency: prices.currency });
   const [openFaq, setOpenFaq] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -86,9 +88,15 @@ export default function HelpPage() {
     },
     {
       id: 12,
-      category: 'Segurança',
+      category: 'Geral',
       question: t('web.help.isMeuazulaoFree'),
-      answer: t('web.help.yesDuringEarlyAccessEverything', { date: formatDate(EARLY_ACCESS_END, 'long') })
+      answer: t('web.help.pricingAnswer', { monthly: money(prices.monthly), annual: money(prices.annual) })
+    },
+    {
+      id: 15,
+      category: 'Geral',
+      question: t('web.help.howDoICancelPlus'),
+      answer: t('web.help.cancelPlusAnswer')
     },
     {
       id: 13,

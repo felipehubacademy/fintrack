@@ -1,19 +1,12 @@
 /**
  * Launch feature flags (shared by mobile and web).
  *
- * Felipe has not yet decided the launch scope (plan section 4.1 proposes
- * cutting Investments and Goals, and launching free until 2027-01-31).
- * Everything is a switch here so either decision is a one-line change.
+ * Launch model (approved 2026-11-26): 7-day free trial, then Plus (see
+ * ../billing). Everything is a switch here so a scope change is one line.
  *
  * To flip a flag for launch, change FEATURE_DEFAULTS. FEATURE_<NAME> env
  * vars override it on the server only (bundlers don't inline dynamic keys).
  */
-/**
- * Last day of free early access (YYYY-MM-DD). Shown on the landing page,
- * help and terms. Pending Felipe's decision: change the date here only.
- */
-export const EARLY_ACCESS_END = '2027-01-31';
-
 export const FEATURE_DEFAULTS = {
   investments: false, // screen crashed before; hidden unless decided otherwise
   goals: true,

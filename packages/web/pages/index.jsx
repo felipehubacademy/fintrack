@@ -10,20 +10,20 @@ import {
   Languages,
   Sparkles,
 } from 'lucide-react';
-import { zulChatLink, EARLY_ACCESS_END } from '@fintrack/shared/config';
+import { zulChatLink } from '@fintrack/shared/config';
+import { pricesFor } from '@fintrack/shared/billing';
 import LandingHeader from '../components/LandingHeader';
 import LandingFooter from '../components/LandingFooter';
 import WhatsAppIcon from '../components/WhatsAppIcon';
 import { useI18n } from '../contexts/I18nContext';
-
-// Free early access ends on this date (inclusive).
+import PlanPrices from '../components/billing/PlanPrices';
 
 const DIFFERENTIATORS = [
   { key: 'understands', icon: CheckCircle },
   { key: 'noBank', icon: ShieldCheck },
   { key: 'cards', icon: CreditCard },
   { key: 'couples', icon: Users },
-  { key: 'free', icon: LayoutDashboard },
+  { key: 'trial', icon: LayoutDashboard },
   { key: 'cancel', icon: LogOut },
   { key: 'languages', icon: Languages },
 ];
@@ -85,9 +85,47 @@ function WhatsAppCta({ label, className = '' }) {
   );
 }
 
+const PLAN_INCLUDES = ['include1', 'include2', 'include3', 'include4'];
+
+function PricingSection() {
+  const { t, currency } = useI18n();
+  const prices = pricesFor(currency);
+  return (
+    <section id="pricing" className="bg-surface py-16 sm:py-24">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
+          <h2 className="mb-3 text-3xl font-bold text-ink-900 sm:text-4xl">{t('web.landing.pricing.title')}</h2>
+          <p className="text-lg text-ink-500">{t('web.landing.pricing.subtitle')}</p>
+        </div>
+        <div className="mb-6 flex justify-center">
+          <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-1.5 text-sm font-semibold text-brand-500">
+            <Sparkles className="h-4 w-4" />
+            {t('web.billing.trialNoCard')}
+          </span>
+        </div>
+        <PlanPrices currency={prices.currency} />
+        <ul className="mx-auto mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
+          {PLAN_INCLUDES.map((key) => (
+            <li key={key} className="flex items-start gap-2 text-ink-900">
+              <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-positive" />
+              <span>{t(`web.landing.pricing.${key}`)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-10 text-center">
+          <WhatsAppCta label={t('web.landing.pricing.cta')} />
+          <p className="mt-4 text-sm text-ink-500">{t('web.billing.cancelAnytime')}</p>
+          <p className="mt-2 text-xs text-ink-500">{t('web.landing.pricing.note', { currency: prices.currency })}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
-  const { t, formatDate } = useI18n();
-  const earlyAccessDate = formatDate(EARLY_ACCESS_END, 'long');
+  const { t, formatMoney, currency } = useI18n();
+  const prices = pricesFor(currency);
+  const monthlyPrice = formatMoney(prices.monthly, { currency: prices.currency });
 
   return (
     <>
@@ -101,7 +139,7 @@ export default function LandingPage() {
             <div className="text-center lg:text-left">
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white/90">
                 <Sparkles className="h-4 w-4 text-[#FDB022]" />
-                <span>{t('web.landing.earlyAccessBadge', { date: earlyAccessDate })}</span>
+                <span>{t('web.landing.trialBadge')}</span>
               </div>
               <h1 className="mb-5 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
                 {t('web.landing.heroTitle')}
@@ -139,7 +177,7 @@ export default function LandingPage() {
                     <Icon className="h-5 w-5 text-brand-500" />
                   </div>
                   <h3 className="mb-1.5 text-lg font-semibold text-ink-900">{t(`web.landing.diff.${key}.title`)}</h3>
-                  <p className="text-ink-500">{t(`web.landing.diff.${key}.body`, { date: earlyAccessDate })}</p>
+                  <p className="text-ink-500">{t(`web.landing.diff.${key}.body`, { monthly: monthlyPrice })}</p>
                 </li>
               ))}
             </ul>
@@ -162,11 +200,13 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <PricingSection />
+
         {/* Final call to action */}
         <section className="bg-brand-500 py-16 sm:py-20">
           <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
             <h2 className="mb-3 text-3xl font-bold text-white sm:text-4xl">{t('web.landing.finalTitle')}</h2>
-            <p className="mb-8 text-lg text-white/85">{t('web.landing.finalBody', { date: earlyAccessDate })}</p>
+            <p className="mb-8 text-lg text-white/85">{t('web.landing.finalBody')}</p>
             <WhatsAppCta label={t('web.landing.ctaPrimary')} />
           </div>
         </section>
