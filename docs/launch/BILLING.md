@@ -134,7 +134,7 @@ Autenticação: `Authorization: Bearer <CRON_SECRET>` ou `x-cron-secret: <CRON_S
 curl -s "https://<domínio do backend>/api/cron/trial-funnel?dry_run=1" -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-Agendamento pelo GitHub Actions (todo dia às 15h UTC: 12h em Brasília, 9h na Cidade do México, 10h em Bogotá e Nova York). Crie o arquivo `.github/workflows/trial-funnel.yml` com o conteúdo abaixo e cadastre os secrets `BACKEND_URL` (ex.: `https://<domínio do backend>`, sem barra no fim) e `CRON_SECRET` (o mesmo valor da Vercel do backend):
+Agendamento pelo GitHub Actions (todo dia às 15h UTC: 12h em Brasília, 9h na Cidade do México, 10h em Bogotá e Nova York). O arquivo `.github/workflows/trial-funnel.yml` já está no repositório (ativa depois do merge na `main`). Cadastre os secrets `BACKEND_URL` (ex.: `https://<domínio do backend>`, sem barra no fim) e `CRON_SECRET` (o mesmo valor da Vercel do backend):
 
 ```yaml
 name: Trial funnel
