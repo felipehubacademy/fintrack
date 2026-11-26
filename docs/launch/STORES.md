@@ -352,7 +352,7 @@ A tela 1 mostra o WhatsApp: use uma imagem real da conversa com o Zul (sem núme
 - [ ] `eas build` iOS e Android → testar no celular (login por código, excluir conta numa conta de teste)
 - [ ] Screenshots e gráfico de destaque
 - [ ] App Privacy (Apple) e Data safety (Google) conforme as tabelas
-- [ ] `eas submit` iOS → enviar para revisão · Android → primeiro upload manual na faixa de produção e envio para revisão no mesmo dia do iOS
+- [ ] `eas submit` iOS → enviar para revisão · Android → promover o build do teste interno para produção (ou trocar `track` para `production` no `eas.json`) e enviar para revisão no mesmo dia do iOS
 
 ---
 

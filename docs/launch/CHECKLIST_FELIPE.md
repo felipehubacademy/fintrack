@@ -15,7 +15,7 @@ Ordem pensada pelo que demora mais. Detalhes de cada passo em `META_SETUP.md` (W
     npx eas-cli@latest login
     npx eas-cli@latest build -p android --profile production
     ```
-    Não precisa das chaves do RevenueCat para isso: sem elas o app abre normalmente, só sem a compra. Com o `.aab` pronto, ele sobe na faixa de teste interno (com o seu ok).
+    Não precisa das chaves do RevenueCat para isso: sem elas o app abre normalmente, só sem a compra. Depois, `npx eas-cli@latest submit -p android --latest` manda o `.aab` para o teste interno, como rascunho (o `eas.json` aponta para a faixa `internal`). Se o Google recusar por ser o primeiro envio do app, suba esse `.aab` à mão em Teste interno no Play Console.
 
 ## Antes do merge na main
 
@@ -30,7 +30,7 @@ Ordem pensada pelo que demora mais. Detalhes de cada passo em `META_SETUP.md` (W
 10. **EAS:** variáveis `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_ZUL_WHATSAPP`; chave da conta de serviço do Google Play (`eas credentials -p android`).
 11. **Conta de demonstração para a revisão:** número de teste `15550100199=123456` no Supabase Auth e um usuário com dados. (`STORES.md`, "Conta de demonstração")
 12. **App Store Connect e Play Console:** criar o app `com.meuazulao.app`, colar os textos em PT/ES/EN, privacidade e data safety, URL de exclusão de conta `https://www.meuazulao.com.br/delete-account`. (`STORES.md` §3 e §4)
-13. **Android:** o primeiro `.aab` sobe à mão na faixa de produção; depois o `eas submit` funciona.
+13. **Android:** para o lançamento, trocar `track` de `internal` para `production` em `eas.json` (`submit.production.android`), ou promover o build do teste interno para produção no Play Console.
 
 ## Se o WhatsApp não estiver aprovado até domingo
 
