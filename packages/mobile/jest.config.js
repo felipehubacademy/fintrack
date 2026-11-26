@@ -4,6 +4,8 @@ module.exports = {
   // Files from ../shared resolve deps (e.g. @babel/runtime) from the mobile install.
   modulePaths: ['<rootDir>/node_modules'],
   moduleNameMapper: {
+    // Subpaths whose file differs from the folder name (see shared package.json "exports").
+    '^@fintrack/shared/config$': '<rootDir>/../shared/src/config/features.js',
     '^@fintrack/shared/(.*)$': '<rootDir>/../shared/src/$1',
     '^@fintrack/shared$': '<rootDir>/../shared/src/index.js',
     // App imports phosphor icons by deep path (Metro falls back to file resolution);
