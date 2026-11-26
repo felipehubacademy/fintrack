@@ -24,8 +24,9 @@ import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { useAlert } from '../components/ui/AlertProvider';
 import { useToast } from '../components/ui/Toast';
 import { supabase } from '../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
-import { formatBrazilDate } from '../utils/date';
+import { useI18n } from '../contexts/I18nContext';
+import { categoryLabel } from '../utils/categoryLabel';
+import { ZulEmptyState } from '../components/financial/ZulEmptyState';
 
 // Funções de data do Brasil
 const getBrazilToday = () => {
@@ -58,6 +59,7 @@ const getCurrentMonth = () => {
 
 export default function BillsScreen() {
   const { colors } = useTheme();
+  const { t, formatMoney, formatDate } = useI18n();
   const { organization, user, loading: orgLoading, budgetCategories, costCenters } = useOrganization();
   const { confirm } = useConfirmation();
   const { alert } = useAlert();
@@ -198,7 +200,7 @@ export default function BillsScreen() {
       }
 
       setBills(updatedBills);
-    } catch (error) {showToast('Erro ao carregar contas', 'error');
+    } catch (error) {showToast(t('bills.loadError'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -282,7 +284,7 @@ export default function BillsScreen() {
           .eq('id', selectedBill.id);
 
         if (error) throw error;
-        showToast('Conta atualizada com sucesso!', 'success');
+        showToast(t('bills.updated'), 'success');
       } else {
         const { error } = await supabase
           .from('bills')
@@ -294,21 +296,21 @@ export default function BillsScreen() {
           }]);
 
         if (error) throw error;
-        showToast('Conta criada com sucesso!', 'success');
+        showToast(t('bills.created'), 'success');
       }
 
       await fetchBills();
       setShowBillModal(false);
       setSelectedBill(null);
-    } catch (error) {showToast('Erro ao salvar conta: ' + (error.message || 'Erro desconhecido'), 'error');
+    } catch (error) {showToast(t('bills.saveError'), 'error');
     }
   };
 
   const handleMarkAsPaid = (bill) => {
     if (!bill.payment_method) {
       alert({
-        title: 'Atenção',
-        message: 'Por favor, edite a conta e defina um método de pagamento antes de marcar como paga.',
+        title: t('bills.attention'),
+        message: t('bills.needsPaymentMethod'),
         type: 'warning',
       });
       return;
@@ -316,8 +318,8 @@ export default function BillsScreen() {
 
     if (bill.status === 'paid') {
       alert({
-        title: 'Atenção',
-        message: 'Esta conta já está marcada como paga.',
+        title: t('bills.attention'),
+        message: t('bills.alreadyPaid'),
         type: 'info',
       });
       return;
@@ -339,7 +341,7 @@ export default function BillsScreen() {
         const costCenter = costCenters?.find(cc => cc.id === costCenterId);
         ownerName = costCenter?.name || null;
       } else if (isShared) {
-        ownerName = organization?.name || 'Família';
+        ownerName = organization?.name || t('bills.family');
       }
       
       let categoryName = null;
@@ -416,8 +418,8 @@ export default function BillsScreen() {
       }
 
       await fetchBills();
-      showToast('Conta marcada como paga com sucesso! A despesa foi criada automaticamente.', 'success');
-    } catch (error) {showToast('Erro ao processar pagamento: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('bills.markedPaid'), 'success');
+    } catch (error) {showToast(t('bills.payError'), 'error');
     } finally {
       setShowMarkAsPaidModal(false);
       setBillToMarkAsPaid(null);
@@ -463,9 +465,10 @@ export default function BillsScreen() {
 
   const handleDeleteBill = async (bill) => {
     const confirmed = await confirm({
-      title: 'Excluir conta',
-      message: `Tem certeza que deseja excluir "${bill.description}"?`,
+      title: t('bills.deleteTitle'),
+      message: t('bills.deleteMessage', { name: bill.description }),
       type: 'danger',
+      confirmText: t('common.delete'),
     });
 
     if (!confirmed) return;
@@ -501,8 +504,8 @@ export default function BillsScreen() {
       if (error) throw error;
 
       await fetchBills();
-      showToast('Conta excluída com sucesso!', 'success');
-    } catch (error) {showToast('Erro ao excluir conta: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('bills.deleted'), 'success');
+    } catch (error) {showToast(t('bills.deleteError'), 'error');
     }
   };
 
@@ -528,17 +531,17 @@ export default function BillsScreen() {
     const diffDays = getDaysUntilDue(bill.due_date);
 
     if (bill.status === 'paid') {
-      return { label: 'Pago', color: colors.success.main, icon: CheckCircle };
+      return { label: t('bills.status.paid'), color: colors.success.main, icon: CheckCircle };
     } else if (bill.status === 'overdue') {
-      return { label: 'Vencida', color: colors.error.main, icon: AlertCircle };
+      return { label: t('bills.status.overdue'), color: colors.error.main, icon: AlertCircle };
     } else if (diffDays < 0) {
-      return { label: 'Vencida', color: colors.error.main, icon: AlertCircle };
+      return { label: t('bills.status.overdue'), color: colors.error.main, icon: AlertCircle };
     } else if (diffDays === 0) {
-      return { label: 'Vence hoje', color: colors.warning.main, icon: Clock };
+      return { label: t('bills.status.dueToday'), color: colors.warning.main, icon: Clock };
     } else if (diffDays <= 7) {
-      return { label: `Vence em ${diffDays}d`, color: colors.warning.main, icon: Clock };
+      return { label: t('bills.status.dueIn', { count: diffDays }), color: colors.warning.main, icon: Clock };
     } else {
-      return { label: `${diffDays} dias`, color: colors.text.secondary, icon: Calendar };
+      return { label: t('bills.status.days', { count: diffDays }), color: colors.text.secondary, icon: Calendar };
     }
   };
 
@@ -550,17 +553,22 @@ export default function BillsScreen() {
     .reduce((sum, b) => sum + Number(b.amount || 0), 0);
 
   if (orgLoading || loading) {
-    return <LoadingLogo fullScreen message="Carregando contas..." />;
+    return <LoadingLogo fullScreen message={t('common.loading')} />;
   }
 
   return (
     <View style={styles.container}>
       <ScreenHeader
         user={user}
-        title="Contas a Pagar"
+        title={t('bills.title')}
         showLogo={true}
         rightIcon={
-          <TouchableOpacity onPress={handleAddBill} style={{ padding: spacing[1] }}>
+          <TouchableOpacity
+            onPress={handleAddBill}
+            style={{ padding: spacing[1] }}
+            accessibilityRole="button"
+            accessibilityLabel={t('bills.add')}
+          >
             <Plus size={24} color={colors.text.secondary} />
           </TouchableOpacity>
         }
@@ -590,22 +598,22 @@ export default function BillsScreen() {
             contentContainerStyle={styles.statsScroll}
           >
             <StatCard
-              label="Pendentes"
+              label={t('bills.filters.pending')}
               value={pendingCount.toString()}
               icon={<Clock size={20} color={colors.text.secondary} />}
               variant="default"
               style={{ width: 140, marginRight: spacing[2] }}
             />
             <StatCard
-              label="Vencidas"
+              label={t('bills.filters.overdue')}
               value={overdueCount.toString()}
               icon={<AlertCircle size={20} color={colors.error.main} />}
               variant="expense"
               style={{ width: 140, marginRight: spacing[2] }}
             />
             <StatCard
-              label="Total Pendente"
-              value={formatCurrency(totalPending)}
+              label={t('bills.totalPending')}
+              value={formatMoney(totalPending)}
               icon={<Calendar size={20} color={colors.text.secondary} />}
               variant="default"
               style={{ width: 180 }}
@@ -619,19 +627,21 @@ export default function BillsScreen() {
             style={styles.filtersHeader}
             onPress={() => setShowFilters(!showFilters)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showFilters }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
               <Filter size={20} color={colors.text.secondary} />
-              <Subheadline weight="semiBold">Filtros</Subheadline>
+              <Subheadline weight="semiBold">{t('bills.filters.title')}</Subheadline>
             </View>
-            <Callout color="secondary">{showFilters ? 'Recolher' : 'Expandir'}</Callout>
+            <Callout color="secondary">{showFilters ? t('bills.filters.collapse') : t('bills.filters.expand')}</Callout>
           </TouchableOpacity>
 
           {showFilters && (
             <View style={styles.filtersContent}>
               {/* Status Filter */}
               <View style={styles.filterRow}>
-                <Caption weight="medium" style={{ marginBottom: spacing[1] }}>Status</Caption>
+                <Caption weight="medium" style={{ marginBottom: spacing[1] }}>{t('bills.filters.status')}</Caption>
                 <View style={styles.filterButtons}>
                   {['all', 'pending', 'overdue', 'paid'].map(status => (
                     <TouchableOpacity
@@ -646,7 +656,7 @@ export default function BillsScreen() {
                         weight={filter === status ? 'semiBold' : 'regular'}
                         style={{ color: filter === status ? colors.brand.primary : colors.text.secondary }}
                       >
-                        {status === 'all' ? 'Todas' : status === 'pending' ? 'Pendentes' : status === 'overdue' ? 'Vencidas' : 'Pagas'}
+                        {t(`bills.filters.${status}`)}
                       </Caption>
                     </TouchableOpacity>
                   ))}
@@ -655,18 +665,19 @@ export default function BillsScreen() {
 
               {/* Search */}
               <View style={styles.filterRow}>
-                <Caption weight="medium" style={{ marginBottom: spacing[1] }}>Buscar</Caption>
+                <Caption weight="medium" style={{ marginBottom: spacing[1] }}>{t('bills.filters.search')}</Caption>
                 <View style={styles.searchContainer}>
                   <Search size={18} color={colors.text.tertiary} />
                   <TextInput
                     style={styles.searchInput}
-                    placeholder="Descrição..."
+                    placeholder={t('bills.filters.searchPlaceholder')}
+                    accessibilityLabel={t('bills.filters.search')}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     placeholderTextColor={colors.text.tertiary}
                   />
                   {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <TouchableOpacity onPress={() => setSearchQuery('')} accessibilityRole="button" accessibilityLabel={t('bills.filters.clearSearch')}>
                       <XIcon size={18} color={colors.text.tertiary} />
                     </TouchableOpacity>
                   )}
@@ -692,16 +703,16 @@ export default function BillsScreen() {
                   <View style={styles.billHeader}>
                     <View style={{ flex: 1 }}>
                       <Callout weight="semiBold" numberOfLines={1}>
-                        {bill.description || 'Sem descrição'}
+                        {bill.description || t('finances.invoices.noDescription')}
                       </Callout>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[1], marginTop: spacing[0.5] }}>
                         <Footnote color="secondary">
-                          {formatBrazilDate(bill.due_date)}
+                          {formatDate(bill.due_date, 'dayMonth')}
                         </Footnote>
                         {bill.category && (
                           <>
                             <Footnote color="tertiary">•</Footnote>
-                            <Footnote color="secondary">{bill.category.name}</Footnote>
+                            <Footnote color="secondary">{categoryLabel(bill.category.name)}</Footnote>
                           </>
                         )}
                         {bill.cost_center && (
@@ -713,7 +724,7 @@ export default function BillsScreen() {
                       </View>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                      <Callout weight="bold">{formatCurrency(bill.amount)}</Callout>
+                      <Callout weight="bold">{formatMoney(bill.amount)}</Callout>
                       <View style={[styles.statusBadge, { backgroundColor: `${status.color}15` }]}>
                         <StatusIcon size={12} color={status.color} />
                         <Footnote style={{ color: status.color, marginLeft: spacing[0.5] }}>
@@ -725,7 +736,7 @@ export default function BillsScreen() {
 
                   {bill.is_recurring && (
                     <View style={styles.recurringBadge}>
-                      <Footnote color="secondary">🔄 Recorrente ({bill.recurrence_frequency === 'monthly' ? 'Mensal' : bill.recurrence_frequency === 'weekly' ? 'Semanal' : 'Anual'})</Footnote>
+                      <Footnote color="secondary">{t('bills.recurringBadge', { frequency: t(`bills.frequency.${['monthly', 'weekly', 'yearly'].includes(bill.recurrence_frequency) ? bill.recurrence_frequency : 'monthly'}`) })}</Footnote>
                     </View>
                   )}
 
@@ -738,7 +749,7 @@ export default function BillsScreen() {
                       >
                         <CheckCircle size={16} color={colors.success.main} />
                         <Caption style={{ color: colors.success.main, marginLeft: spacing[0.5] }}>
-                          Marcar como Paga
+                          {t('bills.markPaid')}
                         </Caption>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -747,7 +758,7 @@ export default function BillsScreen() {
                       >
                         <XIcon size={16} color={colors.error.main} />
                         <Caption style={{ color: colors.error.main, marginLeft: spacing[0.5] }}>
-                          Excluir
+                          {t('common.delete')}
                         </Caption>
                       </TouchableOpacity>
                     </View>
@@ -757,13 +768,19 @@ export default function BillsScreen() {
             );
           })
         ) : (
-          <EmptyState
-            icon={<ClipboardList size={48} color="#AEAEB2" />}
-            title="Nenhuma conta encontrada"
-            description={searchQuery || filter !== 'all' || filterCategory || filterOwner
-              ? "Tente ajustar os filtros para encontrar contas."
-              : "Você não tem contas a pagar no momento."}
-          />
+          searchQuery || filter !== 'all' || filterCategory || filterOwner ? (
+            <EmptyState
+              icon={<ClipboardList size={48} color="#AEAEB2" />}
+              title={t('bills.emptyFilteredTitle')}
+              description={t('bills.emptyFilteredMessage')}
+            />
+          ) : (
+            <ZulEmptyState
+              icon={<ClipboardList size={40} color="#AEAEB2" />}
+              message={t('bills.emptyMessage')}
+              example={t('bills.emptyExample')}
+            />
+          )
         )}
 
         {/* Spacing */}

@@ -16,37 +16,24 @@ import { colors, spacing, radius } from '../../theme';
 import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { useI18n } from '../../contexts/I18nContext';
+import { categoryLabel } from '../../utils/categoryLabel';
+import {
+  amountDecimalSeparator,
+  sanitizeAmountInput,
+  formatAmountInput,
+  parseAmountInput,
+} from '../financial/amountInput';
 
 // Usar ScrollView nativo no Android para melhor detecção de scroll
 const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
 
 const { height } = Dimensions.get('window');
 
-const PAYMENT_METHODS = [
-  { id: 'pix', label: 'PIX' },
-  { id: 'credit_card', label: 'Cartão de Crédito' },
-  { id: 'debit_card', label: 'Cartão de Débito' },
-  { id: 'boleto', label: 'Boleto' },
-  { id: 'bank_transfer', label: 'Transferência' },
-  { id: 'cash', label: 'Dinheiro' },
-  { id: 'other', label: 'Outro' },
-];
-
-const RECURRENCE_OPTIONS = [
-  { id: 'monthly', label: 'Mensal' },
-  { id: 'weekly', label: 'Semanal' },
-  { id: 'yearly', label: 'Anual' },
-];
-
 const VALID_PAYMENT_METHODS = ['pix', 'credit_card', 'debit_card', 'boleto', 'bank_transfer', 'cash', 'other'];
+const RECURRENCE_IDS = ['monthly', 'weekly', 'yearly'];
 
-// Parse currency input (handles comma and dot)
-const parseCurrencyInput = (formattedValue) => {
-  if (!formattedValue) return 0;
-  const cleaned = formattedValue.replace(/\./g, '').replace(',', '.');
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
-};
+const parseCurrencyInput = (value) => parseAmountInput(value);
 
 // Componente SelectField (igual ao TransactionModal)
 const SelectField = ({ label, value, placeholder, onPress, disabled }) => (
@@ -62,6 +49,9 @@ const SelectField = ({ label, value, placeholder, onPress, disabled }) => (
       ]}
       onPress={disabled ? undefined : onPress}
       activeOpacity={disabled ? 1 : 0.7}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
     >
       <Callout
         numberOfLines={1}
@@ -82,6 +72,7 @@ const OptionSheet = ({
   onSelect,
   onClose,
 }) => {
+  const { t } = useI18n();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={onClose}>
@@ -97,7 +88,7 @@ const OptionSheet = ({
           >
             {options.length === 0 ? (
               <Caption color="secondary" style={{ textAlign: 'center', marginBottom: spacing[2] }}>
-                Nenhuma opção disponível
+                {t('bills.form.noOptions')}
               </Caption>
             ) : (
               options.map((option) => {
@@ -114,6 +105,8 @@ const OptionSheet = ({
                       onSelect(option);
                       onClose?.();
                     }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                   >
                     <View style={{ flex: 1 }}>
                       <Callout weight="medium">{option.label}</Callout>
@@ -149,6 +142,10 @@ export function BillModal({
   organization = null,
 }) {
   const insets = useSafeAreaInsets();
+  const { t, currencySymbol } = useI18n();
+  const PAYMENT_METHODS = VALID_PAYMENT_METHODS.map((id) => ({ id, label: t(`bills.paymentMethods.${id}`) }));
+  const RECURRENCE_OPTIONS = RECURRENCE_IDS.map((id) => ({ id, label: t(`bills.frequency.${id}`) }));
+  const sharedLabel = t('bills.form.shared', { name: organization?.name || t('bills.family') });
   // Safe area apenas no Android
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
   
@@ -173,7 +170,7 @@ export function BillModal({
     if (bill) {
       setFormData({
         description: bill.description || '',
-        amount: bill.amount?.toString() || '',
+        amount: bill.amount ? formatAmountInput(bill.amount) : '',
         due_date: bill.due_date || new Date().toISOString().split('T')[0],
         category_id: bill.category_id || '',
         cost_center_id: bill.cost_center_id || '',
@@ -206,16 +203,16 @@ export function BillModal({
     const newErrors = {};
 
     if (!formData.description.trim()) {
-      newErrors.description = 'Descrição é obrigatória';
+      newErrors.description = t('finances.form.descriptionRequired');
     }
 
     const amountValue = parseCurrencyInput(formData.amount);
     if (!formData.amount || amountValue <= 0) {
-      newErrors.amount = 'Valor deve ser maior que zero';
+      newErrors.amount = t('finances.form.amountPositive');
     }
 
     if (!formData.due_date) {
-      newErrors.due_date = 'Data de vencimento é obrigatória';
+      newErrors.due_date = t('bills.form.dueDateRequired');
     }
 
     setErrors(newErrors);
@@ -279,9 +276,9 @@ export function BillModal({
           {/* Header */}
           <View style={styles.header}>
             <Title2 weight="semiBold">
-              {bill ? 'Editar' : 'Nova'} Conta a Pagar
+              {bill ? t('bills.form.editTitle') : t('bills.form.newTitle')}
             </Title2>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -299,11 +296,12 @@ export function BillModal({
             <View style={styles.form}>
               {/* Description */}
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Descrição *</Caption>
+                <Caption color="secondary" weight="medium">{t('finances.form.description')}</Caption>
                 <Input
                   value={formData.description}
                   onChangeText={(text) => setFormData({ ...formData, description: text })}
-                  placeholder="Ex: Conta de Luz"
+                  placeholder={t('bills.form.descriptionPlaceholder')}
+                  accessibilityLabel={t('finances.form.description')}
                   icon={<Tag size={20} color={colors.text.secondary} />}
                 />
                 {errors.description && (
@@ -315,17 +313,16 @@ export function BillModal({
 
               {/* Amount */}
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Valor *</Caption>
+                <Caption color="secondary" weight="medium">{t('finances.form.amount')}</Caption>
                 <Input
                   value={formData.amount}
                   onChangeText={(text) => {
-                    // Permitir apenas números e vírgula/ponto
-                    const cleaned = text.replace(/[^0-9,.]/g, '');
-                    setFormData({ ...formData, amount: cleaned });
+                    setFormData({ ...formData, amount: sanitizeAmountInput(text) });
                   }}
-                  placeholder="0,00"
+                  placeholder={`0${amountDecimalSeparator()}00`}
                   keyboardType="decimal-pad"
-                  icon={<Text style={styles.currencyIcon}>R$</Text>}
+                  accessibilityLabel={t('finances.form.amount')}
+                  icon={<Text style={styles.currencyIcon}>{currencySymbol()}</Text>}
                 />
                 {errors.amount && (
                   <Caption style={{ color: colors.error.main, marginTop: spacing[0.5] }}>
@@ -336,11 +333,12 @@ export function BillModal({
 
               {/* Due Date */}
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Vencimento *</Caption>
+                <Caption color="secondary" weight="medium">{t('bills.form.dueDate')}</Caption>
                 <Input
                   value={formData.due_date}
                   onChangeText={(text) => setFormData({ ...formData, due_date: text })}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t('finances.form.datePlaceholder')}
+                  accessibilityLabel={t('bills.form.dueDate')}
                   icon={<CalendarIcon size={20} color={colors.text.secondary} />}
                 />
                 {errors.due_date && (
@@ -353,9 +351,9 @@ export function BillModal({
               {/* Category */}
               {categories.length > 0 && (
                 <SelectField
-                  label="Categoria"
-                  value={categories.find(c => c.id === formData.category_id)?.name || ''}
-                  placeholder="Selecionar categoria"
+                  label={t('bills.form.category')}
+                  value={categoryLabel(categories.find(c => c.id === formData.category_id)?.name || '')}
+                  placeholder={t('finances.form.chooseCategory')}
                   disabled={categories.length === 0}
                   onPress={() => categories.length > 0 && setActiveSheet('category')}
                 />
@@ -364,12 +362,12 @@ export function BillModal({
               {/* Responsible (only if not solo) */}
               {!isSoloUser && costCenters.length > 0 && (
                 <SelectField
-                  label="Responsável"
-                  value={formData.cost_center_id 
+                  label={t('bills.markPaidModal.owner')}
+                  value={formData.cost_center_id
                     ? costCenters.find(cc => cc.id === formData.cost_center_id)?.name || ''
-                    : `Compartilhado (${organization?.name || 'Família'})`
+                    : sharedLabel
                   }
-                  placeholder="Selecionar responsável"
+                  placeholder={t('bills.markPaidModal.ownerPlaceholder')}
                   disabled={costCenters.length === 0}
                   onPress={() => costCenters.length > 0 && setActiveSheet('cost_center')}
                 />
@@ -377,18 +375,18 @@ export function BillModal({
 
               {/* Payment Method */}
               <SelectField
-                label="Forma de Pagamento"
+                label={t('bills.form.paymentMethod')}
                 value={PAYMENT_METHODS.find(pm => pm.id === formData.payment_method)?.label || ''}
-                placeholder="Selecionar forma de pagamento"
+                placeholder={t('bills.form.paymentMethodPlaceholder')}
                 onPress={() => setActiveSheet('payment_method')}
               />
 
               {/* Card (if credit card) */}
               {formData.payment_method === 'credit_card' && cards.length > 0 && (
                 <SelectField
-                  label="Cartão"
+                  label={t('bills.form.card')}
                   value={cards.find(c => c.id === formData.card_id)?.name || ''}
-                  placeholder="Selecionar cartão"
+                  placeholder={t('bills.form.cardPlaceholder')}
                   disabled={cards.length === 0}
                   onPress={() => cards.length > 0 && setActiveSheet('card')}
                 />
@@ -398,10 +396,11 @@ export function BillModal({
               <View style={styles.field}>
                 <View style={styles.switchRow}>
                   <View style={{ flex: 1 }}>
-                    <Callout weight="medium">Conta Recorrente</Callout>
-                    <Caption color="secondary">Repetir todos os meses</Caption>
+                    <Callout weight="medium">{t('bills.form.recurring')}</Callout>
+                    <Caption color="secondary">{t('bills.form.recurringHint')}</Caption>
                   </View>
                   <Switch
+                    accessibilityLabel={t('bills.form.recurring')}
                     value={formData.is_recurring}
                     onValueChange={(value) => setFormData({ ...formData, is_recurring: value })}
                     trackColor={{ false: colors.neutral[300], true: colors.brand.primary }}
@@ -413,20 +412,21 @@ export function BillModal({
               {/* Recurrence Frequency */}
               {formData.is_recurring && (
                 <SelectField
-                  label="Frequência"
+                  label={t('bills.form.frequency')}
                   value={RECURRENCE_OPTIONS.find(opt => opt.id === formData.recurrence_frequency)?.label || ''}
-                  placeholder="Selecionar frequência"
+                  placeholder={t('bills.form.frequencyPlaceholder')}
                   onPress={() => setActiveSheet('recurrence_frequency')}
                 />
               )}
 
               {/* Notes */}
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Observações</Caption>
+                <Caption color="secondary" weight="medium">{t('bills.form.notes')}</Caption>
                 <Input
                   value={formData.notes}
                   onChangeText={(text) => setFormData({ ...formData, notes: text })}
-                  placeholder="Observações adicionais..."
+                  placeholder={t('bills.form.notesPlaceholder')}
+                  accessibilityLabel={t('bills.form.notes')}
                   multiline
                   numberOfLines={3}
                   style={{ height: 80, textAlignVertical: 'top' }}
@@ -438,13 +438,13 @@ export function BillModal({
           {/* Footer */}
           <View style={[styles.footer, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, spacing[4]) : spacing[4] }]}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               style={{ flex: 1 }}
             />
             <Button
-              title={bill ? 'Salvar' : 'Adicionar'}
+              title={bill ? t('common.save') : t('bills.form.add')}
               variant="primary"
               onPress={handleSave}
               style={{ flex: 1 }}
@@ -456,8 +456,8 @@ export function BillModal({
       {/* Option Sheets */}
       <OptionSheet
         visible={activeSheet === 'category'}
-        title="Selecione a Categoria"
-        options={categories.map(cat => ({ id: cat.id, label: cat.name }))}
+        title={t('finances.form.chooseCategory')}
+        options={categories.map(cat => ({ id: cat.id, label: categoryLabel(cat.name) }))}
         selectedId={formData.category_id}
         onSelect={(option) => setFormData({ ...formData, category_id: option.id })}
         onClose={() => setActiveSheet(null)}
@@ -465,9 +465,9 @@ export function BillModal({
 
       <OptionSheet
         visible={activeSheet === 'cost_center'}
-        title="Selecione o Responsável"
+        title={t('bills.markPaidModal.ownerSheetTitle')}
         options={[
-          { id: '', label: `Compartilhado (${organization?.name || 'Família'})` },
+          { id: '', label: sharedLabel },
           ...costCenters.filter(cc => cc.is_active !== false && !cc.is_shared).map(cc => ({ id: cc.id, label: cc.name }))
         ]}
         selectedId={formData.cost_center_id}
@@ -477,7 +477,7 @@ export function BillModal({
 
       <OptionSheet
         visible={activeSheet === 'payment_method'}
-        title="Selecione a Forma de Pagamento"
+        title={t('bills.form.paymentMethodPlaceholder')}
         options={PAYMENT_METHODS}
         selectedId={formData.payment_method}
         onSelect={(option) => setFormData({ ...formData, payment_method: option.id, card_id: option.id !== 'credit_card' ? '' : formData.card_id })}
@@ -486,7 +486,7 @@ export function BillModal({
 
       <OptionSheet
         visible={activeSheet === 'card'}
-        title="Selecione o Cartão"
+        title={t('bills.form.cardPlaceholder')}
         options={cards.map(card => ({ id: card.id, label: card.name }))}
         selectedId={formData.card_id}
         onSelect={(option) => setFormData({ ...formData, card_id: option.id })}
@@ -495,7 +495,7 @@ export function BillModal({
 
       <OptionSheet
         visible={activeSheet === 'recurrence_frequency'}
-        title="Selecione a Frequência"
+        title={t('bills.form.frequencyPlaceholder')}
         options={RECURRENCE_OPTIONS}
         selectedId={formData.recurrence_frequency}
         onSelect={(option) => setFormData({ ...formData, recurrence_frequency: option.id })}
