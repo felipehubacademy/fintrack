@@ -36,28 +36,27 @@ import LoadingLogo from '../components/ui/LoadingLogo';
 import { TransactionModal } from '../components/financial/TransactionModal';
 import { FilterSheet } from '../components/financial/FilterSheet';
 import { DetailedStatsSheet } from '../components/financial/DetailedStatsSheet';
-import { CategoryIcon } from '../components/ui/CategoryIcon';
-import { formatCurrency } from '@fintrack/shared/utils';
-import { formatBrazilDayMonthShort } from '../utils/date';
+import { TransactionRow, transactionCategoryName, paymentLabel } from '../components/dashboard/TransactionRow';
+import { monthKeyLabel } from '../utils/date';
+import { categoryLabel } from '../utils/categoryLabel';
+import { useI18n } from '../contexts/I18nContext';
+import { isFeatureEnabled } from '@fintrack/shared/config';
+import { typography } from '../theme';
+import { useNavigation } from '@react-navigation/native';
 import { useToast } from '../components/ui/Toast';
 import { useAlert } from '../components/ui/AlertProvider';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { HapticFeedback } from '../utils/haptics';
 
-const PAYMENT_LABELS = {
-  credit_card: 'Crédito', debit_card: 'Débito', cash: 'Dinheiro',
-  pix: 'PIX', bank_transfer: 'Transferência', boleto: 'Boleto',
-};
-
-const MONTH_NAMES_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
 export default function TransactionsScreen() {
   const { colors: themeColors, isDark } = useTheme();
+  const { t, formatMoney, formatRelativeDay } = useI18n();
+  const navigation = useNavigation();
   const { organization, user, loading: orgLoading, costCenters } = useOrganization();
   const { showToast } = useToast();
   const { alert } = useAlert();
   const { confirm } = useConfirmation();
-  const organizationName = organization?.name || 'Organização';
+  const organizationName = organization?.name || '';
   const isSoloMember = organization?.type === 'solo';
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState([]);
@@ -146,9 +145,17 @@ export default function TransactionsScreen() {
     if (advancedFilters.category) filtered = filtered.filter(t => t.category_id === advancedFilters.category);
     if (advancedFilters.paymentMethod) filtered = filtered.filter(t => t.payment_method === advancedFilters.paymentMethod);
     if (advancedFilters.card) filtered = filtered.filter(t => t.card_id === advancedFilters.card);
-    if (searchQuery.trim()) { const q = searchQuery.toLowerCase(); filtered = filtered.filter(t => t.description?.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q)); }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(tx => {
+        const raw = transactionCategoryName(tx);
+        return tx.description?.toLowerCase().includes(q)
+          || raw?.toLowerCase().includes(q)
+          || (raw && categoryLabel(raw, t).toLowerCase().includes(q));
+      });
+    }
     setFilteredTransactions(filtered);
-  }, [transactions, searchQuery, filterType, advancedFilters, sortConfig]);
+  }, [transactions, searchQuery, filterType, advancedFilters, sortConfig, t]);
 
   const hasAdvancedFilters = useMemo(() => advancedFilters.type !== 'all' || !!advancedFilters.costCenter || !!advancedFilters.category || !!advancedFilters.paymentMethod || !!advancedFilters.card, [advancedFilters]);
   const usingFilteredTotals = searchQuery.trim().length > 0 || hasAdvancedFilters || filterType !== 'all';
@@ -159,16 +166,8 @@ export default function TransactionsScreen() {
   const loadTransactions = async () => { try { await refreshFinancials(); } finally { setRefreshing(false); } };
   const onRefresh = async () => { setRefreshing(true); await loadTransactions(); };
 
-  const formatDate = (dateString) => {
-    const [year, month, day] = dateString.split('T')[0].split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-    date.setHours(0, 0, 0, 0);
-    if (date.getTime() === today.getTime()) return 'Hoje';
-    if (date.getTime() === yesterday.getTime()) return 'Ontem';
-    return formatBrazilDayMonthShort(dateString.split('T')[0]);
-  };
+  // "Today" / "Yesterday" / "26 Nov" in the user's language
+  const dayLabel = (dateString) => formatRelativeDay(String(dateString).split('T')[0]);
 
   const groupByDate = (txs) => {
     const groups = {};
@@ -189,8 +188,8 @@ export default function TransactionsScreen() {
 
   const sectionsData = useMemo(() => {
     const paginated = filteredTransactions.slice(0, (page + 1) * PAGE_SIZE);
-    return groupByDate(paginated).map((g, i) => ({ title: formatDate(g.date), date: g.date, totalIncomes: g.totalIncomes, totalExpenses: g.totalExpenses, data: g.transactions, groupIndex: i }));
-  }, [filteredTransactions, page]);
+    return groupByDate(paginated).map((g, i) => ({ title: dayLabel(g.date), date: g.date, totalIncomes: g.totalIncomes, totalExpenses: g.totalExpenses, data: g.transactions, groupIndex: i }));
+  }, [filteredTransactions, page, formatRelativeDay]);
 
   const handleLoadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
@@ -207,10 +206,10 @@ export default function TransactionsScreen() {
       let month = m - i, year = y;
       while (month <= 0) { month += 12; year--; }
       const val = `${year}-${String(month).padStart(2, '0')}`;
-      pills.push({ label: MONTH_NAMES_SHORT[month - 1], value: val, active: val === selectedMonth });
+      pills.push({ label: monthKeyLabel(val), value: val, active: val === selectedMonth });
     }
     return pills;
-  }, [selectedMonth]);
+  }, [selectedMonth, t]);
 
   // Selection
   const toggleSelectionMode = () => { setSelectionMode(!selectionMode); setSelectedItems([]); };
@@ -220,7 +219,7 @@ export default function TransactionsScreen() {
   const handleBulkDelete = async () => {
     if (selectedItems.length === 0) return;
     HapticFeedback.warning();
-    const confirmed = await confirm({ title: 'Confirmar exclusão', message: `Excluir ${selectedItems.length} transação(ões)?`, type: 'danger' });
+    const confirmed = await confirm({ title: t('transactions.delete.bulkTitle', { count: selectedItems.length }), message: t('transactions.delete.message'), confirmText: t('common.delete'), type: 'danger' });
     if (!confirmed) return;
     try {
       const exp = [], inc = [];
@@ -228,9 +227,9 @@ export default function TransactionsScreen() {
       if (exp.length) { const { error } = await supabase.from('expenses').delete().in('id', exp); if (error) throw error; }
       if (inc.length) { const { error } = await supabase.from('incomes').delete().in('id', inc); if (error) throw error; }
       setSelectedItems([]); setSelectionMode(false);
-      showToast(`${selectedItems.length} transação(ões) excluída(s)`, 'success');
+      showToast(t('transactions.delete.bulkDone', { count: selectedItems.length }), 'success');
       await loadTransactions();
-    } catch { showToast('Erro ao excluir', 'error'); }
+    } catch { showToast(t('transactions.delete.error'), 'error'); }
   };
 
   const handleTransactionPress = (tx) => { selectionMode ? toggleItemSelection(tx) : (setDetailTransaction(tx), setDetailModalVisible(true)); };
@@ -238,14 +237,14 @@ export default function TransactionsScreen() {
   const handleDeleteTransaction = async (tx) => {
     if (!tx) return;
     HapticFeedback.warning();
-    const confirmed = await confirm({ title: 'Excluir transação?', message: 'Esta ação não pode ser desfeita.', type: 'danger' });
+    const confirmed = await confirm({ title: t('transactions.delete.title'), message: t('transactions.delete.message'), confirmText: t('common.delete'), type: 'danger' });
     if (!confirmed) return;
     try {
       const { error } = await supabase.from(tx.type === 'income' ? 'incomes' : 'expenses').delete().eq('id', tx.id);
       if (error) throw error;
       HapticFeedback.success(); setDetailModalVisible(false); setDetailTransaction(null);
-      await loadTransactions(); showToast('Transação excluída', 'success');
-    } catch { HapticFeedback.error(); showToast('Erro ao excluir', 'error'); }
+      await loadTransactions(); showToast(t('transactions.delete.done'), 'success');
+    } catch { HapticFeedback.error(); showToast(t('transactions.delete.error'), 'error'); }
   };
 
   const openEditModal = (tx) => {
@@ -255,19 +254,19 @@ export default function TransactionsScreen() {
   };
 
   const handleSaveTransaction = async (formValues) => {
-    if (!organization?.id || !user?.id) { showToast('Organização não encontrada', 'error'); return; }
-    if (formValues.type === 'income') { alert({ title: 'Fluxo indisponível', message: 'Entradas agora devem ser registradas pela tela de Contas Bancárias.', type: 'info' }); return; }
+    if (!organization?.id || !user?.id) { showToast(t('transactions.save.noOrganization'), 'error'); return; }
+    if (formValues.type === 'income') { alert({ title: t('transactions.save.incomeTitle'), message: t('transactions.save.incomeMessage'), type: 'info' }); return; }
     try {
       const amountValue = Number(formValues.amount) || 0;
-      if (!amountValue || amountValue <= 0) throw new Error('Valor inválido.');
+      if (!amountValue || amountValue <= 0) throw new Error(t('transactions.save.invalidAmount'));
       const willBeShared = Boolean(formValues.is_shared);
       const ownerName = formValues.owner_name || (willBeShared ? organizationName : null) || '';
-      if (!ownerName) throw new Error('Responsável inválido.');
+      if (!ownerName) throw new Error(t('transactions.save.invalidOwner'));
       const basePayload = { organization_id: organization.id, user_id: user.id, description: formValues.description.trim(), amount: amountValue, date: formValues.date, category_id: formValues.category_id || null, payment_method: formValues.payment_method, card_id: formValues.payment_method === 'credit_card' ? formValues.card_id : null, owner: ownerName.trim(), is_shared: willBeShared, cost_center_id: willBeShared ? null : formValues.cost_center_id || null, status: 'confirmed', confirmed_at: new Date().toISOString(), confirmed_by: user.id };
       if (formValues.payment_method === 'credit_card') await saveCreditExpense(basePayload, formValues, amountValue);
       else await saveSimpleExpense(basePayload, formValues, amountValue);
       await loadTransactions();
-    } catch { showToast('Não foi possível salvar', 'error'); }
+    } catch (err) { showToast(err?.message || t('transactions.save.error'), 'error'); }
   };
 
   const fetchExpenseGroupIds = async (expOrId) => {
@@ -330,46 +329,28 @@ export default function TransactionsScreen() {
   // --- RENDER ---
 
   if (orgLoading || financialsLoading) {
-    return <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}><LoadingLogo fullScreen message="Carregando..." /></View>;
+    return <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}><LoadingLogo fullScreen message={t('transactions.loading')} /></View>;
   }
   if (financialsError) {
-    return <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}><EmptyState icon={<AlertCircle size={48} color="#FF3B30" />} title="Erro ao carregar" description="Tente novamente." actionLabel="Recarregar" onAction={loadTransactions} /></View>;
+    return <View style={[styles.container, { backgroundColor: themeColors.background.primary }]}><EmptyState icon={<AlertCircle size={48} color={themeColors.error.main} />} title={t('transactions.loadError.title')} description={t('transactions.loadError.body')} actionLabel={t('transactions.loadError.reload')} onAction={loadTransactions} /></View>;
   }
 
-  const renderTransaction = ({ item: tx, index, section }) => {
-    const isLast = index === section.data.length - 1;
-    const isExpense = tx.type === 'expense';
-    const catName = tx.category_name || tx.category || 'Outros';
-    return (
-      <TouchableOpacity
-        style={[styles.txItem, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.border?.light || '#E5E5EA' }, selectionMode && isItemSelected(tx) && { backgroundColor: themeColors.brand?.bg || '#E8F0FF' }]}
-        activeOpacity={0.7} onPress={() => handleTransactionPress(tx)}
-      >
-        {selectionMode && (
-          <View style={{ marginRight: 8 }}>
-            {isItemSelected(tx) ? <CheckSquare size={22} color={themeColors.brand.primary} /> : <Square size={22} color={themeColors.text.tertiary} />}
-          </View>
-        )}
-        <CategoryIcon category={catName} size={36} iconSize={18} />
-        <View style={styles.txInfo}>
-          <Text style={styles.txDesc} numberOfLines={1}>{tx.description || 'Sem descrição'}</Text>
-          <Text style={[styles.txMeta, { color: themeColors.text.tertiary }]}>
-            {catName}{tx.payment_method ? ` · ${PAYMENT_LABELS[tx.payment_method] || tx.payment_method}` : ''}
-          </Text>
-        </View>
-        <Text style={[styles.txAmount, { color: isExpense ? themeColors.text.primary : '#22C55E' }]}>
-          {isExpense ? '-' : '+'}{formatCurrency(tx.amount || 0)}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
+  const renderTransaction = ({ item: tx, index, section }) => (
+    <TransactionRow
+      tx={tx}
+      isLast={index === section.data.length - 1}
+      onPress={() => handleTransactionPress(tx)}
+      selectionMode={selectionMode}
+      selected={selectionMode && isItemSelected(tx)}
+    />
+  );
 
   const renderSectionHeader = ({ section }) => (
     <View style={styles.dayHeader}>
       <Text style={[styles.dayLabel, { color: themeColors.text.secondary }]}>{section.title}</Text>
       <View style={styles.daySummary}>
-        {section.totalIncomes > 0 && <Text style={[styles.dayAmount, { color: '#22C55E' }]}>+{formatCurrency(section.totalIncomes)}</Text>}
-        {section.totalExpenses > 0 && <Text style={[styles.dayAmount, { color: themeColors.text.tertiary }]}>-{formatCurrency(section.totalExpenses)}</Text>}
+        {section.totalIncomes > 0 && <Text style={[styles.dayAmount, typography.tabularNums, { color: themeColors.success.main }]}>+{formatMoney(section.totalIncomes)}</Text>}
+        {section.totalExpenses > 0 && <Text style={[styles.dayAmount, typography.tabularNums, { color: themeColors.text.secondary }]}>-{formatMoney(section.totalExpenses)}</Text>}
       </View>
     </View>
   );
@@ -378,23 +359,24 @@ export default function TransactionsScreen() {
     <View>
       {/* Title */}
       <View style={styles.titleRow}>
-        <Text style={styles.pageTitle}>Transações</Text>
+        <Text style={styles.pageTitle} accessibilityRole="header">{t('transactions.title')}</Text>
         <View style={styles.titleActions}>
-          <TouchableOpacity onPress={toggleSelectionMode} style={styles.iconBtn}>
+          <TouchableOpacity onPress={toggleSelectionMode} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel={selectionMode ? t('transactions.cancelSelect') : t('transactions.selectMode')}>
             {selectionMode ? <X size={20} color={themeColors.brand.primary} /> : <CheckSquare size={20} color={themeColors.text.secondary} />}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setFilterSheetVisible(true)} style={styles.iconBtn}>
+          <TouchableOpacity onPress={() => setFilterSheetVisible(true)} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel={t('transactions.filters')}>
             <SlidersHorizontal size={20} color={hasAdvancedFilters ? themeColors.brand.primary : themeColors.text.secondary} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Search */}
-      <View style={[styles.searchBar, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7', borderColor: isDark ? '#38383A' : '#E5E5EA' }]}>
+      <View style={[styles.searchBar, { backgroundColor: themeColors.background.secondary, borderColor: themeColors.border.light }]}>
         <Search size={16} color={themeColors.text.tertiary} />
         <TextInput
           style={[styles.searchInput, { color: themeColors.text.primary }]}
-          placeholder="Buscar transação..."
+          placeholder={t('transactions.searchPlaceholder')}
+          accessibilityLabel={t('transactions.searchPlaceholder')}
           placeholderTextColor={themeColors.text.tertiary}
           value={searchText}
           onChangeText={setSearchText}
@@ -402,7 +384,7 @@ export default function TransactionsScreen() {
           returnKeyType="search"
         />
         {searchText.length > 0 && (
-          <TouchableOpacity onPress={handleClearSearch}><X size={16} color={themeColors.text.tertiary} /></TouchableOpacity>
+          <TouchableOpacity onPress={handleClearSearch} accessibilityRole="button" accessibilityLabel={t('transactions.clearSearch')}><X size={16} color={themeColors.text.tertiary} /></TouchableOpacity>
         )}
       </View>
 
@@ -411,8 +393,10 @@ export default function TransactionsScreen() {
         {monthPills.map(p => (
           <TouchableOpacity
             key={p.value}
-            style={[styles.monthPill, p.active && { backgroundColor: themeColors.brand.primary, borderColor: themeColors.brand.primary }]}
+            style={[styles.monthPill, { borderColor: themeColors.border.light }, p.active && { backgroundColor: themeColors.brand.primary, borderColor: themeColors.brand.primary }]}
             onPress={() => setSelectedMonth(p.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: p.active }}
           >
             <Text style={[styles.monthPillText, p.active && { color: '#FFFFFF' }, !p.active && { color: themeColors.text.secondary }]}>{p.label}</Text>
           </TouchableOpacity>
@@ -420,30 +404,32 @@ export default function TransactionsScreen() {
       </ScrollView>
 
       {/* Summary bar */}
-      <View style={styles.summaryBar}>
+      <View style={[styles.summaryBar, { backgroundColor: themeColors.brand.bg }]}>
         <View style={styles.summaryItem}>
-          <Text style={[styles.summaryLabel, { color: themeColors.text.tertiary }]}>Entradas</Text>
-          <Text style={[styles.summaryValue, { color: '#22C55E' }]}>{formatCurrency(statsIncome)}</Text>
+          <Text style={[styles.summaryLabel, { color: themeColors.text.secondary }]}>{t('transactions.in')}</Text>
+          <Text style={[styles.summaryValue, typography.tabularNums, { color: themeColors.success.main }]}>{formatMoney(statsIncome)}</Text>
         </View>
-        <View style={[styles.summaryDivider, { backgroundColor: themeColors.border?.light || '#E5E5EA' }]} />
+        <View style={[styles.summaryDivider, { backgroundColor: themeColors.border.light }]} />
         <View style={styles.summaryItem}>
-          <Text style={[styles.summaryLabel, { color: themeColors.text.tertiary }]}>Saídas</Text>
-          <Text style={[styles.summaryValue, { color: themeColors.text.primary }]}>{formatCurrency(statsExpense)}</Text>
+          <Text style={[styles.summaryLabel, { color: themeColors.text.secondary }]}>{t('transactions.out')}</Text>
+          <Text style={[styles.summaryValue, typography.tabularNums, { color: themeColors.text.primary }]}>{formatMoney(statsExpense)}</Text>
         </View>
-        <View style={[styles.summaryDivider, { backgroundColor: themeColors.border?.light || '#E5E5EA' }]} />
+        <View style={[styles.summaryDivider, { backgroundColor: themeColors.border.light }]} />
         <View style={styles.summaryItem}>
-          <Text style={[styles.summaryLabel, { color: themeColors.text.tertiary }]}>Saldo</Text>
-          <Text style={[styles.summaryValue, { color: statsIncome - statsExpense >= 0 ? '#22C55E' : '#FF3B30' }]}>{formatCurrency(statsIncome - statsExpense)}</Text>
+          <Text style={[styles.summaryLabel, { color: themeColors.text.secondary }]}>{t('transactions.balance')}</Text>
+          <Text style={[styles.summaryValue, typography.tabularNums, { color: statsIncome - statsExpense >= 0 ? themeColors.success.main : themeColors.error.main }]}>{formatMoney(statsIncome - statsExpense)}</Text>
         </View>
       </View>
 
       {/* Type filter chips */}
       <View style={styles.filterChips}>
-        {[{ label: 'Todas', value: 'all' }, { label: 'Entradas', value: 'income' }, { label: 'Saídas', value: 'expense' }].map(chip => (
+        {['all', 'income', 'expense'].map(value => ({ value, label: t(`transactions.filter.${value}`) })).map(chip => (
           <TouchableOpacity
             key={chip.value}
-            style={[styles.chip, { borderColor: isDark ? '#38383A' : '#E5E5EA', backgroundColor: isDark ? '#1C1C1E' : '#F8F8F8' }, filterType === chip.value && { backgroundColor: themeColors.brand.primary, borderColor: themeColors.brand.primary }]}
+            style={[styles.chip, { borderColor: themeColors.border.light, backgroundColor: themeColors.background.secondary }, filterType === chip.value && { backgroundColor: themeColors.brand.primary, borderColor: themeColors.brand.primary }]}
             onPress={() => setFilterType(filterType === chip.value && chip.value !== 'all' ? 'all' : chip.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: filterType === chip.value }}
           >
             <Text style={[styles.chipText, { color: themeColors.text.secondary }, filterType === chip.value && { color: '#FFFFFF' }]}>{chip.label}</Text>
           </TouchableOpacity>
@@ -457,7 +443,22 @@ export default function TransactionsScreen() {
       {sectionsData.length === 0 ? (
         <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <ListHeader />
-          <EmptyState icon={<ClipboardList size={48} color="#AEAEB2" />} title="Nenhuma transação" description={searchQuery ? 'Tente outro termo' : 'Adicione sua primeira transação'} />
+          {searchQuery || hasAdvancedFilters || filterType !== 'all' ? (
+            <EmptyState
+              icon={<ClipboardList size={48} color={themeColors.text.tertiary} />}
+              title={t('transactions.empty.noResults')}
+              description={t('transactions.empty.noResultsBody')}
+            />
+          ) : (
+            <EmptyState
+              icon={<ClipboardList size={48} color={themeColors.text.tertiary} />}
+              title={t('transactions.empty.title')}
+              description={t('transactions.empty.body', { example: t('transactions.empty.example') })}
+              zulText={t('transactions.empty.example')}
+              actionLabel={isFeatureEnabled('manualEntry') ? t('dashboard.manualAdd') : undefined}
+              onAction={isFeatureEnabled('manualEntry') ? () => navigation.navigate('AddTransaction', { type: 'expense' }) : undefined}
+            />
+          )}
         </ScrollView>
       ) : (
         <SectionList
@@ -482,10 +483,10 @@ export default function TransactionsScreen() {
       {/* Bulk delete bar */}
       {selectionMode && selectedItems.length > 0 && (
         <View style={[styles.bulkBar, { backgroundColor: themeColors.background.secondary || themeColors.background.primary, borderTopColor: themeColors.border?.light || '#E5E5EA' }]}>
-          <Text style={{ fontWeight: '600', fontSize: 14 }}>{selectedItems.length} selecionada(s)</Text>
-          <TouchableOpacity style={styles.bulkDeleteBtn} onPress={handleBulkDelete}>
+          <Text style={{ fontWeight: '600', fontSize: 14 }}>{t('transactions.selected', { count: selectedItems.length })}</Text>
+          <TouchableOpacity style={[styles.bulkDeleteBtn, { backgroundColor: themeColors.error.main }]} onPress={handleBulkDelete} accessibilityRole="button">
             <Trash2 size={16} color="#FFFFFF" />
-            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Excluir</Text>
+            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>{t('common.delete')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -508,7 +509,7 @@ export default function TransactionsScreen() {
         onEdit={() => { openEditModal(detailTransaction); setDetailModalVisible(false); }}
         onDelete={() => handleDeleteTransaction(detailTransaction)}
         costCenters={availableCostCenters} cards={cards} categories={categories}
-        organizationName={organization?.name} formatDateLabel={formatDate}
+        organizationName={organization?.name} formatDateLabel={dayLabel}
         themeColors={themeColors}
       />
 
@@ -531,10 +532,11 @@ export default function TransactionsScreen() {
 }
 
 function TransactionDetailModal({ visible, transaction, onClose, onEdit, onDelete, costCenters = [], cards = [], categories = [], organizationName, formatDateLabel, themeColors }) {
+  const { t, formatMoney } = useI18n();
   if (!transaction) return null;
   const isExpense = transaction.type === 'expense';
   const amount = Number(transaction.amount || 0);
-  const catName = transaction.category_name || transaction.category || categories.find(c => c.id === transaction.category_id)?.name || 'Sem categoria';
+  const catName = categoryLabel(transactionCategoryName(transaction) || categories.find(c => c.id === transaction.category_id)?.name, t);
   const cardName = transaction.card_id ? (transaction.card_name || cards.find(c => c.id === transaction.card_id)?.name || '—') : null;
   const responsible = transaction.cost_center_id ? costCenters.find(cc => cc.id === transaction.cost_center_id) : null;
 
@@ -553,26 +555,26 @@ function TransactionDetailModal({ visible, transaction, onClose, onEdit, onDelet
           <View style={styles.detailHandle} />
           <View style={styles.detailHeader}>
             <View>
-              <Text style={[{ fontSize: 12, color: themeColors.text.tertiary }]}>{isExpense ? 'Despesa' : 'Receita'}</Text>
-              <Text style={{ fontSize: 28, fontWeight: '800', letterSpacing: -1 }}>{isExpense ? '-' : '+'}{formatCurrency(amount)}</Text>
+              <Text style={[{ fontSize: 13, color: themeColors.text.secondary }]}>{isExpense ? t('transactions.type.expense') : t('transactions.type.income')}</Text>
+              <Text style={[{ fontSize: 28, fontWeight: '800', letterSpacing: -1 }, typography.tabularNums]}>{isExpense ? '-' : '+'}{formatMoney(amount)}</Text>
             </View>
-            <TouchableOpacity onPress={onClose}><X size={22} color={themeColors.text.secondary} /></TouchableOpacity>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel={t('common.close')}><X size={22} color={themeColors.text.secondary} /></TouchableOpacity>
           </View>
           <ScrollView style={{ paddingHorizontal: 20 }}>
-            <Row label="Descrição" value={transaction.description || 'Sem descrição'} />
-            <Row label="Data" value={formatDateLabel ? formatDateLabel(transaction.date) : transaction.date} />
-            <Row label="Categoria" value={catName} />
-            {isExpense && <Row label="Pagamento" value={PAYMENT_LABELS[transaction.payment_method] || transaction.payment_method} />}
-            {cardName && <Row label="Cartão" value={cardName} />}
-            {responsible && <Row label="Responsável" value={responsible.name} />}
-            {transaction.installment_info && <Row label="Parcela" value={`${transaction.installment_info.current_installment}/${transaction.installment_info.total_installments}`} />}
+            <Row label={t('transactions.detail.description')} value={transaction.description || t('transactions.noDescription')} />
+            <Row label={t('transactions.detail.date')} value={formatDateLabel ? formatDateLabel(transaction.date) : transaction.date} />
+            <Row label={t('transactions.detail.category')} value={catName} />
+            {isExpense && <Row label={t('transactions.detail.payment')} value={paymentLabel(transaction.payment_method, t)} />}
+            {cardName && <Row label={t('transactions.detail.card')} value={cardName} />}
+            {responsible && <Row label={t('transactions.detail.responsible')} value={responsible.name} />}
+            {transaction.installment_info && <Row label={t('transactions.detail.installment')} value={t('transactions.detail.installmentValue', { current: transaction.installment_info.current_installment, total: transaction.installment_info.total_installments })} />}
           </ScrollView>
           <View style={styles.detailFooter}>
-            <TouchableOpacity style={[styles.detailBtn, { backgroundColor: '#FF3B30' }]} onPress={onDelete}>
-              <Trash2 size={16} color="#FFFFFF" /><Text style={{ color: '#FFFFFF', fontWeight: '600', marginLeft: 6 }}>Excluir</Text>
+            <TouchableOpacity style={[styles.detailBtn, { backgroundColor: themeColors.error.main }]} onPress={onDelete} accessibilityRole="button">
+              <Trash2 size={16} color="#FFFFFF" /><Text style={{ color: '#FFFFFF', fontWeight: '600', marginLeft: 6 }}>{t('common.delete')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.detailBtn, { backgroundColor: themeColors.brand.primary, flex: 2 }]} onPress={onEdit}>
-              <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Editar</Text>
+            <TouchableOpacity style={[styles.detailBtn, { backgroundColor: themeColors.brand.primary, flex: 2 }]} onPress={onEdit} accessibilityRole="button">
+              <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>{t('common.edit')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -594,10 +596,10 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, padding: 0 },
 
   monthPills: { paddingHorizontal: 16, gap: 8, marginBottom: 16 },
-  monthPill: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 100, borderWidth: 1, borderColor: '#E5E5EA' },
+  monthPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
   monthPillText: { fontSize: 13, fontWeight: '600' },
 
-  summaryBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 16, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, backgroundColor: 'rgba(26,106,255,0.06)' },
+  summaryBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 16, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 },
   summaryItem: { flex: 1, alignItems: 'center' },
   summaryLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2 },
   summaryValue: { fontSize: 14, fontWeight: '700' },
@@ -619,7 +621,7 @@ const styles = StyleSheet.create({
   txAmount: { fontSize: 14, fontWeight: '700', textAlign: 'right' },
 
   bulkBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, paddingBottom: Platform.OS === 'ios' ? 32 : 12, borderTopWidth: 1 },
-  bulkDeleteBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FF3B30', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
+  bulkDeleteBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999 },
 
   detailOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   detailSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%', paddingBottom: Platform.OS === 'ios' ? 34 : 16 },

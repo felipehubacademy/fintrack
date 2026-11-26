@@ -21,11 +21,11 @@ import { useOrganization } from '../hooks/useOrganization';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { useToast } from '../components/ui/Toast';
 import { supabase } from '../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
-import { formatBrazilDate } from '../utils/date';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function GoalsScreen() {
   const { colors } = useTheme();
+  const { t, formatMoney, formatDate } = useI18n();
   const { organization, user, loading: orgLoading } = useOrganization();
   const { confirm } = useConfirmation();
   const { showToast } = useToast();
@@ -53,7 +53,7 @@ export default function GoalsScreen() {
 
       if (error) throw error;
 
-      // Calcular progresso
+      // Progress per goal
       const goalsWithProgress = (data || []).map(goal => {
         const progress = goal.target_amount > 0 
           ? (goal.current_amount / goal.target_amount) * 100 
@@ -81,7 +81,7 @@ export default function GoalsScreen() {
   const handleSaveGoal = async (goalData) => {
     try {
       if (editingGoal) {
-        // Atualizar
+        // Update
         const { error } = await supabase
           .from('financial_goals')
           .update({
@@ -96,9 +96,9 @@ export default function GoalsScreen() {
           .eq('id', editingGoal.id);
 
         if (error) throw error;
-        showToast('Meta atualizada com sucesso!', 'success');
+        showToast(t('goals.updated'), 'success');
       } else {
-        // Criar
+        // Create
         const { error } = await supabase
           .from('financial_goals')
           .insert({
@@ -108,13 +108,14 @@ export default function GoalsScreen() {
           });
 
         if (error) throw error;
-        showToast('Meta criada com sucesso!', 'success');
+        showToast(t('goals.created'), 'success');
       }
 
       await fetchGoals();
       setShowGoalModal(false);
       setEditingGoal(null);
-    } catch (error) {showToast('Erro ao salvar meta: ' + (error.message || 'Erro desconhecido'), 'error');
+    } catch (error) {
+      showToast(t('goals.saveError'), 'error');
     }
   };
 
@@ -130,8 +131,9 @@ export default function GoalsScreen() {
 
   const handleDeleteGoal = async (goal) => {
     const confirmed = await confirm({
-      title: 'Excluir meta',
-      message: `Tem certeza que deseja excluir a meta "${goal.name}"?`,
+      title: t('goals.delete.title'),
+      message: t('goals.delete.message', { name: goal.name }),
+      confirmText: t('common.delete'),
       type: 'danger',
     });
 
@@ -146,8 +148,9 @@ export default function GoalsScreen() {
       if (error) throw error;
 
       await fetchGoals();
-      showToast('Meta excluída com sucesso!', 'success');
-    } catch (error) {showToast('Erro ao excluir meta: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('goals.delete.done'), 'success');
+    } catch (error) {
+      showToast(t('goals.delete.error'), 'error');
     }
   };
 
@@ -160,17 +163,19 @@ export default function GoalsScreen() {
   };
 
   if (orgLoading || loading) {
-    return <LoadingLogo fullScreen message="Carregando metas..." />;
+    return <LoadingLogo fullScreen message={t('goals.loading')} />;
   }
 
+  const reachedCount = goals.filter(g => g.progress >= 100).length;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScreenHeader
         user={user}
-        title="Metas"
+        title={t('goals.title')}
         showLogo={true}
         rightIcon={
-          <TouchableOpacity onPress={handleAddGoal} style={{ padding: spacing[1] }}>
+          <TouchableOpacity onPress={handleAddGoal} style={{ padding: spacing[1] }} accessibilityRole="button" accessibilityLabel={t('goals.add')}>
             <Plus size={24} color={colors.text.secondary} />
           </TouchableOpacity>
         }
@@ -197,16 +202,16 @@ export default function GoalsScreen() {
           >
             <View style={styles.heroRow}>
               <View style={{ flex: 1 }}>
-                <Caption style={{ color: 'rgba(255,255,255,0.7)' }}>Progresso geral</Caption>
-                <Title1 style={{ color: '#FFFFFF', marginTop: spacing[0.5] }}>
-                  {goals.filter(g => g.progress >= 100).length}/{goals.length}
+                <Caption style={{ color: 'rgba(255,255,255,0.8)' }}>{t('goals.overall')}</Caption>
+                <Title1 tabular style={{ color: '#FFFFFF', marginTop: spacing[0.5] }}>
+                  {reachedCount}/{goals.length}
                 </Title1>
-                <Footnote style={{ color: 'rgba(255,255,255,0.7)', marginTop: spacing[0.5] }}>
-                  metas atingidas
+                <Footnote style={{ color: 'rgba(255,255,255,0.8)', marginTop: spacing[0.5] }}>
+                  {t('goals.reachedLabel', { count: reachedCount })}
                 </Footnote>
               </View>
               <ProgressRing
-                progress={goals.length > 0 ? goals.filter(g => g.progress >= 100).length / goals.length : 0}
+                progress={goals.length > 0 ? reachedCount / goals.length : 0}
                 size={72}
                 strokeWidth={7}
                 color="#F5A623"
@@ -247,22 +252,22 @@ export default function GoalsScreen() {
 
                 <View style={styles.goalAmounts}>
                   <View>
-                    <Footnote color="secondary">Atual</Footnote>
-                    <Callout weight="bold" style={{ color: progressColor }}>
-                      {formatCurrency(goal.current_amount)}
+                    <Footnote color="secondary">{t('goals.saved')}</Footnote>
+                    <Callout weight="bold" tabular style={{ color: progressColor }}>
+                      {formatMoney(goal.current_amount)}
                     </Callout>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Footnote color="secondary">Meta</Footnote>
-                    <Callout weight="semiBold">
-                      {formatCurrency(goal.target_amount)}
+                    <Footnote color="secondary">{t('goals.target')}</Footnote>
+                    <Callout weight="semiBold" tabular>
+                      {formatMoney(goal.target_amount)}
                     </Callout>
                   </View>
                 </View>
 
                 {/* Progress Bar */}
                 <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
+                  <View style={[styles.progressBar, { backgroundColor: colors.background.tertiary || colors.border.light }]}>
                     <View
                       style={[
                         styles.progressFill,
@@ -273,7 +278,7 @@ export default function GoalsScreen() {
                       ]}
                     />
                   </View>
-                  <Footnote style={{ color: progressColor, marginLeft: spacing[1] }}>
+                  <Footnote tabular style={{ color: progressColor, marginLeft: spacing[1] }}>
                     {goal.progress.toFixed(0)}%
                   </Footnote>
                 </View>
@@ -282,26 +287,32 @@ export default function GoalsScreen() {
                   <View style={{ flex: 1 }}>
                     <Footnote color="secondary">
                       {goal.remaining > 0
-                        ? `Faltam ${formatCurrency(goal.remaining)}`
-                        : goal.progress >= 100
-                        ? '🎉 Meta atingida!'
-                        : `Excedeu em ${formatCurrency(Math.abs(goal.remaining))}`
+                        ? t('goals.toGo', { amount: formatMoney(goal.remaining) })
+                        : goal.remaining === 0
+                        ? t('goals.reached')
+                        : t('goals.over', { amount: formatMoney(Math.abs(goal.remaining)) })
                       }
                     </Footnote>
                     {goal.target_date && (
                       <Footnote color="secondary" style={{ marginTop: spacing[0.5] }}>
-                        Prazo: {formatBrazilDate(goal.target_date)}
+                        {t('goals.deadline', { date: formatDate(goal.target_date, 'medium') })}
                       </Footnote>
                     )}
                   </View>
                   <View style={{ flexDirection: 'row', gap: spacing[2] }}>
                     <TouchableOpacity
                       onPress={() => handleEditGoal(goal)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${t('goals.edit')}: ${goal.name}`}
                     >
                       <Edit size={16} color={colors.text.secondary} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleDeleteGoal(goal)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${t('goals.remove')}: ${goal.name}`}
                     >
                       <Trash2 size={16} color={colors.error.main} />
                     </TouchableOpacity>
@@ -312,9 +323,12 @@ export default function GoalsScreen() {
           })
         ) : (
           <EmptyState
-            icon={<Crosshair size={48} color="#AEAEB2" />}
-            title="Nenhuma meta definida"
-            description="Crie metas financeiras para acompanhar seus objetivos."
+            icon={<Crosshair size={48} color={colors.text.tertiary} />}
+            title={t('goals.empty.title')}
+            description={t('goals.empty.body', { example: t('goals.empty.example') })}
+            zulText={t('goals.empty.example')}
+            actionLabel={t('goals.empty.create')}
+            onAction={handleAddGoal}
           />
         )}
 
@@ -339,7 +353,6 @@ export default function GoalsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
   },
 
   scrollView: {
@@ -353,7 +366,7 @@ const styles = StyleSheet.create({
   heroCard: {
     marginHorizontal: spacing[2],
     marginBottom: spacing[3],
-    borderRadius: radius.xl,
+    borderRadius: 12,
     padding: spacing[3],
     overflow: 'hidden',
   },
@@ -398,7 +411,6 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 8,
-    backgroundColor: colors.neutral[200],
     borderRadius: radius.full,
     overflow: 'hidden',
   },
