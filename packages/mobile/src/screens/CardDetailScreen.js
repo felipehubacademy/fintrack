@@ -17,7 +17,6 @@ import EmptyState from '../components/ui/EmptyState';
 import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { useOrganization } from '../hooks/useOrganization';
 import { supabase } from '../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
 import CardInvoiceModal from '../components/financial/CardInvoiceModal';
 import { BankIcon } from '../components/financial/BankIcon';
 import { useToast } from '../components/ui/Toast';
@@ -28,7 +27,11 @@ import RolloverInvoiceModal from '../components/financial/RolloverInvoiceModal';
 import { orderTransactionsForDisplay } from '../utils/sortTransactions';
 import { getMonthRange, getCurrentMonthKey } from '../utils/monthRange';
 import { MonthSelector } from '../components/financial/MonthSelector';
-import { formatBrazilDate, formatBrazilMonthYear } from '../utils/date';
+import { useI18n } from '../contexts/I18nContext';
+import { CommittedMonthsCard } from '../components/financial/CommittedMonthsCard';
+import { useCommittedInstallments } from '../components/financial/useCommittedInstallments';
+import { ZulEmptyState } from '../components/financial/ZulEmptyState';
+import { statementRange, isInstallment } from '../components/financial/cardStatements';
 
 const CARD_COLOR_MAP = {
   'bg-blue-600': '#2563EB',
@@ -47,6 +50,7 @@ const resolveCardColor = (color) => {
 
 export default function CardDetailScreen({ route, navigation }) {
   const { colors } = useTheme();
+  const { t, formatMoney, formatDate } = useI18n();
   const { cardId } = route.params;
   const [selectedMonth, setSelectedMonth] = useState(() => route.params?.selectedMonth || getCurrentMonthKey());
   const { startDate: monthStartDate, endDate: monthEndDate } = useMemo(
@@ -67,6 +71,21 @@ export default function CardDetailScreen({ route, navigation }) {
   const [payInvoiceModalVisible, setPayInvoiceModalVisible] = useState(false);
   const [rolloverInvoiceModalVisible, setRolloverInvoiceModalVisible] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const committedCards = useMemo(
+    () => (card && card.type === 'credit' ? [card] : []),
+    [card]
+  );
+  const { data: committed, reload: reloadCommitted } = useCommittedInstallments(committedCards, {
+    organizationId: organization?.id,
+  });
+  const statement = useMemo(
+    () => (card ? statementRange(selectedMonth, card.closing_day) : { startDate: monthStartDate, endDate: monthEndDate }),
+    [card, selectedMonth, monthStartDate, monthEndDate]
+  );
+  const statementTotal = useMemo(
+    () => transactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0),
+    [transactions]
+  );
   
   // Animações
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -82,7 +101,7 @@ useEffect(() => {
   if (organization && cardId) {
     fetchTransactions();
   }
-}, [organization, cardId, monthStartDate, monthEndDate]);
+}, [organization, cardId, statement.startDate, statement.endDate]);
 
   useEffect(() => {
     if (card) {
@@ -117,7 +136,7 @@ useEffect(() => {
     return `${year}-${month}-${day}`;
   };
 
-const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
+const formatBillingCycleLabel = (dateStr) => formatDate(dateStr, 'monthYear');
 
   const handleMarkInvoiceAsPaid = async (paymentData) => {
     if (!selectedInvoice || !card) return;
@@ -138,7 +157,7 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
             p_bank_account_id: bank_account_id,
             p_transaction_type: 'manual_debit',
             p_amount: amount,
-      p_description: `Pagamento Fatura ${card.name} - ${formatBillingCycleLabel(selectedInvoice.startDate)}`,
+      p_description: t('finances.invoice.paymentDescription', { card: card.name, month: formatBillingCycleLabel(selectedInvoice.startDate) }),
             p_date: getBrazilTodayString(),
             p_organization_id: organization.id,
             p_user_id: user?.id
@@ -154,7 +173,7 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
           .single();
 
         if (!bankTransaction) {
-          throw new Error('Transação bancária não encontrada após criação');
+          throw new Error('Bank transaction not found after creation');
         }
 
         bankTransactionId = bankTransaction.id;
@@ -244,16 +263,16 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
       }
 
       if (isFullPayment) {
-        showToast(`Fatura de ${formatCurrency(totalInvoice)} paga! Limite do cartão liberado.`, 'success');
+        showToast(t('finances.invoice.paidFull', { amount: formatMoney(totalInvoice) }), 'success');
       } else {
-        showToast(`Pagamento parcial de ${formatCurrency(amount)} registrado. Saldo restante: ${formatCurrency(totalInvoice - amount)}`, 'success');
+        showToast(t('finances.invoice.paidPartial', { amount: formatMoney(amount), remaining: formatMoney(totalInvoice - amount) }), 'success');
       }
       
       setPayInvoiceModalVisible(false);
       setSelectedInvoice(null);
       setInvoiceModalVisible(false);
       await fetchCardDetails();
-    } catch (error) {showToast('Erro ao processar pagamento. Tente novamente.', 'error');
+    } catch (error) {showToast(t('finances.invoice.paymentError'), 'error');
     }
   };
 
@@ -358,10 +377,9 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
         .eq('organization_id', organization.id)
         .eq('payment_method', 'credit_card')
         .eq('status', 'confirmed')
-        .gte('date', monthStartDate)
-        .lte('date', monthEndDate)
-        .order('date', { ascending: false })
-        .limit(20);
+        .gte('date', statement.startDate)
+        .lte('date', statement.endDate)
+        .order('date', { ascending: false });
 
       if (error) throw error;
 
@@ -374,15 +392,16 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
     setRefreshing(true);
     fetchCardDetails();
     fetchTransactions();
+    reloadCommitted();
   };
 
   const handleDeleteCard = async () => {
     try {
       await confirm({
-        title: 'Excluir cartão',
-        message: `Tem certeza que deseja excluir o cartão "${card.name}"?\n\nEsta ação não pode ser desfeita.`,
+        title: t('finances.card.deleteTitle'),
+        message: t('finances.card.deleteMessage', { name: card.name }),
         type: 'danger',
-        confirmText: 'Excluir',
+        confirmText: t('common.delete'),
         onConfirm: async () => {
           try {
             const { error } = await supabase
@@ -392,7 +411,7 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
 
             if (error) throw error;
 
-            showToast('Cartão excluído com sucesso', 'success');
+            showToast(t('finances.card.deleted'), 'success');
             navigation.goBack();
             await refetchOrganization();
           } catch (error) {throw error;
@@ -402,23 +421,23 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
     } catch (error) {
       // Usuário cancelou ou erro ocorreu
       if (error.message) {
-        showToast('Erro ao excluir cartão: ' + error.message, 'error');
+        showToast(t('finances.card.deleteError'), 'error');
       }
     }
   };
 
   if (orgLoading || loading) {
-    return <LoadingLogo fullScreen message="Carregando detalhes..." />;
+    return <LoadingLogo fullScreen message={t('common.loading')} />;
   }
 
   if (!card) {
     return (
       <View style={styles.container}>
-        <ScreenHeader user={user} title="Cartão" />
+        <ScreenHeader user={user} title={t('finances.card.title')} showBackButton={true} />
         <EmptyState
           icon={<CreditCard size={48} color="#AEAEB2" />}
-          title="Cartão não encontrado"
-          description="O cartão que você procura não existe."
+          title={t('finances.card.notFoundTitle')}
+          description={t('finances.card.notFoundMessage')}
         />
       </View>
     );
@@ -433,10 +452,15 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
     <View style={styles.container}>
       <ScreenHeader
         user={user}
-        title="Detalhes do Cartão"
+        title={t('finances.card.detailsTitle')}
         showBackButton={true}
         rightIcon={
-          <TouchableOpacity onPress={() => setEditModalVisible(true)} style={{ padding: spacing[1] }}>
+          <TouchableOpacity
+            onPress={() => setEditModalVisible(true)}
+            style={{ padding: spacing[1] }}
+            accessibilityRole="button"
+            accessibilityLabel={t('finances.card.editA11y')}
+          >
             <Edit size={24} color={colors.text.secondary} />
           </TouchableOpacity>
         }
@@ -476,7 +500,7 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
                     {card.name}
                   </Text>
                   <Caption style={styles.cardBank}>
-                    {card.bank || 'Banco não informado'}
+                    {card.bank || t('finances.card.noBank')}
                   </Caption>
                 </View>
               </View>
@@ -486,7 +510,7 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
             <View style={styles.cardBottom}>
               <View style={styles.cardBottomLeft}>
                 <Caption style={styles.cardHolder}>
-                  {card.holder_name || 'Não informado'}
+                  {card.holder_name || t('finances.card.noHolder')}
                 </Caption>
               </View>
               
@@ -494,7 +518,7 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
                 <View style={styles.cardBottomRight}>
                   <View style={styles.progressContainer}>
                     <View style={styles.progressHeader}>
-                      <Caption style={styles.progressLabel}>Limite utilizado</Caption>
+                      <Caption style={styles.progressLabel}>{t('finances.card.limitUsed')}</Caption>
                       <Caption style={styles.progressPercentage}>
                         {usedPercentage.toFixed(0)}%
                       </Caption>
@@ -513,9 +537,9 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
                     </View>
                   </View>
                   <View style={styles.invoiceContainer}>
-                    <Caption style={styles.invoiceLabel}>Fatura atual</Caption>
+                    <Caption style={styles.invoiceLabel}>{t('finances.card.currentStatement')}</Caption>
                     <Callout weight="bold" style={styles.cardInvoiceAmount}>
-                      {formatCurrency(cardUsage.currentInvoice)}
+                      {formatMoney(cardUsage.currentInvoice)}
                     </Callout>
                   </View>
                 </View>
@@ -530,53 +554,64 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => setInvoiceModalVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('finances.card.statements')}
             >
               <FileText size={18} color={colors.brand.primary} />
               <Caption weight="semiBold" style={{ color: colors.brand.primary, marginTop: spacing[0.5], fontSize: 11 }}>
-                Faturas
+                {t('finances.card.statements')}
               </Caption>
             </TouchableOpacity>
           )}
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleDeleteCard}
+            accessibilityRole="button"
+            accessibilityLabel={t('finances.card.deleteTitle')}
           >
             <Trash2 size={18} color={colors.error.main} />
             <Caption weight="semiBold" style={{ color: colors.error.main, marginTop: spacing[0.5], fontSize: 11 }}>
-              Excluir
+              {t('common.delete')}
             </Caption>
           </TouchableOpacity>
         </View>
+
+        {/* Next 6 months committed (installments already scheduled) */}
+        {card.type === 'credit' && (
+          <View style={styles.section}>
+            <CommittedMonthsCard data={committed} scope="card" />
+          </View>
+        )}
 
         {/* Invoice Info (only for credit cards) */}
         {card.type === 'credit' && (
           <View style={styles.section}>
             <Subheadline weight="semiBold" style={styles.sectionTitle}>
-              Fatura
+              {t('finances.card.billingDays')}
             </Subheadline>
 
             <Card>
               <View style={styles.invoiceRow}>
                 <View style={styles.invoiceField}>
-                  <Footnote color="secondary">Fechamento</Footnote>
+                  <Footnote color="secondary">{t('finances.card.closingDay')}</Footnote>
                   <Callout weight="medium" style={{ marginTop: spacing[0.5] }}>
-                    Dia {card.closing_day || card.billing_day || '--'}
+                    {t('finances.card.dayN', { day: card.closing_day || card.billing_day || '--' })}
                   </Callout>
                 </View>
                 {card.best_day ? (
                   <View style={styles.invoiceField}>
-                    <Footnote color="secondary">Melhor dia</Footnote>
+                    <Footnote color="secondary">{t('finances.card.bestDay')}</Footnote>
                     <Callout weight="medium" style={{ marginTop: spacing[0.5] }}>
-                      Dia {card.best_day}
+                      {t('finances.card.dayN', { day: card.best_day })}
                     </Callout>
                   </View>
                 ) : (
                   <View style={styles.invoiceField} />
                 )}
                 <View style={styles.invoiceField}>
-                  <Footnote color="secondary">Vencimento</Footnote>
+                  <Footnote color="secondary">{t('finances.card.dueDay')}</Footnote>
                   <Callout weight="medium" style={{ marginTop: spacing[0.5] }}>
-                    Dia {card.billing_day || card.due_day || '--'}
+                    {t('finances.card.dayN', { day: card.billing_day || card.due_day || '--' })}
                   </Callout>
                 </View>
               </View>
@@ -588,47 +623,56 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
         {card.type === 'credit' && (
           <View style={styles.section}>
             <Subheadline weight="semiBold" style={styles.sectionTitle}>
-              Limite e Uso
+              {t('finances.card.limitTitle')}
             </Subheadline>
 
             <Card>
               <View style={styles.limitRow}>
                 <View style={{ flex: 1 }}>
-                  <Footnote color="secondary">Limite Total</Footnote>
+                  <Footnote color="secondary">{t('finances.card.totalLimit')}</Footnote>
                   <Callout weight="bold" style={{ marginTop: spacing[0.5] }}>
-                    {formatCurrency(limit)}
+                    {formatMoney(limit)}
                   </Callout>
                 </View>
                 <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                  <Footnote color="secondary">Disponível</Footnote>
+                  <Footnote color="secondary">{t('finances.card.available')}</Footnote>
                   <Callout weight="bold" style={{ color: colors.success.main, marginTop: spacing[0.5] }}>
-                    {formatCurrency(available)}
+                    {formatMoney(available)}
                   </Callout>
                 </View>
               </View>
 
               <View style={styles.usedRow}>
-                <Footnote color="secondary">Limite Utilizado</Footnote>
+                <Footnote color="secondary">{t('finances.card.limitUsed')}</Footnote>
                 <Callout weight="bold" style={{ color: colors.error.main }}>
-                  {formatCurrency(cardUsage.used)}
+                  {formatMoney(cardUsage.used)}
                 </Callout>
               </View>
               
               <View style={styles.usedRow}>
-                <Footnote color="secondary">Fatura Atual</Footnote>
+                <Footnote color="secondary">{t('finances.card.currentStatement')}</Footnote>
                 <Callout weight="bold" style={{ color: colors.brand.primary }}>
-                  {formatCurrency(cardUsage.currentInvoice)}
+                  {formatMoney(cardUsage.currentInvoice)}
                 </Callout>
               </View>
             </Card>
           </View>
         )}
 
-        {/* Recent Transactions */}
+        {/* Statement of the selected month */}
         <View style={styles.section}>
-          <Subheadline weight="semiBold" style={styles.sectionTitle}>
-            Transações Recentes
-          </Subheadline>
+          <View style={styles.statementHeader}>
+            <Subheadline weight="semiBold" style={styles.statementTitle}>
+              {t('finances.card.statementOf', { month: formatDate(`${selectedMonth}-01`, 'monthYear') })}
+            </Subheadline>
+            <Callout weight="bold">{formatMoney(statementTotal)}</Callout>
+          </View>
+          <Caption color="secondary" style={styles.statementRange}>
+            {t('finances.card.statementRange', {
+              start: formatDate(statement.startDate, 'dayMonth'),
+              end: formatDate(statement.endDate, 'dayMonth'),
+            })}
+          </Caption>
 
           {transactions.length > 0 ? (
             <Card style={{ padding: 0 }}>
@@ -645,20 +689,26 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
                       {transaction.description}
                     </Callout>
                     <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                      {formatBrazilDate(transaction.date)}
+                      {formatDate(transaction.date, 'dayMonth')}
+                      {isInstallment(transaction)
+                        ? ` · ${t('finances.card.installmentOf', {
+                          current: transaction.installment_info.current_installment || 1,
+                          total: transaction.installment_info.total_installments,
+                        })}`
+                        : ''}
                     </Caption>
                   </View>
                   <Callout weight="bold" style={{ color: colors.error.main }}>
-                    {formatCurrency(transaction.amount)}
+                    {formatMoney(transaction.amount)}
                   </Callout>
                 </View>
               ))}
             </Card>
           ) : (
-            <EmptyState
-              icon={<ClipboardList size={48} color="#AEAEB2" />}
-              title="Nenhuma transação"
-              description="Ainda não há transações neste cartão."
+            <ZulEmptyState
+              icon={<ClipboardList size={40} color="#AEAEB2" />}
+              message={t('finances.empty.cardMessage')}
+              example={t('finances.empty.cardExample')}
             />
           )}
         </View>
@@ -731,7 +781,7 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
                 }
 
                 if (!invoiceRecord) {
-                  throw new Error('Fatura não encontrada');
+                  throw new Error('Invoice not found');
                 }
 
                 // Calcular data para próxima fatura
@@ -753,11 +803,11 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
                 const { error: expenseError } = await supabase
                   .from('expenses')
                   .insert({
-                    description: `Saldo anterior - ${card.name}`,
+                    description: t('finances.invoice.previousBalanceDescription', { card: card.name }),
                     amount: remainingAmount,
                     date: nextCycleDateStr,
                     category_id: category?.id || null,
-                    category: category?.name || 'Saldo Anterior',
+                    category: category?.name || t('finances.invoice.previousBalance'),
                     payment_method: 'credit_card',
                     card_id: card.id,
                     status: 'confirmed',
@@ -794,13 +844,13 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
                     .eq('id', card.id);
                 }
 
-                showToast(`Saldo de ${formatCurrency(remainingAmount)} transferido para a próxima fatura!`, 'success');
+                showToast(t('finances.invoice.rolledOver', { amount: formatMoney(remainingAmount) }), 'success');
                 
                 setRolloverInvoiceModalVisible(false);
                 setSelectedInvoice(null);
                 setInvoiceModalVisible(false);
                 await fetchCardDetails();
-              } catch (error) {showToast('Erro ao transferir saldo. Tente novamente.', 'error');
+              } catch (error) {showToast(t('finances.invoice.rolloverError'), 'error');
               }
             }}
             invoice={selectedInvoice}
@@ -837,8 +887,8 @@ const formatBillingCycleLabel = (dateStr) => formatBrazilMonthYear(dateStr);
 
             setEditModalVisible(false);
             await fetchCardDetails();
-            showToast('Cartão atualizado com sucesso!', 'success');
-          } catch (error) {showToast('Erro ao atualizar cartão.', 'error');
+            showToast(t('finances.card.updated'), 'success');
+          } catch (error) {showToast(t('finances.card.updateError'), 'error');
           }
         }}
         card={card}
@@ -859,6 +909,21 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: spacing[2],
+  },
+  statementHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing[1],
+  },
+  statementTitle: {
+    flex: 1,
+    marginRight: spacing[1],
+  },
+  statementRange: {
+    paddingHorizontal: spacing[1],
+    marginTop: spacing[0.5],
+    marginBottom: spacing[1.5],
   },
   monthSelectorWrapper: {
     paddingHorizontal: spacing[3],
