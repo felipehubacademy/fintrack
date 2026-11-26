@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { textColorForBg } from '../lib/colors';
+import { t } from '@fintrack/shared/i18n';
 
 /**
  * Componente Avatar com suporte a imagem ou placeholder com iniciais
@@ -12,7 +13,7 @@ import { textColorForBg } from '../lib/colors';
  */
 export default function Avatar({ 
   src, 
-  name = 'Usuário', 
+  name = t('web.avatar.user'), 
   size = 'md',
   className = '',
   color = null, // Cor do cost center

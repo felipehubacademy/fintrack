@@ -1,15 +1,16 @@
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from './ui/Button';
+import { t } from '@fintrack/shared/i18n';
 
 export default function ConfirmationModal({ 
   isOpen, 
   onClose, 
   onConfirm, 
-  title = "Confirmar ação",
-  message = "Tem certeza que deseja continuar?",
-  confirmText = "Confirmar",
-  cancelText = "Cancelar",
+  title = t('web.confirmationModal.confirm'),
+  message = t('web.confirmationModal.doYouWantToContinue'),
+  confirmText = t('web.shared.confirm'),
+  cancelText = t('web.shared.cancel'),
   type = "warning" // warning, danger, info
 }) {
   if (!isOpen) return null;

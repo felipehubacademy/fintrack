@@ -1,7 +1,9 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import HelpTooltip from '../ui/HelpTooltip';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function GoalTimeline({ goal, contributions = [] }) {
+  const { t } = useI18n();
   // Preparar dados para o gráfico
   const prepareChartData = () => {
     if (!goal || contributions.length === 0) return [];
@@ -65,7 +67,7 @@ export default function GoalTimeline({ goal, contributions = [] }) {
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center py-12 text-gray-500">
-        <p>Adicione contribuições para visualizar a evolução</p>
+        <p>{t('web.goalTimeline.addMoneyToSeeHow')}</p>
       </div>
     );
   }
@@ -78,12 +80,12 @@ export default function GoalTimeline({ goal, contributions = [] }) {
           <p className="text-sm font-semibold text-gray-900 mb-2">{data.date}</p>
           {data.valor !== undefined && (
             <p className="text-sm text-gray-700">
-              <span className="font-medium">Valor:</span> R$ {data.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <span className="font-medium">{t('web.goalTimeline.amount')}</span> R$ {data.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           )}
           {data.projecao !== undefined && (
             <p className="text-sm text-blue-600">
-              <span className="font-medium">Projeção:</span> R$ {data.projecao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <span className="font-medium">{t('web.goalTimeline.projection')}</span> R$ {data.projecao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           )}
           {data.contribution && (
@@ -102,21 +104,21 @@ export default function GoalTimeline({ goal, contributions = [] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          Evolução da Meta
+          {t('web.goalTimeline.goalProgress')}
           <HelpTooltip content="Acompanhe o progresso ao longo do tempo. A linha azul mostra o valor acumulado e a linha tracejada mostra a projeção futura." />
         </h3>
         <div className="flex items-center space-x-4 text-sm">
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-flight-blue rounded-full" />
-            <span className="text-gray-600">Valor Atual</span>
+            <span className="text-gray-600">{t('web.shared.currentAmount')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 border-2 border-flight-blue border-dashed rounded-full" />
-            <span className="text-gray-600">Projeção</span>
+            <span className="text-gray-600">{t('web.goalTimeline.projection2')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-green-500 rounded-full" />
-            <span className="text-gray-600">Meta</span>
+            <span className="text-gray-600">{t('web.goalTimeline.goal')}</span>
           </div>
         </div>
       </div>
@@ -173,10 +175,10 @@ export default function GoalTimeline({ goal, contributions = [] }) {
       {contributions.length > 0 && (
         <div className="bg-blue-50 border-l-4 border-flight-blue rounded p-3">
           <p className="text-sm text-gray-700">
-            <strong>{contributions.length}</strong> {contributions.length === 1 ? 'contribuição realizada' : 'contribuições realizadas'}
+            <strong>{contributions.length}</strong> {contributions.length === 1 ? t('web.goalTimeline.depositMade') : t('web.goalTimeline.depositsMade')}
             {goal.monthly_contribution > 0 && (
               <span className="ml-2">
-                · Próxima contribuição esperada: <strong>R$ {goal.monthly_contribution.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                {t('web.goalTimeline.nextDepositExpected')} <strong>R$ {goal.monthly_contribution.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
               </span>
             )}
           </p>

@@ -27,12 +27,14 @@ import NotificationModal from '../../components/NotificationModal';
 import Header from '../../components/Header';
 import BudgetWizard from '../../components/BudgetWizard';
 import CategoryManagementModal from '../../components/CategoryManagementModal';
+import { useI18n } from '../../contexts/I18nContext';
+import { t } from '@fintrack/shared/i18n';
 
 const MACRO_ORDER = ['needs', 'wants', 'investments'];
 const MACRO_LABELS = {
   needs: 'Necessidades',
   wants: 'Desejos',
-  investments: 'Investimentos'
+  get investments() { return t('web.shared.investments'); }
 };
 const MACRO_COLORS = {
   needs: '#2563EB',
@@ -93,6 +95,7 @@ const inferMacroFromName = (name = '') => {
 };
 
 export default function BudgetsDashboard() {
+  const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, budgetCategories, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
   const { success, showError, warning } = useNotificationContext();
@@ -259,7 +262,7 @@ export default function BudgetsDashboard() {
       if (fetchError) throw fetchError;
 
       if (!prevBudgets || prevBudgets.length === 0) {
-        warning(`Não encontramos orçamentos em ${prevMonth}. Crie um novo planejamento.`);
+        warning(t('web.budgets.noBudgetsFoundInCreate', { prevMonth }));
         setShowMonthTurnoverModal(false);
         setShowBudgetWizard(true);
         return;
@@ -281,11 +284,11 @@ export default function BudgetsDashboard() {
       if (insertError) throw insertError;
 
       await fetchData();
-      success(`Planejamento copiado de ${prevMonth}!`);
+      success(t('web.budgets.planCopiedFrom', { prevMonth }));
       setShowMonthTurnoverModal(false);
     } catch (error) {
       console.error('Error copying budget:', error);
-      showError('Erro ao copiar planejamento: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.budgets.couldnTCopyThePlan') + (error.message || t('web.shared.unknownError')));
     }
   };
 
@@ -307,10 +310,10 @@ export default function BudgetsDashboard() {
       if (error) throw error;
 
       await fetchBudgets();
-      success('Orçamento excluído com sucesso!');
+      success(t('web.budgets.budgetDeleted'));
     } catch (error) {
       console.error('Erro ao excluir orçamento:', error);
-      showError('Erro ao excluir orçamento: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.budgets.couldnTDeleteTheBudget') + (error.message || t('web.shared.unknownError')));
     } finally {
       setShowConfirmModal(false);
       setBudgetToDelete(null);
@@ -344,7 +347,7 @@ export default function BudgetsDashboard() {
       if (fetchError) throw fetchError;
 
       if (!previousBudgets || previousBudgets.length === 0) {
-        warning(`Não há orçamentos no mês anterior (${previousMonth.toString().padStart(2, '0')}/${previousYear}) para copiar.`);
+        warning(t('web.budgets.noBudgetsLastMonthTo', { p0: previousMonth.toString().padStart(2, '0'), previousYear }));
         return;
       }
 
@@ -367,7 +370,7 @@ export default function BudgetsDashboard() {
       await copyBudgetsToCurrentMonth(previousBudgets, currentMonthYear, previousMonth, previousYear);
     } catch (error) {
       console.error('Erro ao copiar orçamentos:', error);
-      showError('Erro ao copiar orçamentos do mês anterior: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.budgets.couldnTCopyLastMonth') + (error.message || t('web.shared.unknownError')));
     }
   };
 
@@ -390,7 +393,7 @@ export default function BudgetsDashboard() {
 
     // Atualizar a lista de orçamentos
     await fetchBudgets();
-    success(`Orçamentos de ${previousMonth.toString().padStart(2, '0')}/${previousYear} copiados com sucesso para ${selectedMonth}!`);
+    success(t('web.budgets.budgetsFromCopiedTo', { p0: previousMonth.toString().padStart(2, '0'), previousYear, selectedMonth }));
   };
 
   const confirmCopyBudgets = async () => {
@@ -431,7 +434,7 @@ export default function BudgetsDashboard() {
       await copyBudgetsToCurrentMonth(previousBudgets, currentMonthYear, previousMonth, previousYear);
     } catch (error) {
       console.error('Erro ao copiar orçamentos:', error);
-      showError('Erro ao copiar orçamentos do mês anterior: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.budgets.couldnTCopyLastMonth') + (error.message || t('web.shared.unknownError')));
     } finally {
       setShowConfirmModal(false);
       setActionToConfirm(null);
@@ -463,9 +466,9 @@ export default function BudgetsDashboard() {
       case 'danger':
         return 'Excedido';
       case 'warning':
-        return 'Atenção';
+        return t('web.budgets.headsUp');
       default:
-        return 'Dentro do Orçamento';
+        return t('web.budgets.onTrack');
     }
   };
 
@@ -608,7 +611,7 @@ export default function BudgetsDashboard() {
   const handleRemoveMacroCategory = (index) => {
     const entry = macroDraft[index];
     if (entry && entry.spent > 0) {
-      warning('Não é possível remover uma categoria que já possui gastos. Ajuste o valor para zero caso não deseje mais acompanhá-la.');
+      warning(t('web.budgets.youCanTRemoveA'));
       return;
     }
     setMacroDraft((prev) => prev.filter((_, idx) => idx !== index));
@@ -617,17 +620,17 @@ export default function BudgetsDashboard() {
   const handleSaveMacro = async () => {
     if (!editingMacroData) return;
     if (!macroDraftBalanced) {
-      warning('A soma das categorias precisa fechar exatamente o valor planejado para a macro.');
+      warning(t('web.budgets.categoriesMustAddUpTo'));
       return;
     }
     if (macroDraftHasOverspend) {
-      warning('Algumas categorias possuem gastos maiores do que o valor planejado. Ajuste os valores antes de salvar.');
+      warning(t('web.budgets.someCategoriesAlreadySpentMore'));
       return;
     }
 
     const monthYear = formatMonthYear(selectedMonth);
     if (!monthYear) {
-      showError('Mês selecionado inválido.');
+      showError(t('web.budgets.invalidMonth'));
       return;
     }
 
@@ -684,12 +687,12 @@ export default function BudgetsDashboard() {
         await supabase.from('budgets').insert(inserts);
       }
 
-      success('Macro atualizada com sucesso!');
+      success(t('web.budgets.groupUpdated'));
       await fetchBudgets();
       closeMacroEditor();
     } catch (error) {
       console.error('Erro ao salvar macro:', error);
-      showError('Erro ao salvar macro. Tente novamente.');
+      showError(t('web.budgets.couldnTSaveTheGroup'));
     } finally {
       setSavingMacro(false);
     }
@@ -776,9 +779,9 @@ export default function BudgetsDashboard() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
+          <p className="text-gray-600 mb-4">{t('web.shared.youNeedAnInviteTo')}</p>
           <Button onClick={() => router.push('/')}>
-            Voltar ao início
+            {t('web.shared.backToHome2')}
           </Button>
         </div>
       </div>
@@ -790,7 +793,7 @@ export default function BudgetsDashboard() {
       <Header 
         organization={organization}
         user={orgUser}
-        pageTitle="Orçamentos"
+        pageTitle={t('web.budgets.budgets')}
       >
         <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
@@ -798,7 +801,7 @@ export default function BudgetsDashboard() {
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-              <h2 className="text-lg font-semibold text-gray-900">Gestão de Orçamentos</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('web.budgets.budgets2')}</h2>
               <div className="flex items-center space-x-3">
                 <input
                   type="month"
@@ -812,7 +815,7 @@ export default function BudgetsDashboard() {
                   className="border-flight-blue text-flight-blue hover:bg-flight-blue/10"
                 >
                   <Target className="h-4 w-4 mr-2" />
-                  Criar Orçamento
+                  {t('web.budgets.createBudget')}
                 </Button>
                 <Button 
                   onClick={handleCopyPreviousMonth}
@@ -820,7 +823,7 @@ export default function BudgetsDashboard() {
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   <Copy className="h-4 w-4 mr-2" />
-                  Copiar Mês Anterior
+                  {t('web.budgets.copyLastMonth')}
                 </Button>
               </div>
             </div>
@@ -832,7 +835,7 @@ export default function BudgetsDashboard() {
           <Card className="border border-flight-blue/20 bg-flight-blue/5 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
-                Total Orçado
+                {t('web.budgets.totalBudgeted')}
               </CardTitle>
               <div className="p-2 rounded-lg bg-flight-blue/10">
                 <Target className="h-4 w-4 text-flight-blue" />
@@ -848,7 +851,7 @@ export default function BudgetsDashboard() {
           <Card className="border border-gray-300 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
-                Total Gasto
+                {t('web.budgets.totalSpent')}
               </CardTitle>
               <div className="p-2 rounded-lg bg-gray-200">
                 <TrendingDown className="h-4 w-4 text-gray-600" />
@@ -868,7 +871,7 @@ export default function BudgetsDashboard() {
           }`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
-                Restante
+                {t('web.budgets.left')}
               </CardTitle>
               <div className={`p-2 rounded-lg ${
                 totalRemainingValue < 0 ? 'bg-red-100' : 'bg-flight-blue/10'
@@ -910,7 +913,7 @@ export default function BudgetsDashboard() {
                     )}
                   </div>
                   <span className="text-sm font-medium text-gray-500">
-                    {macro.totalBudget > 0 ? `${macro.progress.toFixed(1)}% usado` : 'Sem orçamento'}
+                    {macro.totalBudget > 0 ? `${macro.progress.toFixed(1)}% usado` : t('web.budgets.noBudget')}
                   </span>
                 </div>
               </CardHeader>
@@ -926,19 +929,19 @@ export default function BudgetsDashboard() {
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-sm">
                   <div>
-                    <p className="text-gray-500">Orçado</p>
+                    <p className="text-gray-500">{t('web.budgets.budgeted')}</p>
                     <p className="font-semibold text-gray-900">
                       R$ {macro.totalBudget.toLocaleString('pt-BR')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Gasto</p>
+                    <p className="text-gray-500">{t('web.budgets.spent')}</p>
                     <p className="font-semibold text-gray-900">
                       R$ {macro.totalSpent.toLocaleString('pt-BR')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Restante</p>
+                    <p className="text-gray-500">{t('web.budgets.left')}</p>
                     <p className={`font-semibold ${macro.remaining < 0 ? 'text-red-600' : 'text-green-600'}`}>
                       R$ {macro.remaining.toLocaleString('pt-BR')}
                     </p>
@@ -963,10 +966,10 @@ export default function BudgetsDashboard() {
                     <div className="space-y-1">
                       <CardTitle className="text-lg text-gray-900">{macro.label}</CardTitle>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:gap-6 text-sm text-gray-500">
-                        <span>Orçado: <strong className="text-gray-900">{formatCurrency(macro.totalBudget)}</strong></span>
-                        <span>Gasto: <strong className="text-gray-900">{formatCurrency(macro.totalSpent)}</strong></span>
+                        <span>{t('web.budgets.budgeted2')} <strong className="text-gray-900">{formatCurrency(macro.totalBudget)}</strong></span>
+                        <span>{t('web.budgets.spent2')} <strong className="text-gray-900">{formatCurrency(macro.totalSpent)}</strong></span>
                         <span>
-                          Restante:{' '}
+                          {t('web.budgets.left2')}
                           <strong className={macro.remaining < 0 ? 'text-red-600' : 'text-green-600'}>
                             {formatCurrency(macro.remaining)}
                           </strong>
@@ -982,7 +985,7 @@ export default function BudgetsDashboard() {
                       className="flex items-center gap-2"
                     >
                       <Edit3 className="h-4 w-4" />
-                      Editar macro
+                      {t('web.budgets.editGroup')}
                     </Button>
                   </div>
                 </CardHeader>
@@ -990,7 +993,7 @@ export default function BudgetsDashboard() {
                   {isEditing ? (
                     <div className="space-y-5">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div className="text-sm font-medium text-gray-600">Valor total planejado</div>
+                        <div className="text-sm font-medium text-gray-600">{t('web.budgets.totalPlanned')}</div>
                         <div className="flex items-center gap-2">
                           <span className="text-gray-500">R$</span>
                           <input
@@ -1019,11 +1022,11 @@ export default function BudgetsDashboard() {
                         </div>
                         <div>
                           <p className="text-base font-semibold text-gray-900">{entry.name}</p>
-                          <p className="text-xs text-gray-500">Já gasto: {formatCurrency(entry.spent)}</p>
+                          <p className="text-xs text-gray-500">{t('web.budgets.alreadySpent', { p0: formatCurrency(entry.spent) })}</p>
                         </div>
                       </div>
                             <div className="space-y-3">
-                              <label className="text-sm font-medium text-gray-600">Valor planejado</label>
+                              <label className="text-sm font-medium text-gray-600">{t('web.budgets.plannedAmount')}</label>
                               <input
                                 type="text"
                                 value={typeof entry.amount === 'number' ? formatCurrencyInput(entry.amount) : entry.amount}
@@ -1036,7 +1039,7 @@ export default function BudgetsDashboard() {
                                 <div className="flex items-start gap-2 text-xs text-red-600">
                                   <AlertTriangle className="h-4 w-4" />
                                   <span>
-                                    Valor menor que o já gasto. Ajuste para pelo menos {formatCurrency(entry.spent)}.
+                                    {t('web.budgets.thatSLessThanWhat', { p0: formatCurrency(entry.spent) })}
                                   </span>
                                 </div>
                               )}
@@ -1062,7 +1065,7 @@ export default function BudgetsDashboard() {
                               onChange={(event) => setCategoryToAdd(event.target.value)}
                               className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
                             >
-                              <option value="">Adicionar categoria existente...</option>
+                              <option value="">{t('web.budgets.addAnExistingCategory')}</option>
                               {availableMacroCategories.map((category) => (
                                 <option key={category.id} value={category.id}>
                                   {category.name}
@@ -1071,17 +1074,17 @@ export default function BudgetsDashboard() {
                             </select>
                             <Button onClick={handleAddMacroCategory} disabled={!categoryToAdd} className="flex items-center gap-2">
                               <PlusCircle className="h-4 w-4" />
-                              Adicionar
+                              {t('web.shared.add')}
                             </Button>
                           </div>
                         ) : (
                           <div className="text-sm text-gray-500">
-                            Todas as categorias dessa macro já estão presentes neste planejamento.
+                            {t('web.budgets.everyCategoryInThisGroup')}
                           </div>
                         )}
                         
                         <div className="flex items-center justify-center">
-                          <span className="text-sm text-gray-500">ou</span>
+                          <span className="text-sm text-gray-500">{t('web.budgets.or')}</span>
                         </div>
                         
                         <Button
@@ -1094,7 +1097,7 @@ export default function BudgetsDashboard() {
                           className="w-full border-dashed border-2 border-flight-blue/40 text-flight-blue hover:bg-flight-blue/5"
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Criar nova categoria para esta macro
+                          {t('web.budgets.createANewCategoryIn')}
                         </Button>
                       </div>
 
@@ -1108,16 +1111,16 @@ export default function BudgetsDashboard() {
                         }`}
                       >
                         {macroDraftBalanced
-                          ? 'Distribuição fechada em 100% do valor planejado.'
+                          ? t('web.budgets.n100OfThePlannedAmount')
                           : macroDraftDiff > 0
-                          ? `Faltam ${formatCurrency(diffAbs)} para distribuir.`
-                          : `Excedeu ${formatCurrency(diffAbs)} do valor planejado.`}
+                          ? t('web.budgets.leftToAssign', { p0: formatCurrency(diffAbs) })
+                          : t('web.budgets.overThePlannedAmount', { p0: formatCurrency(diffAbs) })}
                       </div>
                       {macroDraftHasOverspend && (
                         <div className="flex items-start gap-2 text-sm text-red-600">
                           <AlertTriangle className="h-4 w-4 mt-0.5" />
                           <span>
-                            Algumas categorias possuem gastos maiores do que o valor planejado. Ajuste os valores antes de salvar.
+                            {t('web.budgets.someCategoriesAlreadySpentMore')}
                           </span>
                         </div>
                       )}
@@ -1127,12 +1130,12 @@ export default function BudgetsDashboard() {
                       {/* Header da Tabela */}
                       <div className="grid grid-cols-[48px_180px_1fr_120px_120px_120px_80px] gap-3 px-3 pb-2 text-xs font-medium text-gray-500">
                         <div></div>
-                        <div>Categoria</div>
-                        <div>Progresso</div>
-                        <div className="text-right">Orçado</div>
-                        <div className="text-right">Gasto</div>
-                        <div className="text-right">Restante</div>
-                        <div className="text-center">Status</div>
+                        <div>{t('web.shared.category')}</div>
+                        <div>{t('web.shared.progress')}</div>
+                        <div className="text-right">{t('web.budgets.budgeted')}</div>
+                        <div className="text-right">{t('web.budgets.spent')}</div>
+                        <div className="text-right">{t('web.budgets.left')}</div>
+                        <div className="text-center">{t('web.shared.status')}</div>
                       </div>
 
                       {/* Linhas da Tabela */}
@@ -1201,7 +1204,7 @@ export default function BudgetsDashboard() {
                     </div>
                   ) : (
                     <div className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-xl">
-                      Nenhum orçamento cadastrado nesta macro para o mês selecionado.
+                      {t('web.budgets.noBudgetsInThisGroup')}
                     </div>
                   )}
                 </CardContent>
@@ -1215,7 +1218,7 @@ export default function BudgetsDashboard() {
               <div className="flex flex-col items-center gap-3">
                 <ChevronDown className="h-8 w-8 text-flight-blue animate-bounce" />
                 <p className="text-gray-600">
-                  Clique em uma das macros acima para ver e gerenciar suas subcategorias
+                  {t('web.budgets.clickAGroupAboveTo')}
                 </p>
               </div>
             </CardContent>
@@ -1229,14 +1232,14 @@ export default function BudgetsDashboard() {
               <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <Target className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum orçamento definido</h3>
-              <p className="text-gray-600 mb-6">Configure suas metas mensais para ter controle total sobre seus gastos.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('web.budgets.noBudgetsYet')}</h3>
+              <p className="text-gray-600 mb-6">{t('web.budgets.textZulBudgetFood600')}</p>
               <Button 
                 onClick={() => setShowBudgetWizard(true)}
                 className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <Target className="h-4 w-4 mr-2" />
-                Criar Orçamento
+                {t('web.budgets.createBudget')}
               </Button>
             </CardContent>
           </Card>
@@ -1249,8 +1252,8 @@ export default function BudgetsDashboard() {
           <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col">
             <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">Editar macro · {MACRO_LABELS[editingMacroKey]}</h3>
-                <p className="text-sm text-gray-500">Ajuste o valor total e distribua entre as categorias vinculadas a esta macro.</p>
+                <h3 className="text-xl font-semibold text-gray-900">{t('web.budgets.editGroup2', { p0: MACRO_LABELS[editingMacroKey] })}</h3>
+                <p className="text-sm text-gray-500">{t('web.budgets.setTheTotalAndSplit')}</p>
               </div>
               <Button variant="ghost" size="icon" onClick={closeMacroEditor}>
                 <X className="h-5 w-5" />
@@ -1259,15 +1262,15 @@ export default function BudgetsDashboard() {
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                 <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                  <p className="text-sm text-gray-500">Valor planejado</p>
+                  <p className="text-sm text-gray-500">{t('web.budgets.plannedAmount')}</p>
                   <p className="text-lg font-semibold text-gray-900">{formatCurrency(macroDraftTarget)}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                  <p className="text-sm text-gray-500">Distribuído</p>
+                  <p className="text-sm text-gray-500">{t('web.budgets.assigned')}</p>
                   <p className="text-lg font-semibold text-gray-900">{formatCurrency(macroDraftTotal)}</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                  <p className="text-sm text-gray-500">Diferença</p>
+                  <p className="text-sm text-gray-500">{t('web.budgets.difference')}</p>
                   <p className={`text-lg font-semibold ${macroDraftDiff < 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {formatCurrency(macroDraftDiff)}
                   </p>
@@ -1276,7 +1279,7 @@ export default function BudgetsDashboard() {
 
               <div className="space-y-4">
                 <label className="text-sm font-medium text-gray-700" htmlFor="macro-total-input">
-                  Ajustar valor total planejado
+                  {t('web.budgets.adjustTotalPlanned')}
                 </label>
                 <div className="flex items-center gap-2 max-w-xs">
                   <span className="text-gray-500">R$</span>
@@ -1308,11 +1311,11 @@ export default function BudgetsDashboard() {
                         </div>
                         <div>
                           <p className="text-base font-semibold text-gray-900">{entry.name}</p>
-                          <p className="text-xs text-gray-500">Já gasto: {formatCurrency(entry.spent)}</p>
+                          <p className="text-xs text-gray-500">{t('web.budgets.alreadySpent', { p0: formatCurrency(entry.spent) })}</p>
                         </div>
                       </div>
                       <div className="space-y-3">
-                        <label className="text-sm font-medium text-gray-600">Valor planejado</label>
+                        <label className="text-sm font-medium text-gray-600">{t('web.budgets.plannedAmount')}</label>
                         <input
                           type="text"
                           value={typeof entry.amount === 'number' ? formatCurrencyInput(entry.amount) : entry.amount}
@@ -1325,7 +1328,7 @@ export default function BudgetsDashboard() {
                           <div className="flex items-start gap-2 text-xs text-red-600">
                             <AlertTriangle className="h-4 w-4" />
                             <span>
-                              Valor menor que o já gasto. Ajuste para pelo menos {formatCurrency(entry.spent)}.
+                              {t('web.budgets.thatSLessThanWhat', { p0: formatCurrency(entry.spent) })}
                             </span>
                           </div>
                         )}
@@ -1340,7 +1343,7 @@ export default function BudgetsDashboard() {
                 </div>
               ) : (
                 <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500 text-center">
-                  Nenhuma categoria adicionada ainda. Utilize o seletor abaixo para incluir novas categorias nesta macro.
+                  {t('web.budgets.noCategoriesYetUseThe')}
                 </div>
               )}
 
@@ -1352,7 +1355,7 @@ export default function BudgetsDashboard() {
                       onChange={(event) => setCategoryToAdd(event.target.value)}
                       className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-flight-blue focus:ring-2 focus:ring-flight-blue/30"
                     >
-                      <option value="">Adicionar categoria existente...</option>
+                      <option value="">{t('web.budgets.addAnExistingCategory')}</option>
                       {availableMacroCategories.map((category) => (
                         <option key={category.id} value={category.id}>
                           {category.name}
@@ -1361,17 +1364,17 @@ export default function BudgetsDashboard() {
                     </select>
                     <Button onClick={handleAddMacroCategory} disabled={!categoryToAdd} className="flex items-center gap-2">
                       <PlusCircle className="h-4 w-4" />
-                      Adicionar
+                      {t('web.shared.add')}
                     </Button>
                   </div>
                 ) : (
                   <div className="text-sm text-gray-500">
-                    Todas as categorias dessa macro já estão presentes neste planejamento.
+                    {t('web.budgets.everyCategoryInThisGroup')}
                   </div>
                 )}
                 
                 <div className="flex items-center justify-center">
-                  <span className="text-sm text-gray-500">ou</span>
+                  <span className="text-sm text-gray-500">{t('web.budgets.or')}</span>
                 </div>
                 
                 <Button
@@ -1384,7 +1387,7 @@ export default function BudgetsDashboard() {
                   className="w-full border-dashed border-2 border-flight-blue/40 text-flight-blue hover:bg-flight-blue/5"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Criar nova categoria para esta macro
+                  {t('web.budgets.createANewCategoryIn')}
                 </Button>
               </div>
 
@@ -1398,26 +1401,26 @@ export default function BudgetsDashboard() {
                 }`}
               >
                 {macroDraftBalanced
-                  ? 'Distribuição fechada em 100% do valor planejado.'
+                  ? t('web.budgets.n100OfThePlannedAmount')
                   : macroDraftDiff > 0
-                  ? `Faltam ${formatCurrency(Math.abs(macroDraftDiff))} para distribuir.`
-                  : `Excedeu ${formatCurrency(Math.abs(macroDraftDiff))} do valor planejado.`}
+                  ? t('web.budgets.leftToAssign', { p0: formatCurrency(Math.abs(macroDraftDiff)) })
+                  : t('web.budgets.overThePlannedAmount', { p0: formatCurrency(Math.abs(macroDraftDiff)) })}
               </div>
               {macroDraftHasOverspend && (
                 <div className="flex items-start gap-2 text-sm text-red-600">
                   <AlertTriangle className="h-4 w-4 mt-0.5" />
                   <span>
-                    Algumas categorias possuem gastos maiores do que o valor planejado. Ajuste os valores antes de salvar.
+                    {t('web.budgets.someCategoriesAlreadySpentMore')}
                   </span>
                 </div>
               )}
             </div>
             <footer className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 border-t border-gray-200 px-6 py-4">
               <Button variant="outline" onClick={closeMacroEditor} disabled={savingMacro}>
-                Cancelar
+                {t('web.shared.cancel')}
               </Button>
               <Button onClick={handleSaveMacro} disabled={!canSaveMacro}>
-                {savingMacro ? 'Salvando...' : 'Salvar macro'}
+                {savingMacro ? t('web.shared.saving') : t('web.budgets.saveGroup')}
               </Button>
             </footer>
           </div>
@@ -1430,10 +1433,10 @@ export default function BudgetsDashboard() {
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center space-x-3">
               <Calendar className="h-6 w-6 text-flight-blue" />
-              <h2 className="text-xl font-bold text-gray-900">Novo Mês Detectado!</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t('web.budgets.newMonth')}</h2>
             </div>
             <p className="text-gray-600">
-              Você ainda não tem um planejamento para este mês. O que deseja fazer?
+              {t('web.budgets.youDonTHaveA')}
             </p>
             <div className="space-y-3">
               <Button 
@@ -1441,7 +1444,7 @@ export default function BudgetsDashboard() {
                 className="w-full justify-center"
               >
                 <Copy className="h-4 w-4 mr-2" />
-                Copiar planejamento do mês anterior
+                {t('web.budgets.copyLastMonthSPlan')}
               </Button>
               <Button 
                 onClick={() => {
@@ -1452,14 +1455,14 @@ export default function BudgetsDashboard() {
                 className="w-full justify-center border-flight-blue text-flight-blue hover:bg-flight-blue/10"
               >
                 <Target className="h-4 w-4 mr-2" />
-                Criar novo planejamento
+                {t('web.budgets.createANewPlan')}
               </Button>
               <Button 
                 onClick={handleDismissTurnover}
                 variant="ghost"
                 className="w-full justify-center text-gray-500"
               >
-                Depois
+                {t('web.budgets.later')}
               </Button>
             </div>
           </div>
@@ -1498,14 +1501,14 @@ export default function BudgetsDashboard() {
             setActionToConfirm(null);
           }}
           onConfirm={actionToConfirm === 'delete' ? confirmDeleteBudget : confirmCopyBudgets}
-          title={actionToConfirm === 'delete' ? "Confirmar exclusão" : "Confirmar cópia de orçamentos"}
+          title={actionToConfirm === 'delete' ? t('web.shared.confirmDelete') : t('web.budgets.confirmCopyingBudgets')}
           message={
             actionToConfirm === 'delete' 
-              ? "Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita."
-              : `Já existem orçamentos para ${selectedMonth}. Deseja substituí-los pelos orçamentos do mês anterior?`
+              ? t('web.budgets.deleteThisBudgetThisCan')
+              : t('web.budgets.thereAreAlreadyBudgetsFor', { selectedMonth })
           }
-          confirmText={actionToConfirm === 'delete' ? "Excluir" : "Substituir"}
-          cancelText="Cancelar"
+          confirmText={actionToConfirm === 'delete' ? t('web.shared.delete') : t('web.budgets.replace')}
+          cancelText={t('web.shared.cancel')}
           type={actionToConfirm === 'delete' ? "danger" : "warning"}
         />
       )}

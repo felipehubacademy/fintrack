@@ -7,6 +7,7 @@ import CategoriesStep from './CategoriesStep';
 import WhatsAppStep from './WhatsAppStep';
 import InviteStep from './InviteStep';
 import CompletionStep from './CompletionStep';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function OnboardingModal({ 
   isOpen, 
@@ -14,6 +15,7 @@ export default function OnboardingModal({
   user, 
   organization 
 }) {
+  const { t } = useI18n();
   const { isSoloUser } = useOrganization();
   const {
     progress,
@@ -38,21 +40,21 @@ export default function OnboardingModal({
     const allSteps = [];
     
     // Welcome sempre
-    allSteps.push({ component: WelcomeStep, title: 'Boas-vindas', skippable: false });
+    allSteps.push({ component: WelcomeStep, title: t('web.onboardingModal.welcome'), skippable: false });
     
     // WhatsApp para todos
-    allSteps.push({ component: WhatsAppStep, title: 'WhatsApp', skippable: false });
+    allSteps.push({ component: WhatsAppStep, title: t('web.shared.whatsapp'), skippable: false });
     
     // Categorias sempre
-    allSteps.push({ component: CategoriesStep, title: 'Categorias', skippable: true });
+    allSteps.push({ component: CategoriesStep, title: t('web.onboardingModal.categories'), skippable: true });
     
     // Convidar familiar apenas para admin
     if (onboardingType === 'admin') {
-      allSteps.push({ component: InviteStep, title: 'Convites', skippable: true });
+      allSteps.push({ component: InviteStep, title: t('web.onboardingModal.invites'), skippable: true });
     }
     
     // Sempre adicionar conclusão no final
-    allSteps.push({ component: CompletionStep, title: 'Conclusão', skippable: false });
+    allSteps.push({ component: CompletionStep, title: t('web.onboardingModal.done'), skippable: false });
     
     return allSteps;
   }, [isSoloUser, progress?.onboarding_type]);
@@ -147,7 +149,7 @@ export default function OnboardingModal({
               />
               <div>
                 <h1 className="text-gray-900 font-bold text-lg md:text-xl">MeuAzulão</h1>
-                <p className="text-gray-500 text-xs md:text-sm">Configuração Inicial</p>
+                <p className="text-gray-500 text-xs md:text-sm">{t('web.onboardingModal.gettingStarted')}</p>
               </div>
             </div>
 
@@ -158,7 +160,7 @@ export default function OnboardingModal({
                 className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <SkipForward className="w-4 h-4" />
-                <span className="text-sm font-medium">Pular Configuração</span>
+                <span className="text-sm font-medium">{t('web.onboardingModal.skipSetup')}</span>
               </button>
             )}
           </div>
@@ -196,7 +198,7 @@ export default function OnboardingModal({
               `}
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Anterior</span>
+              <span className="hidden sm:inline">{t('web.shared.previous')}</span>
             </button>
 
             {/* Step Dots - Distributed evenly */}
@@ -224,7 +226,7 @@ export default function OnboardingModal({
               `}
             >
               <span className="hidden sm:inline">
-                {(currentStep || 0) === (steps?.length || totalSteps || 8) - 1 ? 'Concluir' : 'Próximo'}
+                {(currentStep || 0) === (steps?.length || totalSteps || 8) - 1 ? t('web.shared.finish') : t('web.shared.next')}
               </span>
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -237,23 +239,23 @@ export default function OnboardingModal({
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Pular Configuração?
+              {t('web.onboardingModal.skipSetup2')}
             </h3>
             <p className="text-gray-600 mb-6">
-              Você pode configurar tudo isso depois nas configurações. Tem certeza que deseja pular?
+              {t('web.onboardingModal.youCanSetAllThis')}
             </p>
             <div className="flex space-x-3">
               <button
                 onClick={() => setShowSkipConfirm(false)}
                 className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors"
               >
-                Cancelar
+                {t('web.shared.cancel')}
               </button>
               <button
                 onClick={confirmSkipAll}
                 className="flex-1 px-4 py-3 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-xl font-semibold transition-all shadow-md"
               >
-                Sim, Pular
+                {t('web.onboardingModal.yesSkip')}
               </button>
             </div>
           </div>

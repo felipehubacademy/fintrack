@@ -7,6 +7,7 @@ import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import HelpTooltip from './ui/HelpTooltip';
 import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -36,6 +37,7 @@ const aggregateSplits = (splits) => {
 };
 
 export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = [] }) {
+  const { t } = useI18n();
   
   const { organization, user: orgUser, costCenters, isSoloUser, loading: orgLoading, budgetCategories } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
@@ -269,15 +271,15 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
 
   const handleSave = async () => {
     if (!organization?.id || !orgUser?.id) {
-      showError('Organização ou usuário não encontrados');
+      showError(t('web.expenseModal.householdOrUserNotFound'));
       return;
     }
     if (!form.description || !form.amount || !form.date) {
-      warning('Preencha todos os campos obrigatórios');
+      warning(t('web.shared.fillInAllRequiredFields'));
       return;
     }
     if (!form.owner_name) {
-      warning('Selecione um responsável');
+      warning(t('web.expenseModal.pickAnOwner'));
       return;
     }
 
@@ -286,12 +288,12 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
     
     // Validar splits se for compartilhado
     if (willBeShared && splitDetails.length === 0) {
-      warning('É necessário configurar a divisão da despesa compartilhada');
+      warning(t('web.expenseModal.setUpHowTheShared'));
       return;
     }
     
     if (willBeShared && totalPercentage !== 100) {
-      warning(`A divisão deve somar exatamente 100%. Atual: ${totalPercentage}%`);
+      warning(t('web.expenseModal.theSplitMustAddUp', { totalPercentage }));
       return;
     }
     
@@ -309,7 +311,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
       const category = categories.find(c => c.id === form.category_id);
       
       if (!selectedOption) {
-        throw new Error('Responsável inválido');
+        throw new Error(t('web.expenseModal.invalidOwner'));
       }
       
       // Para despesa compartilhada (nome da organização), cost_center_id é NULL
@@ -326,7 +328,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
       });
 
       if (isCredit) {
-        if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
+        if (!form.card_id || !form.installments) throw new Error(t('web.expenseModal.cardAndInstallmentsAreRequired'));
         
         // ⚠️ IMPORTANTE: Enviar o nome da organização (como o Zul faz)
         const ownerForRPC = form.owner_name;
@@ -547,10 +549,10 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         }
       }
       onClose?.();
-      success('Despesa salva com sucesso!');
+      success(t('web.expenseModal.expenseSaved'));
       onSuccess?.();
     } catch (e) {
-      showError('Erro ao salvar despesa: ' + (e.message || 'Erro desconhecido'));
+      showError(t('web.expenseModal.couldnTSaveTheExpense') + (e.message || t('web.shared.unknownError')));
     } finally {
       setSaving(false);
     }
@@ -563,7 +565,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Nova Transação</h2>
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">{t('web.expenseModal.newTransaction')}</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -578,18 +580,18 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
               <div className="md:col-span-2 lg:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.description')}</label>
                 <input
                   type="text"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  placeholder="Ex: Mercado, Farmácia"
+                  placeholder={t('web.shared.eGGroceriesPharmacy')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Valor *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.amount')}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
                   <input
@@ -618,7 +620,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Data *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.date')}</label>
                 <input
                   type="date"
                   value={form.date}
@@ -628,13 +630,13 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.category')}</label>
                 <select
                   value={form.category_id}
                   onChange={(e) => setForm({ ...form, category_id: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
-                  <option value="">Selecione...</option>
+                  <option value="">{t('web.shared.select')}</option>
                   {expenseCategories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
@@ -644,7 +646,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
               {!isSoloUser ? (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Responsável *</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('web.shared.owner')}</label>
                     <HelpTooltip 
                       content={`Individual: só você vê. ${organization?.name || 'Organização'}: todos veem.`}
                       autoOpen={true}
@@ -655,7 +657,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                     onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
-                    <option value="">Selecione...</option>
+                    <option value="">{t('web.shared.select')}</option>
                     {ownerOptions.map(o => (
                       <option key={o.id ?? o.name} value={o.name}>{o.name}</option>
                     ))}
@@ -664,52 +666,52 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
               ) : null}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.paymentMethod')}</label>
                 <select
                   value={form.payment_method}
                   onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
-                  <option value="cash">Dinheiro</option>
-                  <option value="debit_card">Cartão de Débito</option>
-                  <option value="pix">PIX</option>
-                  <option value="credit_card">Cartão de Crédito</option>
-                  <option value="boleto">Boleto</option>
-                  <option value="bank_transfer">Transferência Bancária</option>
-                  <option value="other">Outros</option>
+                  <option value="cash">{t('web.shared.cash')}</option>
+                  <option value="debit_card">{t('web.shared.debitCard')}</option>
+                  <option value="pix">{t('web.shared.pix')}</option>
+                  <option value="credit_card">{t('web.shared.creditCard')}</option>
+                  <option value="boleto">{t('web.shared.bankSlipBoleto')}</option>
+                  <option value="bank_transfer">{t('web.shared.bankTransfer')}</option>
+                  <option value="other">{t('web.shared.other')}</option>
                 </select>
               </div>
 
               {isCredit && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Cartão *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.card2')}</label>
                     <select
                       value={form.card_id}
                       onChange={(e) => setForm({ ...form, card_id: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                       disabled={cards.length === 0}
                     >
-                      <option value="">Selecione...</option>
+                      <option value="">{t('web.shared.select')}</option>
                       {cards.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
                     {cards.length === 0 && (
                       <p className="mt-2 text-sm text-gray-500">
-                        Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                        {t('web.shared.noCreditCardYetAdd')}
                       </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Parcelas *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.installments')}</label>
                     <select
                       value={form.installments}
                       onChange={(e) => setForm({ ...form, installments: Number(e.target.value) })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                     >
                       {Array.from({ length: 12 }).map((_, i) => (
-                        <option key={i+1} value={i+1}>{i+1}x</option>
+                        <option key={i+1} value={i+1}>{t('web.shared.x', { p0: i+1 })}</option>
                       ))}
                     </select>
                   </div>
@@ -721,13 +723,13 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
             {isShared && (
               <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-medium text-gray-900">Divisão da Despesa</h4>
+                  <h4 className="font-medium text-gray-900">{t('web.expenseModal.expenseSplit')}</h4>
                   <button
                     type="button"
                     onClick={() => showSplitConfig ? resetToDefaultSplit() : setShowSplitConfig(true)}
                     className="text-sm text-flight-blue hover:text-flight-blue/80 font-medium"
                   >
-                    {showSplitConfig ? 'Usar Padrão' : 'Personalizar'}
+                    {showSplitConfig ? t('web.shared.useDefault') : t('web.shared.customize')}
                   </button>
                 </div>
 
@@ -759,7 +761,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
                     ))}
                     
                     <div className="pt-3 border-t border-gray-300 flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">Total:</span>
+                      <span className="text-sm font-medium text-gray-700">{t('web.shared.total')}</span>
                       <span className={`text-sm font-bold ${totalPercentage === 100 ? 'text-green-600' : 'text-red-600'}`}>
                         {totalPercentage.toFixed(2)}%
                       </span>
@@ -795,14 +797,14 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, categories = 
             disabled={saving}
             className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
-            {saving ? 'Salvando...' : 'Salvar'}
+            {saving ? t('web.shared.saving') : t('web.shared.save')}
           </Button>
         </div>
       </div>

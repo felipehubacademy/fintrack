@@ -1,6 +1,8 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function HorizontalBarChart({ data }) {
+  const { t } = useI18n();
   const formatCurrency = (value) => {
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
@@ -21,19 +23,19 @@ export default function HorizontalBarChart({ data }) {
         <p className="font-semibold text-gray-900 mb-2">{data.category}</p>
         <div className="space-y-1">
           <div className="flex justify-between space-x-4">
-            <span className="text-sm text-gray-600">Atual:</span>
+            <span className="text-sm text-gray-600">{t('web.horizontalBarChart.now')}</span>
             <span className="text-sm font-semibold text-gray-900">
               {formatCurrency(data.current)}
             </span>
           </div>
           <div className="flex justify-between space-x-4">
-            <span className="text-sm text-gray-600">Média:</span>
+            <span className="text-sm text-gray-600">{t('web.horizontalBarChart.average')}</span>
             <span className="text-sm font-semibold text-gray-900">
               {formatCurrency(data.average)}
             </span>
           </div>
           <div className="flex justify-between space-x-4">
-            <span className="text-sm text-gray-600">Variação:</span>
+            <span className="text-sm text-gray-600">{t('web.horizontalBarChart.change')}</span>
             <span className={`text-sm font-semibold ${
               data.status === 'above' ? 'text-red-600' : 
               data.status === 'below' ? 'text-green-600' : 

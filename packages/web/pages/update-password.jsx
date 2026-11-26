@@ -4,8 +4,10 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { Lock, Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useDynamicUrls } from '../hooks/useDynamicUrls';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function UpdatePassword() {
+  const { t } = useI18n();
   const router = useRouter();
   const { getDynamicUrl } = useDynamicUrls();
   const [password, setPassword] = useState('');
@@ -31,13 +33,13 @@ export default function UpdatePassword() {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      setMessage('As senhas não coincidem');
+      setMessage(t('web.shared.passwordsDonTMatch'));
       setIsError(true);
       return;
     }
 
     if (password.length < 8) {
-      setMessage('A senha deve ter no mínimo 8 caracteres');
+      setMessage(t('web.updatePassword.passwordMustHaveAtLeast'));
       setIsError(true);
       return;
     }
@@ -53,14 +55,14 @@ export default function UpdatePassword() {
 
       if (error) throw error;
 
-      setMessage('Senha atualizada com sucesso! Redirecionando...');
+      setMessage(t('web.updatePassword.passwordUpdatedRedirecting'));
       setIsError(false);
       
       setTimeout(() => {
         router.push(getDynamicUrl('/dashboard'));
       }, 2000);
     } catch (error) {
-      setMessage(error.message || 'Erro ao atualizar senha');
+      setMessage(error.message || t('web.updatePassword.couldnTUpdateYourPassword'));
       setIsError(true);
     } finally {
       setLoading(false);
@@ -70,7 +72,7 @@ export default function UpdatePassword() {
   return (
     <>
       <Head>
-        <title>Atualizar Senha - MeuAzulão</title>
+        <title>{t('web.updatePassword.updatePasswordMeuazulao')}</title>
         <meta name="description" content="Atualize sua senha no MeuAzulão" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -96,10 +98,10 @@ export default function UpdatePassword() {
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Nova Senha
+                {t('web.updatePassword.newPassword')}
               </h1>
               <p className="text-gray-600">
-                Digite sua nova senha de acesso
+                {t('web.updatePassword.enterYourNewPassword')}
               </p>
             </div>
 
@@ -107,7 +109,7 @@ export default function UpdatePassword() {
             <form onSubmit={handleUpdatePassword} className="space-y-6">
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nova Senha
+                  {t('web.updatePassword.newPassword')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -116,7 +118,7 @@ export default function UpdatePassword() {
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder={t('web.shared.atLeast8Characters')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -135,13 +137,13 @@ export default function UpdatePassword() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Mínimo 8 caracteres
+                  {t('web.shared.atLeast8Characters')}
                 </p>
               </div>
 
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirmar Nova Senha
+                  {t('web.updatePassword.confirmNewPassword')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -150,7 +152,7 @@ export default function UpdatePassword() {
                   <input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Digite a senha novamente"
+                    placeholder={t('web.shared.typeThePasswordAgain')}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -178,10 +180,10 @@ export default function UpdatePassword() {
                 {loading ? (
                   <span className="flex items-center justify-center">
                     <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                    Atualizando...
+                    {t('web.updatePassword.updating')}
                   </span>
                 ) : (
-                  'Atualizar Senha'
+                  t('web.updatePassword.updatePassword')
                 )}
               </button>
             </form>

@@ -9,8 +9,10 @@ import {
   Info, 
   Clock
 } from 'lucide-react';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function NotificationModal({ isOpen, onClose, onUnreadCountChange }) {
+  const { t } = useI18n();
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -97,7 +99,7 @@ export default function NotificationModal({ isOpen, onClose, onUnreadCountChange
         <Card className="border-0 shadow-none">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-flight-blue/5 rounded-t-xl">
             <CardTitle className="flex items-center space-x-3">
-              <span className="text-gray-900 font-semibold">Notificações</span>
+              <span className="text-gray-900 font-semibold">{t('web.shared.notifications')}</span>
             </CardTitle>
             <div className="flex items-center space-x-1 sm:space-x-2">
               <Button
@@ -108,8 +110,8 @@ export default function NotificationModal({ isOpen, onClose, onUnreadCountChange
                 className="text-gray-700 hover:bg-gray-100 text-xs sm:text-sm"
               >
                 <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                <span className="hidden sm:inline">Marcar todas como lidas</span>
-                <span className="sm:hidden">Todas</span>
+                <span className="hidden sm:inline">{t('web.notificationModal.markAllAsRead')}</span>
+                <span className="sm:hidden">{t('web.shared.all')}</span>
               </Button>
               <Button 
                 variant="ghost" 
@@ -127,7 +129,7 @@ export default function NotificationModal({ isOpen, onClose, onUnreadCountChange
               {notifications.length === 0 ? (
                 <div className="p-6 text-center text-gray-500">
                   <Bell className="h-12 w-12 mx-auto mb-4 text-fog-mist" />
-                  <p>Nenhuma notificação</p>
+                  <p>{t('web.notificationModal.noNotifications')}</p>
                 </div>
               ) : (
                 <div className="space-y-1 pt-2">

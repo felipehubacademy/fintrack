@@ -5,6 +5,8 @@ import MacroPieChart from './MacroPieChart';
 import { calculateBudgetDistribution, adjustTo100Percent, validateDistribution } from '../../lib/budgetSuggestions';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import { useI18n } from '../../contexts/I18nContext';
+import { t } from '@fintrack/shared/i18n';
 
 const STEPS = {
   WELCOME: 0,
@@ -20,7 +22,7 @@ const PROGRESS_TOTAL = PROGRESS_STEPS.length;
 const MACRO_LABELS = {
   needs: 'Necessidades',
   wants: 'Desejos',
-  investments: 'Investimentos'
+  get investments() { return t('web.shared.investments'); }
 };
 
 const MACRO_COLORS = {
@@ -38,6 +40,7 @@ export default function BudgetWizard({
   onComplete,
   isSoloUser = true
 }) {
+  const { t } = useI18n();
   const { success, showError, warning } = useNotificationContext();
 
   const [currentStep, setCurrentStep] = useState(STEPS.WELCOME);
@@ -296,10 +299,10 @@ export default function BudgetWizard({
       setDistributions(adjustedDistributions);
       transitionToStep(STEPS.INCOME);
       handleNext();
-      success('Planejamento do mês anterior carregado! Revise e confirme.');
+      success(t('web.budgetWizard.lastMonthSPlanLoaded'));
     } catch (error) {
       console.error('Erro ao copiar planejamento anterior:', error);
-      showError('Não foi possível copiar o planejamento anterior.');
+      showError(t('web.budgetWizard.couldnTCopyLastMonth'));
     } finally {
       setLoadingPreviousPlan(false);
     }
@@ -307,25 +310,25 @@ export default function BudgetWizard({
 
   const handleSave = async () => {
     if (!organization?.id) {
-      showError('Organização não encontrada');
+      showError(t('web.shared.householdNotFound'));
       return;
     }
     const income = parseCurrency(monthlyIncome);
     if (!income) {
-      warning('Informe a renda mensal antes de salvar');
+      warning(t('web.budgetWizard.enterYourMonthlyIncomeBefore'));
       return;
     }
 
     const finalDistributions = adjustTo100Percent(distributions, income);
     
     if (!validateDistribution(finalDistributions)) {
-      warning('A distribuição precisa somar 100%');
+      warning(t('web.budgetWizard.theSplitMustAddUp'));
       return;
     }
 
     const monthYear = formatMonthYear(selectedMonth);
     if (!monthYear) {
-      warning('Selecione um mês válido');
+      warning(t('web.budgetWizard.pickAValidMonth'));
       return;
     }
 
@@ -348,7 +351,7 @@ export default function BudgetWizard({
       });
 
     if (payload.length === 0) {
-      showError('Nenhuma categoria com valor para salvar! Verifique se todas as categorias têm valores.');
+      showError(t('web.budgetWizard.noCategoryHasAnAmount'));
       return;
     }
 
@@ -368,11 +371,11 @@ export default function BudgetWizard({
         }
       }
       
-      success('Planejamento salvo com sucesso!');
+      success(t('web.budgetWizard.planSaved'));
       transitionToStep(STEPS.SUCCESS);
     } catch (error) {
       console.error('Erro ao salvar planejamento:', error);
-      showError('Erro ao salvar planejamento: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.budgetWizard.couldnTSaveThePlan') + (error.message || t('web.shared.unknownError')));
     } finally {
       setSaving(false);
     }
@@ -399,8 +402,7 @@ export default function BudgetWizard({
     <div className="mx-auto w-full max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-6xl px-4 sm:px-6">
       <div className="w-full bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 md:px-8 md:py-5 lg:px-10 lg:py-6 shadow-sm">
         <p className="text-blue-900 text-xs md:text-sm lg:text-base leading-relaxed text-center">
-          <strong>Por quê 20%?</strong> Esta é uma meta recomendada pelos especialistas em finanças pessoais do MeuAzulão
-          para garantir uma poupança saudável e crescimento patrimonial a longo prazo.
+          <strong>{t('web.budgetWizard.why20')}</strong> {t('web.budgetWizard.aCommonPersonalFinanceRule')}
         </p>
       </div>
     </div>
@@ -420,7 +422,7 @@ export default function BudgetWizard({
                 )}
                 <div>
                   <p className="text-sm font-medium text-gray-500">
-                    Passo {progressIndex + 1} de {PROGRESS_TOTAL}
+                    {t('web.budgetWizard.stepOf', { p0: progressIndex + 1, PROGRESS_TOTAL })}
                   </p>
                   <div className="h-1 bg-gray-200 rounded-full mt-2 w-56">
                     <div
@@ -431,13 +433,13 @@ export default function BudgetWizard({
                 </div>
               </div>
               <Button variant="ghost" onClick={onClose}>
-                Fechar
+                {t('web.shared.close')}
               </Button>
             </>
           ) : (
             <div className="w-full flex justify-end">
               <Button variant="ghost" onClick={onClose}>
-                Fechar
+                {t('web.shared.close')}
               </Button>
             </div>
           )}
@@ -459,22 +461,22 @@ export default function BudgetWizard({
           <div className={`${baseClasses} flex h-full flex-col items-center justify-center px-6 py-12 space-y-10 text-center`}>
             <div className="flex items-center justify-center space-x-2 bg-flight-blue/10 text-flight-blue rounded-full px-4 py-2 text-sm font-medium">
               <Sparkles className="h-4 w-4" />
-              <span>Planejamento inteligente {isSoloUser ? 'pessoal' : 'da família'}</span>
+              <span>{t('web.budgetWizard.smartPlan')} {isSoloUser ? 'pessoal' : t('web.budgetWizard.forTheHousehold')}</span>
             </div>
             <div className="space-y-4 max-w-2xl mx-auto">
               <h2 className="text-3xl font-bold text-gray-900">
-                Vamos iniciar seu planejamento mensal?
+                {t('web.budgetWizard.readyToPlanYourMonth')}
               </h2>
               <p className="text-lg text-gray-600">
-                Responda algumas perguntas rápidas e nós sugeriremos o melhor plano de orçamento, com base nas melhores práticas de educação financeira.
+                {t('web.budgetWizard.answerAFewQuickQuestions')}
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button onClick={handleNext} className="px-8 py-3 text-lg">
-                Vamos lá
+                {t('web.budgetWizard.letSGo')}
               </Button>
               <Button variant="outline" onClick={onClose} className="px-8 py-3 text-lg">
-                Mais tarde
+                {t('web.budgetWizard.later')}
               </Button>
               <Button
                 variant="ghost"
@@ -482,7 +484,7 @@ export default function BudgetWizard({
                 disabled={loadingPreviousPlan}
                 className="px-8 py-3 text-lg"
               >
-                {loadingPreviousPlan ? 'Carregando...' : 'Copiar planejamento anterior'}
+                {loadingPreviousPlan ? t('web.shared.loading') : t('web.budgetWizard.copyLastMonthSPlan')}
               </Button>
             </div>
           </div>
@@ -493,10 +495,10 @@ export default function BudgetWizard({
           <div className={`${baseClasses} flex h-full flex-col items-center justify-center px-6 py-12 space-y-10`}>
             <div className="space-y-3 text-center max-w-2xl">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-                {isSoloUser ? 'Qual a entrada programada para o mês?' : 'Qual a entrada familiar programada para o mês?'}
+                {isSoloUser ? t('web.budgetWizard.howMuchIncomeDoYou') : t('web.budgetWizard.howMuchHouseholdIncomeDo')}
               </h2>
               <p className="text-gray-600 text-lg">
-                {isSoloUser ? '(Salário, recebimentos etc.)' : '(Salários, recebimentos etc.)'}
+                {isSoloUser ? t('web.budgetWizard.salaryPaymentsEtc') : t('web.budgetWizard.salariesPaymentsEtc')}
               </p>
             </div>
             <div className="max-w-sm w-full">
@@ -515,7 +517,7 @@ export default function BudgetWizard({
             </div>
             <div className="flex justify-center">
               <Button onClick={handleNext} disabled={!income} className="px-8 py-3 text-lg">
-                Continuar
+                {t('web.shared.continue')}
               </Button>
             </div>
           </div>
@@ -526,7 +528,7 @@ export default function BudgetWizard({
           <div className={`${baseClasses} space-y-8`}>
             <div className="text-center w-full px-4 sm:px-6 lg:px-12 xl:px-20">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 xl:mb-8">
-                Que tal manter a meta de economizar 20% da sua renda mensal e investir esse saldo?
+                {t('web.budgetWizard.howAboutSaving20Of')}
               </h2>
             </div>
 
@@ -535,7 +537,7 @@ export default function BudgetWizard({
             <div className="max-w-[720px] mx-auto space-y-6 px-4 sm:px-0">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
-                  Ajuste o percentual que deseja investir mensalmente
+                  {t('web.budgetWizard.setHowMuchYouWant')}
                 </label>
                 <div className="flex items-center space-x-4">
                   <input
@@ -560,11 +562,11 @@ export default function BudgetWizard({
 
               <div className="grid gap-4 sm:grid-cols-[1.1fr_1fr]">
                 <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Distribuição Macro</h3>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('web.budgetWizard.bigPictureSplit')}</h3>
                   <MacroPieChart summary={aggregatedSummary} />
                 </div>
                 <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-700">Resumo</h3>
+                  <h3 className="text-sm font-semibold text-gray-700">{t('web.budgetWizard.summary')}</h3>
                   <ul className="space-y-2">
                     {aggregatedSummary.map((item) => (
                       <li key={item.key} className="flex items-center justify-between">
@@ -585,7 +587,7 @@ export default function BudgetWizard({
                   disabled={!isValidDistribution}
                   className="px-8 py-3 text-lg"
                 >
-                  Ajustar subcategorias
+                  {t('web.budgetWizard.adjustCategories')}
                 </Button>
               </div>
             </div>
@@ -597,10 +599,10 @@ export default function BudgetWizard({
           <div className={`${baseClasses} space-y-6`}>
             <div className="text-center w-full px-4 sm:px-6">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-                Ajuste os valores para cada categoria
+                {t('web.budgetWizard.setAnAmountForEach')}
               </h2>
               <p className="text-gray-600">
-                Distribua o valor de cada macro entre as subcategorias
+                {t('web.budgetWizard.splitEachGroupSAmount')}
               </p>
             </div>
 
@@ -658,7 +660,7 @@ export default function BudgetWizard({
                             onClick={() => handleDistributeEvenly(macroKey)}
                             className="text-xs"
                           >
-                            Distribuir igualmente
+                            {t('web.budgetWizard.splitEvenly')}
                           </Button>
                         </div>
 
@@ -719,14 +721,14 @@ export default function BudgetWizard({
                   variant="outline"
                   onClick={handlePrevious}
                 >
-                  Voltar
+                  {t('web.shared.back')}
                 </Button>
                 <Button
                   onClick={handleSave}
                   disabled={saving}
                   className="px-8 py-3 text-lg"
                 >
-                  {saving ? 'Salvando...' : 'Confirmar planejamento'}
+                  {saving ? t('web.shared.saving') : t('web.budgetWizard.confirmPlan')}
                 </Button>
               </div>
             </div>
@@ -738,16 +740,16 @@ export default function BudgetWizard({
           <div className="flex h-full flex-col items-center justify-center text-center space-y-8 py-12 px-6">
             <div className="flex items-center justify-center space-x-3 bg-blue-50 border border-flight-blue/40 rounded-full px-5 py-2 shadow-sm">
               <Sparkles className="h-5 w-5 text-flight-blue" />
-              <span className="text-sm font-semibold text-flight-blue uppercase tracking-wider">Planejamento concluído</span>
+              <span className="text-sm font-semibold text-flight-blue uppercase tracking-wider">{t('web.budgetWizard.planDone')}</span>
             </div>
             <div className="bg-white border border-flight-blue/30 rounded-3xl px-10 py-10 shadow-lg space-y-5 max-w-3xl">
-              <h2 className="text-4xl font-bold text-flight-blue">Parabéns!</h2>
+              <h2 className="text-4xl font-bold text-flight-blue">{t('web.budgetWizard.niceWork')}</h2>
               <p className="text-lg text-flight-blue/80 leading-relaxed">
-                Seu planejamento mensal está definido! Vamos monitorar automaticamente seus gastos e avisar quando as metas estiverem próximas do limite. Você pode ajustar os valores a qualquer momento clicando em <strong>"Editar macro"</strong> na página de Orçamentos.
+                {t('web.budgetWizard.yourMonthlyPlanIsSet')} <strong>{t('web.budgetWizard.editGroup')}</strong> {t('web.budgetWizard.onTheBudgetsPage')}
               </p>
             </div>
             <Button onClick={handleFinish} className="px-8 py-3 text-lg">
-              Ver planejamento
+              {t('web.budgetWizard.seePlan')}
             </Button>
           </div>
         );
@@ -761,12 +763,12 @@ export default function BudgetWizard({
 
 async function loadPreviousBudgets({ organizationId, selectedMonth, budgetCategories }) {
   if (!organizationId || !selectedMonth) {
-    return { success: false, message: 'Organização ou mês inválido.' };
+    return { success: false, message: t('web.budgetWizard.invalidHouseholdOrMonth') };
   }
 
   const currentMonth = formatMonthYear(selectedMonth);
   if (!currentMonth) {
-    return { success: false, message: 'Mês selecionado inválido.' };
+    return { success: false, message: t('web.budgetWizard.invalidMonth') };
   }
 
   const baseDate = new Date(currentMonth);
@@ -784,7 +786,7 @@ async function loadPreviousBudgets({ organizationId, selectedMonth, budgetCatego
   }
 
   if (!data || data.length === 0) {
-    return { success: false, message: 'Nenhum planejamento encontrado para o mês anterior.' };
+    return { success: false, message: t('web.budgetWizard.noPlanFoundForLast') };
   }
 
   const expenseCategories = budgetCategories.filter(
@@ -810,13 +812,13 @@ async function loadPreviousBudgets({ organizationId, selectedMonth, budgetCatego
   if (!entries.length) {
     return {
       success: false,
-      message: 'As categorias do mês anterior não correspondem às categorias disponíveis atualmente.'
+      message: t('web.budgetWizard.lastMonthSCategoriesDon')
     };
   }
 
   const totalAmount = entries.reduce((sum, item) => sum + item.amount, 0);
   if (!totalAmount) {
-    return { success: false, message: 'O planejamento anterior não possui valores válidos.' };
+    return { success: false, message: t('web.budgetWizard.lastMonthSPlanHas') };
   }
 
   const distributions = entries.map(({ category, amount }) => ({

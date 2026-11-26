@@ -36,8 +36,10 @@ import {
   Eye
 } from 'lucide-react';
 import Link from 'next/link';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function CardsDashboard() {
+  const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
   const { success, error: showError } = useNotificationContext();
@@ -278,10 +280,10 @@ export default function CardsDashboard() {
 
       // Validações antes de inserir
       if (!insertData.name) {
-        throw new Error('Nome do cartão é obrigatório');
+        throw new Error(t('web.cards.cardNameIsRequired'));
       }
       if (!insertData.billing_day || insertData.billing_day < 1 || insertData.billing_day > 31) {
-        throw new Error('Dia de vencimento deve ser entre 1 e 31');
+        throw new Error(t('web.cards.dueDayMustBeBetween'));
       }
 
       console.log('📝 Inserindo cartão:', insertData);
@@ -300,11 +302,11 @@ export default function CardsDashboard() {
 
       await fetchCards();
       setShowModal(false);
-      success('Cartão criado com sucesso!');
+      success(t('web.cards.cardCreated'));
     } catch (error) {
       console.error('❌ Error adding card:', error);
-      const errorMessage = error?.message || error?.details || 'Erro desconhecido';
-      showError('Erro ao criar cartão: ' + errorMessage);
+      const errorMessage = error?.message || error?.details || t('web.shared.unknownError');
+      showError(t('web.cards.couldnTCreateTheCard') + errorMessage);
     }
   };
 
@@ -365,11 +367,11 @@ export default function CardsDashboard() {
       
       setShowModal(false);
       setEditingCard(null);
-      success('Cartão atualizado com sucesso!');
+      success(t('web.cards.cardUpdated'));
     } catch (error) {
       console.error('❌ Error editing card:', error);
-      const errorMessage = error?.message || error?.details || 'Erro desconhecido';
-      showError('Erro ao atualizar cartão: ' + errorMessage);
+      const errorMessage = error?.message || error?.details || t('web.shared.unknownError');
+      showError(t('web.cards.couldnTUpdateTheCard') + errorMessage);
     }
   };
 
@@ -392,10 +394,10 @@ export default function CardsDashboard() {
       }
 
       await fetchCards();
-      success('Cartão excluído com sucesso!');
+      success(t('web.cards.cardDeleted'));
     } catch (error) {
       console.error('Error deleting card:', error);
-      showError('Erro ao excluir cartão: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.cards.couldnTDeleteTheCard') + (error.message || t('web.shared.unknownError')));
     } finally {
       setShowConfirmModal(false);
       setCardToDelete(null);
@@ -416,8 +418,8 @@ export default function CardsDashboard() {
   const handleRemoveBelvoCard = (card) => {
     setConfirmModalConfig({
       isOpen: true,
-      title: 'Remover cartão do app',
-      message: `Deseja remover "${card.name}" do MeuAzulão?\n\nO cartão será ocultado, mas a sincronização Open Finance com o banco continuará ativa.\n\nVocê pode adicionar este cartão novamente em Configurações > Open Finance.`,
+      title: t('web.cards.removeCardFromTheApp'),
+      message: t('web.cards.removeFromMeuazulaoTheCard', { name: card.name }),
       onConfirm: async () => {
         try {
           setConfirmModalConfig({ isOpen: false });
@@ -429,11 +431,11 @@ export default function CardsDashboard() {
 
           if (error) throw error;
 
-          success('Cartão removido com sucesso');
+          success(t('web.cards.cardRemoved'));
           await fetchCards();
         } catch (error) {
           console.error('Error removing card:', error);
-          showError('Erro ao remover cartão');
+          showError(t('web.cards.couldnTRemoveTheCard'));
         }
       },
       onCancel: () => setConfirmModalConfig({ isOpen: false }),
@@ -454,9 +456,9 @@ export default function CardsDashboard() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
+          <p className="text-gray-600 mb-4">{t('web.shared.youNeedAnInviteTo')}</p>
           <Button onClick={() => router.push('/')}>
-            Voltar ao início
+            {t('web.shared.backToHome2')}
           </Button>
         </div>
       </div>
@@ -468,7 +470,7 @@ export default function CardsDashboard() {
       <Header 
         organization={organization}
         user={orgUser}
-        pageTitle="Cartões"
+        pageTitle={t('web.cards.cards')}
       >
       <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
@@ -476,14 +478,14 @@ export default function CardsDashboard() {
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-              <h2 className="text-lg font-semibold text-gray-900">Gestão de Cartões</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('web.cards.cards2')}</h2>
               <div className="flex items-center space-x-3">
                 <Button 
                   onClick={openAddModal}
                   className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Novo Cartão
+                  {t('web.cards.newCard')}
                 </Button>
               </div>
             </div>
@@ -495,7 +497,7 @@ export default function CardsDashboard() {
           <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
-                Limite Total
+                {t('web.cards.totalLimit')}
               </CardTitle>
               <div className="p-2 rounded-lg bg-gray-100">
                 <TrendingUp className="h-4 w-4 text-gray-600" />
@@ -511,7 +513,7 @@ export default function CardsDashboard() {
           <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
-                Limite Disponível
+                {t('web.cards.availableLimit')}
               </CardTitle>
               <div className="p-2 rounded-lg bg-gray-100">
                 <DollarSign className="h-4 w-4 text-gray-600" />
@@ -527,7 +529,7 @@ export default function CardsDashboard() {
           <Card className="border border-gray-200 bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
               <CardTitle className="text-sm font-medium text-gray-600">
-                Uso Total de Crédito
+                {t('web.cards.totalCreditUsed')}
               </CardTitle>
               <div className="p-2 rounded-lg bg-gray-100">
                 <TrendingDown className="h-4 w-4 text-gray-600" />
@@ -551,7 +553,7 @@ export default function CardsDashboard() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Faturas Atuais
+                  {t('web.cards.currentBills')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <CreditCard className="h-4 w-4 text-gray-600" />
@@ -563,21 +565,21 @@ export default function CardsDashboard() {
                   R$ {totalCurrentInvoices.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Total de faturas em aberto
+                  {t('web.cards.totalOfOpenCardBills')}
                 </p>
               </CardContent>
             </Card>
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'current-invoices' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-3">Faturas por Cartão</p>
+              <p className="text-sm font-semibold text-gray-900 mb-3">{t('web.cards.billsByCard')}</p>
               <div className="space-y-3">
                 {(() => {
                   const creditCards = cards.filter(c => c.type === 'credit');
                   
                   if (creditCards.length === 0) {
                     return (
-                      <p className="text-sm text-gray-500">Nenhum cartão de crédito cadastrado</p>
+                      <p className="text-sm text-gray-500">{t('web.cards.noCreditCardsYet')}</p>
                     );
                   }
                   
@@ -591,7 +593,7 @@ export default function CardsDashboard() {
                   
                   if (cardsWithInvoices.length === 0) {
                     return (
-                      <p className="text-sm text-gray-500">Nenhuma fatura em aberto</p>
+                      <p className="text-sm text-gray-500">{t('web.cards.noOpenCardBills')}</p>
                     );
                   }
                   
@@ -617,7 +619,7 @@ export default function CardsDashboard() {
                                   {card.name}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  {percentage}% do total
+                                  {t('web.cards.ofTotal', { percentage })}
                                 </p>
                               </div>
                             </div>
@@ -631,7 +633,7 @@ export default function CardsDashboard() {
                       })}
                       <div className="mt-3 pt-3 border-t border-gray-200">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold text-gray-900">Total</p>
+                          <p className="text-sm font-semibold text-gray-900">{t('web.shared.total2')}</p>
                           <p className="text-sm font-bold text-gray-900">
                             R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
@@ -669,14 +671,14 @@ export default function CardsDashboard() {
                     <div className="flex-1">
                     </div>
                     <div className="flex items-center space-x-2">
-                      <p className="text-xl font-bold">{card.name} - {card.bank || 'Banco'}</p>
+                      <p className="text-xl font-bold">{card.name} - {card.bank || t('web.cards.bank')}</p>
                     </div>
                   </div>
                   
                   <div className="absolute bottom-4 left-6 right-6">
                     <div className="flex justify-between items-end">
                       <div>
-                        <p className="text-xs opacity-70 mb-1">Titular</p>
+                        <p className="text-xs opacity-70 mb-1">{t('web.cards.cardholder')}</p>
                         <p className="text-sm font-semibold">{card.holder_name || 'TITULAR'}</p>
                       </div>
                     </div>
@@ -690,7 +692,7 @@ export default function CardsDashboard() {
                   {card.type === 'credit' && (
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Uso do Limite</span>
+                        <span className="text-gray-600">{t('web.cards.limitUsed')}</span>
                         <span className="font-medium">{(usageByCardId[card.id]?.percentage || 0).toFixed(1)}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
@@ -710,23 +712,23 @@ export default function CardsDashboard() {
                     {card.type === 'credit' ? (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Limite:</span>
+                          <span className="text-sm text-gray-600">{t('web.cards.limit')}</span>
                           <span className="font-semibold">R$ {limit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Limite Utilizado:</span>
+                          <span className="text-sm text-gray-600">{t('web.cards.limitUsed2')}</span>
                           <span className="font-semibold">
                             R$ {Number(usageByCardId[card.id]?.used || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Fatura Atual:</span>
+                          <span className="text-sm text-gray-600">{t('web.cards.currentBill')}</span>
                           <span className="font-semibold">
                             R$ {Number(currentInvoiceByCardId[card.id] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Limite Disponível:</span>
+                          <span className="text-sm text-gray-600">{t('web.cards.available')}</span>
                           <span className="font-semibold">
                             {(() => {
                               const used = Number(usageByCardId[card.id]?.used || 0);
@@ -737,23 +739,23 @@ export default function CardsDashboard() {
                         </div>
                         {card.best_day && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Melhor dia de compra:</span>
+                            <span className="text-sm text-gray-600">{t('web.cards.bestDayToBuy')}</span>
                             <span className="font-semibold">{card.best_day}</span>
                           </div>
                         )}
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Dia de Fechamento:</span>
+                          <span className="text-sm text-gray-600">{t('web.cards.closingDay')}</span>
                           <span className="font-semibold">{computeClosingDay(card.best_day) ?? 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Vencimento:</span>
+                          <span className="text-sm text-gray-600">{t('web.cards.due')}</span>
                           <span className="font-semibold">{card.billing_day || '—'}</span>
                         </div>
                       </>
                     ) : (
                       <div className="text-center py-4">
-                        <p className="text-sm text-gray-600">Cartão de Débito</p>
-                        <p className="text-lg font-semibold">Sem limite definido</p>
+                        <p className="text-sm text-gray-600">{t('web.shared.debitCard')}</p>
+                        <p className="text-lg font-semibold">{t('web.cards.noLimitSet')}</p>
                       </div>
                     )}
                   </div>
@@ -773,7 +775,7 @@ export default function CardsDashboard() {
                               setShowInvoiceModal(true);
                             }}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            aria-label="Ver faturas"
+                            aria-label={t('web.cards.seeCardBills')}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -785,7 +787,7 @@ export default function CardsDashboard() {
                           size="icon"
                           onClick={() => handleRemoveBelvoCard(card)}
                           className="text-red-600 border-red-200 hover:bg-red-50"
-                          aria-label="Remover do app"
+                          aria-label={t('web.cards.removeFromApp')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -804,7 +806,7 @@ export default function CardsDashboard() {
                             setShowInvoiceModal(true);
                           }}
                           className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            aria-label="Ver faturas"
+                            aria-label={t('web.cards.seeCardBills')}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -815,7 +817,7 @@ export default function CardsDashboard() {
                           variant="outline" 
                           size="icon"
                           onClick={() => openEditModal(card)}
-                          aria-label="Editar cartão"
+                          aria-label={t('web.cards.editCard')}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -829,7 +831,7 @@ export default function CardsDashboard() {
                             setShowBulkModal(true);
                           }}
                           className="text-green-600 border-green-200 hover:bg-green-50"
-                          aria-label="Adicionar transações em massa"
+                          aria-label={t('web.cards.addTransactionsInBulk')}
                       >
                           <Plus className="h-4 w-4" />
                       </Button>
@@ -840,7 +842,7 @@ export default function CardsDashboard() {
                           size="icon"
                         onClick={() => handleDeleteCard(card.id)}
                         className="text-red-600 border-red-200 hover:bg-red-50"
-                          aria-label="Excluir cartão"
+                          aria-label={t('web.cards.deleteCard')}
                       >
                           <Trash2 className="h-4 w-4" />
                       </Button>
@@ -860,14 +862,14 @@ export default function CardsDashboard() {
               <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <CreditCard className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum cartão cadastrado</h3>
-              <p className="text-gray-600 mb-6">Adicione seus cartões para ter controle total sobre seus gastos e limites.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('web.cards.noCardsYet')}</h3>
+              <p className="text-gray-600 mb-6">{t('web.cards.textZulTv1500In')}</p>
               <Button 
                 onClick={openAddModal}
                 className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Adicionar Primeiro Cartão
+                {t('web.cards.addFirstCard')}
               </Button>
             </CardContent>
           </Card>
@@ -920,10 +922,10 @@ export default function CardsDashboard() {
           setCardToDelete(null);
         }}
         onConfirm={confirmDeleteCard}
-        title="Confirmar exclusão"
-        message="Tem certeza que deseja excluir este cartão? Esta ação não pode ser desfeita."
-        confirmText="Excluir"
-        cancelText="Cancelar"
+        title={t('web.shared.confirmDelete')}
+        message={t('web.cards.deleteThisCardThisCan')}
+        confirmText={t('web.shared.delete')}
+        cancelText={t('web.shared.cancel')}
         type="danger"
       />
 

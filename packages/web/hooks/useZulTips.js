@@ -1,42 +1,43 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { t } from '@fintrack/shared/i18n';
 
 const TIPS_BY_PAGE = {
   '/dashboard/transactions': {
-    title: '💡 Controle de Transações',
-    message: 'Registre suas despesas e receitas facilmente. Dica: use o WhatsApp para registrar gastos rapidamente!',
+    get title() { return t('web.useZulTips.transactions'); },
+    get message() { return t('web.useZulTips.everythingYouSpendAndEarn'); },
     action: 'Fazer Tour',
     tourAction: true
   },
   '/dashboard/cards': {
-    title: '💳 Gestão de Cartões',
-    message: 'Monitore seus cartões de crédito e acompanhe os gastos. Configure alertas para não passar do limite!',
+    get title() { return t('web.useZulTips.cards'); },
+    get message() { return t('web.useZulTips.keepAnEyeOnYour'); },
     action: 'Fazer Tour',
     tourAction: true
   },
   '/dashboard/bills': {
-    title: '📋 Contas a Pagar',
-    message: 'Organize suas contas e nunca mais esqueça de pagar. Configure lembretes automáticos!',
+    get title() { return t('web.useZulTips.bills'); },
+    get message() { return t('web.useZulTips.keepYourBillsInOrder'); },
     action: 'Configurar lembretes'
   },
   '/dashboard/budgets': {
-    title: '📊 Orçamentos Inteligentes',
-    message: 'Crie orçamentos realistas e acompanhe seus gastos. Vou te ajudar a definir limites adequados!',
+    get title() { return t('web.useZulTips.budgets'); },
+    get message() { return t('web.useZulTips.setRealisticBudgetsAndTrack'); },
     action: 'Criar orçamento'
   },
   '/dashboard/investments': {
-    title: '📈 Investimentos',
-    message: 'Acompanhe suas metas de investimento e veja seu progresso. Comece com pequenos valores!',
+    get title() { return t('web.useZulTips.investments'); },
+    get message() { return t('web.useZulTips.trackYourInvestingGoalsAnd'); },
     action: 'Definir meta'
   },
   '/dashboard/bank-accounts': {
-    title: '🏦 Contas Bancárias',
-    message: 'Centralize suas contas bancárias em um só lugar. Monitore saldos e movimentações!',
+    get title() { return t('web.useZulTips.bankAccounts'); },
+    get message() { return t('web.useZulTips.allYourBankAccountsIn'); },
     action: 'Adicionar conta'
   },
   '/dashboard/closing': {
-    title: '📅 Fechamento Mensal',
-    message: 'Revise seus gastos do mês e planeje o próximo. Análise detalhada para tomar melhores decisões!',
+    get title() { return t('web.useZulTips.monthClose'); },
+    get message() { return t('web.useZulTips.lookBackAtYourMonth'); },
     action: 'Ver relatório'
   }
 };

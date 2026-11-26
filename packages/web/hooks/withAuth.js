@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import LoadingLogo from '../components/LoadingLogo';
+import { t } from '@fintrack/shared/i18n';
 
 /**
  * HOC para proteção de páginas com URLs dinâmicas
@@ -141,7 +142,7 @@ export function withAuth(WrappedComponent, options = {}) {
           // 5. Verificar se o usuário está ativo
           if (!userData.is_active) {
             console.warn('🚨 [withAuth] Usuário inativo:', userId);
-            setValidationError('Sua conta está inativa. Entre em contato com o administrador.');
+            setValidationError(t('web.withAuth.yourAccountIsInactiveTalk'));
             return;
           }
 
@@ -157,7 +158,7 @@ export function withAuth(WrappedComponent, options = {}) {
 
       } catch (error) {
         console.error('🚨 [withAuth] Erro na validação:', error);
-        setValidationError('Erro ao validar acesso. Tente novamente.');
+        setValidationError(t('web.withAuth.couldnTCheckYourAccess'));
         setIsValidating(false);
       }
     };
@@ -173,13 +174,13 @@ export function withAuth(WrappedComponent, options = {}) {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
             <div className="text-5xl mb-4">🚫</div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('web.withAuth.accessDenied')}</h1>
             <p className="text-gray-600 mb-6">{validationError}</p>
             <button
               onClick={() => router.push('/')}
               className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
-              Voltar ao Início
+              {t('web.shared.backToHome')}
             </button>
           </div>
         </div>

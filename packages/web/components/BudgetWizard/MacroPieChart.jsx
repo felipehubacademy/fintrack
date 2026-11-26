@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { t } from '@fintrack/shared/i18n';
 
 const COLORS = {
   needs: '#2563EB',
@@ -7,9 +8,9 @@ const COLORS = {
 };
 
 const defaultData = [
-  { key: 'needs', label: 'Necessidades', value: 0 },
-  { key: 'wants', label: 'Desejos', value: 0 },
-  { key: 'investments', label: 'Poupança / Investimentos', value: 0 }
+  { key: 'needs', get label() { return t('web.shared.needs'); }, value: 0 },
+  { key: 'wants', get label() { return t('web.shared.wants'); }, value: 0 },
+  { key: 'investments', get label() { return t('web.shared.savingsInvesting'); }, value: 0 }
 ];
 
 function CustomTooltip({ active, payload }) {

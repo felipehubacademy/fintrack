@@ -3,8 +3,10 @@ import { Bell, X, Check, Trash2 } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function NotificationBell({ userId, organizationId }) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const dropdownRef = useRef(null);
@@ -79,7 +81,7 @@ export default function NotificationBell({ userId, organizationId }) {
     const now = new Date();
     const diffInMinutes = Math.floor((now - date) / (1000 * 60));
 
-    if (diffInMinutes < 1) return 'Agora';
+    if (diffInMinutes < 1) return t('web.notificationBell.now');
     if (diffInMinutes < 60) return `${diffInMinutes}m`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
     return date.toLocaleDateString('pt-BR');
@@ -123,10 +125,10 @@ export default function NotificationBell({ userId, organizationId }) {
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">
-                Notificações
+                {t('web.shared.notifications')}
                 {unreadCount > 0 && (
                   <span className="ml-2 text-sm text-gray-500">
-                    ({unreadCount} não lidas)
+                    {t('web.notificationBell.unread', { unreadCount })}
                   </span>
                 )}
               </h3>
@@ -139,7 +141,7 @@ export default function NotificationBell({ userId, organizationId }) {
                     className="text-xs"
                   >
                     <Check className="h-3 w-3 mr-1" />
-                    Marcar todas
+                    {t('web.notificationBell.markAll')}
                   </Button>
                 )}
                 <button
@@ -156,11 +158,11 @@ export default function NotificationBell({ userId, organizationId }) {
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
               <div className="p-4 text-center text-gray-500">
-                Carregando notificações...
+                {t('web.notificationBell.loadingNotifications')}
               </div>
             ) : displayNotifications.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
-                Nenhuma notificação
+                {t('web.notificationBell.noNotifications')}
               </div>
             ) : (
               displayNotifications.map((notification) => (
@@ -197,7 +199,7 @@ export default function NotificationBell({ userId, organizationId }) {
                             <button
                               onClick={() => handleMarkAsRead(notification.id)}
                               className="text-gray-400 hover:text-green-600 transition-colors"
-                              title="Marcar como lida"
+                              title={t('web.notificationBell.markAsRead')}
                             >
                               <Check className="h-4 w-4" />
                             </button>
@@ -205,7 +207,7 @@ export default function NotificationBell({ userId, organizationId }) {
                           <button
                             onClick={() => handleDelete(notification.id)}
                             className="text-gray-400 hover:text-red-600 transition-colors"
-                            title="Deletar"
+                            title={t('web.notificationBell.delete')}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -225,7 +227,7 @@ export default function NotificationBell({ userId, organizationId }) {
                 onClick={() => setShowAll(!showAll)}
                 className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
               >
-                {showAll ? 'Ver menos' : `Ver todas (${notifications.length})`}
+                {showAll ? t('web.notificationBell.seeLess') : t('web.notificationBell.seeAll', { length: notifications.length })}
               </button>
             </div>
           )}

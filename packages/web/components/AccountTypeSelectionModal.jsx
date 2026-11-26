@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Link2, Edit3, Sparkles, Shield } from 'lucide-react';
 import { Button } from './ui/Button';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function AccountTypeSelectionModal({ 
   isOpen, 
@@ -8,6 +9,7 @@ export default function AccountTypeSelectionModal({
   onSelectOpenFinance,
   onSelectManual
 }) {
+  const { t } = useI18n();
   const [selectedType, setSelectedType] = useState(null);
 
   if (!isOpen) return null;
@@ -33,10 +35,10 @@ export default function AccountTypeSelectionModal({
         <div className="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex-1 min-w-0 pr-4">
             <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 truncate">
-              Como deseja adicionar a conta?
+              {t('web.accountTypeSelectionModal.howDoYouWantTo')}
             </h2>
             <p className="text-xs sm:text-sm text-gray-600 mt-1">
-              Escolha entre sincronização automática ou controle manual
+              {t('web.accountTypeSelectionModal.chooseAutomaticSyncOrManual')}
             </p>
           </div>
           <button
@@ -73,12 +75,11 @@ export default function AccountTypeSelectionModal({
                     <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500" />
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">
-                    Sincronização automática via Open Finance do Banco Central. 
-                    Conecte seu banco e suas transações são importadas automaticamente.
+                    {t('web.accountTypeSelectionModal.automaticSyncThroughOpenFinance')}
                   </p>
                   <div className="mt-2 sm:mt-3 flex items-start gap-2 text-xs text-gray-500">
                     <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span className="leading-snug">Conexão segura e regulamentada pelo Banco Central</span>
+                    <span className="leading-snug">{t('web.accountTypeSelectionModal.secureRegulatedConnection')}</span>
                   </div>
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -112,14 +113,13 @@ export default function AccountTypeSelectionModal({
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
-                    Conta Manual
+                    {t('web.accountTypeSelectionModal.manualAccount')}
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">
-                    Controle total manual. Você adiciona o saldo inicial e 
-                    registra suas movimentações manualmente.
+                    {t('web.accountTypeSelectionModal.fullManualControlYouAdd')}
                   </p>
                   <div className="mt-2 sm:mt-3 text-xs text-gray-500">
-                    <span className="leading-snug">Ideal para contas que não suportam Open Finance</span>
+                    <span className="leading-snug">{t('web.accountTypeSelectionModal.greatForAccountsWithoutOpen')}</span>
                   </div>
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -143,14 +143,14 @@ export default function AccountTypeSelectionModal({
             onClick={onClose}
             className="w-full sm:w-auto px-6 py-2 min-h-[44px]"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleContinue}
             disabled={!selectedType}
             className="w-full sm:w-auto px-6 py-2 min-h-[44px] bg-flight-blue hover:bg-flight-blue/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Continuar
+            {t('web.shared.continue')}
           </Button>
         </div>
       </div>

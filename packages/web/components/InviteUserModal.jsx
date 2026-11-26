@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { X, Mail, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function InviteUserModal({ isOpen, onClose, organization }) {
+  const { t } = useI18n();
   const { success: showSuccess, showError } = useNotificationContext();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,7 +19,7 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
     e.preventDefault();
     
     if (!validateEmail(email)) {
-      showError('Por favor, insira um email válido');
+      showError(t('web.inviteUserModal.pleaseEnterAValidEmail'));
       return;
     }
 
@@ -40,19 +42,19 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
 
       if (data.success) {
         setInviteSuccess(true);
-        showSuccess('Convite enviado com sucesso!');
+        showSuccess(t('web.inviteUserModal.inviteSent'));
         setEmail('');
         setTimeout(() => {
           setInviteSuccess(false);
           onClose();
         }, 2000);
       } else {
-        showError(data.error || 'Erro ao enviar convite');
+        showError(data.error || t('web.shared.couldnTSendTheInvite'));
       }
 
     } catch (error) {
       console.error('❌ Erro ao enviar convite:', error);
-      showError('Erro ao enviar convite. Tente novamente.');
+      showError(t('web.inviteUserModal.couldnTSendTheInvite'));
     } finally {
       setLoading(false);
     }
@@ -73,7 +75,7 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
         {/* Header fixo */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-xl font-semibold text-deep-sky">
-            Convidar Usuário
+            {t('web.inviteUserModal.inviteSomeone')}
           </h2>
           <button
             onClick={handleClose}
@@ -91,28 +93,28 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Convite Enviado!
+                {t('web.inviteUserModal.inviteSent2')}
               </h3>
               <p className="text-gray-600">
-                O convite foi enviado para <strong>{email}</strong> com sucesso.
+                {t('web.inviteUserModal.theInviteWasSentTo')} <strong>{email}</strong> {t('web.inviteUserModal.text')}
               </p>
             </div>
           ) : (
             <div>
               <div className="mb-6">
                 <p className="text-gray-600 mb-2">
-                  Envie um convite para alguém participar da organização{' '}
+                  {t('web.inviteUserModal.inviteSomeoneToJoinYour')}
                   <strong>{organization?.name}</strong>
                 </p>
                 <p className="text-sm text-gray-500">
-                  A pessoa receberá um email com instruções para se cadastrar.
+                  {t('web.inviteUserModal.theyLlGetAnEmail')}
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email do convidado
+                    {t('web.inviteUserModal.theirEmail')}
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -121,7 +123,7 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
                     <input
                       id="email"
                       type="email"
-                      placeholder="convidado@email.com"
+                      placeholder={t('web.inviteUserModal.nameEmailCom')}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -138,7 +140,7 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
                     onClick={handleClose}
                     className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
                   >
-                    Cancelar
+                    {t('web.shared.cancel')}
                   </button>
                   <button
                     type="submit"
@@ -148,12 +150,12 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
                     {loading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Enviando...</span>
+                        <span>{t('web.shared.sending')}</span>
                       </>
                     ) : (
                       <>
                         <Send className="w-4 h-4" />
-                        <span>Enviar Convite</span>
+                        <span>{t('web.shared.sendInvite')}</span>
                       </>
                     )}
                   </button>
@@ -169,7 +171,7 @@ export default function InviteUserModal({ isOpen, onClose, organization }) {
             onClick={handleClose}
             className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
           >
-            Fechar
+            {t('web.shared.close')}
           </button>
         </div>
       </div>

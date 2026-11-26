@@ -9,8 +9,10 @@ import {
   CheckCircle
 } from 'lucide-react';
 import LandingHeader from '../components/LandingHeader';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function ContactPage() {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -46,7 +48,7 @@ export default function ContactPage() {
   return (
     <>
       <Head>
-        <title>Contato - MeuAzulão</title>
+        <title>{t('web.contact.contactMeuazulao')}</title>
         <meta name="description" content="Entre em contato com a equipe do MeuAzulão" />
       </Head>
 
@@ -58,15 +60,15 @@ export default function ContactPage() {
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
           <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-full text-blue-700 text-sm font-medium mb-6">
             <MessageCircle className="w-4 h-4" />
-            <span>Entre em Contato</span>
+            <span>{t('web.contact.getInTouch')}</span>
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Fale conosco
+            {t('web.contact.talkToUs')}
           </h1>
           
           <p className="text-xl text-gray-600 mb-8 font-light">
-            Tem alguma dúvida, sugestão ou precisa de suporte? Estamos aqui para ajudar!
+            {t('web.contact.aQuestionAnIdeaOr')}
           </p>
         </div>
       </section>
@@ -79,10 +81,10 @@ export default function ContactPage() {
             <div className="space-y-8">
               <div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  Informações de Contato
+                  {t('web.contact.contactInfo')}
                 </h2>
                 <p className="text-gray-600 leading-relaxed">
-                  Nossa equipe está sempre pronta para ajudar. Responderemos sua mensagem o mais rápido possível.
+                  {t('web.contact.weAnswerEveryMessageAs')}
                 </p>
               </div>
 
@@ -92,7 +94,7 @@ export default function ContactPage() {
                     <Mail className="w-6 h-6 text-[#207DFF]" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">E-mail</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">{t('web.contact.email')}</h3>
                     <a href="mailto:contato@meuazulao.com.br" className="text-[#207DFF] hover:text-[#0D2C66] transition-colors">
                       contato@meuazulao.com.br
                     </a>
@@ -104,16 +106,16 @@ export default function ContactPage() {
                     <MessageCircle className="w-6 h-6 text-[#25D366]" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">WhatsApp</h3>
-                    <p className="text-gray-600">Converse com o Zul pelo WhatsApp</p>
+                    <h3 className="font-semibold text-gray-900 mb-1">{t('web.shared.whatsapp')}</h3>
+                    <p className="text-gray-600">{t('web.contact.chatWithZulOnWhatsapp')}</p>
                   </div>
                 </div>
               </div>
 
               <div className="pt-6 border-t border-gray-200">
                 <p className="text-sm text-gray-500">
-                  Horário de atendimento:<br/>
-                  Segunda a Sexta, 9h às 18h (horário de Brasília)
+                  {t('web.contact.supportHours')}<br/>
+                  {t('web.contact.mondayToFriday9amTo')}
                 </p>
               </div>
             </div>
@@ -126,17 +128,17 @@ export default function ContactPage() {
                     <CheckCircle className="w-8 h-8 text-green-600" />
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    Mensagem enviada!
+                    {t('web.contact.messageSent')}
                   </h3>
                   <p className="text-gray-600">
-                    Entraremos em contato em breve.
+                    {t('web.contact.weLlGetBackTo')}
                   </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
                     <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
-                      Nome completo
+                      {t('web.contact.fullName')}
                     </label>
                     <input
                       type="text"
@@ -146,13 +148,13 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#207DFF] transition-colors"
-                      placeholder="Seu nome"
+                      placeholder={t('web.contact.yourName')}
                     />
                   </div>
 
                   <div>
                     <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2">
-                      E-mail
+                      {t('web.contact.email')}
                     </label>
                     <input
                       type="email"
@@ -162,13 +164,13 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#207DFF] transition-colors"
-                      placeholder="seu@email.com"
+                      placeholder={t('web.shared.youEmailCom')}
                     />
                   </div>
 
                   <div>
                     <label htmlFor="subject" className="block text-sm font-semibold text-gray-900 mb-2">
-                      Assunto
+                      {t('web.contact.subject')}
                     </label>
                     <input
                       type="text"
@@ -178,13 +180,13 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#207DFF] transition-colors"
-                      placeholder="Qual o motivo do contato?"
+                      placeholder={t('web.contact.whatSItAbout')}
                     />
                   </div>
 
                   <div>
                     <label htmlFor="message" className="block text-sm font-semibold text-gray-900 mb-2">
-                      Mensagem
+                      {t('web.contact.message')}
                     </label>
                     <textarea
                       id="message"
@@ -194,7 +196,7 @@ export default function ContactPage() {
                       required
                       rows={6}
                       className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#207DFF] transition-colors resize-none"
-                      placeholder="Descreva sua dúvida, sugestão ou problema..."
+                      placeholder={t('web.contact.tellUsYourQuestionIdea')}
                     />
                   </div>
 
@@ -205,11 +207,11 @@ export default function ContactPage() {
                   >
                     {isSubmitting ? (
                       <>
-                        <span className="mr-2">Enviando...</span>
+                        <span className="mr-2">{t('web.shared.sending')}</span>
                       </>
                     ) : (
                       <>
-                        <span>Enviar Mensagem</span>
+                        <span>{t('web.contact.sendMessage')}</span>
                         <Send className="ml-2 w-5 h-5" />
                       </>
                     )}

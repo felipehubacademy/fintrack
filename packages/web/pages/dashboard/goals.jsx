@@ -37,41 +37,44 @@ import {
   Wallet,
   Flag
 } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
+import { t } from '@fintrack/shared/i18n';
 
 const GOAL_TYPES = {
   emergency_fund: {
-    label: 'Reserva de Emergência',
+    get label() { return t('web.goals.emergencyFund'); },
     icon: PiggyBank,
     color: '#10B981',
-    description: '3-6 meses de despesas'
+    get description() { return t('web.goals.n36MonthsOfExpenses'); }
   },
   debt_payment: {
-    label: 'Quitação de Dívida',
+    get label() { return t('web.goals.payOffDebt'); },
     icon: CreditCard,
     color: '#EF4444',
-    description: 'Elimine dívidas'
+    get description() { return t('web.goals.getRidOfDebt'); }
   },
   purchase: {
-    label: 'Compra Planejada',
+    get label() { return t('web.goals.plannedPurchase'); },
     icon: ShoppingBag,
     color: '#8B5CF6',
-    description: 'Carro, casa, viagem'
+    get description() { return t('web.goals.carHomeTrip'); }
   },
   investment: {
-    label: 'Investimento',
+    get label() { return t('web.shared.investing'); },
     icon: TrendingUp,
     color: '#3B82F6',
-    description: 'Construa patrimônio'
+    get description() { return t('web.goals.buildWealth'); }
   },
   savings: {
-    label: 'Poupança Geral',
+    get label() { return t('web.goals.generalSavings'); },
     icon: Wallet,
     color: '#F59E0B',
-    description: 'Meta livre'
+    get description() { return t('web.goals.anythingYouWant'); }
   }
 };
 
 export default function GoalsPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, loading: orgLoading, error: orgError } = useOrganization();
   const { success, error, warning } = useNotificationContext();
@@ -164,7 +167,7 @@ export default function GoalsPage() {
       setGamificationInsights(insights);
     } catch (err) {
       console.error('Error fetching goals:', err);
-      error('Erro ao carregar metas');
+      error(t('web.goals.couldnTLoadGoals'));
     } finally {
       setLoading(false);
     }
@@ -182,7 +185,7 @@ export default function GoalsPage() {
     if (remaining <= 0) {
       return {
         type: 'completed',
-        message: 'Meta atingida! 🎉',
+        message: t('web.goals.goalReached'),
         monthsRemaining: 0,
         estimatedDate: null,
         requiredMonthly: 0
@@ -206,7 +209,7 @@ export default function GoalsPage() {
         requiredMonthly: requiredMonthly,
         isViable: isViable,
         message: isViable 
-          ? `Você atingirá sua meta ${Math.ceil(remaining / goal.monthly_contribution)} meses antes do prazo!`
+          ? t('web.goals.youLlReachYourGoal', { p0: Math.ceil(remaining / goal.monthly_contribution) })
           : `Atenção: Para atingir até ${targetDate.toLocaleDateString('pt-BR')}, você precisa contribuir R$ ${requiredMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`
       };
     }
@@ -221,7 +224,7 @@ export default function GoalsPage() {
         type: 'monthly_only',
         monthsRemaining: monthsRemaining,
         estimatedDate: estimatedDate,
-        message: `Previsão: ${estimatedDate.toLocaleDateString('pt-BR')}`
+        message: t('web.goals.expected', { p0: estimatedDate.toLocaleDateString('pt-BR') })
       };
     }
 
@@ -244,7 +247,7 @@ export default function GoalsPage() {
     // Não tem nenhuma informação de projeção
     return {
       type: 'none',
-      message: 'Defina uma contribuição mensal ou data alvo para ver a projeção'
+      message: t('web.goals.setAMonthlyAmountOr')
     };
   };
 
@@ -275,7 +278,7 @@ export default function GoalsPage() {
           .eq('id', editingGoal.id);
 
         if (updateError) throw updateError;
-        success('Meta atualizada com sucesso!');
+        success(t('web.goals.goalUpdated'));
       } else {
         // Create new goal
         const { error: insertError } = await supabase
@@ -287,20 +290,20 @@ export default function GoalsPage() {
           }]);
 
         if (insertError) throw insertError;
-        success('Meta criada com sucesso!');
+        success(t('web.goals.goalCreated'));
       }
 
       setEditingGoal(null);
       fetchGoals();
     } catch (err) {
       console.error('Error saving goal:', err);
-      error('Erro ao salvar meta');
+      error(t('web.goals.couldnTSaveTheGoal'));
       throw err;
     }
   };
 
   const handleDeleteGoal = async (goalId) => {
-    if (!confirm('Tem certeza que deseja excluir esta meta?')) return;
+    if (!confirm(t('web.goals.deleteThisGoal'))) return;
 
     try {
       const { error: deleteError } = await supabase
@@ -309,11 +312,11 @@ export default function GoalsPage() {
         .eq('id', goalId);
 
       if (deleteError) throw deleteError;
-      success('Meta excluída com sucesso!');
+      success(t('web.goals.goalDeleted'));
       fetchGoals();
     } catch (err) {
       console.error('Error deleting goal:', err);
-      error('Erro ao excluir meta');
+      error(t('web.goals.couldnTDeleteTheGoal'));
     }
   };
 
@@ -343,7 +346,7 @@ export default function GoalsPage() {
 
       if (updateError) throw updateError;
 
-      success('Contribuição adicionada com sucesso!');
+      success(t('web.goals.moneyAdded'));
       fetchGoals();
       
       // Atualizar contribuições da meta se o timeline estiver expandido
@@ -352,7 +355,7 @@ export default function GoalsPage() {
       }
     } catch (err) {
       console.error('Error saving contribution:', err);
-      error('Erro ao adicionar contribuição');
+      error(t('web.goals.couldnTAddTheMoney'));
       throw err;
     }
   };
@@ -388,30 +391,30 @@ export default function GoalsPage() {
   // Onboarding steps
   const onboardingSteps = [
     {
-      title: 'Bem-vindo às Metas Financeiras! 🎯',
-      description: 'Aqui você define e acompanha seus objetivos financeiros. Seja uma reserva de emergência, quitação de dívidas ou aquela viagem dos sonhos!',
-      tip: 'Ter metas claras aumenta em 80% a chance de sucesso financeiro.',
+      title: t('web.goals.welcomeToGoals'),
+      description: t('web.goals.setAndTrackWhatYou'),
+      tip: t('web.goals.clearGoalsMakeSavingMuch'),
       icon: Flag,
       position: 'center'
     },
     {
-      title: 'Tipos de Meta',
-      description: 'Escolha entre 5 tipos: Reserva de Emergência, Quitação de Dívida, Compra Planejada, Investimento ou Poupança Geral. Cada tipo tem características específicas.',
-      tip: 'Comece com uma Reserva de Emergência de 3-6 meses de despesas.',
+      title: t('web.goals.goalTypes'),
+      description: t('web.goals.pickOneOf5Types'),
+      tip: t('web.goals.startWithAnEmergencyFund'),
       icon: Target,
       position: 'center'
     },
     {
-      title: 'Projeções Inteligentes',
-      description: 'O sistema calcula automaticamente quando você atingirá sua meta baseado na sua contribuição mensal. Se tiver um prazo, ele avisa se é viável!',
-      tip: 'As projeções se atualizam automaticamente a cada contribuição.',
+      title: t('web.goals.smartProjections'),
+      description: t('web.goals.weWorkOutWhenYou'),
+      tip: t('web.goals.projectionsUpdateWithEveryDeposit'),
       icon: TrendingUp,
       position: 'center'
     },
     {
-      title: 'Acompanhe o Progresso',
-      description: 'Visualize o progresso de cada meta com círculos coloridos, gráficos de evolução e alertas quando precisar ajustar o ritmo.',
-      tip: 'Contribuições pequenas e constantes são mais eficazes que grandes aportes esporádicos.',
+      title: t('web.goals.trackYourProgress'),
+      description: t('web.goals.seeEachGoalSProgress'),
+      tip: t('web.goals.smallSteadyDepositsBeatBig'),
       icon: Calendar,
       position: 'center'
     }
@@ -442,7 +445,7 @@ export default function GoalsPage() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <Button onClick={() => router.push('/')}>Voltar ao início</Button>
+          <Button onClick={() => router.push('/')}>{t('web.shared.backToHome2')}</Button>
         </div>
       </div>
     );
@@ -453,7 +456,7 @@ export default function GoalsPage() {
       <Header 
         organization={organization}
         user={orgUser}
-        pageTitle="Metas Financeiras"
+        pageTitle={t('web.goals.goals')}
       >
         <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-4 md:py-8 space-y-4 md:space-y-8">
           
@@ -461,14 +464,14 @@ export default function GoalsPage() {
           <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
             <CardHeader>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-                <h2 className="text-lg font-semibold text-gray-900">Gestão de Metas Financeiras</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{t('web.goals.goals2')}</h2>
                 <div className="flex items-center space-x-3">
                   <Button 
                     onClick={() => setShowGoalModal(true)}
                     className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Nova Meta
+                    {t('web.goals.newGoal')}
                   </Button>
                 </div>
               </div>
@@ -490,7 +493,7 @@ export default function GoalsPage() {
               >
                 <div className="flex items-center space-x-2">
                   <Target className="h-4 w-4" />
-                  <span>Minhas Metas</span>
+                  <span>{t('web.goals.myGoals')}</span>
                 </div>
               </button>
               <button
@@ -505,7 +508,7 @@ export default function GoalsPage() {
               >
                 <div className="flex items-center space-x-2">
                   <History className="h-4 w-4" />
-                  <span>Histórico</span>
+                  <span>{t('web.goals.history')}</span>
                 </div>
               </button>
             </nav>
@@ -520,7 +523,7 @@ export default function GoalsPage() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
                   <Target className="h-4 w-4 mr-2" />
-                  Total de Metas
+                  {t('web.goals.totalGoals')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-flight-blue/10">
                   <Target className="h-4 w-4 text-flight-blue" />
@@ -529,7 +532,7 @@ export default function GoalsPage() {
               <CardContent className="p-3 pt-0">
                 <div className="text-2xl font-bold text-gray-900 mb-1">{totalGoals}</div>
                 <div className="text-xs text-gray-600 mt-1">
-                  {activeGoals} ativas · {completedGoals} concluídas
+                  {t('web.goals.activeDone', { activeGoals, completedGoals })}
                 </div>
               </CardContent>
             </Card>
@@ -538,7 +541,7 @@ export default function GoalsPage() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
                   <DollarSign className="h-4 w-4 mr-2" />
-                  Progresso Geral
+                  {t('web.goals.overallProgress')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <DollarSign className="h-4 w-4 text-gray-600" />
@@ -549,7 +552,7 @@ export default function GoalsPage() {
                   {overallProgress.toFixed(0)}%
                 </div>
                 <div className="text-xs text-gray-600 mt-1">
-                  {formatCurrency(totalCurrentAmount)} de {formatCurrency(totalTargetAmount)}
+                  {t('web.goals.of', { p0: formatCurrency(totalCurrentAmount), p1: formatCurrency(totalTargetAmount) })}
                 </div>
               </CardContent>
             </Card>
@@ -558,7 +561,7 @@ export default function GoalsPage() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
                   <Trophy className="h-4 w-4 mr-2" />
-                  Metas Atingidas
+                  {t('web.goals.goalsReached')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <Trophy className="h-4 w-4 text-gray-600" />
@@ -567,7 +570,7 @@ export default function GoalsPage() {
               <CardContent className="p-3 pt-0">
                 <div className="text-2xl font-bold text-gray-900 mb-1">{completedGoals}</div>
                 <div className="text-xs text-gray-600 mt-1">
-                  {totalGoals > 0 ? ((completedGoals / totalGoals) * 100).toFixed(0) : 0}% de sucesso
+                  {t('web.goals.success', { p0: totalGoals > 0 ? ((completedGoals / totalGoals) * 100).toFixed(0) : 0 })}
                 </div>
               </CardContent>
             </Card>
@@ -576,7 +579,7 @@ export default function GoalsPage() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
                   <Flame className="h-4 w-4 mr-2" />
-                  Streak
+                  {t('web.goals.streak')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <Flame className="h-4 w-4 text-gray-600" />
@@ -587,7 +590,7 @@ export default function GoalsPage() {
                   {calculateStreak(allContributions)}
                 </div>
                 <div className="text-xs text-gray-600 mt-1">
-                  meses consecutivos
+                  {t('web.goals.monthsInARow')}
                 </div>
               </CardContent>
             </Card>
@@ -601,24 +604,24 @@ export default function GoalsPage() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-gray-700 flex items-center">
                     <Trophy className="h-4 w-4 mr-2" />
-                    Seu Nível
+                    {t('web.goals.yourLevel')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-gray-900">
-                      {userLevel?.level || 'Iniciante'}
+                      {userLevel?.level || t('web.goals.beginner')}
                     </div>
                     {userLevel?.nextLevel && (
                       <div className="text-sm text-gray-600 mt-1">
-                        Próximo: {userLevel.nextLevel}
+                        {t('web.goals.next', { nextLevel: userLevel.nextLevel })}
                       </div>
                     )}
                   </div>
                   {userLevel?.nextLevel && (
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs text-gray-600">
-                        <span>Progresso</span>
+                        <span>{t('web.shared.progress')}</span>
                         <span>{userLevel.progress.toFixed(0)}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
@@ -641,7 +644,7 @@ export default function GoalsPage() {
                       <HelpCard
                         key={index}
                         type={insight.type}
-                        title={insight.type === 'success' ? '🎉 Parabéns!' : insight.type === 'warning' ? '⚠️ Atenção' : '💡 Dica'}
+                        title={insight.type === 'success' ? t('web.goals.niceWork') : insight.type === 'warning' ? t('web.goals.headsUp') : t('web.goals.tip')}
                         dismissible={false}
                       >
                         <p className="text-sm">{insight.message}</p>
@@ -656,10 +659,10 @@ export default function GoalsPage() {
                     <CardTitle className="text-sm font-medium text-gray-700 flex items-center justify-between">
                       <div className="flex items-center">
                         <Trophy className="h-4 w-4 mr-2" />
-                        Conquistas
+                        {t('web.goals.badges')}
                       </div>
                       <span className="text-xs text-gray-500">
-                        {earnedBadges.length} de 13 badges
+                        {t('web.goals.of13Badges', { length: earnedBadges.length })}
                       </span>
                     </CardTitle>
                   </CardHeader>
@@ -675,7 +678,7 @@ export default function GoalsPage() {
           {showHelpCard && goals.length > 0 && (
             <HelpCard
               type="tip"
-              title="Como funcionam as Metas?"
+              title={t('web.goals.howDoGoalsWork')}
               dismissible
               onDismiss={() => {
                 setShowHelpCard(false);
@@ -696,11 +699,11 @@ export default function GoalsPage() {
           {goals.length === 0 ? (
             <EmptyState
               icon={Flag}
-              title="Nenhuma meta criada ainda"
-              description="Defina suas metas financeiras e acompanhe seu progresso! Seja uma reserva de emergência, quitação de dívidas ou aquela compra planejada."
-              actionLabel="Criar Primeira Meta"
+              title={t('web.goals.noGoalsYet')}
+              description={t('web.goals.setWhatYouReSaving')}
+              actionLabel={t('web.goals.createFirstGoal')}
               onAction={() => setShowGoalModal(true)}
-              secondaryActionLabel="Ver Tutorial"
+              secondaryActionLabel={t('web.goals.seeTutorial')}
               onSecondaryAction={() => setShowOnboarding(true)}
             />
           ) : (
@@ -788,19 +791,19 @@ export default function GoalsPage() {
 
                         <div className="flex-1 ml-6 space-y-2">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Atual:</span>
+                            <span className="text-gray-600">{t('web.goals.now')}</span>
                             <span className="font-semibold text-gray-900">
                               {formatCurrency(goal.current_amount)}
                             </span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Meta:</span>
+                            <span className="text-gray-600">{t('web.goals.goal')}</span>
                             <span className="font-semibold text-gray-900">
                               {formatCurrency(goal.target_amount)}
                             </span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Faltam:</span>
+                            <span className="text-gray-600">{t('web.goals.left')}</span>
                             <span className="font-semibold text-gray-900">
                               {formatCurrency(goal.target_amount - goal.current_amount)}
                             </span>
@@ -835,17 +838,17 @@ export default function GoalsPage() {
                           {projection.type === 'full' && (
                             <div className="space-y-1 text-xs text-gray-600 pl-6">
                               <div className="flex justify-between">
-                                <span>Contribuição atual:</span>
-                                <span className="font-semibold">{formatCurrency(goal.monthly_contribution)}/mês</span>
+                                <span>{t('web.goals.currentMonthlyAmount')}</span>
+                                <span className="font-semibold">{t('web.goals.month', { p0: formatCurrency(goal.monthly_contribution) })}</span>
                               </div>
                               {!projection.isViable && (
                                 <div className="flex justify-between text-orange-700">
-                                  <span>Necessário:</span>
-                                  <span className="font-semibold">{formatCurrency(projection.requiredMonthly)}/mês</span>
+                                  <span>{t('web.goals.needed')}</span>
+                                  <span className="font-semibold">{t('web.goals.month', { p0: formatCurrency(projection.requiredMonthly) })}</span>
                                 </div>
                               )}
                               <div className="flex justify-between">
-                                <span>Previsão de conclusão:</span>
+                                <span>{t('web.goals.expectedFinish')}</span>
                                 <span className="font-semibold">{projection.estimatedDate?.toLocaleDateString('pt-BR')}</span>
                               </div>
                             </div>
@@ -854,12 +857,12 @@ export default function GoalsPage() {
                           {projection.type === 'monthly_only' && (
                             <div className="space-y-1 text-xs text-gray-600 pl-6">
                               <div className="flex justify-between">
-                                <span>Contribuição mensal:</span>
-                                <span className="font-semibold">{formatCurrency(goal.monthly_contribution)}/mês</span>
+                                <span>{t('web.goals.monthlyAmount')}</span>
+                                <span className="font-semibold">{t('web.goals.month', { p0: formatCurrency(goal.monthly_contribution) })}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span>Tempo estimado:</span>
-                                <span className="font-semibold">{projection.monthsRemaining} {projection.monthsRemaining === 1 ? 'mês' : 'meses'}</span>
+                                <span>{t('web.goals.estimatedTime')}</span>
+                                <span className="font-semibold">{projection.monthsRemaining} {projection.monthsRemaining === 1 ? t('web.goals.month2') : 'meses'}</span>
                               </div>
                             </div>
                           )}
@@ -867,19 +870,19 @@ export default function GoalsPage() {
                           {projection.type === 'date_only' && (
                             <div className="space-y-1 text-xs text-gray-600 pl-6">
                               <div className="flex justify-between">
-                                <span>Prazo:</span>
+                                <span>{t('web.goals.deadline')}</span>
                                 <span className="font-semibold">{projection.targetDate?.toLocaleDateString('pt-BR')}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span>Meses restantes:</span>
-                                <span className="font-semibold">{projection.monthsRemaining} {projection.monthsRemaining === 1 ? 'mês' : 'meses'}</span>
+                                <span>{t('web.goals.monthsLeft')}</span>
+                                <span className="font-semibold">{projection.monthsRemaining} {projection.monthsRemaining === 1 ? t('web.goals.month2') : 'meses'}</span>
                               </div>
                             </div>
                           )}
 
                           {projection.type === 'none' && (
                             <div className="text-xs text-gray-500 pl-6">
-                              Configure uma contribuição mensal ou data alvo para ver projeções inteligentes
+                              {t('web.goals.setAMonthlyAmountOr2')}
                             </div>
                           )}
                         </div>
@@ -896,7 +899,7 @@ export default function GoalsPage() {
                           disabled={goal.status === 'completed'}
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Adicionar Contribuição
+                          {t('web.goals.addMoney')}
                         </Button>
                         <Button
                           onClick={() => toggleTimeline(goal.id)}
@@ -904,7 +907,7 @@ export default function GoalsPage() {
                           className="w-full"
                         >
                           <TrendingUpIcon className="h-4 w-4 mr-2" />
-                          {expandedTimeline === goal.id ? 'Ocultar' : 'Ver'} Evolução
+                          {expandedTimeline === goal.id ? t('web.shared.hide') : t('web.goals.see')} {t('web.goals.progress')}
                         </Button>
                       </div>
 

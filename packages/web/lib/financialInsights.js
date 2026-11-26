@@ -1,3 +1,4 @@
+import { t } from '@fintrack/shared/i18n';
 // ============================================================================
 // Financial Insights Library
 // Calculates trends, patterns, and generates insights for budget planning
@@ -6,7 +7,7 @@
 const MACRO_LABELS = {
   needs: 'Necessidades',
   wants: 'Desejos',
-  investments: 'Investimentos'
+  get investments() { return t('web.shared.investments'); }
 };
 
 /**
@@ -94,16 +95,16 @@ export function detectPatterns(expenses, budgets) {
       if (change > 30) {
         insights.push({
           type: 'warning',
-          title: `Aumento em ${MACRO_LABELS[macro]}`,
-          message: `Seus gastos com ${MACRO_LABELS[macro]} aumentaram ${change.toFixed(0)}% nos últimos 2 meses`,
+          title: t('web.financialInsights.isGoingUp', { p0: MACRO_LABELS[macro] }),
+          message: t('web.financialInsights.yourSpendingWentUpOver', { p0: MACRO_LABELS[macro], p1: change.toFixed(0) }),
           severity: 'medium',
           macro
         });
       } else if (change < -20 && macro !== 'investments') {
         insights.push({
           type: 'success',
-          title: `Redução em ${MACRO_LABELS[macro]}`,
-          message: `Parabéns! Você reduziu gastos com ${MACRO_LABELS[macro]} em ${Math.abs(change).toFixed(0)}%`,
+          title: t('web.financialInsights.isGoingDown', { p0: MACRO_LABELS[macro] }),
+          message: t('web.financialInsights.niceYouCutSpendingBy', { p0: MACRO_LABELS[macro], p1: Math.abs(change).toFixed(0) }),
           severity: 'low',
           macro
         });
@@ -125,8 +126,8 @@ export function detectPatterns(expenses, budgets) {
   if (allInvestmentsPositive) {
     insights.push({
       type: 'success',
-      title: 'Investindo consistentemente!',
-      message: 'Você está economizando e investindo todos os meses. Continue assim!',
+      title: t('web.financialInsights.savingEveryMonth'),
+      message: t('web.financialInsights.youReSavingEverySingle'),
       severity: 'low',
       macro: 'investments'
     });
@@ -144,8 +145,8 @@ export function detectPatterns(expenses, budgets) {
     if (percentage > 90) {
       insights.push({
         type: 'alert',
-        title: 'Orçamento próximo do limite',
-        message: `${budget.category_name || 'Uma categoria'} está em ${percentage.toFixed(0)}% do orçamento`,
+        title: t('web.financialInsights.budgetCloseToTheLimit'),
+        message: t('web.financialInsights.isAtOfItsBudget', { p0: budget.category_name || 'Uma categoria', p1: percentage.toFixed(0) }),
         severity: 'high',
         categoryId: budget.category_id
       });

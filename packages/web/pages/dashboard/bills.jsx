@@ -27,8 +27,10 @@ import {
   Clock,
   CreditCard
 } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function BillsDashboard() {
+  const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
@@ -266,11 +268,11 @@ export default function BillsDashboard() {
 
       await fetchBills();
       setShowModal(false);
-      success('Conta criada com sucesso!');
+      success(t('web.bills.billCreated'));
     } catch (error) {
       console.error('❌ [BILLS] Erro ao criar conta:', error);
-      const errorMessage = error?.message || error?.details || 'Erro desconhecido';
-      showError(`Erro ao criar conta: ${errorMessage}`);
+      const errorMessage = error?.message || error?.details || t('web.shared.unknownError');
+      showError(t('web.bills.couldnTCreateTheBill', { errorMessage }));
       throw error;
     }
   };
@@ -291,7 +293,7 @@ export default function BillsDashboard() {
         
         if (updateBillRefError) {
           console.error('❌ [BILLS] Erro ao remover referência expense_id da bill:', updateBillRefError);
-          throw new Error('Erro ao remover referência da despesa: ' + (updateBillRefError.message || 'Erro desconhecido'));
+          throw new Error(t('web.bills.couldnTUnlinkTheExpense') + (updateBillRefError.message || t('web.shared.unknownError')));
         }
         
         // 2. Excluir expense_splits relacionados
@@ -349,7 +351,7 @@ export default function BillsDashboard() {
         await fetchBills();
         setShowModal(false);
         setEditingBill(null);
-        success('Conta revertida para pendente e despesa excluída com sucesso!');
+        success(t('web.bills.billMovedBackToPending'));
         return;
       }
       
@@ -401,23 +403,23 @@ export default function BillsDashboard() {
       await fetchBills();
       setShowModal(false);
       setEditingBill(null);
-      success('Conta atualizada com sucesso!');
+      success(t('web.bills.billUpdated'));
     } catch (error) {
       console.error('❌ [BILLS] Erro ao atualizar conta:', error);
-      const errorMessage = error?.message || error?.details || 'Erro desconhecido';
-      showError(`Erro ao atualizar conta: ${errorMessage}`);
+      const errorMessage = error?.message || error?.details || t('web.shared.unknownError');
+      showError(t('web.bills.couldnTUpdateTheBill', { errorMessage }));
       throw error;
     }
   };
 
   const handleMarkAsPaid = (bill) => {
     if (!bill.payment_method) {
-      warning('Por favor, edite a conta e defina um método de pagamento antes de marcar como paga.');
+      warning(t('web.bills.editTheBillAndPick'));
       return;
     }
 
     if (bill.status === 'paid') {
-      warning('Esta conta já está marcada como paga.');
+      warning(t('web.bills.thisBillIsAlreadyMarked'));
       return;
     }
 
@@ -456,7 +458,7 @@ export default function BillsDashboard() {
         const costCenter = costCenters?.find(cc => cc.id === costCenterId);
         ownerName = costCenter?.name || null;
       } else if (isShared) {
-        ownerName = organization?.name || 'Família';
+        ownerName = organization?.name || t('web.shared.household');
       }
       
       // Buscar o nome da categoria se houver category_id
@@ -563,10 +565,10 @@ export default function BillsDashboard() {
       }
 
       await fetchBills();
-      success('Conta marcada como paga com sucesso! A despesa foi criada automaticamente.');
+      success(t('web.bills.billMarkedAsPaidThe'));
     } catch (error) {
       console.error('❌ [BILLS] Erro ao marcar conta como paga:', error);
-      showError('Erro ao processar pagamento: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.bills.couldnTProcessThePayment') + (error.message || t('web.shared.unknownError')));
     } finally {
       setShowConfirmModal(false);
       setBillToMarkAsPaid(null);
@@ -721,19 +723,19 @@ export default function BillsDashboard() {
 
       // Mostrar mensagem de sucesso ou erro
       if (errors.length > 0) {
-        showError('Alguns itens não puderam ser excluídos: ' + errors.join(', '));
+        showError(t('web.bills.someItemsCouldnTBe') + errors.join(', '));
       } else {
         const billsCount = billsToDelete.length;
         const expensesCount = expenseIdsToDelete.size;
         if (expensesCount > 0) {
-          success(`${billsCount} conta(s) e ${expensesCount} despesa(s) associada(s) excluída(s) com sucesso!`);
+          success(t('web.bills.deletedBillSAndLinked', { billsCount, expensesCount }));
         } else {
-          success(`${billsCount} conta(s) excluída(s) com sucesso!`);
+          success(t('web.bills.deletedBillS', { billsCount }));
         }
       }
     } catch (error) {
       console.error('Erro ao excluir em massa:', error);
-      showError('Erro ao excluir contas: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.bills.couldnTDeleteTheBills') + (error.message || t('web.shared.unknownError')));
     } finally {
       setDeleting(false);
     }
@@ -762,7 +764,7 @@ export default function BillsDashboard() {
       const billToDeleteObj = bills.find(b => b.id === billToDelete);
       
       if (!billToDeleteObj) {
-        showError('Conta não encontrada.');
+        showError(t('web.bills.billNotFound'));
         return;
       }
 
@@ -778,7 +780,7 @@ export default function BillsDashboard() {
         
         if (updateBillError) {
           console.error('❌ [BILLS] Erro ao remover referência expense_id da bill:', updateBillError);
-          throw new Error('Erro ao remover referência da despesa: ' + (updateBillError.message || 'Erro desconhecido'));
+          throw new Error(t('web.bills.couldnTUnlinkTheExpense') + (updateBillError.message || t('web.shared.unknownError')));
         }
         
         // 2. Excluir expense_splits relacionados
@@ -799,7 +801,7 @@ export default function BillsDashboard() {
         
         if (expenseError) {
           console.error('❌ [BILLS] Erro ao excluir expense:', expenseError);
-          throw new Error('Erro ao excluir despesa associada: ' + (expenseError.message || 'Erro desconhecido'));
+          throw new Error(t('web.bills.couldnTDeleteTheLinked') + (expenseError.message || t('web.shared.unknownError')));
         }
         
         console.log('✅ [BILLS] Expense excluída com sucesso');
@@ -816,13 +818,13 @@ export default function BillsDashboard() {
       await fetchBills();
       
       if (billToDeleteObj.status === 'paid' && billToDeleteObj.expense_id) {
-        success('Conta e despesa associada excluídas com sucesso!');
+        success(t('web.bills.billAndLinkedExpenseDeleted'));
       } else {
-        success('Conta excluída com sucesso!');
+        success(t('web.bills.billDeleted'));
       }
     } catch (error) {
       console.error('❌ [BILLS] Erro ao excluir conta:', error);
-      showError('Erro ao excluir conta: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.bills.couldnTDelete') + (error.message || t('web.shared.unknownError')));
     } finally {
       setShowConfirmModal(false);
       setBillToDelete(null);
@@ -918,10 +920,10 @@ export default function BillsDashboard() {
 
   const getStatusBadge = (status) => {
     const badges = {
-      pending: { label: 'Pendente', className: 'bg-gray-100 text-gray-700 border border-gray-200' },
-      paid: { label: 'Paga', className: 'bg-gray-100 text-gray-700 border border-gray-200' },
-      overdue: { label: 'Vencida', className: 'bg-gray-200 text-gray-800 border border-gray-300 font-medium' },
-      cancelled: { label: 'Cancelada', className: 'bg-gray-100 text-gray-600 border border-gray-200' }
+      pending: { label: t('web.bills.pending'), className: 'bg-gray-100 text-gray-700 border border-gray-200' },
+      paid: { label: t('web.bills.paid'), className: 'bg-gray-100 text-gray-700 border border-gray-200' },
+      overdue: { label: t('web.bills.overdue'), className: 'bg-gray-200 text-gray-800 border border-gray-300 font-medium' },
+      cancelled: { label: t('web.bills.cancelled'), className: 'bg-gray-100 text-gray-600 border border-gray-200' }
     };
     return badges[status] || badges.pending;
   };
@@ -953,7 +955,7 @@ export default function BillsDashboard() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <Button onClick={() => router.push('/')}>Voltar ao início</Button>
+          <Button onClick={() => router.push('/')}>{t('web.shared.backToHome2')}</Button>
         </div>
       </div>
     );
@@ -971,7 +973,7 @@ export default function BillsDashboard() {
       <Header 
         organization={organization}
         user={orgUser}
-        pageTitle="Contas a Pagar"
+        pageTitle={t('web.bills.bills')}
       >
       <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         
@@ -980,12 +982,12 @@ export default function BillsDashboard() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Contas a Pagar</h2>
-                <p className="text-sm text-gray-600">Gerencie suas contas e vencimentos</p>
+                <h2 className="text-lg font-semibold text-gray-900">{t('web.bills.bills')}</h2>
+                <p className="text-sm text-gray-600">{t('web.bills.yourBillsAndDueDates')}</p>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
-                  <label className="text-sm font-medium text-gray-700 hidden sm:block">Mês:</label>
+                  <label className="text-sm font-medium text-gray-700 hidden sm:block">{t('web.shared.month')}</label>
                   <input
                     type="month"
                     value={selectedMonth}
@@ -998,7 +1000,7 @@ export default function BillsDashboard() {
                   className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Nova Conta
+                  {t('web.bills.newBill')}
                 </Button>
               </div>
             </div>
@@ -1008,7 +1010,7 @@ export default function BillsDashboard() {
         {/* Stats */}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-3 w-full">
           <StatsCard
-            title="Contas Pendentes"
+            title={t('web.bills.pendingBills')}
             value={pendingCount}
             icon={Clock}
             color="text-gray-600"
@@ -1017,7 +1019,7 @@ export default function BillsDashboard() {
           />
 
           <StatsCard
-            title="Contas Vencidas"
+            title={t('web.bills.overdueBills')}
             value={overdueCount}
             icon={AlertCircle}
             color="text-gray-600"
@@ -1026,7 +1028,7 @@ export default function BillsDashboard() {
           />
 
           <StatsCard
-            title="Valor Total Pendente"
+            title={t('web.bills.totalPending')}
             value={`R$ ${totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
             icon={DollarSign}
             color="text-gray-600"
@@ -1043,13 +1045,13 @@ export default function BillsDashboard() {
                 <div className="p-2 bg-gray-100 rounded-lg">
                   <Filter className="h-4 w-4 text-gray-600" />
                 </div>
-                <span>Filtros</span>
+                <span>{t('web.shared.filters')}</span>
               </CardTitle>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >
-                <span>{showFilters ? 'Recolher' : 'Expandir'}</span>
+                <span>{showFilters ? t('web.bills.collapse') : t('web.bills.expand')}</span>
                 <svg 
                   className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`}
                   fill="none" 
@@ -1066,17 +1068,17 @@ export default function BillsDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {/* Status */}
                 <div className="space-y-3 flex-1 min-w-[200px]">
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('web.shared.status')}</label>
                   <select
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
                     style={{ height: '48px', boxSizing: 'border-box' }}
                   >
-                    <option value="all">Todas</option>
-                    <option value="pending">Pendentes</option>
-                    <option value="overdue">Vencidas</option>
-                    <option value="paid">Pagas</option>
+                    <option value="all">{t('web.shared.all')}</option>
+                    <option value="pending">{t('web.bills.pending2')}</option>
+                    <option value="overdue">{t('web.bills.overdue2')}</option>
+                    <option value="paid">{t('web.bills.paid2')}</option>
                   </select>
                 </div>
 
@@ -1084,10 +1086,10 @@ export default function BillsDashboard() {
                 <div className="space-y-3 flex-1 min-w-[200px]">
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-medium text-gray-700">
-                      Categoria
+                      {t('web.shared.category')}
                       {filterCategory && (
                         <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          Filtrado
+                          {t('web.bills.filtered')}
                         </span>
                       )}
                     </label>
@@ -1096,7 +1098,7 @@ export default function BillsDashboard() {
                         onClick={() => setFilterCategory(null)}
                         className="text-xs text-gray-500 hover:text-gray-700 underline"
                       >
-                        Limpar
+                        {t('web.bills.clear')}
                       </button>
                     )}
                   </div>
@@ -1106,7 +1108,7 @@ export default function BillsDashboard() {
                     className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
                     style={{ height: '48px', boxSizing: 'border-box' }}
                   >
-                    <option value="all">Todas as categorias</option>
+                    <option value="all">{t('web.bills.allCategories')}</option>
                     {categories.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
@@ -1117,10 +1119,10 @@ export default function BillsDashboard() {
                 <div className="space-y-3 flex-1 min-w-[200px]">
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-medium text-gray-700">
-                      Responsável
+                      {t('web.shared.owner2')}
                       {filterOwner && (
                         <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          Filtrado
+                          {t('web.bills.filtered')}
                         </span>
                       )}
                     </label>
@@ -1129,7 +1131,7 @@ export default function BillsDashboard() {
                         onClick={() => setFilterOwner(null)}
                         className="text-xs text-gray-500 hover:text-gray-700 underline"
                       >
-                        Limpar
+                        {t('web.bills.clear')}
                       </button>
                     )}
                   </div>
@@ -1139,9 +1141,9 @@ export default function BillsDashboard() {
                     className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
                     style={{ height: '48px', boxSizing: 'border-box' }}
                   >
-                    <option value="all">Todos</option>
+                    <option value="all">{t('web.shared.all2')}</option>
                     <option value="shared">
-                      {organization && organization.name ? organization.name : 'Família'}
+                      {organization && organization.name ? organization.name : t('web.shared.household')}
                     </option>
                     {(costCenters || []).map(cc => (
                       <option key={cc.id} value={cc.id}>{cc.name}</option>
@@ -1151,12 +1153,12 @@ export default function BillsDashboard() {
 
                 {/* Busca por descrição */}
                 <div className="space-y-3 flex-1 min-w-[200px]">
-                  <label className="block text-sm font-medium text-gray-700">Buscar</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('web.bills.search')}</label>
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Descrição..."
+                    placeholder={t('web.bills.description')}
                     className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
                     style={{ height: '48px', boxSizing: 'border-box' }}
                   />
@@ -1186,18 +1188,18 @@ export default function BillsDashboard() {
             <CardContent className="p-12 text-center">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Nenhuma conta encontrada
+                {t('web.bills.noBillsFound')}
               </h3>
               <p className="text-gray-600 mb-6">
                 {filter === 'all' 
-                  ? 'Adicione suas contas para gerenciar vencimentos'
-                  : `Nenhuma conta ${filter === 'pending' ? 'pendente' : filter === 'overdue' ? 'vencida' : 'paga'}`
+                  ? t('web.bills.textZulRent1200Due')
+                  : t('web.bills.noBills', { p0: filter === 'pending' ? 'pendente' : filter === 'overdue' ? 'vencida' : 'paga' })
                 }
               </p>
               {filter === 'all' && (
                 <Button onClick={openAddModal} className="bg-flight-blue hover:bg-flight-blue/90 text-white">
                   <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Primeira Conta
+                  {t('web.bills.addFirstBill')}
                 </Button>
               )}
             </CardContent>
@@ -1210,12 +1212,12 @@ export default function BillsDashboard() {
                   <div className="p-2 bg-flight-blue/5 rounded-lg">
                     <Calendar className="h-4 w-4 text-flight-blue" />
                   </div>
-                  <span>Contas a Pagar</span>
+                  <span>{t('web.bills.bills')}</span>
                 </CardTitle>
                 {selectedBills.length > 0 && (
                   <div className="flex items-center space-x-3">
                     <span className="text-sm text-gray-600">
-                      {selectedBills.length} selecionada(s)
+                      {t('web.bills.selected', { length: selectedBills.length })}
                     </span>
                     <Button
                       onClick={handleBulkDelete}
@@ -1223,7 +1225,7 @@ export default function BillsDashboard() {
                       className="bg-red-600 hover:bg-red-700 text-white border-2 border-red-600 shadow-sm hover:shadow-md transition-all duration-200"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Excluir Selecionadas
+                      {t('web.bills.deleteSelected')}
                     </Button>
                   </div>
                 )}
@@ -1235,10 +1237,10 @@ export default function BillsDashboard() {
                       const getPaymentMethodLabel = (method) => {
                         const methods = {
                           'pix': 'PIX',
-                          'credit_card': 'Cartão de Crédito',
-                          'debit_card': 'Cartão de Débito',
+                          'credit_card': t('web.shared.creditCard'),
+                          'debit_card': t('web.shared.debitCard'),
                           'cash': 'Dinheiro',
-                          'bank_transfer': 'Transferência',
+                          'bank_transfer': t('web.shared.transfer'),
                           'boleto': 'Boleto',
                           'other': 'Outro'
                         };
@@ -1249,7 +1251,7 @@ export default function BillsDashboard() {
                 const columns = [
                   {
                     key: 'due_date',
-                    label: 'Vencimento',
+                    label: t('web.bills.due'),
                     sortable: true,
                     render: (bill) => {
                       const daysUntil = getDaysUntilDue(bill.due_date);
@@ -1264,7 +1266,7 @@ export default function BillsDashboard() {
                                 daysUntil <= 7 ? 'text-yellow-600' : 
                                 'text-gray-500'
                               }`}>
-                                {daysUntil === 0 ? 'Hoje' : daysUntil === 1 ? 'Amanhã' : `${daysUntil} dias`}
+                                {daysUntil === 0 ? t('web.bills.today') : daysUntil === 1 ? t('web.bills.tomorrow') : `${daysUntil} dias`}
                               </div>
                             )}
                             {daysUntil < 0 && (
@@ -1278,14 +1280,14 @@ export default function BillsDashboard() {
                   },
                   {
                     key: 'description',
-                    label: 'Descrição',
+                    label: t('web.shared.description2'),
                     sortable: false,
                     render: (bill) => (
                             <div className="flex items-center space-x-2">
                               <span className="text-sm font-medium text-gray-900">{bill.description}</span>
                               {bill.is_recurring && (
                                 <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs">
-                                  Recorrente
+                                  {t('web.bills.recurring')}
                                 </Badge>
                               )}
                             </div>
@@ -1295,7 +1297,7 @@ export default function BillsDashboard() {
                         <span className="text-sm font-medium text-gray-900">{bill.description}</span>
                         {bill.is_recurring && (
                           <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs ml-2">
-                            Recorrente
+                            {t('web.bills.recurring')}
                           </Badge>
                         )}
                       </div>
@@ -1303,7 +1305,7 @@ export default function BillsDashboard() {
                   },
                   {
                     key: 'category',
-                    label: 'Categoria',
+                    label: t('web.shared.category'),
                     sortable: false,
                     render: (bill) => (
                             <span className="text-sm text-gray-600">
@@ -1313,7 +1315,7 @@ export default function BillsDashboard() {
                   },
                   {
                     key: 'payment_method',
-                    label: 'Forma',
+                    label: t('web.bills.method'),
                     sortable: false,
                     render: (bill) => (
                       <div>
@@ -1342,12 +1344,12 @@ export default function BillsDashboard() {
                   },
                   {
                     key: 'owner',
-                    label: 'Responsável',
+                    label: t('web.shared.owner2'),
                     sortable: false,
                     render: (bill) => (
                       <span className="text-sm text-gray-600">
                             {bill.is_shared ? (
-                          <span className="font-medium">{organization?.name || 'Família'}</span>
+                          <span className="font-medium">{organization?.name || t('web.shared.household')}</span>
                             ) : bill.cost_center ? (
                           bill.cost_center.name
                             ) : (
@@ -1358,7 +1360,7 @@ export default function BillsDashboard() {
                   },
                   {
                     key: 'amount',
-                    label: 'Valor',
+                    label: t('web.shared.amount2'),
                     sortable: true,
                     render: (bill) => (
                             <div className="text-sm font-semibold text-gray-900">
@@ -1368,7 +1370,7 @@ export default function BillsDashboard() {
                   },
                   {
                     key: 'status',
-                    label: 'Status',
+                    label: t('web.shared.status'),
                     sortable: true,
                     render: (bill) => {
                       const statusBadge = getStatusBadge(bill.status);
@@ -1392,7 +1394,7 @@ export default function BillsDashboard() {
                                 <button
                                   onClick={() => handleMarkAsPaid(bill)}
                           className="text-green-600 hover:text-green-800 p-2 rounded hover:bg-green-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                  title="Marcar como Paga"
+                                  title={t('web.bills.markAsPaid')}
                                 >
                                   <CheckCircle className="h-4 w-4" />
                                 </button>
@@ -1401,14 +1403,14 @@ export default function BillsDashboard() {
                               <button
                                 onClick={() => openEditModal(bill)}
                         className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                title="Editar"
+                                title={t('web.bills.edit')}
                               >
                                 <Edit className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteBill(bill.id)}
                         className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                title="Excluir"
+                                title={t('web.shared.delete')}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -1433,7 +1435,7 @@ export default function BillsDashboard() {
                     renderEmptyState={() => (
                 <div className="p-8 text-center">
                   <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Nenhuma conta a pagar encontrada</p>
+                  <p className="text-gray-600">{t('web.bills.noBillsToPay')}</p>
                 </div>
               )}
                   />
@@ -1476,18 +1478,18 @@ export default function BillsDashboard() {
           setSelectedOwnerForBill(null);
         }}
         onConfirm={confirmDeleteBill}
-        title="Confirmar exclusão"
+        title={t('web.shared.confirmDelete')}
         message={
           (() => {
             const billToDeleteObj = bills.find(b => b.id === billToDelete);
             if (billToDeleteObj?.status === 'paid' && billToDeleteObj?.expense_id) {
-              return `Tem certeza que deseja excluir esta conta? Esta ação também excluirá a despesa associada criada quando a conta foi marcada como paga. Esta ação não pode ser desfeita.`;
+              return t('web.bills.deleteThisBillThisAlso');
             }
-            return "Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.";
+            return t('web.bills.deleteThisBillThisCan');
           })()
         }
-        confirmText="Excluir"
-        cancelText="Cancelar"
+        confirmText={t('web.shared.delete')}
+        cancelText={t('web.shared.cancel')}
         type="danger"
       />
 
@@ -1498,7 +1500,7 @@ export default function BillsDashboard() {
           setShowBulkDeleteConfirm(false);
         }}
         onConfirm={confirmBulkDelete}
-        title="Confirmar exclusão em massa"
+        title={t('web.bills.confirmBulkDelete')}
         message={
           (() => {
             const billsToDelete = filteredBills.filter(b => selectedBills.includes(b.id));
@@ -1506,13 +1508,13 @@ export default function BillsDashboard() {
             const expensesCount = new Set(billsWithExpenses.map(b => b.expense_id)).size;
             
             if (expensesCount > 0) {
-              return `Tem certeza que deseja excluir ${selectedBills.length} conta(s)? Esta ação também excluirá ${expensesCount} despesa(s) associada(s) criada(s) quando as contas foram marcadas como pagas. Esta ação não pode ser desfeita.`;
+              return t('web.bills.deleteBillSThisAlso', { length: selectedBills.length, expensesCount });
             }
-            return `Tem certeza que deseja excluir ${selectedBills.length} conta(s)? Esta ação não pode ser desfeita.`;
+            return t('web.bills.deleteBillSThisCan', { length: selectedBills.length });
           })()
         }
-        confirmText={deleting ? "Excluindo..." : "Excluir Todas"}
-        cancelText="Cancelar"
+        confirmText={deleting ? t('web.bills.deleting') : t('web.bills.deleteAll')}
+        cancelText={t('web.shared.cancel')}
         type="danger"
       />
 

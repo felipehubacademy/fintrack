@@ -1,7 +1,9 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { useI18n } from '../contexts/I18nContext';
 
 const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
+  const { t } = useI18n();
   if (!isOpen || !member) return null;
 
   const { allocations = [], cashExpenses = [], creditExpenses = [] } = transactions || {};
@@ -20,11 +22,11 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
   };
 
   const getPaymentMethod = (expense) => {
-    if (expense.payment_method === 'cash') return 'À Vista';
+    if (expense.payment_method === 'cash') return t('web.shared.paidNow');
     if (expense.payment_method === 'credit' && expense.card_name) {
-      return `Crédito - ${expense.card_name}`;
+      return t('web.memberDetailsModal.credit', { card_name: expense.card_name });
     }
-    return 'Não especificado';
+    return t('web.memberDetailsModal.notSpecified');
   };
 
   // Agrupar transações por forma de pagamento
@@ -47,7 +49,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{member.name}</h2>
-            <p className="text-sm text-gray-500 mt-1">Detalhamento de transações do mês</p>
+            <p className="text-sm text-gray-500 mt-1">{t('web.memberDetailsModal.thisMonthSTransactionsIn')}</p>
           </div>
           <button
             onClick={onClose}
@@ -62,25 +64,25 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
           {/* Resumo */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <p className="text-sm text-gray-600 mb-1">Aportes</p>
+              <p className="text-sm text-gray-600 mb-1">{t('web.memberDetailsModal.contributions')}</p>
               <p className="text-xl font-bold text-flight-blue">
                 R$ {formatCurrency(member.totals?.allocations || 0)}
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600 mb-1">Saídas Individuais</p>
+              <p className="text-sm text-gray-600 mb-1">{t('web.memberDetailsModal.individualExpenses')}</p>
               <p className="text-xl font-bold text-gray-900">
                 - R$ {formatCurrency((member.cash?.individual || 0) + (member.credit?.individual || 0))}
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600 mb-1">Saídas Compartilhadas</p>
+              <p className="text-sm text-gray-600 mb-1">{t('web.memberDetailsModal.sharedExpenses')}</p>
               <p className="text-xl font-bold text-gray-900">
                 - R$ {formatCurrency((member.cash?.shared || 0) + (member.credit?.shared || 0))}
               </p>
             </div>
             <div className={`p-4 rounded-lg border ${member.totals?.balance >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-              <p className="text-sm text-gray-600 mb-1">Saldo</p>
+              <p className="text-sm text-gray-600 mb-1">{t('web.shared.balance')}</p>
               <p className={`text-xl font-bold ${member.totals?.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {member.totals?.balance >= 0 ? '+' : '-'} R$ {formatCurrency(Math.abs(member.totals?.balance || 0))}
               </p>
@@ -92,16 +94,16 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <span className="w-2 h-2 bg-flight-blue rounded-full mr-2"></span>
-                Aportes ({allocations.length})
+                {t('web.memberDetailsModal.contributions2', { length: allocations.length })}
               </h3>
               <div className="bg-gray-50 rounded-lg overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Data</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{t('web.shared.date2')}</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Conta Bancária</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Destino</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Valor</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{t('web.memberDetailsModal.destination')}</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">{t('web.shared.amount2')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -110,7 +112,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                         <td className="px-4 py-3 text-sm text-gray-600">{formatDate(allocation.date)}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{allocation.bank_account_name || '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {allocation.allocation_target === 'individual' ? 'Individual' : 'Compartilhado'}
+                          {allocation.allocation_target === 'individual' ? t('web.shared.individual') : t('web.shared.shared2')}
                         </td>
                         <td className="px-4 py-3 text-sm text-right font-semibold text-flight-blue">
                           R$ {formatCurrency(allocation.amount)}
@@ -128,7 +130,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
-                Saídas Individuais ({cashExpenses.filter(e => e.isIndividual).length + creditExpenses.filter(e => e.isIndividual).length})
+                {t('web.memberDetailsModal.individualExpenses2', { p0: cashExpenses.filter(e => e.isIndividual).length + creditExpenses.filter(e => e.isIndividual).length })}
               </h3>
               {(() => {
                 const individualExpenses = [...cashExpenses, ...creditExpenses]
@@ -143,9 +145,9 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                       <table className="w-full">
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Data</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Descrição</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Valor</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{t('web.shared.date2')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{t('web.shared.description2')}</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">{t('web.shared.amount2')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -161,7 +163,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                         </tbody>
                         <tfoot className="bg-gray-100">
                           <tr>
-                            <td colSpan="2" className="px-4 py-3 text-sm font-semibold text-gray-900">Subtotal {paymentMethod}</td>
+                            <td colSpan="2" className="px-4 py-3 text-sm font-semibold text-gray-900">{t('web.memberDetailsModal.subtotal', { paymentMethod })}</td>
                             <td className="px-4 py-3 text-sm text-right font-bold text-gray-900">
                               - R$ {formatCurrency(expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0))}
                             </td>
@@ -180,7 +182,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
-                Saídas Compartilhadas ({cashExpenses.filter(e => e.isShared).length + creditExpenses.filter(e => e.isShared).length})
+                {t('web.memberDetailsModal.sharedExpenses2', { p0: cashExpenses.filter(e => e.isShared).length + creditExpenses.filter(e => e.isShared).length })}
               </h3>
               {(() => {
                 const sharedExpenses = [...cashExpenses, ...creditExpenses]
@@ -195,10 +197,10 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                       <table className="w-full">
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Data</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Descrição</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Valor Total</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Sua Parte</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{t('web.shared.date2')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{t('web.shared.description2')}</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">{t('web.memberDetailsModal.totalAmount')}</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">{t('web.memberDetailsModal.yourShare')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -217,7 +219,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
                         </tbody>
                         <tfoot className="bg-gray-100">
                           <tr>
-                            <td colSpan="2" className="px-4 py-3 text-sm font-semibold text-gray-900">Subtotal {paymentMethod}</td>
+                            <td colSpan="2" className="px-4 py-3 text-sm font-semibold text-gray-900">{t('web.memberDetailsModal.subtotal', { paymentMethod })}</td>
                             <td className="px-4 py-3 text-sm text-right text-gray-500">
                               - R$ {formatCurrency(expenses.reduce((sum, e) => sum + Number(e.totalAmount || e.amount || 0), 0))}
                             </td>
@@ -239,7 +241,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
            cashExpenses.length === 0 && 
            creditExpenses.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500">Nenhuma transação registrada neste mês.</p>
+              <p className="text-gray-500">{t('web.memberDetailsModal.nothingLoggedThisMonth')}</p>
             </div>
           )}
         </div>
@@ -250,7 +252,7 @@ const MemberDetailsModal = ({ isOpen, onClose, member, transactions }) => {
             onClick={onClose}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
           >
-            Fechar
+            {t('web.shared.close')}
           </button>
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
   formatCurrencyInput
 } from '../lib/utils';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function MarkInvoiceAsPaidModal({
   isOpen,
@@ -17,6 +18,7 @@ export default function MarkInvoiceAsPaidModal({
   card,
   organization = null
 }) {
+  const { t } = useI18n();
   const { error: showError } = useNotificationContext();
   const [paymentMethod, setPaymentMethod] = useState('bank_account'); // 'bank_account' ou 'other'
   const [bankAccounts, setBankAccounts] = useState([]);
@@ -75,8 +77,8 @@ export default function MarkInvoiceAsPaidModal({
       }
     } catch (error) {
       console.error('Erro ao carregar contas bancárias:', error);
-      setFetchError('Não foi possível carregar as contas bancárias. Tente novamente.');
-      showError?.('Erro ao carregar contas bancárias');
+      setFetchError(t('web.markInvoiceAsPaidModal.couldnTLoadYourBank'));
+      showError?.(t('web.markInvoiceAsPaidModal.couldnTLoadBankAccounts'));
     } finally {
       setLoadingAccounts(false);
     }
@@ -134,7 +136,7 @@ export default function MarkInvoiceAsPaidModal({
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-flight-blue">
-                Pagamento de fatura
+                {t('web.markInvoiceAsPaidModal.cardBillPayment')}
               </p>
               <h2 className="text-lg font-semibold text-gray-900">
                 {card.name}
@@ -154,23 +156,23 @@ export default function MarkInvoiceAsPaidModal({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
               <p className="text-xs uppercase text-gray-500 font-semibold tracking-wide">
-                {invoicePaidAmount > 0 ? 'Saldo restante' : 'Valor total da fatura'}
+                {invoicePaidAmount > 0 ? t('web.markInvoiceAsPaidModal.stillOwed') : t('web.markInvoiceAsPaidModal.billTotal')}
               </p>
               <p className="text-2xl font-semibold text-gray-900 mt-1">
                 {formatCurrency(remainingAmount)}
               </p>
               {invoicePaidAmount > 0 && (
                 <p className="text-xs text-green-600 font-medium mt-1">
-                  Já pago: {formatCurrency(invoicePaidAmount)}
+                  {t('web.markInvoiceAsPaidModal.alreadyPaid', { p0: formatCurrency(invoicePaidAmount) })}
                 </p>
               )}
               <p className="text-xs text-gray-500 mt-2">
-                Ao confirmar, uma transação bancária será criada e o limite do cartão será atualizado.
+                {t('web.markInvoiceAsPaidModal.whenYouConfirmABank')}
               </p>
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-white">
               <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                Valor a pagar agora
+                {t('web.markInvoiceAsPaidModal.amountToPayNow')}
               </label>
               <div className="mt-2 relative">
                 <input
@@ -200,11 +202,11 @@ export default function MarkInvoiceAsPaidModal({
               </div>
               {!isAmountValid && (
                 <p className="text-xs text-red-500 mt-1">
-                  Informe um valor entre R$ 0,01 e {formatCurrency(remainingAmount)}.
+                  {t('web.markInvoiceAsPaidModal.enterAnAmountUpTo', { p0: formatCurrency(remainingAmount) })}
                 </p>
               )}
               <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
-                <span>Saldo restante após este pagamento</span>
+                <span>{t('web.markInvoiceAsPaidModal.stillOwedAfterThisPayment')}</span>
                 <span className="font-semibold text-gray-900">
                   {formatCurrency(remainingAfterPayment)}
                 </span>
@@ -214,26 +216,26 @@ export default function MarkInvoiceAsPaidModal({
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-              Forma de pagamento
+              {t('web.markInvoiceAsPaidModal.paymentMethod')}
             </label>
             <select
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-flight-blue focus:border-flight-blue text-gray-900 mb-3"
             >
-              <option value="bank_account">Conta bancária</option>
-              <option value="other">Outros (dinheiro, pix externo, etc.)</option>
+              <option value="bank_account">{t('web.markInvoiceAsPaidModal.bankAccount')}</option>
+              <option value="other">{t('web.markInvoiceAsPaidModal.otherCashExternalTransferEtc')}</option>
             </select>
 
             {paymentMethod === 'bank_account' && (
               <>
                 <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                  Debitar da conta
+                  {t('web.markInvoiceAsPaidModal.payFromAccount')}
                 </label>
                 {loadingAccounts ? (
                   <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Carregando contas ativas...
+                    {t('web.markInvoiceAsPaidModal.loadingActiveAccounts')}
                   </div>
                 ) : bankAccounts.length > 0 ? (
                   <select
@@ -249,7 +251,7 @@ export default function MarkInvoiceAsPaidModal({
                   </select>
                 ) : (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    {fetchError || 'Nenhuma conta bancária ativa encontrada. Cadastre uma conta para continuar.'}
+                    {fetchError || t('web.markInvoiceAsPaidModal.noActiveBankAccountAdd')}
                   </div>
                 )}
               </>
@@ -257,7 +259,7 @@ export default function MarkInvoiceAsPaidModal({
 
             {paymentMethod === 'other' && (
               <p className="text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                ℹ️ O pagamento será registrado na fatura, mas nenhuma transação bancária será criada.
+                {t('web.markInvoiceAsPaidModal.thePaymentIsLoggedOn')}
               </p>
             )}
           </div>
@@ -270,7 +272,7 @@ export default function MarkInvoiceAsPaidModal({
             onClick={onClose}
             className="w-full sm:w-auto border-gray-300 text-gray-700"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleConfirm}
@@ -280,15 +282,15 @@ export default function MarkInvoiceAsPaidModal({
             {isSubmitting ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Processando
+                {t('web.markInvoiceAsPaidModal.processing')}
               </span>
             ) : loadingAccounts ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Carregando
+                {t('web.markInvoiceAsPaidModal.loading')}
               </span>
             ) : (
-              'Confirmar pagamento'
+              t('web.markInvoiceAsPaidModal.confirmPayment')
             )}
           </Button>
         </div>

@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
+import { useI18n } from '../contexts/I18nContext';
 
 export function useFileUpload() {
+  const { t } = useI18n();
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -28,12 +30,12 @@ export function useFileUpload() {
 
   const uploadFile = async (selectedFile, cardId, organizationId) => {
     if (!selectedFile) {
-      setError('Nenhum arquivo selecionado');
+      setError(t('web.useFileUpload.noFileSelected'));
       return null;
     }
 
     if (!cardId || !organizationId) {
-      setError('Informações do cartão/organização ausentes');
+      setError(t('web.useFileUpload.cardOrHouseholdInfoMissing'));
       return null;
     }
 
@@ -44,7 +46,7 @@ export function useFileUpload() {
     try {
       // Validar tamanho (10MB)
       if (selectedFile.size > 10 * 1024 * 1024) {
-        throw new Error('Arquivo muito grande. Máximo 10MB.');
+        throw new Error(t('web.useFileUpload.fileTooBigMax10mb'));
       }
 
       // Validar tipo
@@ -56,7 +58,7 @@ export function useFileUpload() {
       ];
 
       if (!allowedTypes.includes(selectedFile.type)) {
-        throw new Error('Tipo de arquivo não suportado. Use PDF, CSV ou Excel.');
+        throw new Error(t('web.useFileUpload.fileTypeNotSupportedUse'));
       }
 
       setProgress(10);
@@ -80,7 +82,7 @@ export function useFileUpload() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao processar arquivo');
+        throw new Error(errorData.error || t('web.useFileUpload.couldnTProcessTheFile'));
       }
 
       const data = await response.json();
@@ -92,7 +94,7 @@ export function useFileUpload() {
 
     } catch (err) {
       console.error('❌ [Upload] Erro:', err);
-      setError(err.message || 'Erro ao processar arquivo');
+      setError(err.message || t('web.useFileUpload.couldnTProcessTheFile'));
       return null;
     } finally {
       stopProgressTimer();

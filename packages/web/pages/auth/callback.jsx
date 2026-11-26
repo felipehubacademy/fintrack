@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { supabase } from '../../lib/supabaseClient';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function AuthCallback() {
+  const { t } = useI18n();
   const router = useRouter();
   const [status, setStatus] = useState('processing'); // processing | success | error
   const [message, setMessage] = useState('');
@@ -38,7 +40,7 @@ export default function AuthCallback() {
           const access_token = params.get('access_token');
           const refresh_token = params.get('refresh_token');
           if (!access_token || !refresh_token) {
-            throw new Error('Tokens ausentes no callback');
+            throw new Error(t('web.authCallback.signInLinkIsIncomplete'));
           }
           const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
           if (setErr) throw setErr;
@@ -99,11 +101,11 @@ export default function AuthCallback() {
         }
         
         // Nenhum método de autenticação encontrado
-        throw new Error('Nenhum token ou código de autenticação encontrado');
+        throw new Error(t('web.authCallback.noSignInCodeFound'));
       } catch (err) {
         console.error('Erro no callback:', err);
         setStatus('error');
-        setMessage(err.message || 'Falha ao processar login');
+        setMessage(err.message || t('web.authCallback.signInFailed'));
       }
     };
     run();
@@ -112,14 +114,14 @@ export default function AuthCallback() {
   return (
     <>
       <Head>
-        <title>Entrando...</title>
+        <title>{t('web.authCallback.signingIn')}</title>
       </Head>
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-2xl shadow-md text-center">
           {status === 'processing' && (
             <>
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-              <p className="mt-4 text-gray-600">Processando seu login...</p>
+              <p className="mt-4 text-gray-600">{t('web.authCallback.signingYouIn')}</p>
             </>
           )}
           {status === 'error' && (
@@ -130,7 +132,7 @@ export default function AuthCallback() {
                 onClick={() => router.replace('/login')}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white"
               >
-                Voltar ao login
+                {t('web.authCallback.backToSignIn')}
               </button>
             </>
           )}

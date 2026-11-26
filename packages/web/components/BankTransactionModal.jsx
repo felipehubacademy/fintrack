@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader } from './ui/Card';
 import { X, ArrowRight } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useOrganization } from '../hooks/useOrganization';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function BankTransactionModal({ isOpen, onClose, account, organizationId, onSuccess }) {
+  const { t } = useI18n();
   const { organization } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
   const [formData, setFormData] = useState({
@@ -43,7 +45,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
       setAvailableAccounts(data || []);
     } catch (error) {
       console.error('Erro ao buscar contas:', error);
-      showError('Erro ao buscar contas disponíveis');
+      showError(t('web.bankTransactionModal.couldnTLoadYourAccounts'));
     } finally {
       setLoadingAccounts(false);
     }
@@ -66,12 +68,12 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
     e.preventDefault();
     
     if (!formData.amount || !formData.to_account_id) {
-      warning('Preencha todos os campos obrigatórios');
+      warning(t('web.shared.fillInAllRequiredFields'));
       return;
     }
 
     if (parseCurrencyInput(formData.amount) <= 0) {
-      warning('O valor deve ser maior que zero');
+      warning(t('web.bankTransactionModal.amountMustBeGreaterThan'));
       return;
     }
 
@@ -79,9 +81,9 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+      if (!user) throw new Error(t('web.shared.youReNotSignedIn'));
 
-      if (!organizationId) throw new Error('Organização não encontrada');
+      if (!organizationId) throw new Error(t('web.shared.householdNotFound'));
 
       // Chamar função RPC para transferência entre contas
       const { data, error } = await supabase.rpc('transfer_between_accounts', {
@@ -97,12 +99,12 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
       if (error) throw error;
 
       resetForm();
-      success('Transferência realizada com sucesso!');
+      success(t('web.bankTransactionModal.transferDone'));
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('Erro ao realizar transferência:', error);
-      showError('Erro ao realizar transferência: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.bankTransactionModal.couldnTMakeTheTransfer') + (error.message || t('web.shared.unknownError')));
     } finally {
       setSaving(false);
     }
@@ -116,7 +118,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl pr-2">
-            Transferir Entre Contas
+            {t('web.bankTransactionModal.transferBetweenAccounts')}
           </h2>
           <Button 
             variant="ghost" 
@@ -134,7 +136,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
             {/* Conta de Origem */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Conta de Origem
+                {t('web.bankTransactionModal.fromAccount')}
               </label>
               <input
                 type="text"
@@ -147,15 +149,15 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
             {/* Conta de Destino */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Conta de Destino *
+                {t('web.bankTransactionModal.toAccount')}
               </label>
               {loadingAccounts ? (
                 <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-center">
-                  Carregando contas...
+                  {t('web.bankTransactionModal.loadingAccounts')}
                 </div>
               ) : availableAccounts.length === 0 ? (
                 <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-yellow-50 text-yellow-700 text-sm">
-                  Nenhuma outra conta ativa disponível para transferência
+                  {t('web.bankTransactionModal.noOtherActiveAccountTo')}
                 </div>
               ) : (
                 <select
@@ -164,7 +166,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 >
-                  <option value="">Selecione a conta de destino</option>
+                  <option value="">{t('web.bankTransactionModal.pickTheDestinationAccount')}</option>
                   {availableAccounts.map(acc => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name} - {acc.bank || ''}
@@ -212,7 +214,7 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
               {/* Data */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Data *
+                  {t('web.shared.date')}
                 </label>
                 <input
                   type="date"
@@ -227,13 +229,13 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
             {/* Descrição */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descrição (opcional)
+                {t('web.shared.descriptionOptional')}
               </label>
               <input
                 type="text"
                 value={formData.description}
                 onChange={(e) => handleChange('description', e.target.value)}
-                placeholder="Ex: Transferência para investimento, etc."
+                placeholder={t('web.bankTransactionModal.eGMoveToSavings')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
               />
             </div>
@@ -243,12 +245,12 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
               <div className="flex items-center justify-center p-4 bg-flight-blue/5 rounded-lg border border-flight-blue/20">
                 <div className="flex items-center space-x-3">
                   <div className="text-left">
-                    <p className="text-xs text-gray-500">De</p>
+                    <p className="text-xs text-gray-500">{t('web.bankTransactionModal.from')}</p>
                     <p className="font-medium text-gray-900">{account?.name}</p>
                   </div>
                   <ArrowRight className="h-5 w-5 text-flight-blue" />
                   <div className="text-right">
-                    <p className="text-xs text-gray-500">Para</p>
+                    <p className="text-xs text-gray-500">{t('web.bankTransactionModal.to')}</p>
                     <p className="font-medium text-gray-900">
                       {availableAccounts.find(a => a.id === formData.to_account_id)?.name || ''}
                     </p>
@@ -267,14 +269,14 @@ export default function BankTransactionModal({ isOpen, onClose, account, organiz
             disabled={saving}
             className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={saving || availableAccounts.length === 0}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
-            {saving ? 'Transferindo...' : 'Transferir'}
+            {saving ? t('web.bankTransactionModal.transferring') : t('web.bankTransactionModal.transfer')}
           </Button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, Mail, Phone, Building, User, ArrowRight } from 'lucide-react';
 import { Button } from './ui/Button';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function DuplicateUserModal({ 
   isOpen, 
@@ -9,6 +10,7 @@ export default function DuplicateUserModal({
   onLoginExisting,
   onCreateNew 
 }) {
+  const { t } = useI18n();
   if (!isOpen || !duplicateData) return null;
 
   const { checks } = duplicateData;
@@ -24,8 +26,8 @@ export default function DuplicateUserModal({
           <div className="flex items-center space-x-3">
             <AlertTriangle className="w-8 h-8" />
             <div>
-              <h2 className="text-2xl font-bold">Conta já existe!</h2>
-              <p className="text-orange-100">Encontramos dados similares em nossa base</p>
+              <h2 className="text-2xl font-bold">{t('web.duplicateUserModal.accountAlreadyExists')}</h2>
+              <p className="text-orange-100">{t('web.duplicateUserModal.weFoundSimilarDetailsAlready')}</p>
             </div>
           </div>
         </div>
@@ -39,7 +41,7 @@ export default function DuplicateUserModal({
                 <Mail className="w-5 h-5 text-blue-600 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="font-semibold text-blue-900 mb-2">
-                    Email já cadastrado
+                    {t('web.duplicateUserModal.emailAlreadyRegistered')}
                   </h3>
                   <div className="bg-white rounded-lg p-3 border border-blue-100">
                     <div className="flex items-center space-x-2 mb-2">
@@ -57,7 +59,7 @@ export default function DuplicateUserModal({
                     <div className="flex items-center space-x-2">
                       <Building className="w-4 h-4 text-gray-600" />
                       <span className="text-gray-700">
-                        Organização: {checks.email.user.organization_id ? 'Vinculada' : 'Não vinculada'}
+                        {t('web.duplicateUserModal.household')} {checks.email.user.organization_id ? t('web.duplicateUserModal.linked') : t('web.duplicateUserModal.notLinked')}
                       </span>
                     </div>
                   </div>
@@ -73,7 +75,7 @@ export default function DuplicateUserModal({
                 <Phone className="w-5 h-5 text-green-600 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="font-semibold text-green-900 mb-2">
-                    Telefone já cadastrado
+                    {t('web.duplicateUserModal.phoneAlreadyRegistered')}
                   </h3>
                   <div className="bg-white rounded-lg p-3 border border-green-100">
                     <div className="flex items-center space-x-2 mb-2">
@@ -91,7 +93,7 @@ export default function DuplicateUserModal({
                     <div className="flex items-center space-x-2">
                       <Building className="w-4 h-4 text-gray-600" />
                       <span className="text-gray-700">
-                        Organização: {checks.phone.user.organization_id ? 'Vinculada' : 'Não vinculada'}
+                        {t('web.duplicateUserModal.household')} {checks.phone.user.organization_id ? t('web.duplicateUserModal.linked') : t('web.duplicateUserModal.notLinked')}
                       </span>
                     </div>
                   </div>
@@ -107,7 +109,7 @@ export default function DuplicateUserModal({
                 <Building className="w-5 h-5 text-purple-600 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="font-semibold text-purple-900 mb-2">
-                    Email já usado em organização
+                    {t('web.duplicateUserModal.emailAlreadyUsedByA')}
                   </h3>
                   <div className="bg-white rounded-lg p-3 border border-purple-100">
                     <div className="flex items-center space-x-2">
@@ -128,11 +130,10 @@ export default function DuplicateUserModal({
               <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
               <div>
                 <h3 className="font-semibold text-yellow-900 mb-1">
-                  Importante
+                  {t('web.duplicateUserModal.important')}
                 </h3>
                 <p className="text-yellow-800 text-sm">
-                  Para evitar conflitos no sistema, recomendamos fazer login com a conta existente. 
-                  Se você tem certeza de que esta é uma conta diferente, pode continuar o cadastro.
+                  {t('web.duplicateUserModal.toAvoidConflictsWeSuggest')}
                 </p>
               </div>
             </div>
@@ -148,7 +149,7 @@ export default function DuplicateUserModal({
               variant="outline"
               className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50"
             >
-              Cancelar
+              {t('web.shared.cancel')}
             </Button>
             
             {hasEmailDuplicate && (
@@ -157,7 +158,7 @@ export default function DuplicateUserModal({
                 className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
               >
                 <ArrowRight className="w-4 h-4 mr-2" />
-                Fazer Login
+                {t('web.duplicateUserModal.signIn')}
               </Button>
             )}
             
@@ -166,7 +167,7 @@ export default function DuplicateUserModal({
               variant="outline"
               className="w-full sm:w-auto border-orange-300 text-orange-700 hover:bg-orange-50"
             >
-              Continuar Cadastro
+              {t('web.duplicateUserModal.keepSigningUp')}
             </Button>
           </div>
         </div>

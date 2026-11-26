@@ -5,8 +5,10 @@ import { Badge } from './ui/Badge';
 import { Bell, X, Mail, MessageSquare, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function NotificationSettingsModal({ isOpen, onClose, organization, user }) {
+  const { t } = useI18n();
   const { success, error: showError } = useNotificationContext();
   const [settings, setSettings] = useState({
     emailNotifications: true,
@@ -61,11 +63,11 @@ export default function NotificationSettingsModal({ isOpen, onClose, organizatio
 
       if (error) throw error;
 
-      success('Configurações salvas com sucesso!');
+      success(t('web.notificationSettingsModal.settingsSaved'));
       onClose();
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
-      showError('Erro ao salvar configurações');
+      showError(t('web.notificationSettingsModal.couldnTSaveSettings'));
     } finally {
       setSaving(false);
     }
@@ -81,43 +83,43 @@ export default function NotificationSettingsModal({ isOpen, onClose, organizatio
   const notificationTypes = [
     {
       key: 'emailNotifications',
-      title: 'Notificações por Email',
-      description: 'Receber alertas e relatórios por email',
+      title: t('web.notificationSettingsModal.emailNotifications'),
+      description: t('web.notificationSettingsModal.getAlertsAndReportsBy'),
       icon: Mail,
       color: 'bg-blue-500'
     },
     {
       key: 'whatsappNotifications',
-      title: 'Notificações WhatsApp',
-      description: 'Receber confirmações via WhatsApp',
+      title: t('web.notificationSettingsModal.whatsappNotifications'),
+      description: t('web.notificationSettingsModal.getConfirmationsOnWhatsapp'),
       icon: MessageSquare,
       color: 'bg-green-500'
     },
     {
       key: 'budgetWarnings',
-      title: 'Alertas de Orçamento',
-      description: 'Avisos quando próximo do limite',
+      title: t('web.notificationSettingsModal.budgetAlerts'),
+      description: t('web.notificationSettingsModal.aHeadsUpWhenYou'),
       icon: AlertTriangle,
       color: 'bg-yellow-500'
     },
     {
       key: 'expenseAlerts',
-      title: 'Alertas de Despesas',
-      description: 'Confirmações de despesas registradas',
+      title: t('web.notificationSettingsModal.expenseAlerts'),
+      description: t('web.notificationSettingsModal.confirmationsOfLoggedExpenses'),
       icon: Bell,
       color: 'bg-purple-500'
     },
     {
       key: 'weeklyReports',
-      title: 'Relatórios Semanais',
-      description: 'Resumo semanal de gastos',
+      title: t('web.notificationSettingsModal.weeklyReports'),
+      description: t('web.notificationSettingsModal.weeklySpendingSummary'),
       icon: Mail,
       color: 'bg-indigo-500'
     },
     {
       key: 'monthlyReports',
-      title: 'Relatórios Mensais',
-      description: 'Resumo mensal completo',
+      title: t('web.notificationSettingsModal.monthlyReports'),
+      description: t('web.notificationSettingsModal.fullMonthlySummary'),
       icon: Mail,
       color: 'bg-pink-500'
     }
@@ -130,7 +132,7 @@ export default function NotificationSettingsModal({ isOpen, onClose, organizatio
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-lg">Configurações de Notificações</h2>
+          <h2 className="text-gray-900 font-semibold text-lg">{t('web.notificationSettingsModal.notificationSettings')}</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -146,12 +148,12 @@ export default function NotificationSettingsModal({ isOpen, onClose, organizatio
             {loading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-2 text-gray-600">Carregando configurações...</p>
+                <p className="mt-2 text-gray-600">{t('web.notificationSettingsModal.loadingSettings')}</p>
               </div>
             ) : (
               <>
                 <div className="text-sm text-gray-600 mb-6">
-                  Configure como deseja receber notificações e alertas sobre suas finanças.
+                  {t('web.notificationSettingsModal.chooseHowYouWantTo')}
                 </div>
 
                 <div className="space-y-4">
@@ -189,14 +191,14 @@ export default function NotificationSettingsModal({ isOpen, onClose, organizatio
                     onClick={onClose}
                     className="border-gray-300 text-gray-700 hover:bg-gray-50"
                   >
-                    Cancelar
+                    {t('web.shared.cancel')}
                   </Button>
                   <Button 
                     onClick={handleSave}
                     disabled={saving}
                     className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
                   >
-                    {saving ? 'Salvando...' : 'Salvar'}
+                    {saving ? t('web.shared.saving') : t('web.shared.save')}
                   </Button>
                 </div>
               </>
@@ -210,7 +212,7 @@ export default function NotificationSettingsModal({ isOpen, onClose, organizatio
             onClick={onClose}
             className="border-gray-300 text-gray-700 hover:bg-gray-50"
           >
-            Fechar
+            {t('web.shared.close')}
           </Button>
         </div>
       </div>

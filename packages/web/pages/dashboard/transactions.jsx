@@ -18,8 +18,10 @@ import { normalizeName, isSameName } from '../../utils/nameNormalizer';
 import ResponsiveTable from '../../components/ui/ResponsiveTable';
 import Tooltip from '../../components/ui/Tooltip';
 import Footer from '../../components/Footer';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function TransactionsDashboard() {
+  const { t: tr } = useI18n();
   const router = useRouter();
   const [user, setUser] = useState(null);
   const { organization, costCenters, budgetCategories, loading: orgLoading, error: orgError, user: orgUser, isSoloUser } = useOrganization();
@@ -472,7 +474,7 @@ export default function TransactionsDashboard() {
         if (error) throw error;
 
         await fetchIncomes();
-        success('Entrada excluída com sucesso!');
+        success(tr('web.transactions.incomeDeleted'));
       } else {
         // Exclusão de despesa
         const expense = expenses.find(e => e.id === transactionToDelete.id);
@@ -497,11 +499,11 @@ export default function TransactionsDashboard() {
         }
 
         await fetchExpenses();
-        success(hasInstallments ? 'Todas as parcelas foram excluídas com sucesso!' : 'Despesa excluída com sucesso!');
+        success(hasInstallments ? tr('web.transactions.allInstallmentsDeleted') : tr('web.transactions.expenseDeleted'));
       }
     } catch (error) {
       console.error('Erro ao excluir:', error);
-      showError('Erro ao excluir transação: ' + (error.message || 'Erro desconhecido'));
+      showError(tr('web.transactions.couldnTDeleteTheTransaction') + (error.message || tr('web.shared.unknownError')));
     } finally {
       setDeleting(false);
       setTransactionToDelete(null);
@@ -669,13 +671,13 @@ export default function TransactionsDashboard() {
 
       // Mostrar mensagem de sucesso ou erro
       if (errors.length > 0) {
-        showError('Alguns itens não puderam ser excluídos: ' + errors.join(', '));
+        showError(tr('web.transactions.someItemsCouldnTBe') + errors.join(', '));
       } else {
-        success(`${deletedCount} transação(ões) excluída(s) com sucesso!`);
+        success(tr('web.transactions.deletedTransactionS', { deletedCount }));
       }
     } catch (error) {
       console.error('Erro ao excluir em massa:', error);
-      showError('Erro ao excluir transações: ' + (error.message || 'Erro desconhecido'));
+      showError(tr('web.transactions.couldnTDeleteTheTransactions') + (error.message || tr('web.shared.unknownError')));
     } finally {
       setDeleting(false);
     }
@@ -729,7 +731,7 @@ export default function TransactionsDashboard() {
     if (filter.owner !== 'all') {
       filtered = filtered.filter(t => {
         const owner = t.type === 'income' 
-          ? (t.is_shared ? (organization?.name || 'Família') : t.cost_center?.name)
+          ? (t.is_shared ? (organization?.name || tr('web.shared.household')) : t.cost_center?.name)
           : t.owner;
         return isSameName(owner, filter.owner);
       });
@@ -965,12 +967,12 @@ export default function TransactionsDashboard() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa criar uma conta ou ser convidado para uma organização.</p>
+          <p className="text-gray-600 mb-4">{tr('web.transactions.createAnAccountOrGet')}</p>
           <button
             onClick={() => router.push('/')}
             className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
           >
-            Voltar ao início
+            {tr('web.shared.backToHome2')}
           </button>
         </div>
       </div>
@@ -982,17 +984,17 @@ export default function TransactionsDashboard() {
       <Header 
         organization={organization}
         user={orgUser}
-        pageTitle="Transações"
+        pageTitle={tr('web.shared.transactions')}
       >
         <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8 space-y-8">
         {/* Header Actions (consistência com /cards) */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-              <h2 className="text-lg font-semibold text-gray-900">Gestão de Transações</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{tr('web.transactions.transactions')}</h2>
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
-                  <label className="text-sm font-medium text-gray-700 hidden sm:block">Mês:</label>
+                  <label className="text-sm font-medium text-gray-700 hidden sm:block">{tr('web.shared.month')}</label>
                   <input
                     type="month"
                     value={filter.month}
@@ -1005,7 +1007,7 @@ export default function TransactionsDashboard() {
                   onClick={() => setShowTransactionModal(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Nova Despesa
+                  {tr('web.shared.newExpense')}
                 </Button>
               </div>
             </div>
@@ -1022,7 +1024,7 @@ export default function TransactionsDashboard() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-900">
-                  Total de Entradas
+                  {tr('web.shared.totalIncome')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-flight-blue/10">
                   <TrendingUp className="h-4 w-4 text-flight-blue" />
@@ -1039,14 +1041,14 @@ export default function TransactionsDashboard() {
                   ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Total de todas as entradas
+                  {tr('web.transactions.allIncome')}
                 </p>
               </CardContent>
             </Card>
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'entradas' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Responsável</p>
+              <p className="text-sm font-semibold text-gray-900 mb-3">{tr('web.shared.byPerson')}</p>
               <div className="space-y-2">
                 {costCenters
                   .filter(cc => cc && cc.is_active !== false && !cc.is_shared)
@@ -1097,7 +1099,7 @@ export default function TransactionsDashboard() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Total de Despesas
+                  {tr('web.shared.totalExpenses')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <TrendingDown className="h-4 w-4 text-gray-600" />
@@ -1125,14 +1127,14 @@ export default function TransactionsDashboard() {
                   ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Total de todas as despesas
+                  {tr('web.transactions.allExpenses')}
                 </p>
               </CardContent>
             </Card>
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'despesas' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Forma de Pagamento</p>
+              <p className="text-sm font-semibold text-gray-900 mb-3">{tr('web.transactions.byPaymentMethod')}</p>
               <div className="space-y-3">
                 {(() => {
                   const confirmedExpenses = expenses.filter(e => e.status === 'confirmed');
@@ -1163,7 +1165,7 @@ export default function TransactionsDashboard() {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2">
                           <div className="w-3 h-3 rounded-full bg-gray-600"></div>
-                          <span className="text-gray-700 font-medium">À Vista</span>
+                          <span className="text-gray-700 font-medium">{tr('web.shared.paidNow')}</span>
                         </div>
                         <div className="text-right">
                           <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1173,7 +1175,7 @@ export default function TransactionsDashboard() {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2">
                           <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                          <span className="text-gray-700 font-medium">Crédito</span>
+                          <span className="text-gray-700 font-medium">{tr('web.shared.credit')}</span>
                         </div>
                         <div className="text-right">
                           <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1196,7 +1198,7 @@ export default function TransactionsDashboard() {
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                   <CardTitle className="text-sm font-medium text-gray-600">
-                    Total de Despesas
+                    {tr('web.shared.totalExpenses')}
                   </CardTitle>
                   <div className="p-2 rounded-lg bg-gray-100">
                     <User className="h-4 w-4 text-gray-600" />
@@ -1223,14 +1225,14 @@ export default function TransactionsDashboard() {
                     ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Total de todas as despesas
+                    {tr('web.transactions.allExpenses')}
                   </p>
                 </CardContent>
               </Card>
             
               {/* Tooltip */}
               <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'individuais' ? 'visible' : 'invisible'}`}>
-                <p className="text-sm font-semibold text-gray-900 mb-3">Divisão por Forma de Pagamento</p>
+                <p className="text-sm font-semibold text-gray-900 mb-3">{tr('web.transactions.byPaymentMethod')}</p>
                 <div className="space-y-3">
                   {(() => {
                     const confirmedExpenses = expenses.filter(e => e.status === 'confirmed');
@@ -1259,7 +1261,7 @@ export default function TransactionsDashboard() {
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center space-x-2">
                             <div className="w-3 h-3 rounded-full bg-gray-600"></div>
-                            <span className="text-gray-700 font-medium">À Vista</span>
+                            <span className="text-gray-700 font-medium">{tr('web.shared.paidNow')}</span>
                           </div>
                           <div className="text-right">
                             <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1269,7 +1271,7 @@ export default function TransactionsDashboard() {
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center space-x-2">
                             <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                            <span className="text-gray-700 font-medium">Crédito</span>
+                            <span className="text-gray-700 font-medium">{tr('web.shared.credit')}</span>
                           </div>
                           <div className="text-right">
                             <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1440,14 +1442,14 @@ export default function TransactionsDashboard() {
                       - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      {percentage}% do total
+                      {tr('web.transactions.ofTotal', { percentage })}
                     </p>
                   </CardContent>
                 </Card>
                 
                 {/* Tooltip */}
                 <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 w-full md:invisible md:group-hover:visible ${openTooltip === `cc-${cc.id}` ? 'visible' : 'invisible'}`}>
-                  <p className="text-sm font-semibold text-gray-900 mb-3">Composição das Despesas</p>
+                  <p className="text-sm font-semibold text-gray-900 mb-3">{tr('web.transactions.whatMakesUpYourSpending')}</p>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-2">
@@ -1455,7 +1457,7 @@ export default function TransactionsDashboard() {
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: cc.color || '#6B7280' }}
                         />
-                        <span className="text-gray-700 font-medium">Individuais</span>
+                        <span className="text-gray-700 font-medium">{tr('web.transactions.individual')}</span>
                       </div>
                       <div className="text-right">
                         <span className="text-gray-900 font-semibold">
@@ -1471,7 +1473,7 @@ export default function TransactionsDashboard() {
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                        <span className="text-gray-700 font-medium">{organization?.name || 'Família'}</span>
+                        <span className="text-gray-700 font-medium">{organization?.name || tr('web.shared.household')}</span>
                       </div>
                       <div className="text-right">
                         <span className="text-gray-900 font-semibold">
@@ -1486,7 +1488,7 @@ export default function TransactionsDashboard() {
                     </div>
                     <div className="pt-2 border-t border-gray-200">
                       <div className="flex items-center justify-between text-sm font-semibold">
-                        <span className="text-gray-900">Total</span>
+                        <span className="text-gray-900">{tr('web.shared.total2')}</span>
                         <span className="text-gray-900">
                           - R$ {Number(totalExpenses).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
@@ -1508,13 +1510,13 @@ export default function TransactionsDashboard() {
                 <div className="p-2 bg-flight-blue/5 rounded-lg">
                   <Calendar className="h-4 w-4 text-flight-blue" />
                 </div>
-                <span>Filtros</span>
+                <span>{tr('web.shared.filters')}</span>
               </CardTitle>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >
-                <span>{showFilters ? 'Recolher' : 'Expandir'}</span>
+                <span>{showFilters ? tr('web.transactions.collapse') : tr('web.transactions.expand')}</span>
                 <svg 
                   className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`}
                   fill="none" 
@@ -1531,28 +1533,28 @@ export default function TransactionsDashboard() {
             <div className="flex flex-wrap gap-6 w-full">
             {/* Filtro de Tipo de Transação */}
             <div className="space-y-3 flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700">Tipo de Transação</label>
+              <label className="block text-sm font-medium text-gray-700">{tr('web.transactions.transactionType')}</label>
               <select
                 value={filter.transactionType}
                 onChange={(e) => setFilter({ ...filter, transactionType: e.target.value })}
                 className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 style={{ height: '48px', boxSizing: 'border-box' }}
               >
-                <option value="all">Todas as Transações</option>
-                <option value="expense">Apenas Despesas</option>
-                <option value="income">Apenas Entradas</option>
+                <option value="all">{tr('web.transactions.allTransactions')}</option>
+                <option value="expense">{tr('web.transactions.expensesOnly')}</option>
+                <option value="income">{tr('web.transactions.incomeOnly')}</option>
               </select>
             </div>
 
             <div className="space-y-3 flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700">Responsável</label>
+              <label className="block text-sm font-medium text-gray-700">{tr('web.shared.owner2')}</label>
               <select
                 value={filter.owner}
                 onChange={(e) => setFilter({ ...filter, owner: e.target.value })}
                 className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 style={{ height: '48px', boxSizing: 'border-box' }}
               >
-                <option value="all">Todos</option>
+                <option value="all">{tr('web.shared.all2')}</option>
                 {isV2Ready ? (
                   // V2: usar costCenters dinâmicos
                   <>
@@ -1560,7 +1562,7 @@ export default function TransactionsDashboard() {
                       <option key={cc.id || cc.name} value={cc.name}>{cc.name}</option>
                     ))}
                     {!costCenters?.some(cc => cc.name === (organization?.name || 'Família')) && (
-                      <option value={organization?.name || 'Família'}>{organization?.name || 'Família'}</option>
+                      <option value={organization?.name || 'Família'}>{organization?.name || tr('web.shared.household')}</option>
                     )}
                   </>
                 ) : (
@@ -1580,10 +1582,10 @@ export default function TransactionsDashboard() {
                 <div className="space-y-3 flex-1 min-w-[200px]">
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-medium text-gray-700">
-                      Categoria de Despesa
+                      {tr('web.transactions.expenseCategory')}
                       {filter.category_id && (
                         <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          Filtrado
+                          {tr('web.transactions.filtered')}
                         </span>
                       )}
                     </label>
@@ -1592,7 +1594,7 @@ export default function TransactionsDashboard() {
                         onClick={() => setFilter({ ...filter, category_id: null })}
                         className="text-xs text-gray-500 hover:text-gray-700 underline"
                       >
-                        Limpar filtro
+                        {tr('web.transactions.clearFilter')}
                       </button>
                     )}
                   </div>
@@ -1602,7 +1604,7 @@ export default function TransactionsDashboard() {
                     className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     style={{ height: '48px', boxSizing: 'border-box' }}
                   >
-                    <option value="all">Todas as categorias</option>
+                    <option value="all">{tr('web.transactions.allCategories')}</option>
                     {categories.map(category => (
                       <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
@@ -1610,7 +1612,7 @@ export default function TransactionsDashboard() {
                 </div>
 
                 <div className="space-y-3 flex-1 min-w-[200px]">
-                  <label className="block text-sm font-medium text-gray-700">Forma de Pagamento</label>
+                  <label className="block text-sm font-medium text-gray-700">{tr('web.shared.paymentMethod')}</label>
               <select
                 value={filter.payment_method}
                 onChange={(e) => {
@@ -1625,22 +1627,22 @@ export default function TransactionsDashboard() {
                 className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 style={{ height: '48px', boxSizing: 'border-box' }}
               >
-                <option value="all">Todas</option>
-                <option value="cash">Dinheiro</option>
-                  <option value="debit_card">Débito</option>
-                <option value="pix">PIX</option>
-                <option value="credit_card">Cartão de Crédito</option>
-                <option value="other">Outros</option>
+                <option value="all">{tr('web.shared.all')}</option>
+                <option value="cash">{tr('web.shared.cash')}</option>
+                  <option value="debit_card">{tr('web.shared.debit')}</option>
+                <option value="pix">{tr('web.shared.pix')}</option>
+                <option value="credit_card">{tr('web.shared.creditCard')}</option>
+                <option value="other">{tr('web.shared.other')}</option>
               </select>
             </div>
 
             <div className="space-y-3 flex-1 min-w-[200px]">
               <div className="flex items-center justify-between">
                 <label className="block text-sm font-medium text-gray-700">
-                  Por Cartão
+                  {tr('web.transactions.byCard')}
                   {filter.card_id && (
                     <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Filtrado
+                      {tr('web.transactions.filtered')}
                     </span>
                   )}
                 </label>
@@ -1649,7 +1651,7 @@ export default function TransactionsDashboard() {
                     onClick={() => setFilter({ ...filter, card_id: null })}
                     className="text-xs text-gray-500 hover:text-gray-700 underline"
                   >
-                    Limpar filtro
+                    {tr('web.transactions.clearFilter')}
                   </button>
                 )}
               </div>
@@ -1664,7 +1666,7 @@ export default function TransactionsDashboard() {
                 }`}
                 style={{ height: '48px', boxSizing: 'border-box' }}
               >
-                <option value="all">Todos os cartões</option>
+                <option value="all">{tr('web.transactions.allCards')}</option>
                 {cards.map(card => (
                   <option key={card.id} value={card.id}>{card.name}</option>
                 ))}
@@ -1678,36 +1680,36 @@ export default function TransactionsDashboard() {
               <>
                 {/* Categoria de Entrada */}
                 <div className="space-y-3 flex-1 min-w-[200px]">
-                  <label className="block text-sm font-medium text-gray-700">Categoria de Entrada</label>
+                  <label className="block text-sm font-medium text-gray-700">{tr('web.transactions.incomeCategory')}</label>
                   <select
                     value={filter.incomeCategory}
                     onChange={(e) => setFilter({ ...filter, incomeCategory: e.target.value })}
                     className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     style={{ height: '48px', boxSizing: 'border-box' }}
                   >
-                    <option value="all">Todas as categorias</option>
-                    <option value="Salário">Salário</option>
-                    <option value="Freelance">Freelance</option>
-                    <option value="Investimentos">Investimentos</option>
-                    <option value="Vendas">Vendas</option>
-                    <option value="Aluguel">Aluguel</option>
-                    <option value="Bonificação">Bonificação</option>
-                    <option value="Outros">Outros</option>
+                    <option value="all">{tr('web.transactions.allCategories')}</option>
+                    <option value="Salário">{tr('web.transactions.salary')}</option>
+                    <option value="Freelance">{tr('web.transactions.freelance')}</option>
+                    <option value="Investimentos">{tr('web.shared.investments')}</option>
+                    <option value="Vendas">{tr('web.transactions.sales')}</option>
+                    <option value="Aluguel">{tr('web.transactions.rent')}</option>
+                    <option value="Bonificação">{tr('web.transactions.bonus')}</option>
+                    <option value="Outros">{tr('web.shared.other')}</option>
                   </select>
                 </div>
 
                 {/* Tipo de Entrada */}
                 <div className="space-y-3 flex-1 min-w-[200px]">
-                  <label className="block text-sm font-medium text-gray-700">Tipo de Entrada</label>
+                  <label className="block text-sm font-medium text-gray-700">{tr('web.transactions.incomeType')}</label>
                   <select
                     value={filter.incomeType}
                     onChange={(e) => setFilter({ ...filter, incomeType: e.target.value })}
                     className="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     style={{ height: '48px', boxSizing: 'border-box' }}
                   >
-                    <option value="all">Todas</option>
-                    <option value="individual">Individual</option>
-                    <option value="shared">Compartilhada</option>
+                    <option value="all">{tr('web.shared.all')}</option>
+                    <option value="individual">{tr('web.shared.individual')}</option>
+                    <option value="shared">{tr('web.shared.shared')}</option>
                   </select>
                 </div>
               </>
@@ -1725,19 +1727,19 @@ export default function TransactionsDashboard() {
               <div className="p-2 bg-flight-blue/5 rounded-lg">
                 <TrendingUp className="h-4 w-4 text-flight-blue" />
               </div>
-              <span>Transações Gerais</span>
+              <span>{tr('web.transactions.allTransactions2')}</span>
             </CardTitle>
               {selectedTransactions.length > 0 && (
                 <div className="flex items-center space-x-3">
                   <span className="text-sm text-gray-600">
-                    {selectedTransactions.length} selecionada(s)
+                    {tr('web.transactions.selected', { length: selectedTransactions.length })}
                   </span>
                   <Button
                     onClick={handleBulkDelete}
                     className="bg-red-600 hover:bg-red-700 text-white border-2 border-red-600 shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Excluir Selecionadas
+                    {tr('web.transactions.deleteSelected')}
                   </Button>
                 </div>
               )}
@@ -1749,8 +1751,8 @@ export default function TransactionsDashboard() {
               const renderOwner = (transaction, isMobile = false) => {
                 const isIncome = transaction.type === 'income';
                         const owner = isIncome 
-                          ? (transaction.is_shared ? (organization?.name || 'Família') : transaction.cost_center?.name)
-                          : (transaction.cost_center?.name || transaction.owner || (transaction.is_shared ? (organization?.name || 'Família') : '-'));
+                          ? (transaction.is_shared ? (organization?.name || tr('web.shared.household')) : transaction.cost_center?.name)
+                          : (transaction.cost_center?.name || transaction.owner || (transaction.is_shared ? (organization?.name || tr('web.shared.household')) : '-'));
                         
                         const isShared = transaction.is_shared || owner === (organization?.name || 'Família');
                         
@@ -1786,7 +1788,7 @@ export default function TransactionsDashboard() {
                 if (isShared && splitInfo && splitInfo.length > 0) {
                   const tooltipContent = (
                     <div>
-                                  <div className="font-semibold mb-2 text-gray-700 text-xs">Divisão:</div>
+                                  <div className="font-semibold mb-2 text-gray-700 text-xs">{tr('web.transactions.split')}</div>
                                   <div className="space-y-2">
                                     {splitInfo.map((split, idx) => (
                                       <div key={idx} className="flex items-center justify-between">
@@ -1820,7 +1822,7 @@ export default function TransactionsDashboard() {
               const columns = [
                 {
                   key: 'date',
-                  label: 'Data',
+                  label: tr('web.shared.date2'),
                   sortable: true,
                   render: (transaction) => (
                     <span className="text-sm text-gray-900">
@@ -1830,7 +1832,7 @@ export default function TransactionsDashboard() {
                 },
                 {
                   key: 'description',
-                  label: 'Descrição',
+                  label: tr('web.shared.description2'),
                   sortable: false,
                   render: (transaction) => {
                     const isIncome = transaction.type === 'income';
@@ -1863,7 +1865,7 @@ export default function TransactionsDashboard() {
                 },
                 {
                   key: 'category',
-                  label: 'Categoria',
+                  label: tr('web.shared.category'),
                   sortable: true,
                   render: (transaction) => {
                     const isIncome = transaction.type === 'income';
@@ -1876,7 +1878,7 @@ export default function TransactionsDashboard() {
                 },
                 {
                   key: 'payment_method',
-                  label: 'Forma',
+                  label: tr('web.transactions.method'),
                   sortable: true,
                   render: (transaction) => {
                     const isIncome = transaction.type === 'income';
@@ -1885,26 +1887,26 @@ export default function TransactionsDashboard() {
                       if (transaction.payment_method === 'debit_card') {
                         if (transaction.card_id) {
                           const card = cards.find(c => c.id === transaction.card_id);
-                          return card ? `Débito - ${card.name}` : 'Débito';
+                          return card ? tr('web.transactions.debit', { name: card.name }) : tr('web.shared.debit');
                         }
-                        return 'Débito';
+                        return tr('web.shared.debit');
                       }
                       if (transaction.payment_method === 'pix') return 'PIX';
                       if (transaction.payment_method === 'credit_card') {
                         if (transaction.card_id) {
                           const card = cards.find(c => c.id === transaction.card_id);
-                          return card ? `Crédito - ${card.name}` : 'Crédito';
+                          return card ? tr('web.transactions.credit', { name: card.name }) : tr('web.shared.credit');
                         }
-                        return 'Crédito';
+                        return tr('web.shared.credit');
                       }
-                      if (transaction.payment_method === 'bank_transfer') return 'Transferência';
+                      if (transaction.payment_method === 'bank_transfer') return tr('web.shared.transfer');
                       if (transaction.payment_method === 'boleto') return 'Boleto';
                       if (transaction.payment_method === 'other') return 'Outros';
                     } else {
                       if (transaction.payment_method === 'cash') return 'Dinheiro';
                       if (transaction.payment_method === 'pix') return 'PIX';
-                      if (transaction.payment_method === 'deposit') return 'Depósito';
-                      if (transaction.payment_method === 'bank_transfer') return 'Transferência';
+                      if (transaction.payment_method === 'deposit') return tr('web.transactions.deposit');
+                      if (transaction.payment_method === 'bank_transfer') return tr('web.shared.transfer');
                       if (transaction.payment_method === 'boleto') return 'Boleto';
                       if (transaction.payment_method === 'other') return 'Outros';
                       if (!transaction.payment_method) return '-';
@@ -1914,14 +1916,14 @@ export default function TransactionsDashboard() {
                 },
                 {
                   key: 'owner',
-                  label: 'Responsabilidade',
+                  label: tr('web.transactions.owner'),
                   sortable: true,
                   render: (transaction) => renderOwner(transaction, false),
                   mobileRender: (transaction) => renderOwner(transaction, true)
                 },
                 {
                   key: 'amount',
-                  label: 'Valor',
+                  label: tr('web.shared.amount2'),
                   sortable: true,
                   render: (transaction) => {
                     const isIncome = transaction.type === 'income';
@@ -1953,14 +1955,14 @@ export default function TransactionsDashboard() {
                         <button
                           onClick={() => handleEdit(transaction)}
                       className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                          title={`Editar ${isIncome ? 'entrada' : 'despesa'}`}
+                          title={tr('web.transactions.edit', { p0: isIncome ? 'entrada' : 'despesa' })}
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(transaction)}
                       className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                          title={`Excluir ${isIncome ? 'entrada' : 'despesa'}`}
+                          title={tr('web.transactions.delete', { p0: isIncome ? 'entrada' : 'despesa' })}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -1997,7 +1999,7 @@ export default function TransactionsDashboard() {
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
-              <p className="text-gray-600">Nenhuma transação encontrada</p>
+              <p className="text-gray-600">{tr('web.transactions.nothingHereYetTextZul')}</p>
             </div>
           )}
                 />
@@ -2006,9 +2008,9 @@ export default function TransactionsDashboard() {
                 {sortedTransactions.length > itemsPerPage && (
                   <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-gray-50 rounded-lg">
                     <div className="text-sm text-gray-700">
-                      Mostrando <span className="font-semibold">{startIndex + 1}</span> a{' '}
-                      <span className="font-semibold">{Math.min(endIndex, sortedTransactions.length)}</span> de{' '}
-                      <span className="font-semibold">{sortedTransactions.length}</span> transações
+                      {tr('web.transactions.showing')} <span className="font-semibold">{startIndex + 1}</span> {tr('web.transactions.to')}
+                      <span className="font-semibold">{Math.min(endIndex, sortedTransactions.length)}</span> {tr('web.transactions.of')}
+                      <span className="font-semibold">{sortedTransactions.length}</span> {tr('web.transactions.transactions2')}
                     </div>
                     
                     <div className="flex items-center gap-2">
@@ -2019,7 +2021,7 @@ export default function TransactionsDashboard() {
                         disabled={currentPage === 1}
                         className="px-3 py-1"
                       >
-                        Anterior
+                        {tr('web.shared.previous')}
                       </Button>
                       
                       <div className="flex items-center gap-1">
@@ -2057,7 +2059,7 @@ export default function TransactionsDashboard() {
                         disabled={currentPage === totalPages}
                         className="px-3 py-1"
                       >
-                        Próxima
+                        {tr('web.transactions.next')}
                       </Button>
                     </div>
                   </div>
@@ -2103,14 +2105,14 @@ export default function TransactionsDashboard() {
           setTransactionToDelete(null);
         }}
         onConfirm={confirmDelete}
-        title="Confirmar exclusão"
+        title={tr('web.shared.confirmDelete')}
         message={
           transactionToDelete?.type === 'income' 
-            ? "Tem certeza que deseja excluir esta entrada? Esta ação não pode ser desfeita."
-            : "Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita."
+            ? tr('web.transactions.deleteThisIncomeThisCan')
+            : tr('web.transactions.deleteThisExpenseThisCan')
         }
-        confirmText="Excluir"
-        cancelText="Cancelar"
+        confirmText={tr('web.shared.delete')}
+        cancelText={tr('web.shared.cancel')}
         type="danger"
       />
 
@@ -2120,10 +2122,10 @@ export default function TransactionsDashboard() {
           setShowBulkDeleteConfirm(false);
         }}
         onConfirm={confirmBulkDelete}
-        title="Confirmar exclusão em massa"
-        message={`Tem certeza que deseja excluir ${selectedTransactions.length} transação(ões) selecionada(s)? Esta ação não pode ser desfeita.`}
-        confirmText="Excluir"
-        cancelText="Cancelar"
+        title={tr('web.transactions.confirmBulkDelete')}
+        message={tr('web.transactions.deleteSelectedTransactionSThis', { length: selectedTransactions.length })}
+        confirmText={tr('web.shared.delete')}
+        cancelText={tr('web.shared.cancel')}
         type="danger"
       />
 

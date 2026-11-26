@@ -7,8 +7,10 @@ import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
 import { useRealtimeDuplicateCheck } from '../hooks/useRealtimeDuplicateCheck';
 import DuplicateUserModal from '../components/DuplicateUserModal';
 import HelpTooltip from '../components/ui/HelpTooltip';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function CreateAccount() {
+  const { t } = useI18n();
   const router = useRouter();
   const [formData, setFormData] = useState({
     dashboardName: '',
@@ -104,7 +106,7 @@ export default function CreateAccount() {
 
     try {
       if (!validation.email || !validation.phone || !validation.password || !validation.confirmPassword || !formData.dashboardName) {
-        throw new Error('Por favor, preencha todos os campos corretamente');
+        throw new Error(t('web.shared.pleaseFillInEveryField'));
       }
 
       // Verificar duplicatas
@@ -141,7 +143,7 @@ export default function CreateAccount() {
 
       if (!response.ok || !result?.success) {
         console.error('Erro ao criar conta solo:', result);
-        throw new Error(result?.details || result?.error || 'Erro ao criar conta');
+        throw new Error(result?.details || result?.error || t('web.createAccount.couldnTCreateYourAccount'));
       }
 
       router.push({
@@ -172,7 +174,7 @@ export default function CreateAccount() {
   return (
     <>
       <Head>
-        <title>Criar Conta - MeuAzulão</title>
+        <title>{t('web.createAccount.signUpMeuazulao')}</title>
         <meta name="description" content="Crie sua conta no MeuAzulão" />
       </Head>
 
@@ -187,7 +189,7 @@ export default function CreateAccount() {
           className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Voltar</span>
+          <span className="font-medium">{t('web.shared.back')}</span>
         </Link>
 
         <div className="relative z-10 w-full max-w-lg">
@@ -201,10 +203,10 @@ export default function CreateAccount() {
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Criar Conta Individual
+                {t('web.createAccount.createYourAccount')}
               </h1>
               <p className="text-gray-600">
-                Configure seu controle financeiro pessoal
+                {t('web.createAccount.setUpYourPersonalDashboard')}
               </p>
             </div>
 
@@ -213,7 +215,7 @@ export default function CreateAccount() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <label htmlFor="dashboardName" className="block text-sm font-medium text-gray-700">
-                    Nome do Dashboard
+                    {t('web.createAccount.dashboardName')}
                   </label>
                   <HelpTooltip 
                     content="Este será o nome da sua área de controle financeiro"
@@ -227,7 +229,7 @@ export default function CreateAccount() {
                   <input
                     id="dashboardName"
                     type="text"
-                    placeholder="Ex: Vida no Azul, Meu Controle, Minhas Finanças"
+                    placeholder={t('web.createAccount.eGMyMoneyOur')}
                     required
                     value={formData.dashboardName}
                     onChange={(e) => handleChange('dashboardName', e.target.value)}
@@ -239,7 +241,7 @@ export default function CreateAccount() {
               {/* Admin Name */}
               <div>
                 <label htmlFor="adminName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Seu Nome
+                  {t('web.createAccount.yourName')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -248,7 +250,7 @@ export default function CreateAccount() {
                   <input
                     id="adminName"
                     type="text"
-                    placeholder="Ex: João Silva"
+                    placeholder={t('web.shared.eGAlexSmith')}
                     required
                     value={formData.adminName}
                     onChange={(e) => handleChange('adminName', e.target.value)}
@@ -260,7 +262,7 @@ export default function CreateAccount() {
               {/* Email */}
               <div>
                 <label htmlFor="adminEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                  Seu Email
+                  {t('web.createAccount.yourEmail')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -269,7 +271,7 @@ export default function CreateAccount() {
                   <input
                     id="adminEmail"
                     type="email"
-                    placeholder="seu@email.com"
+                    placeholder={t('web.shared.youEmailCom')}
                     required
                     value={formData.adminEmail}
                     onChange={(e) => handleChange('adminEmail', e.target.value)}
@@ -294,7 +296,7 @@ export default function CreateAccount() {
                 {hasEmailDuplicate && (
                   <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
                     <AlertCircle className="w-4 h-4" />
-                    <span>Email já está em uso</span>
+                    <span>{t('web.createAccount.emailAlreadyInUse')}</span>
                   </div>
                 )}
               </div>
@@ -303,7 +305,7 @@ export default function CreateAccount() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <label htmlFor="adminPhone" className="block text-sm font-medium text-gray-700">
-                    Seu WhatsApp
+                    {t('web.shared.yourWhatsapp')}
                   </label>
                   <HelpTooltip 
                     content="Este será o número permitido a usar com o Zul no WhatsApp. Seu assistente de IA para controle financeiro."
@@ -345,7 +347,7 @@ export default function CreateAccount() {
                 {hasPhoneDuplicate && (
                   <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
                     <AlertCircle className="w-4 h-4" />
-                    <span>Telefone já está em uso</span>
+                    <span>{t('web.createAccount.phoneAlreadyInUse')}</span>
                   </div>
                 )}
               </div>
@@ -353,7 +355,7 @@ export default function CreateAccount() {
               {/* Password */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Senha
+                  {t('web.shared.password')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -362,7 +364,7 @@ export default function CreateAccount() {
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder={t('web.shared.atLeast8Characters')}
                     required
                     value={formData.password}
                     onChange={(e) => handleChange('password', e.target.value)}
@@ -389,7 +391,7 @@ export default function CreateAccount() {
               {/* Confirm Password */}
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirmar Senha
+                  {t('web.shared.confirmPassword')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -398,7 +400,7 @@ export default function CreateAccount() {
                   <input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Digite a senha novamente"
+                    placeholder={t('web.shared.typeThePasswordAgain')}
                     required
                     value={formData.confirmPassword}
                     onChange={(e) => handleChange('confirmPassword', e.target.value)}
@@ -434,10 +436,10 @@ export default function CreateAccount() {
                   <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm text-blue-900 font-medium mb-1">
-                      Acesso seguro
+                      {t('web.createAccount.secureAccess')}
                     </p>
                     <p className="text-xs text-blue-700">
-                      Sua senha será criptografada e protegida
+                      {t('web.createAccount.yourPasswordIsEncrypted')}
                     </p>
                   </div>
                 </div>
@@ -451,19 +453,19 @@ export default function CreateAccount() {
                 {loading ? (
                   <span className="flex items-center justify-center">
                     <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                    Criando conta...
+                    {t('web.createAccount.creatingAccount')}
                   </span>
                 ) : (
-                  'Criar Conta'
+                  t('web.shared.create')
                 )}
               </button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Já tem uma conta?{' '}
+                {t('web.shared.alreadyHaveAnAccount')}
                 <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Fazer login
+                  {t('web.shared.signIn')}
                 </Link>
               </p>
             </div>
@@ -471,13 +473,13 @@ export default function CreateAccount() {
             {/* Terms and Privacy */}
             <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
-                Ao continuar, você concorda com nossos{' '}
+                {t('web.createAccount.byContinuingYouAgreeTo')}
                 <Link href="/terms" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Termos de Serviço
+                  {t('web.shared.termsOfService')}
                 </Link>
-                {' '}e{' '}
+                {t('web.createAccount.and')}
                 <Link href="/privacy" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Política de Privacidade
+                  {t('web.shared.privacyPolicy')}
                 </Link>
               </p>
             </div>

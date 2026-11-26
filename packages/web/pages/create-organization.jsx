@@ -6,8 +6,10 @@ import { ArrowLeft, Building2, User, Mail, Phone, Loader2, CheckCircle, Lock, Ey
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
 import { useRealtimeDuplicateCheck } from '../hooks/useRealtimeDuplicateCheck';
 import DuplicateUserModal from '../components/DuplicateUserModal';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function CreateOrganization() {
+  const { t } = useI18n();
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
@@ -103,7 +105,7 @@ export default function CreateOrganization() {
 
     try {
       if (!validation.email || !validation.phone || !validation.password || !validation.confirmPassword) {
-        throw new Error('Por favor, preencha todos os campos corretamente');
+        throw new Error(t('web.shared.pleaseFillInEveryField'));
       }
 
       // Verificar duplicatas antes de criar a conta
@@ -140,7 +142,7 @@ export default function CreateOrganization() {
 
       if (!response.ok || !result?.success) {
         console.error('Erro ao criar organização familiar:', result);
-        throw new Error(result?.details || result?.error || 'Erro ao criar organização');
+        throw new Error(result?.details || result?.error || t('web.createOrganization.couldnTCreateYourHousehold'));
       }
 
       router.push({
@@ -174,7 +176,7 @@ export default function CreateOrganization() {
   return (
     <>
       <Head>
-        <title>Criar Organização - MeuAzulão</title>
+        <title>{t('web.createOrganization.createAHouseholdMeuazulao')}</title>
         <meta name="description" content="Crie sua organização no MeuAzulão" />
       </Head>
 
@@ -192,7 +194,7 @@ export default function CreateOrganization() {
           className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Voltar</span>
+          <span className="font-medium">{t('web.shared.back')}</span>
         </Link>
 
         {/* Form Card */}
@@ -208,10 +210,10 @@ export default function CreateOrganization() {
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Criar Organização
+                {t('web.createOrganization.createAHousehold')}
               </h1>
               <p className="text-gray-600">
-                Configure sua Família ou Organização
+                {t('web.createOrganization.setUpYourCoupleOr')}
               </p>
             </div>
 
@@ -220,7 +222,7 @@ export default function CreateOrganization() {
               {/* Organization Name */}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome da Organização
+                  {t('web.createOrganization.householdName')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -229,7 +231,7 @@ export default function CreateOrganization() {
                   <input
                     id="name"
                     type="text"
-                    placeholder="Ex: Família Silva"
+                    placeholder={t('web.createOrganization.eGTheSmiths')}
                     required
                     maxLength={40}
                     value={formData.name}
@@ -237,7 +239,7 @@ export default function CreateOrganization() {
                     className="w-full pl-12 pr-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                   <p className="mt-1 text-xs text-gray-500">
-                    Máximo de 40 caracteres
+                    {t('web.createOrganization.upTo40Characters')}
                   </p>
                 </div>
               </div>
@@ -245,7 +247,7 @@ export default function CreateOrganization() {
               {/* Admin Name */}
               <div>
                 <label htmlFor="adminName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Seu Nome
+                  {t('web.createOrganization.yourName')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -254,7 +256,7 @@ export default function CreateOrganization() {
                   <input
                     id="adminName"
                     type="text"
-                    placeholder="Ex: João Silva"
+                    placeholder={t('web.shared.eGAlexSmith')}
                     required
                     value={formData.adminName}
                     onChange={(e) => handleChange('adminName', e.target.value)}
@@ -266,7 +268,7 @@ export default function CreateOrganization() {
               {/* Email */}
               <div>
                 <label htmlFor="adminEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                  Seu Email
+                  {t('web.createOrganization.yourEmail')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -275,7 +277,7 @@ export default function CreateOrganization() {
                   <input
                     id="adminEmail"
                     type="email"
-                    placeholder="seu@email.com"
+                    placeholder={t('web.shared.youEmailCom')}
                     required
                     value={formData.adminEmail}
                     onChange={(e) => handleChange('adminEmail', e.target.value)}
@@ -300,7 +302,7 @@ export default function CreateOrganization() {
                 {hasEmailDuplicate && (
                   <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
                     <AlertCircle className="w-4 h-4" />
-                    <span>Email já está em uso</span>
+                    <span>{t('web.createOrganization.emailAlreadyInUse')}</span>
                   </div>
                 )}
               </div>
@@ -308,7 +310,7 @@ export default function CreateOrganization() {
               {/* Phone */}
               <div>
                 <label htmlFor="adminPhone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Seu WhatsApp
+                  {t('web.shared.yourWhatsapp')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -345,19 +347,19 @@ export default function CreateOrganization() {
                 {hasPhoneDuplicate && (
                   <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
                     <AlertCircle className="w-4 h-4" />
-                    <span>Telefone já está em uso</span>
+                    <span>{t('web.createOrganization.phoneAlreadyInUse')}</span>
                   </div>
                 )}
                 
                 <p className="text-xs text-gray-500 mt-1">
-                  Digite apenas números, formataremos automaticamente
+                  {t('web.createOrganization.numbersOnlyWeLlFormat')}
                 </p>
               </div>
 
               {/* Password */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Senha
+                  {t('web.shared.password')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -366,7 +368,7 @@ export default function CreateOrganization() {
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder={t('web.shared.atLeast8Characters')}
                     required
                     value={formData.password}
                     onChange={(e) => handleChange('password', e.target.value)}
@@ -389,14 +391,14 @@ export default function CreateOrganization() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Mínimo 8 caracteres
+                  {t('web.shared.atLeast8Characters')}
                 </p>
               </div>
 
               {/* Confirm Password */}
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirmar Senha
+                  {t('web.shared.confirmPassword')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -405,7 +407,7 @@ export default function CreateOrganization() {
                   <input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Digite a senha novamente"
+                    placeholder={t('web.shared.typeThePasswordAgain')}
                     required
                     value={formData.confirmPassword}
                     onChange={(e) => handleChange('confirmPassword', e.target.value)}
@@ -429,7 +431,7 @@ export default function CreateOrganization() {
                 </div>
                 {validation.confirmPassword === false && (
                   <p className="text-xs text-red-600 mt-1">
-                    As senhas não coincidem
+                    {t('web.shared.passwordsDonTMatch')}
                   </p>
                 )}
               </div>
@@ -450,10 +452,10 @@ export default function CreateOrganization() {
                 {loading ? (
                   <span className="flex items-center justify-center">
                     <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                    Criando organização...
+                    {t('web.createOrganization.creatingHousehold')}
                   </span>
                 ) : (
-                  'Criar Organização'
+                  t('web.createOrganization.createAHousehold')
                 )}
               </button>
             </form>
@@ -464,10 +466,10 @@ export default function CreateOrganization() {
                 <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm text-blue-900 font-medium mb-1">
-                    Acesso seguro
+                    {t('web.createOrganization.secureAccess')}
                   </p>
                   <p className="text-xs text-blue-700">
-                    Sua senha será criptografada e protegida
+                    {t('web.createOrganization.yourPasswordIsEncrypted')}
                   </p>
                 </div>
               </div>
@@ -476,9 +478,9 @@ export default function CreateOrganization() {
             {/* Login Link */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Já tem uma conta?{' '}
+                {t('web.shared.alreadyHaveAnAccount')}
                 <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Fazer login
+                  {t('web.shared.signIn')}
                 </Link>
               </p>
             </div>
@@ -486,13 +488,13 @@ export default function CreateOrganization() {
             {/* Terms and Privacy */}
             <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
-                Ao continuar, você concorda com nossos{' '}
+                {t('web.createOrganization.byContinuingYouAgreeTo')}
                 <Link href="/terms" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Termos de Serviço
+                  {t('web.shared.termsOfService')}
                 </Link>
-                {' '}e{' '}
+                {t('web.createOrganization.and')}
                 <Link href="/privacy" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Política de Privacidade
+                  {t('web.shared.privacyPolicy')}
                 </Link>
               </p>
             </div>

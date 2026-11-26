@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from './ui/Button';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function RolloverInvoiceModal({
   isOpen,
@@ -10,6 +11,7 @@ export default function RolloverInvoiceModal({
   card,
   remainingAmount
 }) {
+  const { t } = useI18n();
   const [isConfirming, setIsConfirming] = useState(false);
 
   const handleConfirm = async () => {
@@ -41,7 +43,7 @@ export default function RolloverInvoiceModal({
               <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
             <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 truncate">
-              Lançar saldo restante
+              {t('web.rolloverInvoiceModal.carryRemainingBalance')}
             </h2>
           </div>
           <button
@@ -56,13 +58,13 @@ export default function RolloverInvoiceModal({
         {/* Content - Scrollable */}
         <div className="p-4 sm:p-5 md:p-6 overflow-y-auto flex-1">
           <p className="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">
-            O saldo restante desta fatura será lançado como uma despesa na próxima fatura.
+            {t('web.rolloverInvoiceModal.whatSLeftOnThis')}
           </p>
 
           {/* Valor */}
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Valor a transferir:</span>
+              <span className="text-sm font-medium text-gray-700">{t('web.rolloverInvoiceModal.amountToCarry')}</span>
               <span className="text-2xl font-bold text-red-700">
                 {formatCurrency(remainingAmount)}
               </span>
@@ -74,13 +76,13 @@ export default function RolloverInvoiceModal({
             <p className="flex items-start gap-2">
               <span className="text-red-600 mt-0.5 font-bold">•</span>
               <span>
-                A despesa aparecerá na próxima fatura com a descrição <strong>"Saldo anterior"</strong>.
+                {t('web.rolloverInvoiceModal.itShowsUpOnThe')} <strong>{t('web.rolloverInvoiceModal.carriedBalance')}</strong>.
               </span>
             </p>
             <p className="flex items-start gap-2">
               <span className="text-red-600 mt-0.5 font-bold">•</span>
               <span>
-                Eventuais <strong>encargos e juros</strong> calculados pelo banco precisarão ser lançados manualmente.
+                {t('web.rolloverInvoiceModal.any')} <strong>{t('web.rolloverInvoiceModal.feesAndInterest')}</strong> {t('web.rolloverInvoiceModal.chargedByYourBankNeed')}
               </span>
             </p>
           </div>
@@ -93,14 +95,14 @@ export default function RolloverInvoiceModal({
               disabled={isConfirming}
               className="w-full sm:w-auto px-6 py-2 min-h-[44px]"
             >
-              Cancelar
+              {t('web.shared.cancel')}
             </Button>
             <Button
               onClick={handleConfirm}
               disabled={isConfirming}
               className="w-full sm:w-auto px-6 py-2 min-h-[44px] bg-red-600 hover:bg-red-700 text-white"
             >
-              {isConfirming ? 'Lançando...' : 'Confirmar'}
+              {isConfirming ? t('web.rolloverInvoiceModal.saving') : t('web.shared.confirm')}
             </Button>
           </div>
         </div>

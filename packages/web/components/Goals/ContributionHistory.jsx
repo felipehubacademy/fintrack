@@ -6,8 +6,10 @@ import HelpCard from '../ui/HelpCard';
 import EmptyState from '../ui/EmptyState';
 import HelpTooltip from '../ui/HelpTooltip';
 import { Calendar, Download, Filter, TrendingUp, DollarSign, History } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function ContributionHistory({ organizationId }) {
+  const { t } = useI18n();
   const [contributions, setContributions] = useState([]);
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,10 +95,10 @@ export default function ContributionHistory({ organizationId }) {
   };
 
   const exportToCSV = () => {
-    const headers = ['Data', 'Meta', 'Valor', 'Observações'];
+    const headers = [t('web.shared.date2'), t('web.contributionHistory.goal'), t('web.shared.amount2'), t('web.contributionHistory.notes')];
     const rows = contributions.map(c => [
       formatDate(c.contribution_date),
-      c.financial_goals?.name || 'Meta removida',
+      c.financial_goals?.name || t('web.contributionHistory.goalRemoved'),
       c.amount,
       c.notes || ''
     ]);
@@ -130,7 +132,7 @@ export default function ContributionHistory({ organizationId }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 flex items-center">
-                  Total Contribuído
+                  {t('web.contributionHistory.totalSaved')}
                   <HelpTooltip content="Soma de todas as contribuições no período selecionado" />
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -147,7 +149,7 @@ export default function ContributionHistory({ organizationId }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 flex items-center">
-                  Média por Aporte
+                  {t('web.contributionHistory.averagePerDeposit')}
                   <HelpTooltip content="Valor médio de cada contribuição" />
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -164,7 +166,7 @@ export default function ContributionHistory({ organizationId }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 flex items-center">
-                  Maior Aporte
+                  {t('web.contributionHistory.largestDeposit')}
                   <HelpTooltip content="Maior contribuição única registrada" />
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -183,14 +185,14 @@ export default function ContributionHistory({ organizationId }) {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center">
               <Filter className="h-5 w-5 mr-2" />
-              Filtros
+              {t('web.shared.filters')}
             </CardTitle>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
             >
-              {showFilters ? 'Ocultar' : 'Mostrar'}
+              {showFilters ? t('web.shared.hide') : t('web.contributionHistory.show')}
             </Button>
           </div>
         </CardHeader>
@@ -201,14 +203,14 @@ export default function ContributionHistory({ organizationId }) {
               {/* Filtro por Meta */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meta
+                  {t('web.contributionHistory.goal')}
                 </label>
                 <select
                   value={selectedGoal}
                   onChange={(e) => setSelectedGoal(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
-                  <option value="all">Todas as metas</option>
+                  <option value="all">{t('web.contributionHistory.allGoals')}</option>
                   {goals.map(goal => (
                     <option key={goal.id} value={goal.id}>
                       {goal.name}
@@ -220,17 +222,17 @@ export default function ContributionHistory({ organizationId }) {
               {/* Filtro por Período */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Período
+                  {t('web.contributionHistory.period')}
                 </label>
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
-                  <option value="all">Todo o período</option>
-                  <option value="month">Este mês</option>
-                  <option value="quarter">Últimos 3 meses</option>
-                  <option value="year">Este ano</option>
+                  <option value="all">{t('web.contributionHistory.allTime')}</option>
+                  <option value="month">{t('web.contributionHistory.thisMonth')}</option>
+                  <option value="quarter">{t('web.contributionHistory.last3Months')}</option>
+                  <option value="year">{t('web.contributionHistory.thisYear')}</option>
                 </select>
               </div>
             </div>
@@ -242,9 +244,9 @@ export default function ContributionHistory({ organizationId }) {
       {contributions.length === 0 ? (
         <EmptyState
           icon={Calendar}
-          title="Nenhuma contribuição encontrada"
-          description="Adicione contribuições às suas metas para visualizar o histórico aqui."
-          actionLabel="Voltar para Metas"
+          title={t('web.contributionHistory.noDepositsYet')}
+          description={t('web.contributionHistory.addMoneyToYourGoals')}
+          actionLabel={t('web.contributionHistory.backToGoals')}
           onAction={() => window.history.back()}
         />
       ) : (
@@ -252,7 +254,7 @@ export default function ContributionHistory({ organizationId }) {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">
-                Histórico de Contribuições ({contributions.length})
+                {t('web.contributionHistory.depositHistory', { length: contributions.length })}
               </CardTitle>
               <Button
                 variant="outline"
@@ -260,7 +262,7 @@ export default function ContributionHistory({ organizationId }) {
                 onClick={exportToCSV}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Exportar CSV
+                {t('web.contributionHistory.exportCsv')}
               </Button>
             </div>
           </CardHeader>
@@ -277,7 +279,7 @@ export default function ContributionHistory({ organizationId }) {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">
-                        {contribution.financial_goals?.name || 'Meta removida'}
+                        {contribution.financial_goals?.name || t('web.contributionHistory.goalRemoved')}
                       </p>
                       <p className="text-sm text-gray-600">
                         {formatDate(contribution.contribution_date)}

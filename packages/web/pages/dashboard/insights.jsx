@@ -27,8 +27,10 @@ import {
   AlertCircle,
   HelpCircle
 } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function InsightsPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, budgetCategories, loading: orgLoading, error: orgError } = useOrganization();
   const [loading, setLoading] = useState(true);
@@ -282,7 +284,7 @@ export default function InsightsPage() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <Button onClick={() => router.push('/')}>Voltar ao início</Button>
+          <Button onClick={() => router.push('/')}>{t('web.shared.backToHome2')}</Button>
         </div>
       </div>
     );
@@ -293,7 +295,7 @@ export default function InsightsPage() {
       <Header 
         organization={organization}
         user={orgUser}
-        pageTitle="Insights Financeiros"
+        pageTitle={t('web.insights.insights')}
       >
         <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-4 md:py-8 space-y-4 md:space-y-8">
           
@@ -301,7 +303,7 @@ export default function InsightsPage() {
           <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
             <CardHeader>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-                <h2 className="text-lg font-semibold text-gray-900">Insights Financeiros</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{t('web.insights.insights')}</h2>
               </div>
             </CardHeader>
           </Card>
@@ -318,7 +320,7 @@ export default function InsightsPage() {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
                     <DollarSign className="h-4 w-4 mr-2" />
-                    Gasto no Mês
+                    {t('web.insights.spentThisMonth')}
                   </CardTitle>
                   <div className="p-2 rounded-lg bg-gray-100">
                     <DollarSign className="h-4 w-4 text-gray-600" />
@@ -341,15 +343,15 @@ export default function InsightsPage() {
                         <span className="text-green-600">-{Math.abs(monthChange).toFixed(1)}%</span>
                       </>
                     )}
-                    <span className="text-gray-500">vs mês anterior</span>
+                    <span className="text-gray-500">{t('web.shared.vsLastMonth')}</span>
                   </div>
                 </CardContent>
               </Card>
               
               {/* Tooltip */}
               <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'gasto-mes' ? 'visible' : 'invisible'}`}>
-                <p className="text-sm font-semibold text-gray-900 mb-2">Gasto no Mês</p>
-                <p className="text-xs text-gray-500">Total de despesas confirmadas no mês atual, comparado com o mês anterior</p>
+                <p className="text-sm font-semibold text-gray-900 mb-2">{t('web.insights.spentThisMonth')}</p>
+                <p className="text-xs text-gray-500">{t('web.insights.thisMonthSSpendingCompared')}</p>
               </div>
             </div>
 
@@ -363,7 +365,7 @@ export default function InsightsPage() {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
                     <Target className="h-4 w-4 mr-2" />
-                    Orçamento
+                    {t('web.insights.budget')}
                   </CardTitle>
                   <div className="p-2 rounded-lg bg-flight-blue/10">
                     <Target className="h-4 w-4 text-flight-blue" />
@@ -375,15 +377,15 @@ export default function InsightsPage() {
                     {spentPercentage.toFixed(0)}%
                   </div>
                   <div className="text-xs text-gray-600 mt-1">
-                    R$ {(totalBudgeted - totalSpent).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} restante
+                    R$ {(totalBudgeted - totalSpent).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} {t('web.insights.left')}
                   </div>
                 </CardContent>
               </Card>
               
               {/* Tooltip */}
               <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'orcamento' ? 'visible' : 'invisible'}`}>
-                <p className="text-sm font-semibold text-gray-900 mb-2">Orçamento</p>
-                <p className="text-xs text-gray-500">Percentual do orçamento total já utilizado neste mês</p>
+                <p className="text-sm font-semibold text-gray-900 mb-2">{t('web.insights.budget')}</p>
+                <p className="text-xs text-gray-500">{t('web.insights.howMuchOfYourTotal')}</p>
               </div>
             </div>
 
@@ -397,7 +399,7 @@ export default function InsightsPage() {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
                     <Calendar className="h-4 w-4 mr-2" />
-                    Dias Restantes
+                    {t('web.insights.daysLeft')}
                   </CardTitle>
                   <div className="p-2 rounded-lg bg-gray-100">
                     <Calendar className="h-4 w-4 text-gray-600" />
@@ -416,8 +418,8 @@ export default function InsightsPage() {
               
               {/* Tooltip */}
               <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'dias-restantes' ? 'visible' : 'invisible'}`}>
-                <p className="text-sm font-semibold text-gray-900 mb-2">Dias Restantes</p>
-                <p className="text-xs text-gray-500">Quantos dias faltam para o fim do mês e sua média de gastos diária</p>
+                <p className="text-sm font-semibold text-gray-900 mb-2">{t('web.insights.daysLeft')}</p>
+                <p className="text-xs text-gray-500">{t('web.insights.daysLeftInTheMonth')}</p>
               </div>
             </div>
 
@@ -437,7 +439,7 @@ export default function InsightsPage() {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
                     <AlertCircle className="h-4 w-4 mr-2" />
-                    Projeção
+                    {t('web.insights.projection')}
                   </CardTitle>
                   <div className={`p-2 rounded-lg ${
                     prediction?.pace === 'high' 
@@ -471,15 +473,15 @@ export default function InsightsPage() {
                     prediction?.pace === 'low' ? 'text-green-600' : 
                     'text-gray-600'
                   }`}>
-                    Ritmo: {prediction?.pace === 'high' ? 'Acima' : prediction?.pace === 'low' ? 'Abaixo' : 'Normal'}
+                    {t('web.insights.pace')} {prediction?.pace === 'high' ? t('web.insights.above') : prediction?.pace === 'low' ? t('web.insights.below') : t('web.insights.normal')}
                   </div>
                 </CardContent>
               </Card>
               
               {/* Tooltip */}
               <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'projecao' ? 'visible' : 'invisible'}`}>
-                <p className="text-sm font-semibold text-gray-900 mb-2">Projeção</p>
-                <p className="text-xs text-gray-500">Estimativa de quanto você vai gastar até o fim do mês, baseado no seu ritmo atual</p>
+                <p className="text-sm font-semibold text-gray-900 mb-2">{t('web.insights.projection')}</p>
+                <p className="text-xs text-gray-500">{t('web.insights.whatYouLlLikelySpend')}</p>
               </div>
             </div>
           </div>
@@ -488,7 +490,7 @@ export default function InsightsPage() {
           <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                Tendências por Macro (Últimos 6 meses)
+                {t('web.insights.trendsByGroupLast6')}
                 <HelpTooltip content="Evolução dos seus gastos nos últimos 6 meses, agrupados por macro categorias (Necessidades, Desejos, Investimentos)" wide />
               </CardTitle>
             </CardHeader>
@@ -503,7 +505,7 @@ export default function InsightsPage() {
           <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                Insights e Padrões Detectados
+                {t('web.insights.whatWeNoticed')}
                 <HelpTooltip content="Análise automática dos seus hábitos financeiros, identificando padrões, alertas e oportunidades de economia" wide />
               </CardTitle>
             </CardHeader>
@@ -517,8 +519,8 @@ export default function InsightsPage() {
               ) : (
                 <div className="text-center text-gray-500 py-8">
                   <AlertCircle className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p>Ainda não há dados suficientes para gerar insights.</p>
-                  <p className="text-sm mt-2">Continue registrando suas despesas!</p>
+                  <p>{t('web.insights.notEnoughDataForInsights')}</p>
+                  <p className="text-sm mt-2">{t('web.insights.keepTextingZulYourExpenses')}</p>
                 </div>
               )}
             </CardContent>
@@ -529,7 +531,7 @@ export default function InsightsPage() {
             <Card className="border border-gray-200 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                  Comparativo de Categorias
+                  {t('web.insights.categoriesCompared')}
                   <HelpTooltip content="Comparação dos gastos por categoria entre este mês e o anterior, mostrando variações percentuais" wide />
                 </CardTitle>
               </CardHeader>
@@ -539,7 +541,7 @@ export default function InsightsPage() {
                     <HorizontalBarChart data={categoryComparison} />
                   ) : (
                     <div className="flex items-center justify-center h-full text-gray-500">
-                      Sem dados de comparação
+                      {t('web.insights.nothingToCompareYet')}
                     </div>
                   )}
                 </div>
@@ -550,7 +552,7 @@ export default function InsightsPage() {
             <Card className="border border-gray-200 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                  Score de Saúde Financeira
+                  {t('web.insights.moneyHealthScore')}
                   <HelpTooltip content="Pontuação de 0-100 que avalia sua saúde financeira baseada em orçamento, investimentos, reserva de emergência e mais" wide />
                 </CardTitle>
               </CardHeader>
@@ -567,7 +569,7 @@ export default function InsightsPage() {
           <Card className="border border-gray-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                Ondas de Gastos (Mês Atual)
+                {t('web.insights.spendingThisMonthDayBy')}
                 <HelpTooltip content="Visualização das ondas de gastos ao longo do mês, mostrando picos e vales por macro categoria" wide />
               </CardTitle>
             </CardHeader>
@@ -577,7 +579,7 @@ export default function InsightsPage() {
                   <MacroAreaChart data={spendingWaves} />
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-500">
-                    Sem dados de gastos este mês
+                    {t('web.insights.noSpendingThisMonthYet')}
                   </div>
                 )}
               </div>

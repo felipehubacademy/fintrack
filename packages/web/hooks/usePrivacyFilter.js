@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
+import { useI18n } from '../contexts/I18nContext';
 
 export function usePrivacyFilter(organization, user, costCenters) {
+  const { t } = useI18n();
   const filterByPrivacy = (data) => {
     // Se não tiver user ou costCenters vazio, retorna dados sem filtrar
     // (evita ocultar tudo antes dos dados carregarem)
@@ -40,20 +42,20 @@ export function usePrivacyFilter(organization, user, costCenters) {
   };
   
   const getOwnerLabel = (costCenterId) => {
-    if (!costCenterId) return organization?.name || 'Organização';
+    if (!costCenterId) return organization?.name || t('web.usePrivacyFilter.household');
     
     const costCenter = costCenters.find(cc => cc.id === costCenterId);
-    if (!costCenter) return organization?.name || 'Organização';
+    if (!costCenter) return organization?.name || t('web.usePrivacyFilter.household');
     
     // Se for cost_center sem user_id, é da organização
-    if (!costCenter.user_id) return organization?.name || 'Organização';
+    if (!costCenter.user_id) return organization?.name || t('web.usePrivacyFilter.household');
     
     // Se for cost_center com user_id, retorna nome do usuário
     return costCenter.name;
   };
   
   const getOrgLabel = useMemo(() => {
-    return () => organization?.name || 'Organização';
+    return () => organization?.name || t('web.usePrivacyFilter.household');
   }, [organization?.name]);
   
   return { filterByPrivacy, getOwnerLabel, getOrgLabel };

@@ -17,8 +17,10 @@ import LoadingLogo from '../../components/LoadingLogo';
 import Tooltip from '../../components/ui/Tooltip';
 import { Plus, Building2, Wallet, TrendingUp, TrendingDown, DollarSign, Edit, Trash2, ArrowRightLeft, List, Link2, ExternalLink } from 'lucide-react';
 import StatsCard from '../../components/ui/StatsCard';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function BankAccounts() {
+  const { t } = useI18n();
   const router = useRouter();
   const { organization, user, costCenters, incomeCategories, loading: orgLoading } = useOrganization();
   const { showError } = useNotificationContext();
@@ -112,8 +114,8 @@ export default function BankAccounts() {
   const handleRemoveBelvoAccount = async (account) => {
     setConfirmModal({
       isOpen: true,
-      title: 'Remover conta do app',
-      message: `Deseja remover "${account.name}" do MeuAzulão?\n\nA conta será ocultada, mas a sincronização Open Finance com o banco continuará ativa.\n\nVocê pode adicionar esta conta novamente em Configurações > Open Finance.`,
+      title: t('web.bankAccounts.removeAccountFromTheApp'),
+      message: t('web.bankAccounts.removeFromMeuazulaoTheAccount', { name: account.name }),
       type: 'warning',
       onConfirm: async () => {
         try {
@@ -126,11 +128,11 @@ export default function BankAccounts() {
 
           if (error) throw error;
 
-          success('Conta removida com sucesso');
+          success(t('web.bankAccounts.accountRemoved'));
           await fetchAccounts();
         } catch (error) {
           console.error('Error removing account:', error);
-          showError('Erro ao remover conta');
+          showError(t('web.bankAccounts.couldnTRemoveTheAccount'));
         }
       }
     });
@@ -168,7 +170,7 @@ export default function BankAccounts() {
     setConfirmModal({
       isOpen: true,
       title: `${action.charAt(0).toUpperCase() + action.slice(1)} conta`,
-      message: `Tem certeza que deseja ${action} a conta "${account.name}"?`,
+      message: t('web.bankAccounts.doYouWantTo', { action, name: account.name }),
       type: account.is_active ? 'warning' : 'info',
       onConfirm: async () => {
         try {
@@ -183,7 +185,7 @@ export default function BankAccounts() {
           await fetchAccounts();
         } catch (error) {
           console.error('Erro ao atualizar status da conta:', error);
-          showError('Erro ao atualizar status da conta: ' + (error.message || 'Erro desconhecido'));
+          showError(t('web.bankAccounts.couldnTUpdateTheAccount') + (error.message || t('web.shared.unknownError')));
         }
       }
     });
@@ -191,21 +193,21 @@ export default function BankAccounts() {
 
   const getAccountTypeLabel = (type) => {
     const typeLabels = {
-      'checking': 'Conta Corrente',
-      'savings': 'Poupança',
-      'pension': 'Previdência',
-      'investment': 'Investimento',
-      'loan': 'Empréstimo'
+      'checking': t('web.bankAccounts.checking'),
+      'savings': t('web.bankAccounts.savings'),
+      'pension': t('web.bankAccounts.retirement'),
+      'investment': t('web.shared.investing'),
+      'loan': t('web.bankAccounts.loan')
     };
-    return typeLabels[type] || 'Conta';
+    return typeLabels[type] || t('web.bankAccounts.account');
   };
 
   const getOwnerLabel = (account) => {
     if (account.owner_type === 'individual') {
-      return account.cost_center?.name || 'Individual';
+      return account.cost_center?.name || t('web.shared.individual');
     } else {
       const shares = account.bank_account_shares || [];
-      return shares.map(s => s.cost_center.name).join(', ') || 'Compartilhada';
+      return shares.map(s => s.cost_center.name).join(', ') || t('web.shared.shared');
     }
   };
 
@@ -219,20 +221,20 @@ export default function BankAccounts() {
 
   return (
     <>
-      <Header organization={organization} user={user} pageTitle="Contas Bancárias">
+      <Header organization={organization} user={user} pageTitle={t('web.bankAccounts.bankAccounts')}>
         <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Contas Bancárias</h1>
-            <p className="text-gray-600 mt-1">Gerencie suas contas corrente e poupança</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('web.bankAccounts.bankAccounts')}</h1>
+            <p className="text-gray-600 mt-1">{t('web.bankAccounts.yourCheckingAndSavingsAccounts')}</p>
           </div>
           <Button 
             onClick={() => setIsAccountTypeModalOpen(true)} 
             className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
           >
             <Plus className="h-5 w-5 mr-2" />
-            Adicionar Conta
+            {t('web.bankAccounts.addAccount')}
           </Button>
         </div>
 
@@ -240,19 +242,19 @@ export default function BankAccounts() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <StatsCard
-            title="Total em Contas"
+            title={t('web.bankAccounts.totalInAccounts')}
             value={`R$ ${stats.totalBalance.toFixed(2)}`}
             icon={DollarSign}
             trend={stats.totalBalance >= 0 ? 'up' : 'down'}
           />
           <StatsCard
-            title="Saldo Positivo"
+            title={t('web.bankAccounts.positiveBalance')}
             value={`R$ ${stats.positiveBalance.toFixed(2)}`}
             icon={TrendingUp}
             trend="up"
           />
           <StatsCard
-            title="Saldo Negativo"
+            title={t('web.bankAccounts.negativeBalance')}
             value={`R$ ${stats.negativeBalance.toFixed(2)}`}
             icon={TrendingDown}
             trend="down"
@@ -264,14 +266,14 @@ export default function BankAccounts() {
           <Card>
             <CardContent className="py-12 text-center">
               <Wallet className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma conta bancária</h3>
-              <p className="text-gray-600 mb-4">Comece adicionando sua primeira conta</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('web.bankAccounts.noBankAccountsYet')}</h3>
+              <p className="text-gray-600 mb-4">{t('web.bankAccounts.addYourFirstAccountTo')}</p>
               <Button 
                 onClick={() => handleOpenModal()} 
                 className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
               >
                 <Plus className="h-5 w-5 mr-2" />
-                Criar Primeira Conta
+                {t('web.bankAccounts.addFirstAccount')}
               </Button>
             </CardContent>
           </Card>
@@ -285,7 +287,7 @@ export default function BankAccounts() {
                       <div className="flex items-center gap-2">
                       {!account.is_active && (
                         <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
-                          Inativa
+                          {t('web.bankAccounts.inactive')}
                         </span>
                       )}
                         {account.provider === 'belvo' && (
@@ -303,13 +305,13 @@ export default function BankAccounts() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Tipo</p>
+                      <p className="text-xs text-gray-500 mb-1">{t('web.bankAccounts.type')}</p>
                       <p className="text-sm font-medium text-gray-900">
                         {getAccountTypeLabel(account.account_type)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Saldo Atual</p>
+                      <p className="text-xs text-gray-500 mb-1">{t('web.bankAccounts.currentBalance')}</p>
                       <p className={`text-2xl font-bold ${
                         parseFloat(account.current_balance || 0) >= 0
                           ? 'text-flight-blue'
@@ -319,7 +321,7 @@ export default function BankAccounts() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Propriedade</p>
+                      <p className="text-xs text-gray-500 mb-1">{t('web.bankAccounts.ownership')}</p>
                       <p className="text-sm text-gray-700">{getOwnerLabel(account)}</p>
                     </div>
                     {account.provider === 'belvo' ? (
@@ -334,7 +336,7 @@ export default function BankAccounts() {
                               setIsTransactionsHistoryModalOpen(true);
                             }}
                             className="text-gray-600 border-gray-200 hover:bg-gray-50"
-                            aria-label="Ver histórico"
+                            aria-label={t('web.bankAccounts.seeHistory')}
                           >
                             <List className="h-4 w-4" />
                           </Button>
@@ -345,7 +347,7 @@ export default function BankAccounts() {
                             size="icon"
                             onClick={() => handleRemoveBelvoAccount(account)}
                             className="text-red-600 border-red-200 hover:bg-red-50"
-                            aria-label="Remover do app"
+                            aria-label={t('web.bankAccounts.removeFromApp')}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -363,7 +365,7 @@ export default function BankAccounts() {
                             setIsIncomeModalOpen(true);
                           }}
                           className="text-flight-blue border-flight-blue/20 hover:bg-flight-blue/10"
-                          aria-label="Adicionar entrada"
+                          aria-label={t('web.bankAccounts.addIncome')}
                         >
                           <TrendingUp className="h-4 w-4" />
                         </Button>
@@ -377,7 +379,7 @@ export default function BankAccounts() {
                           setIsTransactionModalOpen(true);
                         }}
                           className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                          aria-label="Transferir"
+                          aria-label={t('web.bankAccounts.transfer')}
                       >
                           <ArrowRightLeft className="h-4 w-4" />
                       </Button>
@@ -391,7 +393,7 @@ export default function BankAccounts() {
                             setIsTransactionsHistoryModalOpen(true);
                           }}
                           className="text-gray-600 border-gray-200 hover:bg-gray-50"
-                          aria-label="Ver histórico"
+                          aria-label={t('web.bankAccounts.seeHistory')}
                         >
                           <List className="h-4 w-4" />
                         </Button>
@@ -401,7 +403,7 @@ export default function BankAccounts() {
                         variant="outline"
                           size="icon"
                         onClick={() => handleOpenModal(account)}
-                          aria-label="Editar conta"
+                          aria-label={t('web.bankAccounts.editAccount')}
                       >
                           <Edit className="h-4 w-4" />
                       </Button>
@@ -412,7 +414,7 @@ export default function BankAccounts() {
                           size="icon"
                         onClick={() => handleToggleActive(account)}
                         className="text-red-600 border-red-200 hover:bg-red-50"
-                          aria-label="Desativar conta"
+                          aria-label={t('web.bankAccounts.deactivateAccount')}
                       >
                           <Trash2 className="h-4 w-4" />
                       </Button>
@@ -494,8 +496,8 @@ export default function BankAccounts() {
         title={confirmModal.title}
         message={confirmModal.message}
         type={confirmModal.type}
-        confirmText="Confirmar"
-        cancelText="Cancelar"
+        confirmText={t('web.shared.confirm')}
+        cancelText={t('web.shared.cancel')}
       />
     </>
   );

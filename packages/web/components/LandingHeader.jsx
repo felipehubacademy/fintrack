@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function LandingHeader({ currentPage = 'home' }) {
+  const { t } = useI18n();
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -46,16 +48,16 @@ export default function LandingHeader({ currentPage = 'home' }) {
             {currentPage === 'home' && (
               <>
                 <a href="#features" className={`transition-colors text-sm font-medium ${linkColor}`}>
-                  Funcionalidades
+                  {t('web.landingHeader.features')}
                 </a>
                 <a href="#how-it-works" className={`transition-colors text-sm font-medium ${linkColor}`}>
-                  Como Funciona
+                  {t('web.landingHeader.howItWorks')}
                 </a>
               </>
             )}
             {(currentPage === 'privacy' || currentPage === 'terms' || currentPage === 'help' || currentPage === 'contact') && (
               <Link href="/" className={`transition-colors text-sm font-medium ${linkColor}`}>
-                Home
+                {t('web.landingHeader.home')}
               </Link>
             )}
             <Link
@@ -66,7 +68,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
                   : linkColor
               }`}
             >
-              Ajuda
+              {t('web.landingHeader.help')}
             </Link>
             <Link
               href="/contact"
@@ -76,10 +78,10 @@ export default function LandingHeader({ currentPage = 'home' }) {
                   : linkColor
               }`}
             >
-              Contato
+              {t('web.landingHeader.contact')}
             </Link>
             <Link href="/login" className={`transition-colors text-sm font-medium ${linkColor}`}>
-              Entrar
+              {t('web.landingHeader.signIn')}
             </Link>
             {currentPage === 'home' && (
               <Link
@@ -90,7 +92,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
                     : 'bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] text-white shadow-lg shadow-blue-500/30'
                 }`}
               >
-                Começar Agora
+                {t('web.landingHeader.getStarted')}
               </Link>
             )}
           </div>
@@ -105,7 +107,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
                   : 'bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] text-white shadow-lg shadow-blue-500/30'
               }`}
             >
-              Entrar
+              {t('web.landingHeader.signIn')}
             </Link>
           </div>
         </div>

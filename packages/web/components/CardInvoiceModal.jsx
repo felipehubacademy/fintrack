@@ -8,8 +8,10 @@ import RolloverInvoiceModal from './RolloverInvoiceModal';
 import { useOrganization } from '../hooks/useOrganization';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { getBrazilToday, getBrazilTodayString, createBrazilDate, isDateBeforeOrEqualToday } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function CardInvoiceModal({ isOpen, onClose, card }) {
+  const { t } = useI18n();
   const { organization, user, costCenters } = useOrganization();
   const { success, error: showError } = useNotificationContext();
   const [invoices, setInvoices] = useState([]);
@@ -63,7 +65,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
 
       if (invoicesError) {
         console.error('Erro ao buscar faturas:', invoicesError);
-        showError?.('Erro ao carregar faturas');
+        showError?.(t('web.cardInvoiceModal.couldnTLoadCardBills'));
         setInvoices([]);
         return;
       }
@@ -169,7 +171,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
           .single();
 
         if (!bankTransaction) {
-          throw new Error('Transação bancária não encontrada após criação');
+          throw new Error(t('web.cardInvoiceModal.bankTransactionNotFoundAfter'));
         }
 
         bankTransactionId = bankTransaction.id;
@@ -282,9 +284,9 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
 
 
       if (isFullPayment) {
-        success(`Fatura de ${formatCurrency(totalInvoice)} paga! Limite do cartão liberado.`);
+        success(t('web.cardInvoiceModal.cardBillPaidYourLimit', { p0: formatCurrency(totalInvoice) }));
       } else {
-        success(`Pagamento parcial de ${formatCurrency(amount)} registrado. Limite de ${formatCurrency(amount)} liberado. Saldo restante: ${formatCurrency(totalInvoice - amount)}`);
+        success(t('web.cardInvoiceModal.partialPaymentOfLoggedOf', { p0: formatCurrency(amount), p1: formatCurrency(amount), p2: formatCurrency(totalInvoice - amount) }));
       }
       
       // Recarregar faturas
@@ -299,7 +301,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
       
     } catch (error) {
       console.error('❌ [PAYMENT] Erro ao processar pagamento:', error);
-      showError('Erro ao processar pagamento. Tente novamente.');
+      showError(t('web.cardInvoiceModal.couldnTProcessThePayment'));
     }
   };
 
@@ -351,7 +353,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
       const remainingAmount = finalInvoiceRecord.total_amount - (finalInvoiceRecord.paid_amount || 0);
 
       if (remainingAmount <= 0) {
-        showError('Não há saldo restante para transferir.');
+        showError(t('web.cardInvoiceModal.nothingLeftToCarryOver'));
         return;
       }
 
@@ -374,7 +376,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
       const { error: expenseError } = await supabase
         .from('expenses')
         .insert({
-          description: `Saldo anterior - ${card.name}`,
+          description: t('web.cardInvoiceModal.carriedBalance', { name: card.name }),
           amount: remainingAmount,
           date: nextCycleDateStr,
           category_id: category?.id || null,
@@ -429,7 +431,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
         }
       }
 
-      success(`Saldo de ${formatCurrency(remainingAmount)} transferido para a próxima fatura!`);
+      success(t('web.cardInvoiceModal.carriedOverToTheNext', { p0: formatCurrency(remainingAmount) }));
       
       // Recarregar faturas
       await fetchInvoices();
@@ -443,7 +445,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
       
     } catch (error) {
       console.error('❌ [ROLLOVER] Erro ao transferir saldo:', error);
-      showError('Erro ao transferir saldo. Tente novamente.');
+      showError(t('web.cardInvoiceModal.couldnTCarryTheBalance'));
     }
   };
 
@@ -455,9 +457,9 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
         {/* Header */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <div>
-            <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Faturas - {card.name}</h2>
+            <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">{t('web.cardInvoiceModal.cardBills', { name: card.name })}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Vence no dia {card.billing_day}
+              {t('web.cardInvoiceModal.dueOnDay', { billing_day: card.billing_day })}
             </p>
           </div>
           <Button 
@@ -479,7 +481,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
           ) : invoices.length === 0 ? (
             <div className="text-center py-12">
               <CreditCard className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">Nenhuma fatura encontrada</p>
+              <p className="text-gray-600">{t('web.cardInvoiceModal.noCardBillsYet')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -537,7 +539,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                 // Determinar label do status
                 let statusLabel = '';
                 if (isCurrentCycle) {
-                  statusLabel = 'Fatura Atual';
+                  statusLabel = t('web.cardInvoiceModal.currentBill');
                 } else {
                   // Para faturas não atuais, usar o mês de VENCIMENTO (não o mês de fechamento)
                   // Exemplo: período 26/10 - 25/11, fecha 26/11, vence 03/12 → "Fatura de Dezembro"
@@ -545,7 +547,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                   const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
                   const monthName = monthNames[dueDate.getMonth()];
-                  statusLabel = `Fatura de ${monthName}`;
+                  statusLabel = t('web.cardInvoiceModal.bill', { monthName });
                 }
                 
                 const invoiceKey = `${invoice.startDate}-${invoice.endDate}`;
@@ -573,7 +575,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                               <CardTitle className="text-sm font-medium text-gray-700">
                                 {statusLabel}
                               </CardTitle>
-                              <span className="text-xs text-green-600 font-medium">✓ Paga</span>
+                              <span className="text-xs text-green-600 font-medium">{t('web.cardInvoiceModal.paid')}</span>
                             </div>
                           </div>
                           <p className="text-lg font-semibold text-gray-600">
@@ -598,7 +600,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                               <button
                                 onClick={toggleExpand}
                                 className="p-1 hover:bg-gray-100 rounded transition-colors"
-                                title={isExpanded ? 'Ocultar transações' : 'Ver transações'}
+                                title={isExpanded ? t('web.cardInvoiceModal.hideTransactions') : t('web.cardInvoiceModal.seeTransactions')}
                               >
                                 {isExpanded ? (
                                   <ChevronUp className="h-4 w-4 text-gray-600" />
@@ -612,12 +614,12 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                             {new Date(invoice.startDate + 'T00:00:00').toLocaleDateString('pt-BR')} - {new Date(invoice.endDate + 'T00:00:00').toLocaleDateString('pt-BR')}
                             {hasClosed && !isFuture && (
                               <span className="ml-2 text-yellow-600 font-medium">
-                                • Fechou em {closingDate.toLocaleDateString('pt-BR')}
+                                {t('web.cardInvoiceModal.closedOn')} {closingDate.toLocaleDateString('pt-BR')}
                               </span>
                             )}
                             {expenses.length > 0 && (
                               <span className="ml-2 text-gray-400">
-                                • {expenses.length} {expenses.length === 1 ? 'transação' : 'transações'}
+                                • {expenses.length} {expenses.length === 1 ? 'transação' : t('web.cardInvoiceModal.transactions')}
                               </span>
                             )}
                           </p>
@@ -629,10 +631,10 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                           {invoice.status === 'paid_partial' && invoice.paid_amount > 0 && (
                             <div className="mt-1 text-xs space-y-0.5">
                               <p className="text-green-600 font-medium">
-                                Pago: {formatCurrency(invoice.paid_amount)}
+                                {t('web.cardInvoiceModal.paid2', { p0: formatCurrency(invoice.paid_amount) })}
                               </p>
                               <p className="text-amber-600 font-medium">
-                                Restante: {formatCurrency(invoice.total - invoice.paid_amount)}
+                                {t('web.cardInvoiceModal.left', { p0: formatCurrency(invoice.total - invoice.paid_amount) })}
                               </p>
                             </div>
                           )}
@@ -643,7 +645,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                       {isExpanded && expenses.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
                           <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                            Transações ({expenses.length})
+                            {t('web.cardInvoiceModal.transactions2', { length: expenses.length })}
                           </h4>
                           <div className="space-y-1 max-h-96 overflow-y-auto">
                             {expenses
@@ -667,7 +669,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                                     </span>
                                     <span className="mx-2 text-gray-400">-</span>
                                     <span className="flex-1 text-gray-900">
-                                      {expense.description || 'Sem descrição'}
+                                      {expense.description || t('web.cardInvoiceModal.noDescription')}
                                       {installmentText && (
                                         <span className="ml-2 text-gray-600">
                                           {installmentText}
@@ -698,7 +700,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                               className="text-green-600 border-green-200 hover:bg-green-50"
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
-                              Pagar
+                              {t('web.cardInvoiceModal.pay')}
                             </Button>
                           )}
                           {canShowRolloverButton && (
@@ -712,7 +714,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
                               className="text-red-600 border-red-200 hover:bg-red-50"
                             >
                               <ArrowRight className="h-4 w-4 mr-2" />
-                              Lançar saldo na próxima fatura
+                              {t('web.cardInvoiceModal.carryBalanceToNextBill')}
                             </Button>
                           )}
                         </div>
@@ -731,7 +733,7 @@ export default function CardInvoiceModal({ isOpen, onClose, card }) {
             onClick={onClose}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
-            Fechar
+            {t('web.shared.close')}
           </Button>
         </div>
       </div>

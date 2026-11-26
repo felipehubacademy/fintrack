@@ -21,8 +21,10 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function MonthlyClosing() {
+  const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, costCenters, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
   const { warning } = useNotificationContext();
@@ -430,7 +432,7 @@ export default function MonthlyClosing() {
       // Processar allocations
       monthAllocations.forEach((allocation) => {
         const amount = Number(allocation.amount || 0);
-        const bank_account_name = allocation.bank_account?.name || 'Conta não informada';
+        const bank_account_name = allocation.bank_account?.name || t('web.closing.noAccount');
         
         // Aporte de membro individual
         if (allocation.ownership_type === 'member' && allocation.cost_center_id && memberTransactionsMap.has(allocation.cost_center_id)) {
@@ -491,7 +493,7 @@ export default function MonthlyClosing() {
       monthCreditCharges.forEach((expense) => {
         const amount = Number(expense.amount || 0);
         const card = activeCreditCards.find(c => c.id === expense.card_id);
-        const cardName = card ? card.name : 'Cartão';
+        const cardName = card ? card.name : t('web.shared.card');
         
         if (expense.cost_center_id && memberTransactionsMap.has(expense.cost_center_id)) {
           memberTransactionsMap.get(expense.cost_center_id).creditExpenses.push({
@@ -708,7 +710,7 @@ export default function MonthlyClosing() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <Button onClick={() => router.push('/')}>Voltar ao início</Button>
+          <Button onClick={() => router.push('/')}>{t('web.shared.backToHome2')}</Button>
         </div>
       </div>
     );
@@ -760,7 +762,7 @@ export default function MonthlyClosing() {
       <Header 
         organization={organization}
         user={orgUser}
-        pageTitle="Fechamento Mensal"
+        pageTitle={t('web.closing.monthClose')}
         showNotificationModal={showNotificationModal}
         setShowNotificationModal={setShowNotificationModal}
       >
@@ -771,8 +773,8 @@ export default function MonthlyClosing() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Fechamento Mensal</h2>
-                <p className="text-sm text-gray-600">Análise completa de entradas e saídas por responsável</p>
+                <h2 className="text-lg font-semibold text-gray-900">{t('web.closing.monthClose')}</h2>
+                <p className="text-sm text-gray-600">{t('web.closing.moneyInAndOutPerson')}</p>
               </div>
               
               <div className="flex items-center space-x-3">
@@ -793,7 +795,7 @@ export default function MonthlyClosing() {
                   onClick={handleOpenAllocationModal}
                   className="bg-flight-blue hover:bg-flight-blue/90 text-white"
                 >
-                  Registrar Aporte
+                  {t('web.closing.logContribution')}
                 </Button>
               </div>
             </div>
@@ -810,7 +812,7 @@ export default function MonthlyClosing() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-900">
-                  Total de Aportes
+                  {t('web.closing.totalContributions')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-flight-blue/10">
                   <TrendingUp className="h-4 w-4 text-flight-blue" />
@@ -823,8 +825,8 @@ export default function MonthlyClosing() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {totalAllocations > 0 
-                    ? 'Total de aportes do mês'
-                    : 'Nenhum aporte neste mês'}
+                    ? t('web.closing.thisMonthSContributions')
+                    : t('web.closing.noContributionsThisMonth')}
                 </p>
               </CardContent>
             </Card>
@@ -832,15 +834,15 @@ export default function MonthlyClosing() {
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'aportes' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-2">
-                {isSoloUser ? 'Aportes Individuais' : 'Divisão por Responsável'}
+                {isSoloUser ? t('web.closing.individualContributions') : t('web.shared.byPerson')}
               </p>
               <p className="text-xs text-gray-500 mb-3">
                 {isSoloUser
-                  ? 'Seus aportes confirmados neste mês'
-                  : 'Distribuição dos aportes confirmados por responsável'}
+                  ? t('web.closing.yourContributionsThisMonth')
+                  : t('web.closing.contributionsByPerson')}
               </p>
               {isSoloUser ? (
-                <p className="text-sm text-gray-500">Conta individual - apenas seus aportes.</p>
+                <p className="text-sm text-gray-500">{t('web.closing.individualAccountOnlyYourContributions')}</p>
               ) : (
                 <>
                   {memberSummaries.filter(summary => summary.totals.allocations > 0).length > 0 ? (
@@ -872,9 +874,9 @@ export default function MonthlyClosing() {
                       </div>
                       {(individualTotal > 0 || sharedTotal > 0) && (
                         <div className="text-xs text-gray-500 ml-5">
-                          {individualTotal > 0 && `Individual: R$ ${individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                          {individualTotal > 0 && t('web.closing.individual', { p0: individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                           {individualTotal > 0 && sharedTotal > 0 && ' • '}
-                                  {sharedTotal > 0 && `Compartilhado: R$ ${sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                  {sharedTotal > 0 && t('web.closing.shared', { p0: sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                         </div>
                       )}
                     </div>
@@ -882,11 +884,11 @@ export default function MonthlyClosing() {
                         })}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500">Nenhum aporte registrado no mês selecionado.</p>
+                    <p className="text-sm text-gray-500">{t('web.closing.noContributionsThisMonth2')}</p>
                 )}
                   {!isSoloUser && familyAllocations > 0 && (
                     <div className="pt-2 border-t border-gray-200 text-xs text-gray-500">
-                      {organization?.name || 'Família'}: R$ {familyAllocations.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (cota compartilhada não atribuída)
+                      {organization?.name || t('web.shared.household')}: R$ {familyAllocations.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {t('web.closing.sharedPartNotAssigned')}
                     </div>
                 )}
                 </>
@@ -902,7 +904,7 @@ export default function MonthlyClosing() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Total de Saídas
+                  {t('web.closing.totalExpenses')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <TrendingDown className="h-4 w-4 text-gray-600" />
@@ -915,8 +917,8 @@ export default function MonthlyClosing() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {totalExpense > 0 
-                    ? 'Total de saídas do mês (à vista + faturas)'
-                    : 'Nenhuma saída neste mês'}
+                    ? t('web.closing.thisMonthSSpendingPaid')
+                    : t('web.closing.noSpendingThisMonth')}
                 </p>
               </CardContent>
             </Card>
@@ -924,17 +926,17 @@ export default function MonthlyClosing() {
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'saidas' ? 'visible' : 'invisible'}`}>
               <p className="text-sm font-semibold text-gray-900 mb-2">
-                Saídas por Forma de Pagamento
+                {t('web.closing.spendingByPaymentMethod')}
               </p>
               <p className="text-xs text-gray-500 mb-3">
-                Divisão consolidada das despesas
+                {t('web.closing.allExpensesCombined')}
               </p>
               {totalExpense > 0 ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center space-x-2">
                       <div className="w-3 h-3 rounded-full bg-gray-600"></div>
-                      <span className="text-gray-700 font-medium">À vista</span>
+                      <span className="text-gray-700 font-medium">{t('web.closing.paidNow')}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-gray-900 font-semibold">
@@ -946,7 +948,7 @@ export default function MonthlyClosing() {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center space-x-2">
                       <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                      <span className="text-gray-700 font-medium">Faturas no mês</span>
+                      <span className="text-gray-700 font-medium">{t('web.closing.cardBillsThisMonth')}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-gray-900 font-semibold">
@@ -957,7 +959,7 @@ export default function MonthlyClosing() {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">Nenhuma saída registrada no mês selecionado.</p>
+                <p className="text-sm text-gray-500">{t('web.closing.nothingSpentThisMonth')}</p>
               )}
             </div>
           </div>
@@ -970,7 +972,7 @@ export default function MonthlyClosing() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Faturas de Cartão
+                  {t('web.closing.cardBills')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <CreditCard className="h-4 w-4 text-gray-600" />
@@ -984,15 +986,15 @@ export default function MonthlyClosing() {
                 <p className="text-xs text-gray-500 mt-1">
                   {data.creditInvoices && data.creditInvoices.length > 0 
                     ? `${data.creditInvoices.length} ${data.creditInvoices.length === 1 ? 'fatura' : 'faturas'} com vencimento neste mês`
-                    : 'Nenhuma fatura com vencimento no mês'}
+                    : t('web.closing.noCardBillsDueThis')}
                 </p>
               </CardContent>
             </Card>
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'faturas' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-2">Faturas por Cartão</p>
-              <p className="text-xs text-gray-500 mb-3">Faturas que vencem no mês selecionado</p>
+              <p className="text-sm font-semibold text-gray-900 mb-2">{t('web.closing.billsByCard')}</p>
+              <p className="text-xs text-gray-500 mb-3">{t('web.closing.cardBillsDueThisMonth')}</p>
               {data.creditInvoices && data.creditInvoices.length > 0 ? (
                 <div className="space-y-2">
                   {data.creditInvoices.map((invoice) => {
@@ -1017,7 +1019,7 @@ export default function MonthlyClosing() {
                   })}
                   <div className="pt-2 border-t border-gray-200">
                     <div className="flex items-center justify-between text-sm font-semibold">
-                      <span className="text-gray-900">Total</span>
+                      <span className="text-gray-900">{t('web.shared.total2')}</span>
                       <span className="text-gray-900">
                         R$ {totalCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
@@ -1025,7 +1027,7 @@ export default function MonthlyClosing() {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">Nenhuma fatura vence neste mês.</p>
+                <p className="text-sm text-gray-500">{t('web.closing.noCardBillsDueThis2')}</p>
               )}
             </div>
           </div>
@@ -1042,7 +1044,7 @@ export default function MonthlyClosing() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-900">
-                  Saldo Final
+                  {t('web.closing.finalBalance')}
                 </CardTitle>
                 <div className={`p-2 rounded-lg ${
                   totalBalance >= 0 ? 'bg-green-100' : 'bg-red-100'
@@ -1060,29 +1062,29 @@ export default function MonthlyClosing() {
                   {totalBalance >= 0 ? '+' : '-'} R$ {Math.abs(totalBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {totalBalance >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
+                  {totalBalance >= 0 ? t('web.closing.positiveBalance') : t('web.closing.negativeBalance')}
                 </p>
               </CardContent>
             </Card>
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'saldo' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-3">Composição do Saldo</p>
+              <p className="text-sm font-semibold text-gray-900 mb-3">{t('web.closing.howTheBalanceAddsUp')}</p>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
-                  <span className="text-gray-700">Total de Aportes</span>
+                  <span className="text-gray-700">{t('web.closing.totalContributions')}</span>
                   <span className="text-gray-900 font-semibold text-green-600">
                     R$ {totalAllocations.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
-                  <span className="text-gray-700">Total de Saídas</span>
+                  <span className="text-gray-700">{t('web.closing.totalExpenses')}</span>
                   <span className="text-gray-900 font-semibold">
                     R$ {totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm py-2">
-                  <span className="text-gray-900 font-semibold">Saldo Final</span>
+                  <span className="text-gray-900 font-semibold">{t('web.closing.finalBalance')}</span>
                   <span className={`font-bold ${
                     totalBalance >= 0 ? 'text-blue-600' : 'text-red-600'
                   }`}>
@@ -1100,10 +1102,10 @@ export default function MonthlyClosing() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Responsabilidade por membro
+                  {t('web.closing.perPerson')}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Aportes e saídas atribuídas a cada responsável no mês.
+                  {t('web.closing.eachPersonSContributionsAnd')}
                 </p>
               </div>
             </div>
@@ -1143,29 +1145,29 @@ export default function MonthlyClosing() {
                             {summary.name}
                           </CardTitle>
                         </div>
-                        <span className="text-xs text-gray-400">Clique para detalhes</span>
+                        <span className="text-xs text-gray-400">{t('web.closing.clickForDetails')}</span>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-2">
                       {/* Individual */}
                       <div className="bg-blue-50 rounded-lg p-2 space-y-1">
                         <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                          <span className="font-medium">Individual</span>
+                          <span className="font-medium">{t('web.shared.individual')}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">Aportes</span>
+                          <span className="text-xs text-gray-500">{t('web.closing.contributions')}</span>
                           <span className="text-sm font-semibold text-flight-blue">
                             {allocationsIndividual > 0 ? '+' : ''} R$ {allocationsIndividual.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">Saídas</span>
+                          <span className="text-xs text-gray-500">{t('web.shared.spending')}</span>
                           <span className="text-sm font-semibold text-red-600">
                             - R$ {individualOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-blue-200">
-                          <span className="text-xs font-medium text-gray-700">Saldo</span>
+                          <span className="text-xs font-medium text-gray-700">{t('web.shared.balance')}</span>
                           <span className={`text-sm font-bold ${balanceIndividual >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {balanceIndividual >= 0 ? '+' : '-'} R$ {Math.abs(balanceIndividual).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
@@ -1175,22 +1177,22 @@ export default function MonthlyClosing() {
                       {/* Compartilhado */}
                       <div className="bg-gray-50 rounded-lg p-2 space-y-1">
                         <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                          <span className="font-medium">Compartilhado</span>
+                          <span className="font-medium">{t('web.shared.shared2')}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">Aportes</span>
+                          <span className="text-xs text-gray-500">{t('web.closing.contributions')}</span>
                           <span className="text-sm font-semibold text-flight-blue">
                             {allocationsShared > 0 ? '+' : ''} R$ {allocationsShared.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">Saídas</span>
+                          <span className="text-xs text-gray-500">{t('web.shared.spending')}</span>
                           <span className="text-sm font-semibold text-red-600">
                             - R$ {sharedOut.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-gray-200">
-                          <span className="text-xs font-medium text-gray-700">Saldo</span>
+                          <span className="text-xs font-medium text-gray-700">{t('web.shared.balance')}</span>
                           <span className={`text-sm font-bold ${balanceShared >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {balanceShared >= 0 ? '+' : '-'} R$ {Math.abs(balanceShared).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
@@ -1199,7 +1201,7 @@ export default function MonthlyClosing() {
                       
                       {/* Total */}
                       <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                        <span className="text-xs uppercase tracking-wide font-semibold text-gray-700">Saldo Total</span>
+                        <span className="text-xs uppercase tracking-wide font-semibold text-gray-700">{t('web.closing.totalBalance')}</span>
                         <span className={`text-lg font-bold ${balancePositive ? 'text-green-600' : 'text-red-600'}`}>
                           {balancePositive ? '+' : '-'} R$ {Math.abs(balanceMember).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
@@ -1220,7 +1222,7 @@ export default function MonthlyClosing() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                 <CardTitle className="flex items-center space-x-2 text-lg font-semibold text-gray-900">
                   <Calendar className="h-5 w-5 text-gray-600" />
-                  <span className="hidden sm:inline">Histórico do ano de</span>
+                  <span className="hidden sm:inline">{t('web.closing.historyFor')}</span>
                   <select
                     value={selectedYear}
                     onChange={(e) => handleYearChange(e.target.value)}
@@ -1243,12 +1245,12 @@ export default function MonthlyClosing() {
                     {historicalExpanded ? (
                       <>
                         <ChevronUp className="h-4 w-4" />
-                        <span className="hidden sm:inline">Ocultar</span>
+                        <span className="hidden sm:inline">{t('web.shared.hide')}</span>
                       </>
                     ) : (
                       <>
                         <ChevronDown className="h-4 w-4" />
-                        <span className="hidden sm:inline">Exibir</span>
+                        <span className="hidden sm:inline">{t('web.closing.show')}</span>
                       </>
                     )}
                   </Button>
@@ -1261,11 +1263,11 @@ export default function MonthlyClosing() {
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Mês</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Aportes</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">À vista</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Faturas</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">{t('web.closing.month')}</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">{t('web.closing.contributions')}</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">{t('web.closing.paidNow')}</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">{t('web.closing.cardBills2')}</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">{t('web.shared.balance')}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
@@ -1278,7 +1280,7 @@ export default function MonthlyClosing() {
                             {row.label}
                             {isSelected && (
                               <span className="ml-2 text-[11px] uppercase tracking-wide text-blue-600 font-semibold">
-                                mês atual
+                                {t('web.closing.thisMonth')}
                               </span>
                             )}
                           </td>
@@ -1312,10 +1314,10 @@ export default function MonthlyClosing() {
             <CardContent className="p-12 text-center">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Nenhum dado para este mês
+                {t('web.closing.nothingForThisMonth')}
               </h3>
               <p className="text-gray-600">
-                Não há entradas ou despesas registradas para {getMonthName()}
+                {t('web.closing.nothingLoggedFor', { p0: getMonthName() })}
               </p>
             </CardContent>
           </Card>

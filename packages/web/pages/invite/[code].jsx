@@ -4,8 +4,10 @@ import { supabase } from '../../lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
 import { ArrowLeft, Mail, Phone, User, CheckCircle, AlertCircle } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function InvitePage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { code } = router.query;
   const [invite, setInvite] = useState(null);
@@ -57,7 +59,7 @@ export default function InvitePage() {
 
       if (inviteError) {
         if (inviteError.code === 'PGRST116') {
-          setError('Convite inválido, expirado ou já foi usado');
+          setError(t('web.invite.thisInviteIsInvalidExpired'));
         } else {
           throw inviteError;
         }
@@ -74,7 +76,7 @@ export default function InvitePage() {
 
     } catch (error) {
       console.error('❌ Erro ao buscar convite:', error);
-      setError('Erro ao carregar convite');
+      setError(t('web.invite.couldnTLoadTheInvite'));
     } finally {
       setLoading(false);
     }
@@ -134,7 +136,7 @@ export default function InvitePage() {
 
       // Validação final
       if (!validation.phone) {
-        setError('Telefone inválido. Use formato: (11) 99999-9999');
+        setError(t('web.invite.invalidPhoneIncludeAreaCode'));
         setJoining(false);
         return;
       }
@@ -160,7 +162,7 @@ export default function InvitePage() {
       }
 
       if (existingUser) {
-        setError('Você já é membro desta organização');
+        setError(t('web.invite.youReAlreadyInThis'));
         setJoining(false);
         return;
       }
@@ -265,14 +267,14 @@ export default function InvitePage() {
       console.error('❌ Erro ao entrar na organização:', error);
       
       // Mensagens amigáveis para o usuário
-      let errorMessage = 'Erro ao entrar na organização. Por favor, tente novamente.';
+      let errorMessage = t('web.invite.couldnTJoinTheHousehold');
       
       if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
-        errorMessage = 'Você já é membro desta organização ou houve um conflito. Por favor, recarregue a página.';
+        errorMessage = t('web.invite.youReAlreadyInThis2');
       } else if (error.message?.includes('organization_id')) {
-        errorMessage = 'Erro ao vincular à organização. Por favor, tente novamente.';
+        errorMessage = t('web.invite.couldnTLinkYouTo');
       } else if (error.message?.includes('invite')) {
-        errorMessage = 'Este convite já foi usado ou é inválido. Solicite um novo convite.';
+        errorMessage = t('web.invite.thisInviteWasAlreadyUsed');
       }
       
       setError(errorMessage);
@@ -285,12 +287,12 @@ export default function InvitePage() {
     return (
       <>
         <Head>
-          <title>Verificando Convite - MeuAzulão</title>
+          <title>{t('web.invite.checkingInviteMeuazulao')}</title>
         </Head>
         <div className="min-h-screen bg-gradient-to-br from-fog-mist to-gray-100 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-flight-blue mx-auto"></div>
-            <p className="mt-4 text-gray-600">Verificando convite...</p>
+            <p className="mt-4 text-gray-600">{t('web.invite.checkingYourInvite')}</p>
           </div>
         </div>
       </>
@@ -301,7 +303,7 @@ export default function InvitePage() {
     return (
       <>
         <Head>
-          <title>Convite Inválido - MeuAzulão</title>
+          <title>{t('web.invite.invalidInviteMeuazulao')}</title>
         </Head>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
           {/* Animated Background Grid */}
@@ -317,7 +319,7 @@ export default function InvitePage() {
             className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-medium">Voltar</span>
+            <span className="font-medium">{t('web.shared.back')}</span>
           </Link>
 
           {/* Error Card */}
@@ -333,10 +335,10 @@ export default function InvitePage() {
                   />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Convite Inválido
+                  {t('web.invite.invalidInvite')}
                 </h1>
                 <p className="text-gray-600">
-                  Este convite não pode ser processado
+                  {t('web.invite.weCanTUseThis')}
                 </p>
               </div>
 
@@ -350,16 +352,16 @@ export default function InvitePage() {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-red-900 font-semibold mb-2">
-                      O que aconteceu?
+                      {t('web.invite.whatHappened')}
                     </h3>
                     <p className="text-red-800 text-sm leading-relaxed">
                       {error.includes('inválido') ? 
-                        'Este link de convite não é válido ou foi gerado incorretamente.' :
+                        t('web.invite.thisInviteLinkIsnT') :
                         error.includes('expirado') ?
-                        'Este convite expirou. Convites são válidos por 7 dias.' :
+                        t('web.invite.thisInviteExpiredInvitesLast') :
                         error.includes('usado') ?
-                        'Este convite já foi utilizado. Cada convite só pode ser usado uma vez.' :
-                        'Este convite não pode ser processado no momento.'
+                        t('web.invite.thisInviteWasAlreadyUsed2') :
+                        t('web.invite.weCanTUseThis2')
                       }
                     </p>
                   </div>
@@ -369,12 +371,12 @@ export default function InvitePage() {
               {/* Help Text */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
                 <h3 className="text-blue-900 font-semibold mb-3">
-                  💡 O que você pode fazer?
+                  {t('web.invite.whatYouCanDo')}
                 </h3>
                 <ul className="text-blue-800 text-sm space-y-2">
-                  <li>• Peça um novo convite para quem te convidou</li>
-                  <li>• Verifique se o link foi copiado corretamente</li>
-                  <li>• Entre em contato com o administrador da organização</li>
+                  <li>{t('web.invite.askWhoeverInvitedYouFor')}</li>
+                  <li>{t('web.invite.checkTheLinkWasCopied')}</li>
+                  <li>{t('web.invite.talkToYourHouseholdAdmin')}</li>
                 </ul>
               </div>
 
@@ -383,7 +385,7 @@ export default function InvitePage() {
                 href="/" 
                 className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all text-center block"
               >
-                Voltar ao Início
+                {t('web.shared.backToHome')}
               </Link>
             </div>
           </div>
@@ -396,7 +398,7 @@ export default function InvitePage() {
     return (
       <>
         <Head>
-          <title>Convite Aceito - MeuAzulão</title>
+          <title>{t('web.invite.inviteAcceptedMeuazulao')}</title>
         </Head>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
           {/* Animated Background Grid */}
@@ -420,10 +422,10 @@ export default function InvitePage() {
                 </div>
                 <div className="text-6xl mb-4">🎉</div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Bem-vindo à {organization.name}!
+                  {t('web.invite.welcomeTo', { name: organization.name })}
                 </h1>
                 <p className="text-gray-600">
-                  Seu cadastro foi concluído com sucesso
+                  {t('web.invite.youReAllSignedUp')}
                 </p>
               </div>
 
@@ -437,10 +439,10 @@ export default function InvitePage() {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-green-900 font-semibold mb-2">
-                      Tudo certo!
+                      {t('web.invite.allSet')}
                     </h3>
                     <p className="text-green-800 text-sm leading-relaxed">
-                      Você foi adicionado com sucesso à organização. Você será redirecionado para o dashboard em instantes.
+                      {t('web.invite.youVeJoinedTheHousehold')}
                     </p>
                   </div>
                 </div>
@@ -452,7 +454,7 @@ export default function InvitePage() {
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
                 </div>
                 <p className="text-gray-600 text-sm mt-4">
-                  Redirecionando...
+                  {t('web.invite.redirecting')}
                 </p>
               </div>
             </div>
@@ -465,7 +467,7 @@ export default function InvitePage() {
   return (
     <>
       <Head>
-        <title>Convite para {organization?.name} - MeuAzulão</title>
+        <title>{t('web.invite.inviteToMeuazulao', { name: organization?.name })}</title>
       </Head>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
         {/* Animated Background Grid */}
@@ -481,7 +483,7 @@ export default function InvitePage() {
           className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Voltar</span>
+          <span className="font-medium">{t('web.shared.back')}</span>
         </Link>
 
         {/* Form Card */}
@@ -497,10 +499,10 @@ export default function InvitePage() {
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Convite para {organization?.name}
+                {t('web.invite.inviteTo', { name: organization?.name })}
               </h1>
               <p className="text-gray-600 mb-6">
-                Você foi convidado por <strong>{invite?.inviter?.name}</strong>
+                {t('web.invite.youWereInvitedBy')} <strong>{invite?.inviter?.name}</strong>
               </p>
             </div>
 
@@ -510,14 +512,14 @@ export default function InvitePage() {
             {user ? (
               <div>
                 <p className="text-sm text-gray-600 mb-6 text-center">
-                  Olá, <strong>{invite?.name?.split(' ')[0]}</strong>! Complete seus dados para entrar na organização.
+                  {t('web.invite.hi')} <strong>{invite?.name?.split(' ')[0]}</strong>{t('web.invite.fillInYourDetailsTo')}
                 </p>
                 
                 <form onSubmit={handleJoinOrganization} className="space-y-6">
                   {/* Nome */}
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                      Seu Nome Completo
+                      {t('web.invite.yourFullName')}
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -526,7 +528,7 @@ export default function InvitePage() {
                       <input
                         id="name"
                         type="text"
-                        placeholder="Ex: João Silva"
+                        placeholder={t('web.shared.eGAlexSmith')}
                         required
                         readOnly
                         value={formData.name}
@@ -534,14 +536,14 @@ export default function InvitePage() {
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Nome preenchido a partir do convite
+                      {t('web.invite.nameTakenFromTheInvite')}
                     </p>
                   </div>
 
                   {/* WhatsApp */}
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                      Seu WhatsApp
+                      {t('web.shared.yourWhatsapp')}
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -571,7 +573,7 @@ export default function InvitePage() {
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Formato: DDD + 9 dígitos (ex: 11 99999-9999)
+                      {t('web.invite.includeYourCountryAndArea')}
                     </p>
                   </div>
 
@@ -588,27 +590,27 @@ export default function InvitePage() {
                     disabled={joining || !validation.phone}
                     className="w-full bg-gradient-to-r from-flight-blue to-feather-blue text-white font-semibold py-3 px-4 rounded-xl hover:from-deep-sky hover:to-flight-blue focus:outline-none focus:ring-2 focus:ring-flight-blue focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
                   >
-                    {joining ? 'Entrando...' : 'Entrar na Organização'}
+                    {joining ? t('web.invite.signingIn') : t('web.invite.joinHousehold')}
                   </button>
                 </form>
               </div>
             ) : (
               <div>
                 <p className="text-sm text-gray-600 mb-6 text-center">
-                  Crie sua conta para aceitar o convite
+                  {t('web.invite.createYourAccountToAccept')}
                 </p>
                 <div className="space-y-3">
                   <Link 
                     href={`/signup-invite?email=${invite?.email}&invite_code=${code}`}
                     className="w-full bg-gradient-to-r from-flight-blue to-feather-blue text-white py-3 px-6 rounded-xl hover:from-deep-sky hover:to-flight-blue inline-block text-center font-medium transition-all transform hover:scale-105"
                   >
-                    Criar Conta
+                    {t('web.shared.create')}
                   </Link>
                   <Link 
                     href={`/login?redirect=/invite/${code}`}
                     className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-xl hover:bg-gray-200 inline-block text-center font-medium transition-all"
                   >
-                    Já tenho conta - Fazer Login
+                    {t('web.invite.iHaveAnAccountSign')}
                   </Link>
                 </div>
               </div>
@@ -616,8 +618,7 @@ export default function InvitePage() {
 
             <div className="mt-8 pt-6 border-t border-gray-200">
               <p className="text-xs text-gray-500 text-center">
-                Ao aceitar este convite, você terá acesso aos dados financeiros 
-                compartilhados desta organização.
+                {t('web.invite.byAcceptingYouLlSee')}
               </p>
             </div>
           </div>

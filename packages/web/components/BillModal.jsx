@@ -5,27 +5,30 @@ import ConfirmationModal from './ConfirmationModal';
 import { X, AlertCircle, Calendar, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { getBrazilToday, createBrazilDate, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
+import { t } from '@fintrack/shared/i18n';
 
 const PAYMENT_METHODS = [
   { value: 'pix', label: 'PIX' },
-  { value: 'credit_card', label: 'Cartão de Crédito' },
-  { value: 'debit_card', label: 'Cartão de Débito' },
-  { value: 'boleto', label: 'Boleto' },
-  { value: 'bank_transfer', label: 'Transferência Bancária' },
-  { value: 'cash', label: 'Dinheiro' },
-  { value: 'other', label: 'Outro' }
+  { value: 'credit_card', get label() { return t('web.shared.creditCard'); } },
+  { value: 'debit_card', get label() { return t('web.shared.debitCard'); } },
+  { value: 'boleto', get label() { return t('web.shared.bankSlipBoleto'); } },
+  { value: 'bank_transfer', get label() { return t('web.shared.bankTransfer'); } },
+  { value: 'cash', get label() { return t('web.shared.cash'); } },
+  { value: 'other', get label() { return t('web.billModal.other'); } }
 ];
 
 // Valores aceitos no banco conforme schema
 const VALID_PAYMENT_METHODS = ['credit_card', 'debit_card', 'pix', 'cash', 'other', 'boleto', 'bank_transfer'];
 
 const RECURRENCE_OPTIONS = [
-  { value: 'monthly', label: 'Mensal' },
-  { value: 'weekly', label: 'Semanal' },
-  { value: 'yearly', label: 'Anual' }
+  { value: 'monthly', get label() { return t('web.billModal.monthly'); } },
+  { value: 'weekly', get label() { return t('web.billModal.weekly'); } },
+  { value: 'yearly', get label() { return t('web.billModal.yearly'); } }
 ];
 
 export default function BillModal({ isOpen, onClose, onSave, editingBill = null, costCenters = [], categories = [], cards = [], organization = null, user = null }) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -117,15 +120,15 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
     const newErrors = {};
 
     if (!formData.description.trim()) {
-      newErrors.description = 'Descrição é obrigatória';
+      newErrors.description = t('web.billModal.descriptionIsRequired');
     }
 
     if (!formData.amount || parseCurrencyInput(formData.amount) <= 0) {
-      newErrors.amount = 'Valor deve ser maior que zero';
+      newErrors.amount = t('web.billModal.amountMustBeGreaterThan');
     }
 
     if (!formData.due_date) {
-      newErrors.due_date = 'Data de vencimento é obrigatória';
+      newErrors.due_date = t('web.billModal.dueDateIsRequired');
     }
 
     setErrors(newErrors);
@@ -211,7 +214,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
     } catch (error) {
       console.error('Erro ao salvar conta:', error);
       // Exibir mensagem de erro mais detalhada
-      let errorMessage = 'Erro desconhecido ao salvar conta.';
+      let errorMessage = t('web.billModal.unknownErrorSavingTheBill');
       
       if (error?.message) {
         errorMessage = error.message;
@@ -223,10 +226,10 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
       
       // Limpar mensagens de erro internas que não devem ser exibidas ao usuário
       if (errorMessage.includes('showError is not a function')) {
-        errorMessage = 'Erro ao salvar conta. Verifique os dados e tente novamente.';
+        errorMessage = t('web.billModal.couldnTSaveTheBill');
       }
       
-      setErrors({ submit: `Erro ao salvar conta: ${errorMessage}` });
+      setErrors({ submit: t('web.billModal.couldnTSaveTheBill2', { errorMessage }) });
       // Não fechar o modal em caso de erro para que o usuário possa tentar novamente
     } finally {
       setLoading(false);
@@ -273,7 +276,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
-            {editingBill ? 'Editar Conta' : 'Nova Conta a Pagar'}
+            {editingBill ? t('web.billModal.editBill') : t('web.billModal.newBill')}
           </h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -286,13 +289,13 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
               {/* Descrição */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Descrição *
+                  {t('web.shared.description')}
                 </label>
                 <input
                   type="text"
                   value={formData.description}
                   onChange={(e) => handleChange('description', e.target.value)}
-                  placeholder="Ex: Aluguel, Conta de Luz..."
+                  placeholder={t('web.billModal.eGRentElectricity')}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                     errors.description ? 'border-red-500' : 'border-gray-300'
                   }`}
@@ -309,7 +312,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valor *
+                    {t('web.shared.amount')}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
@@ -348,7 +351,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Data de Vencimento *
+                    {t('web.billModal.dueDate')}
                   </label>
                   <input
                     type="date"
@@ -371,25 +374,25 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Categoria
+                    {t('web.shared.category')}
                   </label>
                   <select
                     value={formData.category_id || ''}
                     onChange={(e) => handleChange('category_id', e.target.value || null)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
-                    <option value="">Selecione...</option>
+                    <option value="">{t('web.shared.select')}</option>
                     {categories.length > 0 ? (
                       categories.map(cat => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                       ))
                     ) : (
-                      <option value="" disabled>Carregando categorias...</option>
+                      <option value="" disabled>{t('web.billModal.loadingCategories')}</option>
                     )}
                   </select>
                   {categories.length === 0 && (
                     <p className="mt-1 text-xs text-gray-500">
-                      Nenhuma categoria encontrada. Verifique se há categorias cadastradas.
+                      {t('web.billModal.noCategoriesFoundCheckThat')}
                     </p>
                   )}
                 </div>
@@ -398,15 +401,15 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       <div className="flex items-center space-x-2">
-                        <span>Responsável</span>
+                        <span>{t('web.shared.owner2')}</span>
                         {formData.is_shared && (
                           <div className="relative group">
                             <AlertCircle className="h-4 w-4 text-red-500 cursor-help" />
                             <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-white text-gray-800 text-xs rounded-lg shadow-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity duração-200 pointer-events-none z-10 w-64">
                               <div className="text-left">
-                                <div className="font-medium text-gray-900">Conta Compartilhada</div>
+                                <div className="font-medium text-gray-900">{t('web.billModal.sharedBill')}</div>
                                 <div className="text-gray-600 mt-1 leading-relaxed">
-                                  Será dividida entre todos os responsáveis financeiros conforme suas porcentagens padrão.
+                                  {t('web.billModal.itWillBeSplitAmong')}
                                 </div>
                               </div>
                               <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
@@ -429,9 +432,9 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                       >
-                        <option value="">Selecione...</option>
+                        <option value="">{t('web.shared.select')}</option>
                         <option value="shared">
-                          {organization && organization.name ? organization.name : 'Família'}
+                          {organization && organization.name ? organization.name : t('web.shared.household')}
                         </option>
                         {costCenters.map(cc => (
                           <option key={cc.id} value={cc.id}>{cc.name}</option>
@@ -446,15 +449,15 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
               {editingBill && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
+                    {t('web.shared.status')}
                   </label>
                   <select
                     value={formData.status === 'overdue' ? 'pending' : formData.status}
                     onChange={(e) => handleChange('status', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
-                    <option value="pending">Pendente</option>
-                    <option value="paid">Paga</option>
+                    <option value="pending">{t('web.billModal.pending')}</option>
+                    <option value="paid">{t('web.billModal.paid')}</option>
                   </select>
                 </div>
               )}
@@ -470,14 +473,14 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                     className="rounded border-gray-300 text-flight-blue focus:ring-flight-blue"
                   />
                   <label htmlFor="is_recurring" className="text-sm font-medium text-gray-700">
-                    Conta Recorrente
+                    {t('web.billModal.recurringBill')}
                   </label>
                 </div>
 
                 {formData.is_recurring && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Frequência
+                      {t('web.billModal.frequency')}
                     </label>
                     <select
                       value={formData.recurrence_frequency}
@@ -489,7 +492,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                       ))}
                     </select>
                     <p className="mt-1 text-xs text-gray-500">
-                      A próxima conta será criada automaticamente após o pagamento
+                      {t('web.billModal.theNextOneIsCreated')}
                     </p>
                   </div>
                 )}
@@ -499,14 +502,14 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Método de Pagamento (Opcional)
+                    {t('web.billModal.paymentMethodOptional')}
                   </label>
                   <select
                     value={formData.payment_method}
                     onChange={(e) => handleChange('payment_method', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
-                    <option value="">Selecione...</option>
+                    <option value="">{t('web.shared.select')}</option>
                     {PAYMENT_METHODS.map(method => (
                       <option key={method.value} value={method.value}>{method.label}</option>
                     ))}
@@ -516,7 +519,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                 {formData.payment_method === 'credit_card' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cartão
+                      {t('web.shared.card')}
                     </label>
                     <select
                       value={formData.card_id}
@@ -524,7 +527,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                       disabled={cards.length === 0}
                     >
-                      <option value="">Selecione...</option>
+                      <option value="">{t('web.shared.select')}</option>
                       {cards.map(card => (
                         <option key={card.id} value={card.id}>
                           {card.name} - {card.bank}
@@ -533,7 +536,7 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
                     </select>
                     {cards.length === 0 && (
                       <p className="mt-2 text-sm text-gray-500">
-                        Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                        {t('web.shared.noCreditCardYetAdd')}
                       </p>
                     )}
                   </div>
@@ -561,14 +564,14 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
             disabled={loading}
             className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
-            {loading ? 'Salvando...' : editingBill ? 'Atualizar' : 'Criar Conta'}
+            {loading ? t('web.shared.saving') : editingBill ? t('web.shared.update') : t('web.shared.create')}
           </Button>
         </div>
       </div>
@@ -578,10 +581,10 @@ export default function BillModal({ isOpen, onClose, onSave, editingBill = null,
         isOpen={showRevertModal}
         onClose={handleCancelRevert}
         onConfirm={handleConfirmRevert}
-        title="Confirmar reversão de status"
-        message="Ao reverter esta conta para Pendente, a despesa criada quando ela foi marcada como paga será excluída permanentemente. Esta ação não pode ser desfeita."
-        confirmText="Confirmar"
-        cancelText="Cancelar"
+        title={t('web.billModal.confirmStatusChange')}
+        message={t('web.billModal.movingThisBillBackTo')}
+        confirmText={t('web.shared.confirm')}
+        cancelText={t('web.shared.cancel')}
         type="danger"
       />
     </div>

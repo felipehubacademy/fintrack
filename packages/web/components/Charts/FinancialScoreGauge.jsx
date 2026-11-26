@@ -1,4 +1,6 @@
+import { useI18n } from '../../contexts/I18nContext';
 export default function FinancialScoreGauge({ score = 0, breakdown = {} }) {
+  const { t } = useI18n();
   const radius = 80;
   const strokeWidth = 12;
   const normalizedRadius = radius - strokeWidth * 0.5;
@@ -20,11 +22,11 @@ export default function FinancialScoreGauge({ score = 0, breakdown = {} }) {
   };
 
   const breakdownItems = [
-    { key: 'budgetAdherence', label: 'Cumprimento de orçamento', max: 30 },
-    { key: 'investmentConsistency', label: 'Consistência de investimentos', max: 25 },
-    { key: 'emergencyFund', label: 'Reserva de emergência', max: 20 },
-    { key: 'incomeDiversity', label: 'Diversidade de receitas', max: 15 },
-    { key: 'debtReduction', label: 'Redução de dívidas', max: 10 }
+    { key: 'budgetAdherence', label: t('web.financialScoreGauge.stickingToBudget'), max: 30 },
+    { key: 'investmentConsistency', label: t('web.financialScoreGauge.savingConsistently'), max: 25 },
+    { key: 'emergencyFund', label: t('web.financialScoreGauge.emergencyFund'), max: 20 },
+    { key: 'incomeDiversity', label: t('web.financialScoreGauge.incomeSources'), max: 15 },
+    { key: 'debtReduction', label: t('web.financialScoreGauge.payingDownDebt'), max: 10 }
   ];
 
   return (
@@ -66,14 +68,14 @@ export default function FinancialScoreGauge({ score = 0, breakdown = {} }) {
           <div className="text-4xl font-bold" style={{ color: getColor() }}>
             {score}
           </div>
-          <div className="text-sm text-gray-600">de 100</div>
+          <div className="text-sm text-gray-600">{t('web.financialScoreGauge.outOf100')}</div>
         </div>
       </div>
 
       {/* Rating */}
       <div className="text-center">
         <div className="text-xl font-semibold text-gray-900">{getRating()}</div>
-        <div className="text-sm text-gray-600">Saúde Financeira</div>
+        <div className="text-sm text-gray-600">{t('web.financialScoreGauge.moneyHealth')}</div>
       </div>
 
       {/* Breakdown */}

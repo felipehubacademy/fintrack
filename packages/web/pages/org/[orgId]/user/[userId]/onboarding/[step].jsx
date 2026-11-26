@@ -3,8 +3,10 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../../../../lib/supabaseClient';
 import LoadingLogo from '../../../../../../components/LoadingLogo';
 import OnboardingStepPage from '../../../../../onboarding/[step]';
+import { useI18n } from '../../../../../../contexts/I18nContext';
 
 export default function DynamicOnboardingStepPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { orgId, userId, step } = router.query;
   const [loading, setLoading] = useState(true);
@@ -24,14 +26,14 @@ export default function DynamicOnboardingStepPage() {
       // Verificar se o usuário está autenticado
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
-        setError('Usuário não autenticado');
+        setError(t('web.shared.youReNotSignedIn'));
         router.push('/');
         return;
       }
 
       // Verificar se o userId da URL corresponde ao usuário autenticado
       if (authUser.id !== userId) {
-        setError('Acesso negado: usuário não autorizado');
+        setError(t('web.onboardingStep.accessDenied'));
         router.push('/');
         return;
       }
@@ -45,7 +47,7 @@ export default function DynamicOnboardingStepPage() {
         .single();
 
       if (userError || !userData) {
-        setError('Usuário não encontrado nesta organização');
+        setError(t('web.onboardingStep.youReNotPartOf'));
         router.push('/');
         return;
       }
@@ -55,7 +57,7 @@ export default function DynamicOnboardingStepPage() {
 
     } catch (error) {
       console.error('❌ Erro ao validar acesso:', error);
-      setError('Erro ao validar acesso');
+      setError(t('web.onboardingStep.couldnTCheckYourAccess'));
     } finally {
       setLoading(false);
     }
@@ -69,13 +71,13 @@ export default function DynamicOnboardingStepPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Erro</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">{t('web.onboardingStep.error')}</h1>
           <p className="text-gray-600 mb-4">{error}</p>
           <button 
             onClick={() => router.push('/')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
           >
-            Voltar ao início
+            {t('web.shared.backToHome2')}
           </button>
         </div>
       </div>

@@ -6,8 +6,10 @@ import { supabase } from '../lib/supabaseClient';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import ConfirmationModal from './ConfirmationModal';
 import HelpTooltip from './ui/HelpTooltip';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function MemberManagementModal({ isOpen, onClose, organization, orgUser }) {
+  const { t } = useI18n();
   const { success, showError, warning } = useNotificationContext();
   
   // Estados principais
@@ -129,7 +131,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
       setPendingInvites(invitesData || []);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
-      showError('Erro ao carregar dados da organização');
+      showError(t('web.memberManagementModal.couldnTLoadYourHousehold'));
     } finally {
       setLoading(false);
     }
@@ -198,32 +200,32 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
         .eq('id', cc.id);
     });
     
-    success('Responsáveis rebalanceados automaticamente!');
+    success(t('web.memberManagementModal.sharesRebalancedAutomatically'));
   };
 
   const sendInvite = async () => {
     if (!formData.email.trim()) {
-      warning('Email é obrigatório');
+      warning(t('web.memberManagementModal.emailIsRequired'));
       return;
     }
     
     if (!formData.name.trim()) {
-      warning('Nome é obrigatório');
+      warning(t('web.memberManagementModal.nameIsRequired'));
       return;
     }
 
     // Validar se temos orgUser.id
     if (!orgUser?.id) {
-      showError('Erro: usuário não identificado. Por favor, recarregue a página.');
+      showError(t('web.memberManagementModal.errorWeCouldnTIdentify'));
       return;
     }
 
     // Validar se o total é exatamente 100% (exceto viewer que não precisa)
     if (formData.role !== 'viewer' && Math.abs(calculatedTotal - 100) > 0.01) {
       if (calculatedTotal > 100) {
-        warning(`A soma dos percentuais ultrapassa 100% (${calculatedTotal.toFixed(1)}%). Ajuste os valores para totalizar exatamente 100%.`);
+        warning(t('web.memberManagementModal.percentagesAddUpToMore', { p0: calculatedTotal.toFixed(1) }));
       } else {
-        warning(`A soma dos percentuais está abaixo de 100% (${calculatedTotal.toFixed(1)}%). Ajuste os valores para totalizar exatamente 100%.`);
+        warning(t('web.memberManagementModal.percentagesAddUpToLess', { p0: calculatedTotal.toFixed(1) }));
       }
       return;
     }
@@ -262,7 +264,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
         // Mostrar erro mais detalhado se disponível
         const errorMessage = data.details 
           ? `${data.error}: ${data.details}${data.hint ? ` (${data.hint})` : ''}`
-          : data.error || 'Erro ao enviar convite';
+          : data.error || t('web.shared.couldnTSendTheInvite');
         throw new Error(errorMessage);
       }
 
@@ -281,7 +283,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
         }
       }
 
-      success('Convite enviado com sucesso! O cost center será criado quando o usuário aceitar.');
+      success(t('web.memberManagementModal.inviteSentTheyLlShow'));
       
       // Resetar form
       setFormData({
@@ -319,11 +321,11 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
 
       if (error) throw error;
 
-      success('Usuário removido com sucesso');
+      success(t('web.memberManagementModal.memberRemoved'));
       fetchData();
     } catch (error) {
       console.error('Erro ao remover membro:', error);
-      showError('Erro ao remover membro');
+      showError(t('web.memberManagementModal.couldnTRemoveTheMember'));
     } finally {
       setShowConfirmModal(false);
       setActionToConfirm(null);
@@ -346,11 +348,11 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
 
       if (error) throw error;
 
-      success('Convite cancelado com sucesso');
+      success(t('web.memberManagementModal.inviteCancelled'));
       fetchData();
     } catch (error) {
       console.error('Erro ao cancelar convite:', error);
-      showError('Erro ao cancelar convite');
+      showError(t('web.memberManagementModal.couldnTCancelTheInvite'));
     } finally {
       setShowConfirmModal(false);
       setActionToConfirm(null);
@@ -388,12 +390,12 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
         
         // Verificar se é da mesma organização
         if (existingUser?.organization_id === organization?.id) {
-          setEmailError('Este email já é membro desta organização');
+          setEmailError(t('web.memberManagementModal.thisEmailIsAlreadyIn'));
         } else {
-          setEmailError('Este email já está cadastrado em outra organização');
+          setEmailError(t('web.memberManagementModal.thisEmailAlreadyBelongsTo'));
         }
       } else if (data.checks?.organizationEmail?.exists) {
-        setEmailError('Este email já é usado como email da organização');
+        setEmailError(t('web.memberManagementModal.thisEmailIsAlreadyThe'));
       } else {
         setEmailError('');
       }
@@ -427,7 +429,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
       case 'admin':
         return 'Admin';
       case 'member':
-        return 'Membro';
+        return t('web.memberManagementModal.member');
       case 'viewer':
         return 'Visualizador';
       default:
@@ -445,7 +447,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
         <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
           {/* Header */}
           <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-            <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Gerenciar Usuários</h2>
+            <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">{t('web.memberManagementModal.manageMembers')}</h2>
             <Button 
               variant="ghost" 
               size="icon" 
@@ -466,11 +468,11 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
               <>
                 {/* Lista de Usuários Ativos */}
                 <div className="space-y-3 mb-6">
-                  <h3 className="font-semibold text-gray-900">Usuários Ativos ({members.length})</h3>
+                  <h3 className="font-semibold text-gray-900">{t('web.memberManagementModal.activeMembers', { length: members.length })}</h3>
                   {members.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>Nenhum usuário cadastrado ainda</p>
+                      <p>{t('web.memberManagementModal.noMembersYet')}</p>
                     </div>
                   ) : (
                     members.map((member) => {
@@ -521,7 +523,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                 {/* Convites Pendentes */}
                 {pendingInvites.length > 0 && (
                   <div className="space-y-3 mb-6">
-                    <h3 className="font-semibold text-gray-900">Convites Pendentes ({pendingInvites.length})</h3>
+                    <h3 className="font-semibold text-gray-900">{t('web.memberManagementModal.pendingInvites', { length: pendingInvites.length })}</h3>
                     {pendingInvites.map((invite) => (
                       <div
                         key={invite.id}
@@ -551,18 +553,18 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
               <>
                 {/* Formulário de Convite */}
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-900">Convidar Novo Usuário</h3>
+                  <h3 className="font-semibold text-gray-900">{t('web.memberManagementModal.inviteSomeoneNew')}</h3>
                   
                   {/* Nome */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome do Convidado
+                      {t('web.memberManagementModal.theirName')}
                     </label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Ex: João Silva"
+                      placeholder={t('web.shared.eGAlexSmith')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#207DFF]"
                     />
                   </div>
@@ -570,13 +572,13 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                   {/* Email */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
+                      {t('web.shared.email')}
                     </label>
                     <input
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="email@exemplo.com"
+                      placeholder={t('web.memberManagementModal.nameExampleCom')}
                       className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
                         emailError 
                           ? 'border-red-300 focus:ring-red-500' 
@@ -587,7 +589,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                       <p className="text-sm text-red-600 mt-1">{emailError}</p>
                     )}
                     {checkingEmail && !emailError && (
-                      <p className="text-sm text-gray-500 mt-1">Verificando email...</p>
+                      <p className="text-sm text-gray-500 mt-1">{t('web.memberManagementModal.checkingEmail')}</p>
                     )}
                   </div>
 
@@ -596,13 +598,13 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                       {/* Role */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center space-x-2">
-                          <span>Função</span>
+                          <span>{t('web.memberManagementModal.role')}</span>
                           <HelpTooltip 
                             content={
                               <div>
-                                <div><strong>Membro:</strong> Pode criar e editar transações.</div>
-                                <div><strong>Visualizador:</strong> Apenas visualiza dados.</div>
-                                <div><strong>Admin:</strong> Controle total da organização.</div>
+                                <div><strong>{t('web.memberManagementModal.member2')}</strong> {t('web.memberManagementModal.canAddAndEditTransactions')}</div>
+                                <div><strong>{t('web.memberManagementModal.viewer')}</strong> {t('web.memberManagementModal.viewOnly')}</div>
+                                <div><strong>{t('web.memberManagementModal.admin')}</strong> {t('web.memberManagementModal.fullControlOfTheHousehold')}</div>
                               </div>
                             } 
                           />
@@ -620,16 +622,16 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#207DFF]"
                         >
-                          <option value="member">Membro</option>
-                          <option value="viewer">Visualizador</option>
-                          <option value="admin">Admin</option>
+                          <option value="member">{t('web.memberManagementModal.member')}</option>
+                          <option value="viewer">{t('web.memberManagementModal.viewer2')}</option>
+                          <option value="admin">{t('web.memberManagementModal.admin2')}</option>
                         </select>
                       </div>
 
                       {/* Split Percentage */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center space-x-2">
-                          <span>Percentual Padrão (%)</span>
+                          <span>{t('web.memberManagementModal.defaultShare')}</span>
                           <HelpTooltip 
                             wide={true}
                             position="left"
@@ -650,7 +652,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                         />
                         {formData.role === 'viewer' && (
                           <p className="text-xs text-gray-500 mt-1">
-                            Visualizadores não recebem percentual
+                            {t('web.memberManagementModal.viewersDonTGetA')}
                           </p>
                         )}
                       </div>
@@ -664,12 +666,12 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                         <div className="flex-1">
                           <p className="text-sm font-medium text-red-800 mb-2">
                             {calculatedTotal > 100 
-                              ? `A soma dos percentuais ultrapassa 100% (${calculatedTotal.toFixed(1)}%).`
-                              : `A soma dos percentuais está abaixo de 100% (${calculatedTotal.toFixed(1)}%).`
+                              ? t('web.memberManagementModal.percentagesAddUpToMore2', { p0: calculatedTotal.toFixed(1) })
+                              : t('web.memberManagementModal.percentagesAddUpToLess2', { p0: calculatedTotal.toFixed(1) })
                             }
                           </p>
                           <p className="text-sm text-red-700">
-                            Ajuste os percentuais abaixo para totalizar exatamente 100%:
+                            {t('web.memberManagementModal.adjustThePercentagesBelowTo')}
                           </p>
                         </div>
                       </div>
@@ -709,7 +711,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                         {/* Total (inclui novo membro no cálculo) */}
                         <div className="flex items-center justify-between pt-2 border-t border-red-200">
                           <span className="text-sm font-semibold text-gray-900">
-                            Total (incluindo novo membro)
+                            {t('web.memberManagementModal.totalWithTheNewMember')}
                           </span>
                           <span className={`text-sm font-semibold ${
                             Math.abs(calculatedTotal - 100) <= 0.01
@@ -726,7 +728,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                   {/* Cor */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
-                      <span>Cor do Perfil</span>
+                      <span>{t('web.shared.profileColor')}</span>
                       <HelpTooltip content="Esta cor será usada para identificar este membro em gráficos, cards e análises visuais da organização." />
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -756,7 +758,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                 className="w-full sm:w-auto bg-[#207DFF] hover:bg-[#207DFF]/90 text-white min-h-[44px]"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Convidar Novo Usuário
+                {t('web.memberManagementModal.inviteSomeoneNew')}
               </Button>
             ) : (
               <>
@@ -775,7 +777,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                   variant="ghost"
                   className="w-full sm:w-auto min-h-[44px]"
                 >
-                  Cancelar
+                  {t('web.shared.cancel')}
                 </Button>
                 <Button
                   onClick={sendInvite}
@@ -786,7 +788,7 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
                   }
                   className="w-full sm:w-auto bg-[#207DFF] hover:bg-[#207DFF]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
                 >
-                  {inviting ? 'Enviando...' : 'Enviar Convite'}
+                  {inviting ? t('web.shared.sending') : t('web.shared.sendInvite')}
                 </Button>
               </>
             )}
@@ -803,12 +805,12 @@ export default function MemberManagementModal({ isOpen, onClose, organization, o
           setItemToDelete(null);
         }}
         onConfirm={handleConfirm}
-        title="Confirmar ação"
+        title={t('web.memberManagementModal.confirm')}
         message={
           actionToConfirm === 'remove-member'
-            ? 'Tem certeza que deseja remover este membro?'
+            ? t('web.memberManagementModal.removeThisMember')
             : actionToConfirm === 'cancel-invite'
-            ? 'Tem certeza que deseja cancelar este convite?'
+            ? t('web.memberManagementModal.cancelThisInvite')
             : ''
         }
       />

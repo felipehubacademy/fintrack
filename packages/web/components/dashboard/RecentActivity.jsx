@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Clock, CreditCard, Wallet, User } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function RecentActivity({ expenses = [] }) {
+  const { t } = useI18n();
   const recentExpenses = (expenses || []).slice(0, 5);
 
   const getPaymentIcon = (paymentMethod) => {
@@ -36,13 +38,13 @@ export default function RecentActivity({ expenses = [] }) {
   const formatPaymentMethod = (paymentMethod) => {
     switch (paymentMethod) {
       case 'credit_card':
-        return 'Cartão';
+        return t('web.shared.card');
       case 'pix':
         return 'PIX';
       case 'cash':
         return 'Dinheiro';
       case 'debit':
-        return 'Débito';
+        return t('web.shared.debit');
       default:
         return 'Outros';
     }
@@ -55,7 +57,7 @@ export default function RecentActivity({ expenses = [] }) {
           <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg">
             <Clock className="h-4 w-4 text-white" />
           </div>
-          <span>Atividade Recente</span>
+          <span>{t('web.recentActivity.recentActivity')}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -64,7 +66,7 @@ export default function RecentActivity({ expenses = [] }) {
             <div className="text-gray-400 mb-2">
               <Clock className="h-12 w-12 mx-auto" />
             </div>
-            <p className="text-gray-500 text-sm">Nenhuma atividade recente</p>
+            <p className="text-gray-500 text-sm">{t('web.recentActivity.nothingYetTextZulCoffee')}</p>
           </div>
         ) : (
           <div className="space-y-4">

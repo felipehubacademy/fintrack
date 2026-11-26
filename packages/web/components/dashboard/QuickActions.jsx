@@ -9,37 +9,39 @@ import {
 import Link from 'next/link';
 import { useState } from 'react';
 import TransactionModal from '../TransactionModal';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function QuickActions() {
+  const { t } = useI18n();
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const actions = [
     {
-      title: "Adicionar Transação",
-      description: "Despesa ou entrada",
+      title: t('web.quickActions.addTransaction'),
+      description: t('web.quickActions.expenseOrIncome'),
       icon: Plus,
       href: null,
       color: "bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue",
       textColor: "text-white"
     },
     {
-      title: "Ver Transações",
-      description: "Visualizar todas as transações",
+      title: t('web.quickActions.seeTransactions'),
+      description: t('web.quickActions.seeAllYourTransactions'),
       icon: TrendingUp,
       href: "/dashboard/transactions",
       color: "bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue",
       textColor: "text-white"
     },
     {
-      title: "Gerenciar Cartões",
-      description: "Adicionar ou configurar cartões",
+      title: t('web.quickActions.manageCards'),
+      description: t('web.quickActions.addOrSetUpCards'),
       icon: CreditCard,
       href: "/dashboard/cards",
       color: "bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue",
       textColor: "text-white"
     },
     {
-      title: "Orçamentos",
-      description: "Definir metas mensais",
+      title: t('web.quickActions.budgets'),
+      description: t('web.quickActions.setMonthlyLimits'),
       icon: Target,
       href: "/dashboard/budgets",
       color: "bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue",
@@ -53,7 +55,7 @@ export default function QuickActions() {
     <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
       <CardHeader>
         <CardTitle>
-          Ações Rápidas
+          {t('web.quickActions.quickActions')}
         </CardTitle>
       </CardHeader>
       <CardContent>

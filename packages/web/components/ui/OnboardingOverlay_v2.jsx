@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { Button } from './Button';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
  * OnboardingOverlay V2 - Versão Simplificada
@@ -17,6 +18,7 @@ export default function OnboardingOverlay({
   allowSkip = true,
   forceShow = false
 }) {
+  const { t } = useI18n();
   const [currentStep, setCurrentStep] = useState(0);
 
   if (!isOpen || !steps || steps.length === 0) {
@@ -88,7 +90,7 @@ export default function OnboardingOverlay({
             <button
               onClick={handleSkipClick}
               className="absolute top-4 sm:top-5 md:top-6 right-4 sm:right-6 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Fechar"
+              aria-label={t('web.shared.close')}
             >
               <X className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
             </button>
@@ -115,7 +117,7 @@ export default function OnboardingOverlay({
           {step?.tip && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
               <p className="text-xs sm:text-sm text-blue-800">
-                <strong>💡 Dica:</strong> {step.tip}
+                <strong>{t('web.onboardingOverlay_v2.tip')}</strong> {step.tip}
               </p>
             </div>
           )}
@@ -142,7 +144,7 @@ export default function OnboardingOverlay({
                   hover:scale-110
                   focus:outline-none
                 `}
-                aria-label={`Ir para passo ${index + 1}`}
+                aria-label={t('web.onboardingOverlay_v2.goToStep', { p0: index + 1 })}
               />
             ))}
           </div>
@@ -156,12 +158,12 @@ export default function OnboardingOverlay({
               className="text-xs sm:text-sm"
             >
               <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              <span className="hidden sm:inline">Anterior</span>
-              <span className="sm:hidden">Ant.</span>
+              <span className="hidden sm:inline">{t('web.shared.previous')}</span>
+              <span className="sm:hidden">{t('web.onboardingOverlay_v2.prev')}</span>
             </Button>
 
             <span className="text-xs sm:text-sm text-gray-500 font-medium">
-              {safeStep + 1} de {steps.length}
+              {t('web.onboardingOverlay_v2.of', { p0: safeStep + 1, length: steps.length })}
             </span>
 
             <Button
@@ -170,14 +172,14 @@ export default function OnboardingOverlay({
             >
               {safeStep === steps.length - 1 ? (
                 <>
-                  <span className="hidden sm:inline">Concluir</span>
-                  <span className="sm:hidden">OK</span>
+                  <span className="hidden sm:inline">{t('web.shared.finish')}</span>
+                  <span className="sm:hidden">{t('web.onboardingOverlay_v2.ok')}</span>
                   <Check className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2" />
                 </>
               ) : (
                 <>
-                  <span className="hidden sm:inline">Próximo</span>
-                  <span className="sm:hidden">Próx.</span>
+                  <span className="hidden sm:inline">{t('web.shared.next')}</span>
+                  <span className="sm:hidden">{t('web.onboardingOverlay_v2.next')}</span>
                   <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2" />
                 </>
               )}

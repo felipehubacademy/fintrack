@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MessageCircle, CheckCircle, AlertCircle, Send, X, Smartphone, ArrowRight, RefreshCw, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function WhatsAppVerificationModal({ 
   isOpen, 
@@ -8,6 +9,7 @@ export default function WhatsAppVerificationModal({
   user, 
   onVerified 
 }) {
+  const { t } = useI18n();
   // Remove formatação do telefone do usuário para exibição
   const normalizePhone = (phone) => {
     if (!phone) return '';
@@ -92,7 +94,7 @@ export default function WhatsAppVerificationModal({
 
   const verifyCode = async (code = verificationCode) => {
     if (!code || code.length !== 6) {
-      setError('Digite o código de 6 dígitos');
+      setError(t('web.whatsAppVerificationModal.enterThe6DigitCode'));
       return;
     }
 
@@ -112,7 +114,7 @@ export default function WhatsAppVerificationModal({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Código inválido');
+        throw new Error(data.error || t('web.shared.invalidCode'));
       }
 
       setIsVerified(true);
@@ -134,7 +136,7 @@ export default function WhatsAppVerificationModal({
     
     // Verificar se o número é diferente do cadastrado
     if (registeredPhone && formatted.replace(/\D/g, '') !== registeredPhone.replace(/\D/g, '') && formatted.replace(/\D/g, '').length === 11) {
-      setWarning('Este número é diferente do seu cadastro. Ao enviar o código, seu número será atualizado automaticamente.');
+      setWarning(t('web.whatsAppVerificationModal.thisNumberIsDifferentFrom'));
     } else {
       setWarning(null);
     }
@@ -142,7 +144,7 @@ export default function WhatsAppVerificationModal({
 
   const handleSendCode = async () => {
     if (!phone || phone.replace(/\D/g, '').length < 11) {
-      setError('Digite um telefone válido');
+      setError(t('web.whatsAppVerificationModal.enterAValidPhoneNumber'));
       return;
     }
 
@@ -174,7 +176,7 @@ export default function WhatsAppVerificationModal({
           .eq('id', user?.id);
 
         if (updateError) {
-          throw new Error('Erro ao atualizar telefone');
+          throw new Error(t('web.whatsAppVerificationModal.couldnTUpdateYourPhone'));
         }
         
         // Atualizar estados locais
@@ -203,15 +205,15 @@ export default function WhatsAppVerificationModal({
             const hours = Math.ceil(minutes / 60);
             setError(`⏰ Muitas tentativas. Aguarde ${hours} hora${hours > 1 ? 's' : ''} para tentar novamente.`);
           } else if (minutes > 1) {
-            setError(`⏰ Muitas tentativas. Aguarde ${minutes} minutos para tentar novamente.`);
+            setError(t('web.whatsAppVerificationModal.tooManyTriesWaitMinutes', { minutes }));
           } else {
-            setError(`⏰ Aguarde ${retryAfter} segundos para tentar novamente.`);
+            setError(t('web.whatsAppVerificationModal.waitSecondsAndTryAgain', { retryAfter }));
           }
           
           // Setar countdown automático baseado no retryAfter
           setCountdown(retryAfter);
         } else {
-          setError(data.error || `Erro ao enviar código (${response.status})`);
+          setError(data.error || t('web.whatsAppVerificationModal.couldnTSendTheCode', { status: response.status }));
         }
         return;
       }
@@ -221,7 +223,7 @@ export default function WhatsAppVerificationModal({
       setCountdown(60); // 60 segundos para reenviar
     } catch (err) {
       console.error('❌ Erro na requisição:', err);
-      setError(err.message || 'Erro ao enviar código. Verifique sua conexão.');
+      setError(err.message || t('web.whatsAppVerificationModal.couldnTSendTheCode2'));
     } finally {
       setLoading(false);
     }
@@ -263,16 +265,16 @@ export default function WhatsAppVerificationModal({
               </div>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              {step === 1 && (isVerified && registeredPhone ? 'Alterar WhatsApp' : 'Verificar WhatsApp')}
-              {step === 2 && 'Digite o Código'}
-              {step === 3 && 'Tudo Pronto!'}
+              {step === 1 && (isVerified && registeredPhone ? t('web.whatsAppVerificationModal.changeWhatsapp') : t('web.shared.verifyWhatsapp'))}
+              {step === 2 && t('web.whatsAppVerificationModal.enterTheCode')}
+              {step === 3 && t('web.whatsAppVerificationModal.allSet')}
             </h2>
             <p className="text-gray-600">
               {step === 1 && (isVerified && registeredPhone 
-                ? 'Digite um novo número para alterar sua verificação'
-                : 'Informe seu número para conversar com o Zul')}
-              {step === 2 && 'Enviamos um código de 6 dígitos no WhatsApp'}
-              {step === 3 && 'Seu WhatsApp está verificado e pronto para uso'}
+                ? t('web.whatsAppVerificationModal.enterANewNumberTo')
+                : t('web.whatsAppVerificationModal.addYourNumberToChat'))}
+              {step === 2 && t('web.whatsAppVerificationModal.weSentYouA6')}
+              {step === 3 && t('web.whatsAppVerificationModal.yourWhatsappIsVerifiedAnd')}
             </p>
           </div>
         </div>
@@ -286,10 +288,10 @@ export default function WhatsAppVerificationModal({
                 <div className="text-6xl mb-4">🎉</div>
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
                   <p className="text-green-900 font-semibold mb-2">
-                    WhatsApp Verificado com Sucesso!
+                    {t('web.whatsAppVerificationModal.whatsappVerified')}
                   </p>
                   <p className="text-green-700 text-sm">
-                    Número: <span className="font-mono font-semibold">{phone}</span>
+                    {t('web.whatsAppVerificationModal.number')} <span className="font-mono font-semibold">{phone}</span>
                   </p>
                 </div>
               </div>
@@ -299,10 +301,10 @@ export default function WhatsAppVerificationModal({
                   <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-blue-900 text-sm font-medium mb-1">
-                      Agora você pode usar o Zul!
+                      {t('web.whatsAppVerificationModal.youCanChatWithZul')}
                     </p>
                     <p className="text-blue-700 text-xs">
-                      Envie mensagens via WhatsApp para registrar despesas, ver relatórios e muito mais.
+                      {t('web.whatsAppVerificationModal.textZulToLogExpenses')}
                     </p>
                   </div>
                 </div>
@@ -312,7 +314,7 @@ export default function WhatsAppVerificationModal({
                 onClick={onClose}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3.5 px-4 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
-                Entendido
+                {t('web.whatsAppVerificationModal.gotIt')}
               </button>
             </div>
           ) : step === 2 ? (
@@ -321,7 +323,7 @@ export default function WhatsAppVerificationModal({
               {/* Code Input */}
               <div>
                 <label className="block text-gray-700 text-sm font-semibold mb-3 text-center">
-                  Código de Verificação
+                  {t('web.shared.verificationCode')}
                 </label>
                 <input
                   type="text"
@@ -337,7 +339,7 @@ export default function WhatsAppVerificationModal({
                   className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl text-gray-900 text-center text-2xl font-mono tracking-[0.5em] placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
                 <p className="text-center text-xs text-gray-500 mt-2">
-                  Código enviado para <span className="font-semibold text-gray-700">{phone}</span>
+                  {t('web.whatsAppVerificationModal.codeSentTo')} <span className="font-semibold text-gray-700">{phone}</span>
                 </p>
               </div>
 
@@ -360,12 +362,12 @@ export default function WhatsAppVerificationModal({
                 {loading ? (
                   <>
                     <RefreshCw className="w-5 h-5 animate-spin" />
-                    <span>Verificando...</span>
+                    <span>{t('web.shared.checking')}</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-5 h-5" />
-                    <span>Verificar Código</span>
+                    <span>{t('web.whatsAppVerificationModal.verifyCode')}</span>
                   </>
                 )}
               </button>
@@ -380,10 +382,10 @@ export default function WhatsAppVerificationModal({
                   {countdown > 0 ? (
                     <span className="flex items-center justify-center space-x-2">
                       <RefreshCw className="w-4 h-4" />
-                      <span>Reenviar em {countdown}s</span>
+                      <span>{t('web.shared.resendInS', { countdown })}</span>
                     </span>
                   ) : (
-                    'Não recebeu? Reenviar código'
+                    t('web.whatsAppVerificationModal.didnTGetItResend')
                   )}
                 </button>
               </div>
@@ -398,7 +400,7 @@ export default function WhatsAppVerificationModal({
                 }}
                 className="w-full text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
               >
-                ← Voltar para o número
+                {t('web.whatsAppVerificationModal.backToTheNumber')}
               </button>
             </div>
           ) : (
@@ -409,13 +411,13 @@ export default function WhatsAppVerificationModal({
                 <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
                   <div className="flex items-center space-x-2 mb-2">
                     <CheckCircle className="w-5 h-5 text-green-600" />
-                    <p className="text-green-900 font-semibold text-sm">Número Atual Verificado</p>
+                    <p className="text-green-900 font-semibold text-sm">{t('web.whatsAppVerificationModal.currentVerifiedNumber')}</p>
                   </div>
                   <p className="text-green-700 text-sm">
-                    Número atual: <span className="font-mono font-semibold">{formatPhone(registeredPhone)}</span>
+                    {t('web.whatsAppVerificationModal.currentNumber')} <span className="font-mono font-semibold">{formatPhone(registeredPhone)}</span>
                   </p>
                   <p className="text-green-600 text-xs mt-2">
-                    Digite um novo número abaixo para alterar
+                    {t('web.whatsAppVerificationModal.enterANewNumberBelow')}
                   </p>
                 </div>
               )}
@@ -425,7 +427,7 @@ export default function WhatsAppVerificationModal({
                 <label className="block text-gray-700 text-sm font-semibold mb-2">
                   <div className="flex items-center space-x-2">
                     <Smartphone className="w-4 h-4 text-gray-500" />
-                    <span>{isVerified ? 'Novo Número do WhatsApp' : 'Número do WhatsApp'}</span>
+                    <span>{isVerified ? t('web.whatsAppVerificationModal.newWhatsappNumber') : t('web.whatsAppVerificationModal.whatsappNumber')}</span>
                   </div>
                 </label>
                 <div className="relative">
@@ -470,11 +472,11 @@ export default function WhatsAppVerificationModal({
                 {loading ? (
                   <>
                     <RefreshCw className="w-5 h-5 animate-spin" />
-                    <span>Enviando...</span>
+                    <span>{t('web.shared.sending')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Enviar Código</span>
+                    <span>{t('web.whatsAppVerificationModal.sendCode')}</span>
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -488,10 +490,10 @@ export default function WhatsAppVerificationModal({
                   </div>
                   <div>
                     <p className="text-blue-900 text-sm font-semibold mb-1">
-                      Como funciona?
+                      {t('web.whatsAppVerificationModal.howDoesItWork')}
                     </p>
                     <p className="text-blue-700 text-xs leading-relaxed">
-                      Enviaremos um código de 6 dígitos via WhatsApp. Você terá 10 minutos para validá-lo e começar a usar o Zul.
+                      {t('web.whatsAppVerificationModal.weLlSendA6')}
                     </p>
                   </div>
                 </div>

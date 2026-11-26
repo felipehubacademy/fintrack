@@ -4,14 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X, AlertCircle } from 'lucide-react';
 import { formatCurrencyInput, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
+import { t } from '@fintrack/shared/i18n';
 
 const CARD_COLORS = [
-  { value: 'bg-blue-600', label: 'Azul', preview: 'bg-blue-600', hex: '#2563EB' },
-  { value: 'bg-orange-600', label: 'Laranja', preview: 'bg-orange-600', hex: '#EA580C' },
-  { value: 'bg-purple-600', label: 'Roxo', preview: 'bg-purple-600', hex: '#9333EA' },
-  { value: 'bg-green-600', label: 'Verde', preview: 'bg-green-600', hex: '#16A34A' },
-  { value: 'bg-gray-600', label: 'Cinza', preview: 'bg-gray-600', hex: '#4B5563' },
-  { value: 'bg-red-600', label: 'Vermelho', preview: 'bg-red-600', hex: '#DC2626' }
+  { value: 'bg-blue-600', get label() { return t('web.cardModal.blue'); }, preview: 'bg-blue-600', hex: '#2563EB' },
+  { value: 'bg-orange-600', get label() { return t('web.cardModal.orange'); }, preview: 'bg-orange-600', hex: '#EA580C' },
+  { value: 'bg-purple-600', get label() { return t('web.cardModal.purple'); }, preview: 'bg-purple-600', hex: '#9333EA' },
+  { value: 'bg-green-600', get label() { return t('web.cardModal.green'); }, preview: 'bg-green-600', hex: '#16A34A' },
+  { value: 'bg-gray-600', get label() { return t('web.cardModal.gray'); }, preview: 'bg-gray-600', hex: '#4B5563' },
+  { value: 'bg-red-600', get label() { return t('web.cardModal.red'); }, preview: 'bg-red-600', hex: '#DC2626' }
 ];
 
 // Função para converter hex para classe CSS
@@ -29,6 +31,7 @@ const hexToCssClass = (hex) => {
 };
 
 export default function CardModal({ isOpen, onClose, onSave, editingCard = null }) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     name: '',
     bank: '',
@@ -76,27 +79,27 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
     const newErrors = {};
 
     if (!formData.name.trim() || formData.name.trim().length < 2) {
-      newErrors.name = 'Nome deve ter pelo menos 2 caracteres';
+      newErrors.name = t('web.cardModal.nameMustHaveAtLeast');
     }
 
     if (!formData.bank.trim()) {
-      newErrors.bank = 'Banco é obrigatório';
+      newErrors.bank = t('web.cardModal.bankIsRequired');
     }
 
     if (!formData.holder_name.trim()) {
-      newErrors.holder_name = 'Titular é obrigatório';
+      newErrors.holder_name = t('web.cardModal.cardholderIsRequired');
     }
 
     if (!formData.billing_day || formData.billing_day < 1 || formData.billing_day > 31) {
-      newErrors.billing_day = 'Dia de vencimento deve ser entre 1 e 31';
+      newErrors.billing_day = t('web.cardModal.dueDayMustBeBetween');
     }
 
     if (formData.best_day && (formData.best_day < 1 || formData.best_day > 31)) {
-      newErrors.best_day = 'Melhor dia deve ser entre 1 e 31';
+      newErrors.best_day = t('web.cardModal.bestDayMustBeBetween');
     }
 
     if (!formData.credit_limit || parseCurrencyInput(formData.credit_limit) <= 0) {
-      newErrors.credit_limit = 'Limite deve ser maior que zero';
+      newErrors.credit_limit = t('web.cardModal.limitMustBeGreaterThan');
     }
 
 
@@ -166,7 +169,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
       <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] bg-white rounded-xl shadow-xl border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">{editingCard ? 'Editar Cartão' : 'Novo Cartão'}</h2>
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">{editingCard ? t('web.cardModal.editCard') : t('web.cardModal.newCard')}</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -185,13 +188,13 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             {/* Nome do Cartão */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome do Cartão *
+                {t('web.cardModal.cardName')}
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
-                placeholder="Ex: Nubank Roxinho"
+                placeholder={t('web.cardModal.eGChaseSapphire')}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                   errors.name ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -208,13 +211,13 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Banco *
+                  {t('web.cardModal.bank')}
                 </label>
                 <input
                   type="text"
                   value={formData.bank}
                   onChange={(e) => handleChange('bank', e.target.value)}
-                  placeholder="Ex: Nubank"
+                  placeholder={t('web.cardModal.eGChase')}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                     errors.bank ? 'border-red-500' : 'border-gray-300'
                   }`}
@@ -229,13 +232,13 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Titular *
+                  {t('web.cardModal.cardholder')}
                 </label>
                 <input
                   type="text"
                   value={formData.holder_name}
                   onChange={(e) => handleChange('holder_name', e.target.value)}
-                  placeholder="Nome do titular"
+                  placeholder={t('web.cardModal.cardholderName')}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${
                     errors.holder_name ? 'border-red-500' : 'border-gray-300'
                   }`}
@@ -252,7 +255,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             {/* Limite de Crédito */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Limite de Crédito *
+                {t('web.cardModal.creditLimit')}
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
@@ -293,7 +296,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Dia de Vencimento *
+                  {t('web.cardModal.dueDay')}
                 </label>
                 <input
                   type="number"
@@ -316,7 +319,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Dia de Fechamento da Fatura
+                  {t('web.cardModal.statementClosingDay')}
                 </label>
                 <input
                   type="number"
@@ -336,7 +339,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
                   </p>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
-                  💡 O melhor dia de compra será calculado automaticamente (dia seguinte ao fechamento)
+                  {t('web.cardModal.theBestDayToBuy')}
                 </p>
               </div>
             </div>
@@ -344,7 +347,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             {/* Cor do Cartão */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cor do Cartão
+                {t('web.cardModal.cardColor')}
               </label>
               <div className="grid grid-cols-6 gap-3">
                 {CARD_COLORS.map((color) => (
@@ -369,16 +372,16 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             {/* Preview do Cartão */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Preview
+                {t('web.cardModal.preview')}
               </label>
               <div className={`h-24 ${formData.color} rounded-lg p-4 text-white relative overflow-hidden`}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-xs opacity-80">{formData.bank || 'Banco'}</p>
-                    <p className="text-sm font-semibold">{formData.name || 'Nome do Cartão'}</p>
+                    <p className="text-xs opacity-80">{formData.bank || t('web.cardModal.bank2')}</p>
+                    <p className="text-sm font-semibold">{formData.name || t('web.cardModal.cardName2')}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs opacity-80">Titular</p>
+                    <p className="text-xs opacity-80">{t('web.cardModal.cardholder2')}</p>
                     <p className="text-sm font-semibold">{formData.holder_name || 'TITULAR'}</p>
                   </div>
                 </div>
@@ -388,21 +391,21 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             {/* Instrução sobre Despesas - Movido para o final */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm font-medium text-blue-900 mb-2">
-                💡 Como configurar o uso do cartão corretamente
+                {t('web.cardModal.howToSetUpYour')}
               </p>
               <p className="text-xs text-blue-800 mb-2">
-                Para que o sistema calcule automaticamente o limite disponível, cadastre todos os lançamentos que já foram feitos neste cartão:
+                {t('web.cardModal.toGetYourAvailableLimit')}
               </p>
               <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
-                <li>Despesas já pagas mas ainda não lançadas no sistema</li>
-                <li>Parcelas futuras de compras parceladas que já foram iniciadas</li>
-                <li>Qualquer gasto feito no cartão antes do cadastro</li>
-                <li>Anuidades e taxas do cartão (como anuidade anual, taxa de manutenção, etc.)</li>
-                <li>Impostos e encargos relacionados ao cartão (IOF, tarifas, etc.)</li>
-                <li>Outros lançamentos que impactam o limite disponível</li>
+                <li>{t('web.cardModal.purchasesNotLoggedHereYet')}</li>
+                <li>{t('web.cardModal.upcomingInstallmentsOfPurchasesAlready')}</li>
+                <li>{t('web.cardModal.anythingChargedBeforeYouAdded')}</li>
+                <li>{t('web.cardModal.cardFeesAnnualFeeMaintenance')}</li>
+                <li>{t('web.cardModal.cardTaxesAndCharges')}</li>
+                <li>{t('web.cardModal.anythingElseThatUsesYour')}</li>
               </ul>
               <p className="text-xs text-blue-700 mt-2 font-medium">
-                O limite disponível será calculado automaticamente com base em todos os lançamentos cadastrados, garantindo maior precisão.
+                {t('web.cardModal.yourAvailableLimitIsWorked')}
               </p>
             </div>
 
@@ -418,7 +421,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             disabled={loading}
             className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button 
             type="submit" 
@@ -426,7 +429,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard = null 
             disabled={loading}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
-            {loading ? 'Salvando...' : editingCard ? 'Atualizar' : 'Criar Cartão'}
+            {loading ? t('web.shared.saving') : editingCard ? t('web.shared.update') : t('web.cardModal.createCard')}
           </Button>
         </div>
       </div>

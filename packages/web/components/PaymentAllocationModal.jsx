@@ -4,6 +4,7 @@ import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function PaymentAllocationModal({ 
   isOpen, 
@@ -13,6 +14,7 @@ export default function PaymentAllocationModal({
   costCenters = [],
   currentUser
 }) {
+  const { t } = useI18n();
   const { success, error: showError } = useNotificationContext();
   const [saving, setSaving] = useState(false);
   const [bankAccounts, setBankAccounts] = useState([]);
@@ -124,24 +126,24 @@ export default function PaymentAllocationModal({
   const handleSave = async () => {
     // Validações
     if (!form.amount || parseCurrencyInput(form.amount) <= 0) {
-      showError('Informe um valor válido para o aporte');
+      showError(t('web.paymentAllocationModal.enterAValidContributionAmount'));
       return;
     }
 
     if (!form.bank_account_id) {
-      showError('Selecione a conta de origem');
+      showError(t('web.paymentAllocationModal.pickTheSourceAccount'));
       return;
     }
 
     if (form.ownership_type === 'member' && !form.cost_center_id) {
-      showError('Selecione quem está aportando');
+      showError(t('web.paymentAllocationModal.pickWhoIsContributing'));
       return;
     }
 
     if (form.ownership_type === 'organization') {
       const totalPercentage = splitDetails.reduce((sum, split) => sum + parseFloat(split.percentage || 0), 0);
       if (Math.abs(totalPercentage - 100) > 0.01) {
-        showError('A soma dos percentuais deve ser 100%');
+        showError(t('web.paymentAllocationModal.percentagesMustAddUpTo'));
         return;
       }
     }
@@ -201,7 +203,7 @@ export default function PaymentAllocationModal({
 
       // 3. Criar transação bancária (debitar da conta)
       const transactionDescription = form.description?.trim() 
-        || `Aporte para ${form.allocation_target === 'individual' ? 'despesas individuais' : 'despesas compartilhadas'}`;
+        || t('web.paymentAllocationModal.contributionTo', { p0: form.allocation_target === 'individual' ? 'despesas individuais' : 'despesas compartilhadas' });
 
       const { error: transactionError } = await supabase.rpc('create_bank_transaction', {
         p_bank_account_id: form.bank_account_id,
@@ -221,12 +223,12 @@ export default function PaymentAllocationModal({
 
       console.log('✅ Transação bancária criada');
 
-      success('Aporte registrado com sucesso!');
+      success(t('web.paymentAllocationModal.contributionLogged'));
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('❌ Erro ao registrar aporte:', error);
-      showError(error.message || 'Erro ao registrar aporte');
+      showError(error.message || t('web.paymentAllocationModal.couldnTLogTheContribution'));
     } finally {
       setSaving(false);
     }
@@ -240,7 +242,7 @@ export default function PaymentAllocationModal({
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
-            Registrar Aporte
+            {t('web.paymentAllocationModal.logContribution')}
           </h2>
           <Button 
             variant="ghost" 
@@ -260,7 +262,7 @@ export default function PaymentAllocationModal({
             {/* Valor do Aporte */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valor do Aporte *
+                {t('web.paymentAllocationModal.contributionAmount')}
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
@@ -293,7 +295,7 @@ export default function PaymentAllocationModal({
             {/* Data */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data *
+                {t('web.shared.date')}
               </label>
               <input
                 type="date"
@@ -307,7 +309,7 @@ export default function PaymentAllocationModal({
             {/* Quem está aportando */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quem está aportando? *
+                {t('web.paymentAllocationModal.whoIsContributing')}
               </label>
               <select
                 value={form.owner_name}
@@ -315,7 +317,7 @@ export default function PaymentAllocationModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 disabled={saving}
               >
-                <option value="">Selecione...</option>
+                <option value="">{t('web.shared.select')}</option>
                 {ownerOptions.map(o => (
                   <option key={o.id ?? o.name} value={o.name}>{o.name}</option>
                 ))}
@@ -325,7 +327,7 @@ export default function PaymentAllocationModal({
             {/* Destinar para */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Destinar para *
+                {t('web.paymentAllocationModal.useFor')}
               </label>
               <select
                 value={form.allocation_target}
@@ -335,11 +337,11 @@ export default function PaymentAllocationModal({
               >
                 {form.ownership_type === 'member' ? (
                   <>
-                    <option value="individual">Despesas Individuais</option>
-                    <option value="shared">Despesas Compartilhadas</option>
+                    <option value="individual">{t('web.paymentAllocationModal.individualExpenses')}</option>
+                    <option value="shared">{t('web.paymentAllocationModal.sharedExpenses')}</option>
                   </>
                 ) : (
-                  <option value="shared">Despesas Compartilhadas</option>
+                  <option value="shared">{t('web.paymentAllocationModal.sharedExpenses')}</option>
                 )}
               </select>
             </div>
@@ -347,7 +349,7 @@ export default function PaymentAllocationModal({
             {/* Conta de Origem */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Conta de Origem *
+                {t('web.paymentAllocationModal.fromAccount')}
               </label>
               <select
                 value={form.bank_account_id}
@@ -355,7 +357,7 @@ export default function PaymentAllocationModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 disabled={saving}
               >
-                <option value="">Selecione a conta</option>
+                <option value="">{t('web.paymentAllocationModal.pickTheAccount')}</option>
                 {bankAccounts.map(account => (
                   <option key={account.id} value={account.id}>
                     {account.name}
@@ -367,13 +369,13 @@ export default function PaymentAllocationModal({
             {/* Descrição (opcional) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descrição (opcional)
+                {t('web.shared.descriptionOptional')}
               </label>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Ex: Aporte mensal"
+                placeholder={t('web.paymentAllocationModal.eGMonthlyContribution')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 disabled={saving}
               />
@@ -385,7 +387,7 @@ export default function PaymentAllocationModal({
           {form.ownership_type === 'organization' && form.amount && parseCurrencyInput(form.amount) > 0 && (
             <div className="bg-flight-blue/5 border border-flight-blue/20 rounded-lg p-4 mt-4">
               <h4 className="text-sm font-medium text-gray-900 mb-3">
-                Divisão do Aporte
+                {t('web.paymentAllocationModal.contributionSplit')}
               </h4>
               <div className="space-y-2">
                 {calculateSplitAmounts(parseCurrencyInput(form.amount)).map((split) => (
@@ -412,14 +414,14 @@ export default function PaymentAllocationModal({
             disabled={saving}
             className="px-4 py-2"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
             className="bg-flight-blue hover:bg-flight-blue/90 text-white px-4 py-2"
           >
-            {saving ? 'Registrando...' : 'Registrar Aporte'}
+            {saving ? t('web.paymentAllocationModal.saving') : t('web.paymentAllocationModal.logContribution')}
           </Button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { BADGE_DEFINITIONS } from '../components/Goals/GoalBadges';
+import { t } from '@fintrack/shared/i18n';
 
 /**
  * Calcula quais badges o usuário conquistou baseado nas metas e contribuições
@@ -134,7 +135,7 @@ export function generateGamificationInsights(goals = [], contributions = [], bad
   if (streak === 0 && contributions.length > 0) {
     insights.push({
       type: 'warning',
-      message: 'Você perdeu o streak! Faça uma contribuição este mês para recomeçar.'
+      message: t('web.gamification.yourStreakEndedAddMoney')
     });
   } else if (streak > 0 && streak < 3) {
     insights.push({
@@ -144,7 +145,7 @@ export function generateGamificationInsights(goals = [], contributions = [], bad
   } else if (streak >= 3 && streak < 6) {
     insights.push({
       type: 'success',
-      message: `Parabéns! ${streak} meses consecutivos. Continue assim para o badge "Disciplinado"!`
+      message: t('web.gamification.niceMonthsInARow', { streak })
     });
   }
 
@@ -171,7 +172,7 @@ export function generateGamificationInsights(goals = [], contributions = [], bad
       if (progress >= 80) {
         insights.push({
           type: 'success',
-          message: `Você está a ${(100 - progress).toFixed(0)}% de completar "${closestGoal.name}"!`
+          message: t('web.gamification.youReAwayFrom', { p0: (100 - progress).toFixed(0), name: closestGoal.name })
         });
       }
     }
