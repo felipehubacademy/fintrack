@@ -172,10 +172,14 @@ const COMMANDS = {
   thanks: ['obrigado', 'obrigada', 'valeu', 'vlw', 'gracias', 'thanks', 'thank you', 'thx', 'ok', 'okay', 'beleza', 'blz', 'show', 'perfeito', 'perfecto', 'perfect', 'top', 'dale', 'listo', 'certo', 'great', 'cool'],
 };
 
+// "apagar minha conta", "eliminar mi cuenta", "delete my account": we only send the link.
+const DELETE_ACCOUNT_RE = /^(?:quero |quiero |i want to |please |por favor )?(?:apagar|apaga|excluir|exclui|deletar|deleta|encerrar|cancelar|eliminar|elimina|borrar|borra|cerrar|delete|close|remove)\s+(?:a |la |my |minha |mi |meu |o )?(?:conta|cuenta|account|cadastro)(?: (?:do|de|no|en|on) (?:azulao|meu azulao|zul|whatsapp))?$/;
+
 /** Exact-ish command detection. Returns { type, ... } or null. */
 export function parseCommand(text) {
   const n = normalizeText(text).replace(/[!.¡¿,]+/g, '').replace(/\s+/g, ' ').trim();
   if (!n) return null;
+  if (DELETE_ACCOUNT_RE.test(n)) return { type: 'delete_account' };
   for (const [type, words] of Object.entries(COMMANDS)) {
     if (words.includes(n)) return { type };
   }

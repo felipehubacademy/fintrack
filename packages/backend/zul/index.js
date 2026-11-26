@@ -5,7 +5,7 @@
 import { createDb } from './db.js';
 import { createAi } from './ai.js';
 import { createWhatsApp } from './whatsapp.js';
-import { localDate } from './language.js';
+import { localDate, canonicalPhone } from './language.js';
 import { loadState, saveState } from './state.js';
 import { route, RECORDING_INTENTS } from './intents.js';
 import { parseLocal } from './parse.js';
@@ -15,11 +15,11 @@ import { logIncome, logBill, setBudget } from './actions/money.js';
 import { spendingQuery, monthlySummary } from './actions/query.js';
 import { applyCorrection } from './actions/correction.js';
 import {
-  dashboardLink, simpleReply, setName, setLanguage, setCurrency, invite, joinOrganization, greeting,
+  dashboardLink, deleteAccountLink, simpleReply, setName, setLanguage, setCurrency, invite, joinOrganization, greeting,
 } from './actions/account.js';
 
 const IGNORED_TYPES = new Set(['reaction', 'system', 'unsupported', 'ephemeral', 'request_welcome']);
-const OPEN_TO_STRANGERS = new Set(['language', 'currency', 'join', 'plan', 'cancel', 'help', 'off_topic']);
+const OPEN_TO_STRANGERS = new Set(['language', 'currency', 'join', 'plan', 'cancel', 'delete_account', 'help', 'off_topic']);
 
 export function createZul(deps = {}) {
   let db = deps.db || null;
@@ -96,7 +96,8 @@ export function createZul(deps = {}) {
       case 'invite': return invite(ctx);
       case 'dashboard': return simpleReply(ctx, 'dashboard', { link: dashboardLink(ctx) });
       case 'plan': return simpleReply(ctx, 'plan');
-      case 'cancel': return simpleReply(ctx, 'cancel', { link: dashboardLink(ctx) });
+      case 'cancel': return simpleReply(ctx, 'cancel', { link: deleteAccountLink() });
+      case 'delete_account': return simpleReply(ctx, 'delete_account', { link: deleteAccountLink() });
       case 'help': return simpleReply(ctx, 'help');
       case 'fewer': ctx.state.quiet = true; return simpleReply(ctx, 'fewer_on');
       case 'more': ctx.state.quiet = false; return simpleReply(ctx, 'fewer_off');
@@ -149,7 +150,10 @@ export function createZul(deps = {}) {
   }
 
   async function handleMessage(message, contact = null) {
-    const phone = message.from;
+    // Reply to the wa_id Meta gave us; store and look up by the canonical
+    // E.164 form the app's phone login uses.
+    const waId = message.from;
+    const phone = canonicalPhone(waId);
     const db = getDb();
     if (!phone || !message.id) return 'invalid';
     if (!(await db.claimMessage(message.id, phone))) return 'duplicate';
@@ -181,7 +185,7 @@ export function createZul(deps = {}) {
         replies = await execute(intent, ctx);
       }
       replies = addOnboarding(ctx, replies);
-      await sendReplies(ctx, phone, replies);
+      await sendReplies(ctx, waId, replies);
       await saveState(db, ctx.state);
       await read;
       await db.finishMessage(message.id, 'done');
@@ -189,7 +193,7 @@ export function createZul(deps = {}) {
     } catch (err) {
       console.error('[zul] message failed:', err);
       const lang = ctx?.lang || 'en';
-      await getWa().sendText(phone, t(lang, 'error')).catch(() => {});
+      await getWa().sendText(waId, t(lang, 'error')).catch(() => {});
       if (ctx) await saveState(db, ctx.state).catch(() => {});
       await db.finishMessage(message.id, 'error', String(err.message || err).slice(0, 500));
       return 'error';

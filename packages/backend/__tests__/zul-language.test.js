@@ -1,9 +1,28 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  languageFromPhone, currencyFromPhone, languageSwitch, formatMoney, toE164, countryInfo,
+  languageFromPhone, currencyFromPhone, languageSwitch, formatMoney, toE164, countryInfo, canonicalPhone,
 } from '../zul/language.js';
 import { CATALOGS, t } from '../zul/reply.js';
+import { phoneVariants } from '../zul/db.js';
+
+describe('canonical phone (same E.164 as the app phone login)', () => {
+  it('BR adds the 9th digit, MX drops the 1, AR keeps the 9', () => {
+    assert.equal(canonicalPhone('551187654321'), '5511987654321');
+    assert.equal(canonicalPhone('+55 11 98765-4321'), '5511987654321');
+    assert.equal(canonicalPhone('5215512345678'), '525512345678');
+    assert.equal(canonicalPhone('525512345678'), '525512345678');
+    assert.equal(canonicalPhone('541123456789'), '5491123456789');
+    assert.equal(canonicalPhone('5491123456789'), '5491123456789');
+    assert.equal(canonicalPhone('14155551234'), '14155551234');
+  });
+  it('lookup variants cover the WhatsApp and the app forms', () => {
+    assert.ok(phoneVariants('5215512345678').includes('525512345678'));
+    assert.ok(phoneVariants('525512345678').includes('5215512345678'));
+    assert.ok(phoneVariants('5491123456789').includes('541123456789'));
+    assert.ok(phoneVariants('551187654321').includes('5511987654321'));
+  });
+});
 
 describe('language by phone country code', () => {
   it('+55 -> pt', () => assert.equal(languageFromPhone('5511987654321'), 'pt'));

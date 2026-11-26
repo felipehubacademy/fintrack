@@ -180,6 +180,27 @@ describe('installments, bills, budgets, queries', () => {
     assert.match((await say(BR, 'plano'))[0].body, /31\/01\/2027/);
   });
 
+  it('account deletion only sends the link, never deletes', async () => {
+    const { db, say } = setup();
+    await say(BR, 'uber 1');
+    await say(BR, 'Felipe');
+    const pt = await say(BR, 'apagar minha conta');
+    assert.match(pt[0].body, /https:\/\/www\.meuazulao\.com\.br\/delete-account/);
+    assert.equal(db.tables.users.length, 1);
+    assert.equal(db.tables.expenses.length, 1);
+    const mx = setup();
+    assert.match((await mx.say(MX, 'eliminar mi cuenta'))[0].body, /delete-account/);
+    const us = setup();
+    assert.match((await us.say(US, 'delete my account'))[0].body, /delete-account/);
+  });
+
+  it('MX account is stored with the canonical phone, replies go to the wa_id', async () => {
+    const { db, wa, say } = setup();
+    await say(MX, 'súper 10');
+    assert.equal(db.tables.users[0].phone, '525512345678');
+    assert.equal(wa.sent[0].to, MX);
+  });
+
   it('off-topic gets a short redirect', async () => {
     const { say } = setup([{ type: 'off_topic' }]);
     await say(BR, 'uber 1');

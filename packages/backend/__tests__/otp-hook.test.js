@@ -56,7 +56,7 @@ describe('POST /api/auth/whatsapp-otp', () => {
     assert.equal(res.statusCode, 200);
     assert.equal(wa.sent[0].template, 'codigo_login');
     assert.equal(wa.sent[0].lang, 'es');
-    assert.equal(wa.sent[0].to, '5215512345678');
+    assert.equal(wa.sent[0].to, '525512345678');
     assert.deepEqual(wa.sent[0].components, otpTemplateComponents('654321'));
   });
 

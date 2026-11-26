@@ -5,7 +5,7 @@
  * route() returns an intent: { type, ...args }. Types:
  *  expense, installments, income, bill, budget, query, summary, correction,
  *  closing_day, closing_day_invalid, name, language, currency, join,
- *  help, dashboard, plan, cancel, fewer, more, invite, greeting, thanks,
+ *  help, dashboard, plan, cancel, delete_account, fewer, more, invite, greeting, thanks,
  *  off_topic, not_understood
  */
 import { languageSwitch } from './language.js';
@@ -34,6 +34,9 @@ export async function route(input, ctx, deps) {
   // 2. Language switch: "English", "Español", "Português".
   const lang = languageSwitch(text);
   if (lang) return { type: 'language', language: lang };
+
+  // Account deletion always wins over corrections ("apagar minha conta").
+  if (parseCommand(text)?.type === 'delete_account') return { type: 'delete_account' };
 
   // 3. Open question.
   const pending = state.pending;

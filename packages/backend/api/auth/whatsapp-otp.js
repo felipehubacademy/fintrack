@@ -10,7 +10,7 @@
 import { verifyStandardWebhook, readBody, send } from '../../zul/security.js';
 import { createWhatsApp } from '../../zul/whatsapp.js';
 import { createDb } from '../../zul/db.js';
-import { digitsOnly, languageFromPhone, normalizeLanguage } from '../../zul/language.js';
+import { canonicalPhone, languageFromPhone, normalizeLanguage } from '../../zul/language.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -65,7 +65,7 @@ export function createHandler(deps = {}) {
     } catch (_) {
       return hookError(res, 400, 'Invalid JSON');
     }
-    const phone = digitsOnly(payload?.user?.phone);
+    const phone = canonicalPhone(payload?.user?.phone);
     const otp = payload?.sms?.otp;
     if (!phone || !otp) return hookError(res, 400, 'Missing phone or otp');
 

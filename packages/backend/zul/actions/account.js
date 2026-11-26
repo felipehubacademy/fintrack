@@ -11,6 +11,11 @@ export function dashboardLink(ctx) {
   return `${base}/login?phone=${encodeURIComponent(toE164(ctx.phone))}`;
 }
 
+/** Account deletion happens on the web; Zul never deletes an account itself. */
+export function deleteAccountLink() {
+  return process.env.ZUL_DELETE_ACCOUNT_URL || 'https://www.meuazulao.com.br/delete-account';
+}
+
 export function simpleReply(ctx, key, params = {}) {
   return [{ text: makeFormatter(ctx).t(key, params) }];
 }

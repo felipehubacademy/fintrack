@@ -12,7 +12,7 @@ import { SUPPORTED_CURRENCIES } from './language.js';
 
 const PAYMENT_METHODS = ['credit_card', 'debit_card', 'pix', 'cash', 'bank_transfer', 'boleto', 'other'];
 const PERIODS = ['today', 'yesterday', 'this_week', 'this_month', 'last_month', 'this_year'];
-const COMMANDS = ['help', 'dashboard', 'plan', 'cancel', 'fewer_messages', 'more_messages', 'invite_partner', 'greeting', 'thanks'];
+const COMMANDS = ['help', 'dashboard', 'plan', 'cancel', 'fewer_messages', 'more_messages', 'invite_partner', 'delete_account', 'greeting', 'thanks'];
 
 const fn = (name, description, properties = {}, required = []) => ({
   type: 'function',

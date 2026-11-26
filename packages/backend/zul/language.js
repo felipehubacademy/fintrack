@@ -49,6 +49,23 @@ export function digitsOnly(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
 
+/**
+ * Canonical E.164 digits, the same form the app's phone login uses, so the
+ * WhatsApp number (wa_id) and a phone OTP sign-in land on one account:
+ * BR mobiles get the 9th digit, MX drops the legacy "1" after 52,
+ * AR mobiles carry the "9" after 54.
+ */
+export function canonicalPhone(phone) {
+  const d = digitsOnly(phone);
+  let m = d.match(/^55(\d{2})([6-9]\d{7})$/);
+  if (m) return `55${m[1]}9${m[2]}`;
+  m = d.match(/^521(\d{10})$/);
+  if (m) return `52${m[1]}`;
+  m = d.match(/^54([1-8]\d{9})$/);
+  if (m) return `549${m[1]}`;
+  return d;
+}
+
 /** '+55 11 98765-4321' -> '+5511987654321' */
 export function toE164(phone) {
   const d = digitsOnly(phone);

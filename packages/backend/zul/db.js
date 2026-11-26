@@ -5,7 +5,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { digitsOnly } from './language.js';
+import { digitsOnly, canonicalPhone } from './language.js';
 
 let sharedClient = null;
 
@@ -20,8 +20,12 @@ export function getSupabase() {
 
 /** Brazilian numbers sometimes arrive without the mobile "9" (or with it). */
 export function phoneVariants(phone) {
-  const d = digitsOnly(phone);
-  const out = new Set([d]);
+  const d = canonicalPhone(phone);
+  const out = new Set([d, digitsOnly(phone)]);
+  const mx = d.match(/^52(\d{10})$/);
+  if (mx) out.add(`521${mx[1]}`);
+  const ar = d.match(/^549(\d{10})$/);
+  if (ar) out.add(`54${ar[1]}`);
   const br = d.match(/^55(\d{2})(\d{8,9})$/);
   if (br) {
     const [, ddd, local] = br;
