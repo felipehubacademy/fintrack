@@ -1,4 +1,4 @@
-// 🎨 MeuAzulão Design System - Complete Export
+// MeuAzulão design system: complete export
 
 // Import internals
 import * as colorModule from './colors.js';
@@ -9,6 +9,8 @@ import * as spacingModule from './spacing.js';
 export const colors = colorModule.colors;
 export const gradients = colorModule.gradients;
 export const shadows = colorModule.shadows;
+export const tokens = colorModule.tokens;
+export const colorsDark = colorModule.colorsDark;
 export const typography = typographyModule.typography;
 export const spacing = spacingModule.spacing;
 export const radius = spacingModule.radius;
@@ -61,6 +63,7 @@ export const breakpoints = {
 // Complete theme object
 export const theme = {
   colors,
+  tokens,
   gradients,
   shadows,
   typography,

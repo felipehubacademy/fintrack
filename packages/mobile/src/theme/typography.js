@@ -76,6 +76,10 @@ export const typography = {
     wider: 0.5,
   },
 
+  // ===== NUMBERS =====
+  // Money and counts line up in columns (supported on iOS and Android).
+  tabularNums: { fontVariant: ['tabular-nums'] },
+
   // ===== PRE-DEFINED TEXT STYLES (Apple Human Interface Guidelines) =====
   styles: {
     // Large Title
@@ -155,6 +159,14 @@ export const typography = {
       letterSpacing: 0,
     },
     
+    // Amounts (hero number on each screen)
+    amount: {
+      fontSize: 40,
+      fontWeight: '800',
+      letterSpacing: -1,
+      fontVariant: ['tabular-nums'],
+    },
+
     // Caption 2 (smallest)
     caption2: {
       fontSize: 10,
