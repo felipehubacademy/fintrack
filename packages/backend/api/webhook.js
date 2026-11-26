@@ -1,599 +1,77 @@
 /**
- * Webhook FinTrack V2 (backend/api) - VERSION B2 (CONSOLIDATED)
- * Consolidado para usar apenas ZulAssistant
+ * WhatsApp Cloud API webhook (Vercel function, route /webhook).
+ *
+ * GET  -> verification handshake with WHATSAPP_VERIFY_TOKEN.
+ * POST -> checks X-Hub-Signature-256 with WHATSAPP_APP_SECRET, ignores status
+ *         callbacks, then processes each message inline (idempotent by message
+ *         id) and only then answers 200. No timers after the response.
+ *
+ * The old implementation (Assistants API, in-memory threads, setTimeout
+ * debounce) lives in services/zulAssistant.js and is no longer used here.
  */
+import { createZul, hasMessages } from '../zul/index.js';
+import { verifyMetaSignature, metaJsonStringify, readBody, getQuery, send } from '../zul/security.js';
 
-import { createClient } from '@supabase/supabase-js';
+// Keep the raw body so the signature can be checked byte for byte.
+export const config = { api: { bodyParser: false } };
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+let zul = null;
+let warnedNoSecret = false;
 
-const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
-
-// Sistema híbrido: agrupa mensagens rápidas, processa normais diretamente
-const RAPID_SEQUENCE_SILENCE_MS = 500; // 500ms de SILÊNCIO após última msg para processar
-const MAX_BUFFERED_MESSAGES = 10;
-
-// Armazenar timeouts pendentes (em memória, ok para serverless pois é por request)
-const pendingTimeouts = new Map();
-
-/**
- * Verificar se usuário está mandando mensagens em sequência rápida
- * Retorna: { shouldBuffer: boolean, bufferSize: number }
- */
-async function checkRapidSequence(userPhone) {
-  try {
-    const normalized = String(userPhone || '').replace(/\D/g, '');
-    
-    const { data: current } = await supabase
-      .from('conversation_state')
-      .select('temp_data, updated_at')
-      .eq('user_phone', normalized)
-      .maybeSingle();
-    
-    if (!current || !current.temp_data?.message_buffer) {
-      return { shouldBuffer: false, bufferSize: 0 };
-    }
-    
-    const buffer = current.temp_data.message_buffer || [];
-    const lastUpdate = new Date(current.updated_at || current.temp_data.last_buffer_update);
-    const now = new Date();
-    const timeSinceLastMessage = now - lastUpdate;
-    
-    // Se última mensagem foi recente E já há mensagens no buffer, é sequência rápida
-    const isRapidSequence = timeSinceLastMessage < 5000 && buffer.length > 0;
-    
-    console.log(`⚡ [RAPID-CHECK] ${normalized}: ${timeSinceLastMessage}ms desde última msg. Buffer: ${buffer.length}. Rapid: ${isRapidSequence}`);
-    
-    return {
-      shouldBuffer: isRapidSequence,
-      bufferSize: buffer.length
-    };
-  } catch (error) {
-    console.error('❌ Erro ao verificar sequência rápida:', error);
-    return { shouldBuffer: false, bufferSize: 0 };
-  }
+export function verifyHandshake(query, expectedToken) {
+  const mode = query['hub.mode'];
+  const token = query['hub.verify_token'];
+  const challenge = query['hub.challenge'];
+  if (expectedToken && mode === 'subscribe' && token === expectedToken) return { status: 200, body: String(challenge ?? '') };
+  return { status: 403, body: 'Forbidden' };
 }
 
-/**
- * Adicionar mensagem ao buffer (apenas para sequências rápidas)
- */
-async function addToRapidBuffer(userPhone, messageText, messageType = 'text') {
-  try {
-    const normalized = String(userPhone || '').replace(/\D/g, '');
-    
-    const { data: current } = await supabase
-      .from('conversation_state')
-      .select('temp_data')
-      .eq('user_phone', normalized)
-      .maybeSingle();
-    
-    const buffer = current?.temp_data?.message_buffer || [];
-    buffer.push({
-      text: messageText,
-      type: messageType,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Limitar buffer
-    const limitedBuffer = buffer.slice(-MAX_BUFFERED_MESSAGES);
-    
-    await supabase
-      .from('conversation_state')
-      .upsert({
-        user_phone: normalized,
-        temp_data: {
-          ...current?.temp_data,
-          message_buffer: limitedBuffer,
-          last_buffer_update: new Date().toISOString()
-        },
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_phone'
-      });
-    
-    console.log(`📦 [RAPID-BUFFER] Adicionada ao buffer de ${normalized}. Total: ${limitedBuffer.length}`);
-    
-    return limitedBuffer.length;
-  } catch (error) {
-    console.error('❌ Erro ao adicionar ao buffer rápido:', error);
-    return 1;
-  }
+/** Signature check that tolerates platforms which pre-parse JSON. */
+export function checkSignature({ raw, parsed }, header, secret) {
+  if (!secret) return { ok: true, skipped: true };
+  if (!header) return { ok: false };
+  if (raw && verifyMetaSignature(raw, header, secret)) return { ok: true };
+  if (!raw && parsed && verifyMetaSignature(metaJsonStringify(parsed), header, secret)) return { ok: true };
+  return { ok: false };
 }
 
-/**
- * Obter e limpar buffer de sequência rápida
- */
-async function getAndClearRapidBuffer(userPhone) {
-  try {
-    const normalized = String(userPhone || '').replace(/\D/g, '');
-    
-    const { data: current } = await supabase
-      .from('conversation_state')
-      .select('temp_data')
-      .eq('user_phone', normalized)
-      .maybeSingle();
-    
-    const buffer = current?.temp_data?.message_buffer || [];
-    
-    if (buffer.length === 0) {
-      return null;
+export function createHandler(deps = {}) {
+  return async function handler(req, res) {
+    if (req.method === 'GET') {
+      const result = verifyHandshake(getQuery(req), process.env.WHATSAPP_VERIFY_TOKEN);
+      return send(res, result.status, result.body);
     }
-    
-    // Limpar buffer
-    await supabase
-      .from('conversation_state')
-      .update({
-        temp_data: {
-          ...current?.temp_data,
-          message_buffer: [],
-          last_buffer_update: null
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_phone', normalized);
-    
-    console.log(`📦 [RAPID-BUFFER] Buffer limpo. ${buffer.length} mensagens recuperadas.`);
-    
-    // Concatenar mensagens
-    const concatenated = buffer.map(msg => msg.text).join('\n');
-    
-    return {
-      concatenatedText: concatenated,
-      messageCount: buffer.length,
-      messages: buffer
-    };
-  } catch (error) {
-    console.error('❌ Erro ao obter buffer rápido:', error);
-    return null;
-  }
-}
+    if (req.method !== 'POST') return send(res, 405, 'Method Not Allowed');
 
-/**
- * Processar mensagem diretamente (sem buffer/debounce)
- * O thread do OpenAI JÁ mantém o contexto entre mensagens
- */
-async function processMessageDirect(userPhone, messageText, messageType = 'text') {
-  try {
-    console.log(`📨 [DIRECT] Processando mensagem ${messageType} de ${userPhone}`);
-    
-    const user = await getUserByPhone(userPhone);
-    
-    if (!user) {
-      console.log('❌ [DIRECT] Usuário não encontrado');
-      await sendWhatsAppMessage(userPhone, 
-        'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
-      );
-      return;
+    const body = await readBody(req);
+    const secret = process.env.WHATSAPP_APP_SECRET;
+    const signature = req.headers?.['x-hub-signature-256'];
+    const check = checkSignature(body, signature, secret);
+    if (check.skipped && !warnedNoSecret) {
+      console.warn('[webhook] WHATSAPP_APP_SECRET is not set: signature NOT verified. Set it before launch.');
+      warnedNoSecret = true;
     }
-    
-    // REMOVIDO: Pré-processamento removido - confiamos no GPT-4 para lidar com ruído
-    const processedMessage = messageText;
-    
-    // Buscar cartões
-    const { data: cards } = await supabase
-      .from('cards')
-      .select('name')
-      .eq('organization_id', user.organization_id)
-      .eq('is_active', true);
-    
-    const orgType = user.organization?.type || 'family';
-    const organizationName = user.organization?.name || 'Família';
-    
-    const context = {
-      userName: user.name,
-      userId: user.id,
-      organizationId: user.organization_id,
-      organizationType: orgType,
-      organizationName: organizationName,
-      isSoloUser: orgType === 'solo',
-      availableCards: cards?.map(c => c.name) || []
-    };
-    
-    // Processar mensagem diretamente com ZulAssistant (mantém thread/contexto)
-    const { default: ZulAssistant } = await import('../services/zulAssistant.js');
-    const zul = new ZulAssistant();
-    
-    const result = await zul.processMessage(
-      processedMessage,  // ✅ Usa mensagem normalizada (se for áudio)
-      user.id,
-      user.name,
-      userPhone,
-      context
-    );
-    
-    // Enviar resposta
-    if (result && result.message) {
-      await sendWhatsAppMessage(userPhone, result.message);
+    if (!check.ok) {
+      console.warn('[webhook] invalid X-Hub-Signature-256, ignoring request');
+      return send(res, 401, 'Invalid signature');
     }
-    
-    console.log('✅ [DIRECT] Mensagem processada com sucesso');
-  } catch (error) {
-    console.error('❌ [DIRECT] Erro ao processar mensagem:', error);
-    
+
+    const payload = body.parsed;
+    if (!payload || payload.object !== 'whatsapp_business_account') return send(res, 200, 'OK');
+    // Delivery/read receipts: nothing to do.
+    if (!hasMessages(payload)) return send(res, 200, 'OK');
+    if (process.env.WEBHOOK_DRY_RUN === '1') return send(res, 200, 'OK');
+
     try {
-      await sendWhatsAppMessage(userPhone, 
-        'Ops! Tive um problema aqui. 😅\n\nTenta de novo? Se continuar, melhor falar com o suporte!'
-      );
-    } catch (sendError) {
-      console.error('❌ Erro ao enviar mensagem de erro:', sendError);
+      zul = deps.zul || zul || createZul();
+      await zul.handlePayload(payload);
+    } catch (err) {
+      // Per-message errors are handled inside; this is a bug or an outage.
+      // Still answer 200: messages are idempotent and Meta would only retry into the same failure.
+      console.error('[webhook] processing failed:', err);
     }
-  }
+    return send(res, 200, 'OK');
+  };
 }
 
-/**
- * Buscar usuário por telefone
- */
-async function getUserByPhone(phone) {
-  try {
-    const normalized = String(phone || '').replace(/\D/g, '');
-    
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .ilike('phone', `%${normalized}%`)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (error || !user) return null;
-    
-    const { data: organization } = await supabase
-      .from('organizations')
-      .select('*')
-      .eq('id', user.organization_id)
-      .single();
-
-    const { data: costCenters } = await supabase
-      .from('cost_centers')
-      .select('*')
-      .eq('organization_id', user.organization_id)
-      .eq('is_active', true);
-
-    return {
-      ...user,
-      organization,
-      cost_centers: costCenters || []
-    };
-  } catch (error) {
-    console.error('❌ Erro ao buscar usuário:', error);
-    return null;
-  }
-}
-
-/**
- * Enviar mensagem WhatsApp
- */
-async function sendWhatsAppMessage(to, message) {
-  try {
-    const axios = (await import('axios')).default;
-    const phoneNumberId = process.env.PHONE_ID;
-    const token = process.env.WHATSAPP_TOKEN;
-    
-    if (!phoneNumberId || !token) {
-      console.error('❌ [WHATSAPP] Credenciais não configuradas (PHONE_ID ou WHATSAPP_TOKEN)');
-      return false;
-    }
-    
-    await axios.post(
-      `${WHATSAPP_API_URL}/${phoneNumberId}/messages`,
-      {
-        messaging_product: 'whatsapp',
-        to: to,
-        type: 'text',
-        text: { body: message }
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    
-    console.log('✅ Mensagem WhatsApp enviada para', to);
-    return true;
-  } catch (error) {
-    // Detectar token expirado (401)
-    if (error.response?.status === 401) {
-      const authHeader = error.response.headers?.['www-authenticate'] || '';
-      if (authHeader.includes('expired')) {
-        console.error('🔐 [WHATSAPP] TOKEN EXPIRADO! Atualize o WHATSAPP_TOKEN nas variáveis de ambiente.');
-        console.error('📋 [WHATSAPP] Detalhes:', authHeader);
-      } else {
-        console.error('🔐 [WHATSAPP] Token inválido ou não autorizado.');
-      }
-    } else if (error.response?.status === 404) {
-      console.error('❌ [WHATSAPP] Phone Number ID inválido ou não encontrado:', phoneNumberId);
-    } else {
-      console.error('❌ [WHATSAPP] Erro ao enviar mensagem:', error.message);
-      if (error.response?.data) {
-        console.error('📄 [WHATSAPP] Detalhes do erro:', JSON.stringify(error.response.data));
-      }
-    }
-    return false;
-  }
-}
-
-/**
- * Obter URL de download da mídia do WhatsApp
- */
-async function getMediaUrl(mediaId) {
-  try {
-    const axios = (await import('axios')).default;
-    const token = process.env.WHATSAPP_TOKEN;
-    
-    console.log('🎤 [AUDIO] Obtendo URL de download para media_id:', mediaId);
-    
-    const response = await axios.get(
-      `${WHATSAPP_API_URL}/${mediaId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }
-    );
-    
-    const mediaUrl = response.data?.url;
-    if (!mediaUrl) {
-      throw new Error('URL de mídia não encontrada na resposta');
-    }
-    
-    console.log('✅ [AUDIO] URL de download obtida:', mediaUrl);
-    return mediaUrl;
-  } catch (error) {
-    console.error('❌ [AUDIO] Erro ao obter URL de mídia:', error.message);
-    throw error;
-  }
-}
-
-/**
- * Função helper para escolher mensagem de erro variada
- */
-function pickVariation(variations, seed = null) {
-  if (!variations || variations.length === 0) return '';
-  if (variations.length === 1) return variations[0];
-  
-  // Usar timestamp + seed para criar um índice mais variado
-  const timestamp = Date.now();
-  const seedValue = seed ? String(seed).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
-  const random = ((timestamp % 1000) + seedValue) % variations.length;
-  
-  return variations[random];
-}
-
-// Process webhook synchronously com logs detalhados
-async function processWebhook(body) {
-  console.log('🔄 [B1][DEBUG] Starting processWebhook...');
-  try {
-    const entry = body.entry?.[0];
-    console.log('🔄 [B1][DEBUG] Entry:', entry ? 'found' : 'not found');
-
-    const change = entry?.changes?.[0];
-    console.log('🔄 [B1][DEBUG] Change:', change ? 'found' : 'not found');
-
-    const value = change?.value;
-    console.log('🔄 [B1][DEBUG] Value:', value ? 'found' : 'not found');
-
-    // Process messages
-    if (value?.messages) {
-      console.log('🔄 [B1][DEBUG] Messages found:', value.messages.length);
-      for (const message of value.messages) {
-        console.log('🔄 [B1][DEBUG] Message type:', message.type);
-        
-        if (message.type === 'text') {
-          console.log(`📱 [B1] Message from ${message.from}: "${message.text.body}"`);
-
-          try {
-            // Fast path para testes
-            if (message.id?.includes('test_') || process.env.WEBHOOK_DRY_RUN === '1') {
-              console.log('🧪 [B2][DEBUG] Dry-run/test payload detected. Skipping.');
-              continue;
-            }
-
-            // Verificar usuário primeiro
-            const user = await getUserByPhone(message.from);
-            if (!user) {
-              console.log('❌ User not found for phone:', message.from);
-              await sendWhatsAppMessage(message.from, 
-                'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
-              );
-              continue;
-            }
-
-            // Sistema híbrido: detectar sequência rápida
-            const rapidCheck = await checkRapidSequence(message.from);
-            
-            // Adicionar ao buffer
-            const bufferSize = await addToRapidBuffer(message.from, message.text.body, 'text');
-            
-            // Cancelar timeout anterior se existir
-            if (pendingTimeouts.has(message.from)) {
-              clearTimeout(pendingTimeouts.get(message.from));
-              console.log(`⚡ [RAPID] Timeout anterior cancelado. Nova msg recebida.`);
-            }
-            
-            if (rapidCheck.shouldBuffer || bufferSize > 1) {
-              // Há buffer - agendar processamento após silêncio
-              console.log(`⚡ [RAPID] Mensagem adicionada ao buffer. Total: ${bufferSize}. Aguardando ${RAPID_SEQUENCE_SILENCE_MS}ms de silêncio...`);
-              
-              const timeoutId = setTimeout(async () => {
-                const buffer = await getAndClearRapidBuffer(message.from);
-                pendingTimeouts.delete(message.from);
-                
-                if (buffer && buffer.messageCount > 0) {
-                  console.log(`⚡ [RAPID] ${RAPID_SEQUENCE_SILENCE_MS}ms de silêncio. Processando ${buffer.messageCount} mensagens concatenadas`);
-                  await processMessageDirect(message.from, buffer.concatenatedText, 'text-batch');
-                }
-              }, RAPID_SEQUENCE_SILENCE_MS);
-              
-              pendingTimeouts.set(message.from, timeoutId);
-            } else {
-              // Primeira mensagem - processar direto SEM delay
-              console.log(`📨 [DIRECT] Primeira mensagem. Processando imediatamente (0ms delay)`);
-              await processMessageDirect(message.from, message.text.body, 'text');
-            }
-            
-          } catch (error) {
-            console.error('❌ [B2][DEBUG] Error processing message:', error);
-            console.error('❌ [B2][DEBUG] Error stack:', error?.stack);
-            
-            try {
-              await sendWhatsAppMessage(message.from, 
-                'Ops! Tive um problema aqui. 😅\n\nTenta de novo? Se continuar, melhor falar com o suporte!'
-              );
-            } catch (sendError) {
-              console.error('❌ Erro ao enviar mensagem de erro:', sendError);
-            }
-          }
-        } else if (message.type === 'audio' || message.type === 'voice') {
-          console.log(`🎤 [AUDIO] Recebida mensagem de áudio de ${message.from}`);
-          
-          try {
-            // Fast path para testes
-            if (message.id?.includes('test_') || process.env.WEBHOOK_DRY_RUN === '1') {
-              console.log('🧪 [AUDIO][DEBUG] Dry-run/test payload detected. Skipping audio processing.');
-              continue;
-            }
-
-            // Verificar usuário primeiro
-            const user = await getUserByPhone(message.from);
-            if (!user) {
-              console.log('❌ [AUDIO] User not found for phone:', message.from);
-              await sendWhatsAppMessage(message.from, 
-                'Opa! Não consegui te identificar aqui. 🤔\n\nVocê já fez parte de uma organização no MeuAzulão? Se sim, verifica se teu número está cadastrado direitinho!'
-              );
-              continue;
-            }
-
-            // Extrair media_id
-            const mediaId = message.audio?.id || message.voice?.id;
-            if (!mediaId) {
-              console.warn('⚠️ [AUDIO] Media ID não encontrado na mensagem');
-              continue;
-            }
-            
-            console.log('🎤 [AUDIO] Media ID:', mediaId);
-
-            // Obter URL de download
-            console.log('🎤 [AUDIO] Obtendo URL de download...');
-            const audioUrl = await getMediaUrl(mediaId);
-
-            // Transcrever com Whisper
-            console.log('🎤 [AUDIO] Transcrevendo com Whisper...');
-            const { default: OpenAIService } = await import('../services/openaiService.js');
-            const openaiService = new OpenAIService();
-            const transcription = await openaiService.transcribeAudio(audioUrl, process.env.WHATSAPP_TOKEN);
-            
-            if (!transcription || transcription.trim().length === 0) {
-              throw new Error('Transcrição vazia ou inválida');
-            }
-            
-            console.log('✅ [AUDIO] Transcrição:', `"${transcription}"`);
-
-            // Sistema híbrido: detectar sequência rápida
-            const rapidCheck = await checkRapidSequence(message.from);
-            
-            // Adicionar transcrição ao buffer
-            const bufferSize = await addToRapidBuffer(message.from, transcription, 'audio');
-            
-            // Cancelar timeout anterior se existir
-            if (pendingTimeouts.has(message.from)) {
-              clearTimeout(pendingTimeouts.get(message.from));
-              console.log(`⚡ [RAPID-AUDIO] Timeout anterior cancelado. Novo áudio recebido.`);
-            }
-            
-            if (rapidCheck.shouldBuffer || bufferSize > 1) {
-              // Há buffer - agendar processamento após silêncio
-              console.log(`⚡ [RAPID-AUDIO] Transcrição adicionada ao buffer. Total: ${bufferSize}. Aguardando ${RAPID_SEQUENCE_SILENCE_MS}ms de silêncio...`);
-              
-              const timeoutId = setTimeout(async () => {
-                const buffer = await getAndClearRapidBuffer(message.from);
-                pendingTimeouts.delete(message.from);
-                
-                if (buffer && buffer.messageCount > 0) {
-                  console.log(`⚡ [RAPID-AUDIO] ${RAPID_SEQUENCE_SILENCE_MS}ms de silêncio. Processando ${buffer.messageCount} áudios concatenados`);
-                  await processMessageDirect(message.from, buffer.concatenatedText, 'audio-batch');
-                }
-              }, RAPID_SEQUENCE_SILENCE_MS);
-              
-              pendingTimeouts.set(message.from, timeoutId);
-            } else {
-              // Primeiro áudio - processar direto SEM delay
-              console.log(`📨 [DIRECT-AUDIO] Primeiro áudio. Processando imediatamente (0ms delay)`);
-              await processMessageDirect(message.from, transcription, 'audio');
-            }
-
-          } catch (audioError) {
-            console.error('❌ [AUDIO][DEBUG] Error processing audio:', audioError);
-            console.error('❌ [AUDIO][DEBUG] Error stack:', audioError?.stack);
-            
-            // Enviar mensagem de erro variada
-            try {
-              const errorMessages = [
-                'Ops! Não consegui entender o áudio. 😅\n\nPode repetir ou enviar por texto?',
-                'Eita, não deu pra entender o áudio. 😅\n\nTenta de novo ou manda por texto?',
-                'Poxa, não consegui processar o áudio. 😅\n\nRepete ou manda por texto?',
-                'Hmm, não entendi o áudio. 😅\n\nPode repetir ou escrever?',
-                'Opa, não consegui entender o que você falou. 😅\n\nRepete ou manda por texto?',
-                'Eita, não consegui processar o áudio. 😅\n\nPode repetir ou enviar por texto?',
-                'Poxa, não deu certo com o áudio. 😅\n\nTenta de novo ou manda por texto?'
-              ];
-              
-              const errorMessage = pickVariation(errorMessages, message.from);
-              await sendWhatsAppMessage(message.from, errorMessage);
-            } catch (sendError) {
-              console.error('❌ [AUDIO] Erro ao enviar mensagem de erro:', sendError);
-            }
-          }
-        }
-      }
-    } else {
-      console.log('🔄 [B1][DEBUG] No messages found in value');
-    }
-
-    // Process status updates
-    if (value?.statuses) {
-      for (const status of value.statuses) {
-        console.log(`📊 [B1] Message status: ${status.status} for ${status.id}`);
-      }
-    }
-
-  } catch (error) {
-    console.error('❌ [B1] Error processing webhook:', error);
-    console.error('❌ [B1] Error stack:', error?.stack);
-  }
-  console.log('🔄 [B1][DEBUG] processWebhook completed');
-}
-
-export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-
-    if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-      return res.status(200).send(challenge);
-    }
-    return res.status(403).send('Forbidden');
-  }
-
-  if (req.method === 'POST') {
-    console.log('🚀 [B2][WEBHOOK] POST received - VERSION B2 (CONSOLIDATED ZulAssistant)');
-    try {
-      console.log('📩 [B2] Received webhook');
-      await processWebhook(req.body);
-      console.log('✅ [B2] Processing completed');
-      return res.status(200).send('OK');
-    } catch (error) {
-      console.error('❌ [B1] Webhook error:', error);
-      console.error('❌ [B1] Error stack:', error?.stack);
-      return res.status(500).send('Error');
-    }
-  }
-
-  return res.status(405).send('Method Not Allowed');
-}
-
-
+export default createHandler();
