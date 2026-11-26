@@ -11,8 +11,9 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 const HTML_LANG = { en: 'en', pt: 'pt-BR', es: 'es' };
 
 export default function Document(props) {
-  // Public pages pass their language in pageProps; others keep pt-BR for now.
-  const lang = HTML_LANG[props?.__NEXT_DATA__?.props?.pageProps?.lang] || 'pt-BR';
+  // Public pages pass their language in pageProps; the rest use the locale _app resolved.
+  const data = props?.__NEXT_DATA__?.props || {};
+  const lang = HTML_LANG[data.pageProps?.lang] || HTML_LANG[data.i18n?.language] || 'pt-BR';
   return (
     <Html lang={lang}>
       <Head>
