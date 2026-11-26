@@ -1,4 +1,4 @@
-# MeuAzulão: estado do app (26/11/2026)
+# MeuAzulão: estado do app (26/11/2026, atualizado à tarde)
 
 Auditoria feita no branch `claude/project-thread-ov5j5l`, a partir da `main` em `469b1df`.
 Plano de produto: doc "MeuAzulão: plano de produto e lançamento".
@@ -39,3 +39,13 @@ Plano de produto: doc "MeuAzulão: plano de produto e lançamento".
 - `@fintrack/shared/i18n`: `t()`, EN/PT/ES, moeda pelo país, `formatMoney`, `formatDate`, `parseMoney`; o `formatCurrency` antigo passou a seguir a moeda e o idioma do usuário. Teste de paridade garante que toda chave existe nos 3 idiomas.
 - `@fintrack/shared/config`: flags de lançamento (`investments: false`, `paywall: false`, ...) e `zulChatLink()` para os botões "Registrar no WhatsApp".
 - Mobile: `I18nProvider` / `useI18n()` no `App.js`.
+
+## Feito no branch até agora
+
+- **Segurança da API:** todas as rotas exigem login ou segredo; ids vêm do token; exclusão de conta só apaga a própria conta (web e app usam `POST /api/account/delete`).
+- **Zul:** núcleo novo sem a Assistants API (Chat Completions com ferramentas), EN/PT/ES, áudio e foto, webhook com assinatura, envio do código de login por WhatsApp. 124 testes.
+- **Web:** painel e landing em EN/PT/ES, moeda e datas do usuário, "pode gastar X por dia", botões do WhatsApp, login por código, privacidade, termos, página pública de exclusão, PWA.
+- **App:** tudo traduzido, home nova, login por código com e-mail de reserva, onboarding de 2 passos, Investimentos escondido por flag, exclusão de conta completa, configuração das lojas e manifesto de privacidade do iOS. 164 testes.
+- **Lojas:** iOS e Android para produção na mesma data (contas de empresa). Textos e respostas em `STORES.md`.
+
+O que depende do Felipe: `CHECKLIST_FELIPE.md`.
