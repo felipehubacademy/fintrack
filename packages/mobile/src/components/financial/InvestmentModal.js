@@ -9,41 +9,37 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView } from 'react-native-gesture-handler';
-import { X, TrendingUp, Briefcase, Landmark, BarChart3, Bitcoin, Wallet } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
+import { useI18n } from '../../contexts/I18nContext';
+import { SELECTABLE_INVESTMENT_TYPES as INVESTMENT_TYPES } from './investmentTypes';
+import {
+  amountDecimalSeparator,
+  sanitizeAmountInput,
+  formatAmountInput,
+  parseAmountInput,
+} from './amountInput';
 
 const { height } = Dimensions.get('window');
 
-const INVESTMENT_TYPES = [
-  { value: 'stocks', label: 'Ações', Icon: TrendingUp, color: '#10B981' },
-  { value: 'funds', label: 'Fundos', Icon: Briefcase, color: '#6366F1' },
-  { value: 'treasury', label: 'Tesouro Direto', Icon: Landmark, color: '#1A6AFF' },
-  { value: 'fixed_income', label: 'Renda Fixa', Icon: BarChart3, color: '#F59E0B' },
-  { value: 'crypto', label: 'Criptomoedas', Icon: Bitcoin, color: '#F97316' },
-  { value: 'other', label: 'Outros', Icon: Wallet, color: '#78716C' },
-];
-
-// Funções de formatação de moeda
-const parseCurrencyInput = (value) => {
-  if (!value) return 0;
-  const cleaned = value.replace(/[^\d,]/g, '').replace(',', '.');
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
-};
-
+const parseCurrencyInput = (value) => parseAmountInput(value);
 const formatCurrencyInput = (value) => {
-  if (!value || value === 0) return '';
   const num = typeof value === 'string' ? parseCurrencyInput(value) : value;
-  if (num === 0) return '';
-  return num.toFixed(2).replace('.', ',');
+  return num ? formatAmountInput(num) : '';
+};
+// Quantities can have many decimals (crypto), so only normalise the decimal comma.
+const parseQuantity = (value) => {
+  const parsed = parseFloat(String(value).replace(/\s/g, '').replace(',', '.'));
+  return Number.isNaN(parsed) ? null : parsed;
 };
 
 export function InvestmentModal({ visible, onClose, onSave, investment = null, goals = [] }) {
   const { showToast } = useToast();
+  const { t, currencySymbol } = useI18n();
   const insets = useSafeAreaInsets();
   const [formData, setFormData] = useState({
     name: '',
@@ -92,30 +88,30 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
     const newErrors = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Nome/Código é obrigatório';
+      newErrors.name = t('investments.form.nameRequired');
     }
 
     if (!formData.invested_amount) {
-      newErrors.invested_amount = 'Valor investido é obrigatório';
+      newErrors.invested_amount = t('investments.form.investedRequired');
     } else {
       const amount = parseCurrencyInput(formData.invested_amount);
       if (amount <= 0) {
-        newErrors.invested_amount = 'Valor deve ser maior que zero';
+        newErrors.invested_amount = t('finances.form.amountPositive');
       }
     }
 
     if (!formData.purchase_date) {
-      newErrors.purchase_date = 'Data da compra é obrigatória';
+      newErrors.purchase_date = t('investments.form.dateRequired');
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   const handleSubmit = async () => {
-    if (!validate()) {
-      const firstError = Object.values(errors)[0];
-      showToast(firstError, 'warning');
+    const newErrors = validate();
+    if (Object.keys(newErrors).length > 0) {
+      showToast(Object.values(newErrors)[0], 'warning');
       return;
     }
 
@@ -127,7 +123,7 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
         broker: formData.broker.trim() || null,
         invested_amount: parseCurrencyInput(formData.invested_amount),
         current_value: formData.current_value ? parseCurrencyInput(formData.current_value) : null,
-        quantity: formData.quantity ? parseFloat(formData.quantity) : null,
+        quantity: formData.quantity ? parseQuantity(formData.quantity) : null,
         purchase_date: formData.purchase_date,
         goal_id: formData.goal_id || null,
         notes: formData.notes.trim() || null,
@@ -138,15 +134,14 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
       onClose();
     } catch (error) {
       console.error('Erro ao salvar investimento:', error);
-      showToast('Erro ao salvar investimento: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('investments.saveError'), 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleCurrencyChange = (field, value) => {
-    const cleaned = value.replace(/[^\d,]/g, '');
-    setFormData(prev => ({ ...prev, [field]: cleaned }));
+    setFormData(prev => ({ ...prev, [field]: sanitizeAmountInput(value) }));
   };
 
   const handleCurrencyBlur = (field) => {
@@ -177,8 +172,8 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
         >
           {/* Header */}
           <View style={styles.header}>
-            <Title2 weight="bold">{investment ? 'Editar Investimento' : 'Novo Investimento'}</Title2>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Title2 weight="bold">{investment ? t('investments.form.editTitle') : t('investments.form.newTitle')}</Title2>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -195,7 +190,7 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
             {/* Tipo de Investimento */}
             <View style={styles.field}>
               <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[2] }}>
-                Tipo de Investimento *
+                {t('investments.form.type')}
               </Caption>
               <View style={styles.typeGrid}>
                 {INVESTMENT_TYPES.map(type => (
@@ -203,12 +198,15 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
                     key={type.value}
                     style={[
                       styles.typeButton,
-                      formData.type === type.value && { borderColor: colors.brand.primary, backgroundColor: colors.brand.bg }
+                      formData.type === type.value && { borderColor: colors.brand.primary, backgroundColor: colors.info.bg }
                     ]}
                     onPress={() => setFormData(prev => ({ ...prev, type: type.value }))}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: formData.type === type.value }}
+                    accessibilityLabel={t(`investments.types.${type.value}`)}
                   >
                     <type.Icon size={24} color={type.color} style={{ marginBottom: spacing[0.5] }} />
-                    <Caption numberOfLines={2} style={{ textAlign: 'center' }}>{type.label}</Caption>
+                    <Caption numberOfLines={2} style={{ textAlign: 'center' }}>{t(`investments.types.${type.value}`)}</Caption>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -217,10 +215,10 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
             {/* Nome/Código */}
             <View style={styles.field}>
               <Input
-                label="Nome/Código do Investimento *"
+                label={t('investments.form.name')}
                 value={formData.name}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
-                placeholder="Ex: PETR4, Tesouro Selic 2027, Bitcoin"
+                placeholder={t('investments.form.namePlaceholder')}
                 error={errors.name}
               />
             </View>
@@ -228,10 +226,10 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
             {/* Corretora/Banco */}
             <View style={styles.field}>
               <Input
-                label="Corretora/Banco"
+                label={t('investments.form.broker')}
                 value={formData.broker}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, broker: text }))}
-                placeholder="Ex: XP Investimentos, Nubank, Rico"
+                placeholder={t('investments.form.brokerPlaceholder')}
               />
             </View>
 
@@ -239,17 +237,18 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
             <View style={styles.row}>
               <View style={styles.halfField}>
                 <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                  Valor Investido (R$) *
+                  {t('investments.form.invested')}
                 </Caption>
                 <View style={styles.currencyInput}>
-                  <Caption style={{ marginRight: spacing[1] }}>R$</Caption>
+                  <Caption style={{ marginRight: spacing[1] }}>{currencySymbol()}</Caption>
                   <TextInput
                     style={[styles.amountInput, errors.invested_amount && { borderColor: colors.error.main }]}
                     value={formData.invested_amount}
                     onChangeText={(text) => handleCurrencyChange('invested_amount', text)}
                     onBlur={() => handleCurrencyBlur('invested_amount')}
-                    placeholder="0,00"
-                    keyboardType="numeric"
+                    placeholder={`0${amountDecimalSeparator()}00`}
+                    accessibilityLabel={t('investments.form.invested')}
+                    keyboardType="decimal-pad"
                   />
                 </View>
                 {errors.invested_amount && (
@@ -261,21 +260,22 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
 
               <View style={styles.halfField}>
                 <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                  Valor Atual (R$)
+                  {t('investments.form.current')}
                 </Caption>
                 <View style={styles.currencyInput}>
-                  <Caption style={{ marginRight: spacing[1] }}>R$</Caption>
+                  <Caption style={{ marginRight: spacing[1] }}>{currencySymbol()}</Caption>
                   <TextInput
                     style={styles.amountInput}
                     value={formData.current_value}
                     onChangeText={(text) => handleCurrencyChange('current_value', text)}
                     onBlur={() => handleCurrencyBlur('current_value')}
-                    placeholder="0,00"
-                    keyboardType="numeric"
+                    placeholder={`0${amountDecimalSeparator()}00`}
+                    accessibilityLabel={t('investments.form.current')}
+                    keyboardType="decimal-pad"
                   />
                 </View>
                 <Caption color="secondary" style={{ marginTop: spacing[0.5], fontSize: 11 }}>
-                  Deixe em branco se não souber
+                  {t('investments.form.currentHint')}
                 </Caption>
               </View>
             </View>
@@ -284,7 +284,7 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
             <View style={styles.row}>
               <View style={styles.halfField}>
                 <Input
-                  label="Quantidade (cotas/ações)"
+                  label={t('investments.form.quantity')}
                   value={formData.quantity}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, quantity: text.replace(/[^0-9.,]/g, '') }))}
                   placeholder="0"
@@ -294,12 +294,13 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
 
               <View style={styles.halfField}>
                 <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                  Data da Compra *
+                  {t('investments.form.date')}
                 </Caption>
                 <Input
                   value={formData.purchase_date}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, purchase_date: text }))}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t('finances.form.datePlaceholder')}
+                  accessibilityLabel={t('investments.form.date')}
                   error={errors.purchase_date}
                 />
               </View>
@@ -308,13 +309,14 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
             {/* Observações */}
             <View style={styles.field}>
               <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                Observações
+                {t('bills.form.notes')}
               </Caption>
               <TextInput
                 style={styles.textArea}
                 value={formData.notes}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, notes: text }))}
-                placeholder="Notas adicionais sobre este investimento..."
+                placeholder={t('investments.form.notesPlaceholder')}
+                accessibilityLabel={t('bills.form.notes')}
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
@@ -325,14 +327,14 @@ export function InvestmentModal({ visible, onClose, onSave, investment = null, g
           {/* Footer */}
           <View style={styles.footer}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               disabled={isSubmitting}
               style={{ flex: 1, marginRight: spacing[2] }}
             />
             <Button
-              title={isSubmitting ? 'Salvando...' : (investment ? 'Atualizar' : 'Adicionar')}
+              title={isSubmitting ? t('investments.form.saving') : (investment ? t('common.save') : t('bills.form.add'))}
               onPress={handleSubmit}
               disabled={isSubmitting || !isFormValid}
               style={{ flex: 1 }}

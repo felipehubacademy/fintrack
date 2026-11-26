@@ -20,19 +20,12 @@ import { useOrganization } from '../hooks/useOrganization';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { useToast } from '../components/ui/Toast';
 import { supabase } from '../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
-
-const INVESTMENT_TYPES = {
-  fixed_income: { label: 'Renda Fixa', color: colors.brand.primary },
-  stocks: { label: 'Ações', color: colors.success.main },
-  crypto: { label: 'Cripto', color: colors.warning.main },
-  real_estate: { label: 'Imóveis', color: colors.info.main },
-  funds: { label: 'Fundos', color: colors.brand.secondary },
-  other: { label: 'Outros', color: colors.text.secondary },
-};
+import { useI18n } from '../contexts/I18nContext';
+import { investmentTypeInfo, investmentTypeLabel } from '../components/financial/investmentTypes';
 
 export default function InvestmentsScreen() {
   const { colors } = useTheme();
+  const { t, formatMoney: formatCurrency, formatPercent } = useI18n();
   const { organization, user, loading: orgLoading } = useOrganization();
   const { confirm } = useConfirmation();
   const { showToast } = useToast();
@@ -75,7 +68,9 @@ export default function InvestmentsScreen() {
       });
 
       setInvestments(investmentsWithReturn);
-    } catch (error) {} finally {
+    } catch (error) {
+      showToast(t('investments.loadError'), 'error');
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -96,7 +91,7 @@ export default function InvestmentsScreen() {
           .eq('id', editingInvestment.id);
 
         if (error) throw error;
-        showToast('Investimento atualizado com sucesso!', 'success');
+        showToast(t('investments.updated'), 'success');
       } else {
         // Criar
         const { error } = await supabase
@@ -108,14 +103,14 @@ export default function InvestmentsScreen() {
           });
 
         if (error) throw error;
-        showToast('Investimento criado com sucesso!', 'success');
+        showToast(t('investments.created'), 'success');
       }
 
       await fetchInvestments();
       setShowInvestmentModal(false);
       setEditingInvestment(null);
     } catch (error) {
-      showToast('Erro ao salvar investimento: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('investments.saveError'), 'error');
     }
   };
 
@@ -131,9 +126,10 @@ export default function InvestmentsScreen() {
 
   const handleDeleteInvestment = async (investment) => {
     const confirmed = await confirm({
-      title: 'Excluir investimento',
-      message: `Tem certeza que deseja excluir "${investment.name}"?`,
+      title: t('investments.deleteTitle'),
+      message: t('investments.deleteMessage', { name: investment.name }),
       type: 'danger',
+      confirmText: t('common.delete'),
     });
 
     if (!confirmed) return;
@@ -147,9 +143,9 @@ export default function InvestmentsScreen() {
       if (error) throw error;
 
       await fetchInvestments();
-      showToast('Investimento excluído com sucesso!', 'success');
+      showToast(t('investments.deleted'), 'success');
     } catch (error) {
-      showToast('Erro ao excluir investimento: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('investments.deleteError'), 'error');
     }
   };
 
@@ -171,20 +167,27 @@ export default function InvestmentsScreen() {
   };
 
   if (orgLoading || loading) {
-    return <LoadingLogo fullScreen message="Carregando investimentos..." />;
+    return <LoadingLogo fullScreen message={t('common.loading')} />;
   }
 
   const totalReturns = getTotalReturns();
   const totalReturnPercentage = getTotalReturnPercentage();
+  const signedMoney = (value) => `${value >= 0 ? '+' : ''}${formatCurrency(value)}`;
+  const signedPercent = (value) => `${value >= 0 ? '+' : ''}${formatPercent(value / 100, { maximumFractionDigits: 2 })}`;
 
   return (
     <View style={styles.container}>
       <ScreenHeader
         user={user}
-        title="Investimentos"
+        title={t('investments.title')}
         showLogo={true}
         rightIcon={
-          <TouchableOpacity onPress={handleAddInvestment} style={{ padding: spacing[1] }}>
+          <TouchableOpacity
+            onPress={handleAddInvestment}
+            style={{ padding: spacing[1] }}
+            accessibilityRole="button"
+            accessibilityLabel={t('investments.add')}
+          >
             <Plus size={24} color={colors.text.secondary} />
           </TouchableOpacity>
         }
@@ -204,12 +207,12 @@ export default function InvestmentsScreen() {
             <Card style={styles.summaryCard}>
               <View style={styles.summaryRow}>
                 <View style={{ flex: 1 }}>
-                  <Footnote color="secondary">Total Investido</Footnote>
+                  <Footnote color="secondary">{t('investments.totalInvested')}</Footnote>
                   <Headline weight="bold" style={{ marginTop: spacing[0.5] }}>
                     {formatCurrency(getTotalInvested())}
                   </Headline>
                 </View>
-                <View style={[styles.iconBadge, { backgroundColor: colors.brand.bg }]}>
+                <View style={[styles.iconBadge, { backgroundColor: colors.info.bg }]}>
                   <DollarSign size={20} color={colors.brand.primary} />
                 </View>
               </View>
@@ -218,7 +221,7 @@ export default function InvestmentsScreen() {
             <Card style={styles.summaryCard}>
               <View style={styles.summaryRow}>
                 <View style={{ flex: 1 }}>
-                  <Footnote color="secondary">Valor Atual</Footnote>
+                  <Footnote color="secondary">{t('investments.currentValue')}</Footnote>
                   <Headline weight="bold" style={{ marginTop: spacing[0.5] }}>
                     {formatCurrency(getTotalCurrentValue())}
                   </Headline>
@@ -234,7 +237,7 @@ export default function InvestmentsScreen() {
                 </View>
               </View>
               <View style={{ marginTop: spacing[1.5] }}>
-                <Footnote color="secondary">Rentabilidade</Footnote>
+                <Footnote color="secondary">{t('investments.returns')}</Footnote>
                 <Callout 
                   weight="bold" 
                   style={{ 
@@ -242,7 +245,7 @@ export default function InvestmentsScreen() {
                     marginTop: spacing[0.5],
                   }}
                 >
-                  {totalReturns >= 0 ? '+' : ''}{formatCurrency(totalReturns)} ({totalReturnPercentage >= 0 ? '+' : ''}{totalReturnPercentage.toFixed(2)}%)
+                  {signedMoney(totalReturns)} ({signedPercent(totalReturnPercentage)})
                 </Callout>
               </View>
             </Card>
@@ -252,7 +255,9 @@ export default function InvestmentsScreen() {
         {/* Investments List */}
         {investments.length > 0 ? (
           investments.map((investment) => {
-            const typeInfo = INVESTMENT_TYPES[investment.type] || INVESTMENT_TYPES.other;
+            const typeInfo = investmentTypeInfo(investment.type);
+            const typeLabel = investmentTypeLabel(investment.type, t);
+            const institution = investment.broker || investment.institution;
             const isPositive = investment.returns >= 0;
             
             return (
@@ -268,13 +273,13 @@ export default function InvestmentsScreen() {
                       </Callout>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing[0.5] }}>
                         <Badge style={{ backgroundColor: `${typeInfo.color}20`, marginRight: spacing[1] }}>
-                          <Caption style={{ color: typeInfo.color }}>{typeInfo.label}</Caption>
+                          <Caption style={{ color: typeInfo.color }}>{typeLabel}</Caption>
                         </Badge>
-                        {investment.institution && (
+                        {institution ? (
                           <Caption color="secondary" numberOfLines={1}>
-                            {investment.institution}
+                            {institution}
                           </Caption>
-                        )}
+                        ) : null}
                       </View>
                     </View>
                   </View>
@@ -282,13 +287,13 @@ export default function InvestmentsScreen() {
 
                 <View style={styles.investmentAmounts}>
                   <View>
-                    <Footnote color="secondary">Investido</Footnote>
+                    <Footnote color="secondary">{t('investments.invested')}</Footnote>
                     <Callout weight="medium">
                       {formatCurrency(investment.invested_amount)}
                     </Callout>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Footnote color="secondary">Valor Atual</Footnote>
+                    <Footnote color="secondary">{t('investments.currentValue')}</Footnote>
                     <Callout weight="semiBold">
                       {formatCurrency(investment.current_value)}
                     </Callout>
@@ -300,8 +305,11 @@ export default function InvestmentsScreen() {
                     styles.returnsBadge,
                     { backgroundColor: isPositive ? colors.success.bg : colors.error.bg }
                   ]}>
-                    <Footnote style={{ color: isPositive ? colors.success.main : colors.error.main }}>
-                      {isPositive ? '▲' : '▼'} {isPositive ? '+' : ''}{formatCurrency(investment.returns)} ({isPositive ? '+' : ''}{investment.returnPercentage.toFixed(2)}%)
+                    <Footnote
+                      style={{ color: isPositive ? colors.success.main : colors.error.main }}
+                      accessibilityLabel={t(isPositive ? 'investments.upA11y' : 'investments.downA11y', { amount: formatCurrency(Math.abs(investment.returns)), percent: formatPercent(Math.abs(investment.returnPercentage) / 100, { maximumFractionDigits: 2 }) })}
+                    >
+                      {isPositive ? '▲' : '▼'} {signedMoney(investment.returns)} ({signedPercent(investment.returnPercentage)})
                     </Footnote>
                   </View>
                 </View>
@@ -311,19 +319,23 @@ export default function InvestmentsScreen() {
                   <TouchableOpacity
                     style={styles.quickActionButton}
                     onPress={() => handleEditInvestment(investment)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('investments.editA11y', { name: investment.name })}
                   >
                     <Edit size={16} color={colors.text.secondary} />
                     <Caption style={{ color: colors.text.secondary, marginLeft: spacing[0.5] }}>
-                      Editar
+                      {t('common.edit')}
                     </Caption>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.quickActionButton}
                     onPress={() => handleDeleteInvestment(investment)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('investments.deleteA11y', { name: investment.name })}
                   >
                     <Trash2 size={16} color={colors.error.main} />
                     <Caption style={{ color: colors.error.main, marginLeft: spacing[0.5] }}>
-                      Excluir
+                      {t('common.delete')}
                     </Caption>
                   </TouchableOpacity>
                 </View>
@@ -333,8 +345,10 @@ export default function InvestmentsScreen() {
         ) : (
           <EmptyState
             icon={<Wallet size={48} color="#AEAEB2" />}
-            title="Nenhum investimento registrado"
-            description="Adicione seus investimentos para acompanhar a rentabilidade."
+            title={t('investments.emptyTitle')}
+            description={t('investments.emptyMessage')}
+            actionLabel={t('investments.add')}
+            onAction={handleAddInvestment}
           />
         )}
 
