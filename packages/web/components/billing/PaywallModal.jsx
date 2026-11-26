@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { X, Lock } from 'lucide-react';
-import { zulChatLink } from '@fintrack/shared/config';
 import { useI18n } from '../../contexts/I18nContext';
 import { useBillingStatus } from '../../hooks/useBillingStatus';
 import PlanPrices from './PlanPrices';
@@ -66,17 +65,7 @@ export default function PaywallModal({ isOpen, onClose }) {
             {t('web.billing.notNow')}
           </button>
         </div>
-        <p className="mt-4 text-center text-sm text-ink-500">
-          {t('web.billing.cancelAnytime')}{' '}
-          <a
-            href={zulChatLink(t('web.billing.zulSubscribe'))}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-brand-500 hover:underline"
-          >
-            {t('web.billing.paywallZul')}
-          </a>
-        </p>
+        <p className="mt-4 text-center text-sm text-ink-500">{t('web.billing.cancelAnytime')}</p>
       </div>
     </div>
   );

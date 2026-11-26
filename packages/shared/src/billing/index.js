@@ -4,8 +4,9 @@
  * - Day 7: offer Plus monthly or annual (annual highlighted).
  * - Day 8, not subscribed: Zul offers the first month at the win-back price.
  *
- * Purchases go through RevenueCat: App Store and Google Play in the app,
- * RevenueCat Web Billing (Stripe) for links sent on WhatsApp and the web.
+ * Sales happen only in the stores (Felipe, 2026-11-26: "vendas somente pelas
+ * lojas"): App Store and Google Play through RevenueCat. Zul and the site
+ * send people to the app to subscribe (storeLinkFor below).
  * The subscriber is the organization (a couple shares one plan), so the
  * RevenueCat app_user_id is the organization id.
  *
@@ -86,12 +87,27 @@ export function getBillingState({ trialEndsAt, plusUntil, now = new Date() } = {
   return { status: 'expired', isPlus: false, hasAccess: false, daysLeft: 0 };
 }
 
-/**
- * RevenueCat Web Purchase Link for an organization. The base URL comes from
- * the RevenueCat dashboard (one per offering) and is passed in by the caller,
- * because bundlers only inline literal process.env reads.
- */
-export function webPurchaseLink(baseUrl, organizationId) {
-  if (!baseUrl || !organizationId) return '';
-  return `${String(baseUrl).replace(/\/+$/, '')}/${encodeURIComponent(organizationId)}`;
+export const APP_PACKAGE = 'com.meuazulao.app';
+export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${APP_PACKAGE}`;
+
+/** App Store page from the numeric Apple ID of the app ('' when unknown). */
+export function appStoreUrl(appStoreId) {
+  const id = String(appStoreId || '').replace(/\D/g, '');
+  return id ? `https://apps.apple.com/app/id${id}` : '';
+}
+
+/** 'ios' | 'android' | null from a User-Agent header. */
+export function storePlatform(userAgent) {
+  const ua = String(userAgent || '');
+  if (/android/i.test(ua)) return 'android';
+  if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+  return null;
+}
+
+/** Store page for this device, or '' (desktop, or iOS before the App Store id is set). */
+export function storeLinkFor(userAgent, { appStoreId } = {}) {
+  const platform = storePlatform(userAgent);
+  if (platform === 'android') return PLAY_STORE_URL;
+  if (platform === 'ios') return appStoreUrl(appStoreId);
+  return '';
 }

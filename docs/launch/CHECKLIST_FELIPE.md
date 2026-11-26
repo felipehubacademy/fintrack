@@ -8,7 +8,7 @@ Ordem pensada pelo que demora mais. Detalhes de cada passo em `META_SETUP.md` (W
 2. **Templates do WhatsApp:** criar os 8, começando por `codigo_login`. A aprovação costuma levar de minutos a 1 dia. (`META_SETUP.md` §9)
 3. **Trocar segredos que vazaram no git:** token do WhatsApp, `CRON_SECRET` (Vercel e GitHub Secrets) e `WHATSAPP_VERIFY_TOKEN`.
 4. **Advogado:** revisar política de privacidade e termos (`/privacy`, `/terms`). Preencher razão social e CNPJ em `packages/web/pages/privacy.jsx` (`LEGAL`).
-5. **Assinatura (decidida: 7 dias grátis, Plus mensal ou anual, oferta no dia 8):** criar a conta no RevenueCat (com Stripe para o link do WhatsApp). Os produtos nas lojas e os templates `fim_teste` e `oferta_primeiro_mes` já estão sendo criados; detalhes em `BILLING.md`.
+5. **Assinatura (decidida: 7 dias grátis, Plus mensal ou anual, oferta no dia 8):** criar a conta no RevenueCat (venda só pelas lojas, sem Stripe). Os produtos nas lojas e os templates `fim_teste` e `oferta_primeiro_mes` já estão sendo criados; detalhes em `BILLING.md`.
 5a. **Build Android para destravar as assinaturas no Play:** o Google só deixa criar assinaturas depois que um `.aab` com cobrança sobe para o app. Rodar no seu PC, no branch `claude/project-thread-ov5j5l`:
     ```
     cd packages/mobile

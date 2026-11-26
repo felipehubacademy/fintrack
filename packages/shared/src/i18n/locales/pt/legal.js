@@ -57,7 +57,6 @@ export default {
           'Sentry: recebe relatórios de erros e falhas para podermos corrigir problemas.',
           'Twilio SendGrid: envia e-mails da conta, como convites, quando você usa e-mail.',
           'RevenueCat: gerencia as assinaturas e nos informa se a sua casa tem o Plus (id da casa, produto, loja e datas).',
-          'Stripe: processa pagamentos feitos no nosso site ou por um link enviado no WhatsApp.',
           'Apple (App Store) e Google (Google Play): processam as compras feitas no app, conforme os próprios termos e políticas de privacidade.',
         ],
         after: [
@@ -68,7 +67,7 @@ export default {
       {
         title: '5. Transferência internacional',
         body: [
-          'Alguns prestadores (como Meta, OpenAI, Vercel, Sentry, RevenueCat e Stripe) podem tratar dados fora do Brasil, inclusive nos Estados Unidos. Essas transferências seguem o art. 33 da LGPD, com base em cláusulas contratuais padrão e compromissos de proteção de dados equivalentes.',
+          'Alguns prestadores (como Meta, OpenAI, Vercel, Sentry e RevenueCat) podem tratar dados fora do Brasil, inclusive nos Estados Unidos. Essas transferências seguem o art. 33 da LGPD, com base em cláusulas contratuais padrão e compromissos de proteção de dados equivalentes.',
         ],
       },
       {
@@ -196,12 +195,12 @@ export default {
         title: '6. Preço, teste grátis e assinatura',
         items: [
           'Teste grátis: toda conta nova tem 7 dias de MeuAzulão grátis, sem cartão. Nada é cobrado quando o teste termina. Para continuar registrando, você escolhe se quer assinar o MeuAzulão Plus.',
-          'Planos: o Plus é vendido por mês ou por ano. O preço, o período de cobrança e a moeda sempre aparecem antes de você confirmar a compra. Os preços podem variar conforme a loja (App Store, Google Play ou nosso site) e o país, e podem incluir impostos.',
+          'Planos: o Plus é vendido por mês ou por ano. O preço, o período de cobrança e a moeda sempre aparecem antes de você confirmar a compra. Os preços podem variar conforme a loja (App Store ou Google Play) e o país, e podem incluir impostos.',
           'Renovação automática: o Plus é renovado automaticamente ao fim de cada período, pelo preço vigente, até você cancelar. Se o preço mudar, nós ou a loja avisaremos antes, como exigem as regras da loja e a lei.',
-          'Cancelamento: você pode cancelar quando quiser e continua com o Plus até o fim do período já pago. Se assinou pelo app no iPhone ou Android, cancele nos ajustes de assinatura da App Store ou do Google Play (não conseguimos cancelar assinaturas das lojas por você). Se pagou no nosso site ou por um link enviado no WhatsApp, cancele pelo link “Gerenciar assinatura” do e-mail de recibo ou escreva para {{contactEmail}}.',
-          'Direito de arrependimento: se você comprou o Plus pela internet, pode desistir em até 7 dias da compra e receber o valor integral de volta (Código de Defesa do Consumidor, art. 49). Para compras no nosso site, escreva para {{contactEmail}}. Para compras na App Store ou no Google Play, peça o reembolso à loja, que processa esses pagamentos; se precisar de ajuda, fale com a gente.',
+          'Cancelamento: você pode cancelar quando quiser e continua com o Plus até o fim do período já pago. O Plus é vendido só pelo app, na App Store e no Google Play. Para cancelar, use os ajustes de assinatura da loja onde você assinou (não conseguimos cancelar assinaturas das lojas por você).',
+          'Direito de arrependimento: se você comprou o Plus pela internet, pode desistir em até 7 dias da compra e receber o valor integral de volta (Código de Defesa do Consumidor, art. 49). Peça o reembolso à App Store ou ao Google Play, que processam esses pagamentos; se precisar de ajuda, fale com a gente.',
           'Fora desses casos, os reembolsos seguem as regras da loja onde você comprou e as leis do seu país.',
-          'Os pagamentos no nosso site são processados pela Stripe, por meio da RevenueCat. Nunca vemos nem guardamos o número completo do seu cartão.',
+          'Os pagamentos são processados pela App Store ou pelo Google Play. Nunca vemos nem guardamos os dados do seu cartão.',
           'Se você não assinar depois do teste, seus dados não são apagados: você continua vendo tudo, mas não consegue registrar novos lançamentos até assinar. Você pode excluir sua conta a qualquer momento (seção 10).',
         ],
       },

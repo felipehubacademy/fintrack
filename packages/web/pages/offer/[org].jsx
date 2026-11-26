@@ -1,7 +1,7 @@
-import PaymentsSoonPage from '../../components/billing/PaymentsSoonPage';
+import GetAppPage from '../../components/billing/GetAppPage';
 import { subscribeServerSideProps } from '../../lib/billingPages';
 
-// Redirects to the RevenueCat Web Purchase Link (see lib/billingPages.js).
-export default PaymentsSoonPage;
+// Sends phones to their store; computers see the store buttons (lib/billingPages.js).
+export default GetAppPage;
 
 export const getServerSideProps = subscribeServerSideProps('offer', ['en']);

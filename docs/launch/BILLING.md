@@ -1,6 +1,6 @@
 # Assinatura do MeuAzulão: produtos, preços, templates e webhooks
 
-Modelo aprovado pelo Felipe em 26/11/2026:
+Modelo aprovado pelo Felipe em 26/11/2026. Venda **só pelas lojas** (Felipe, 26/11: "vendas somente pelas lojas, sem dor de cabeça para gerenciarmos"): sem Stripe e sem link de pagamento.
 
 1. **Entrada:** 7 dias grátis, sem cartão, começando no WhatsApp só com o número.
 2. **Dia 7:** Plus mensal ou anual, com o anual em destaque.
@@ -10,11 +10,11 @@ Os valores abaixo são os mesmos do código (`packages/shared/src/billing/index.
 
 ## 1. Como a cobrança funciona
 
-- **RevenueCat** centraliza tudo: App Store e Google Play dentro do app, e **RevenueCat Web Billing** (Stripe, cartão e Pix) para os links enviados no WhatsApp e no site.
+- **RevenueCat** centraliza as compras da App Store e do Google Play, feitas dentro do app.
 - Quem assina é a **organização** (o casal divide o plano). O `app_user_id` no RevenueCat é o id da organização.
 - Entitlement: `plus`. Offerings: `default` (mensal e anual) e `winback` (primeiro mês com desconto).
 - O RevenueCat avisa o nosso servidor por webhook; o servidor grava `plus_until` na organização. App, web e Zul leem só isso.
-- Dentro do app iOS e Android a compra é sempre pela loja. O link de pagamento na web aparece só no WhatsApp e no site.
+- Quem usa só o WhatsApp recebe do Zul o link `meuazulao.com.br/assinar/<org>` (dia 7) ou `/oferta/<org>` (dia 8). No celular, o site manda direto para a página do app na App Store ou no Google Play; no computador, mostra os dois botões. A pessoa entra no app com o mesmo número do WhatsApp e assina na tela do Plus, que mostra a oferta do primeiro mês para quem já passou do teste.
 
 ## 2. Produtos (mesmos ids nas duas lojas)
 
@@ -33,7 +33,6 @@ Os valores abaixo são os mesmos do código (`packages/shared/src/billing/index.
 |---|---|---|
 | App Store | Oferta promocional ou código de oferta no produto mensal: 1 mês, "Pagar adiantado" pelo preço da tabela | `first_month_winback` |
 | Google Play | Oferta no plano mensal: fase de preço introdutório de 1 mês, elegibilidade "desenvolvedor determina" | `first_month_winback` |
-| Web (Stripe) | Offering `winback` no RevenueCat com preço do primeiro mês | `first_month_winback` |
 
 ## 3. Preços por mercado
 
@@ -48,7 +47,7 @@ Argentina, Chile e Peru pagam em USD (tabela de USD). Nas lojas, defina o preço
 
 ## 4. Templates do WhatsApp (Meta)
 
-Os dois entram na seção 9 do `META_SETUP.md`. Botão de URL com sufixo dinâmico: a URL base é fixa no nosso domínio e o `{{1}}` do botão recebe o id da organização. O site redireciona para o link de pagamento do RevenueCat, então o template pode ser aprovado antes de o RevenueCat existir.
+Os dois entram na seção 9 do `META_SETUP.md`. Botão de URL com sufixo dinâmico: a URL base é fixa no nosso domínio e o `{{1}}` do botão recebe o id da organização. O site redireciona o celular para a loja certa, então o template pode ser aprovado antes de o app estar publicado.
 
 Se o usuário escreveu nas últimas 24 h, o Zul manda o mesmo texto como mensagem livre, sem template.
 
@@ -56,11 +55,11 @@ Se o usuário escreveu nas últimas 24 h, o Zul manda o mesmo texto como mensage
 
 | Idioma | Corpo |
 |---|---|
-| pt_BR | `Oi, {{1}}! Seu teste grátis do MeuAzulão termina hoje. Para continuar anotando seus gastos comigo, assine o Plus por {{2}} por mês ou {{3}} por ano.` |
-| es | `¡Hola, {{1}}! Tu prueba gratis de MeuAzulão termina hoy. Para seguir anotando tus gastos conmigo, suscríbete a Plus por {{2}} al mes o {{3}} al año.` |
-| en | `Hi, {{1}}! Your MeuAzulão free trial ends today. To keep logging your expenses with me, get Plus for {{2}} a month or {{3}} a year.` |
+| pt_BR | `Oi, {{1}}! Seu teste grátis do MeuAzulão termina hoje. Para continuar anotando seus gastos comigo, baixe o app e assine o Plus por {{2}} por mês ou {{3}} por ano. Entre no app com este mesmo número.` |
+| es | `¡Hola, {{1}}! Tu prueba gratis de MeuAzulão termina hoy. Para seguir anotando tus gastos conmigo, descarga la app y suscríbete a Plus por {{2}} al mes o {{3}} al año. Entra a la app con este mismo número.` |
+| en | `Hi, {{1}}! Your MeuAzulão free trial ends today. To keep logging your expenses with me, download the app and get Plus for {{2}} a month or {{3}} a year. Sign in to the app with this same number.` |
 
-Botão de URL: **Assinar** / **Suscribirme** / **Subscribe** → `https://www.meuazulao.com.br/assinar/{{1}}`
+Botão de URL: **Baixar o app** / **Descargar la app** / **Get the app** → `https://www.meuazulao.com.br/assinar/{{1}}`
 
 | Variável | Exemplo pt_BR | Exemplo es | Exemplo en |
 |---|---|---|---|
@@ -75,9 +74,9 @@ Ative o botão de descadastro da Meta (**Parar promoções** / **Detener promoci
 
 | Idioma | Corpo |
 |---|---|
-| pt_BR | `Oi, {{1}}! Seus gastos continuam guardados aqui. Volte para o Plus pagando só {{2}} no primeiro mês. Depois fica {{3}} por mês, e você cancela quando quiser.` |
-| es | `¡Hola, {{1}}! Tus gastos siguen guardados aquí. Vuelve a Plus pagando solo {{2}} el primer mes. Después son {{3}} al mes, y cancelas cuando quieras.` |
-| en | `Hi, {{1}}! Your expenses are still saved here. Come back to Plus for just {{2}} the first month. After that it's {{3}} a month, and you can cancel anytime.` |
+| pt_BR | `Oi, {{1}}! Seus gastos continuam guardados aqui. Volte para o Plus pagando só {{2}} no primeiro mês: é só assinar pelo app, entrando com este mesmo número. Depois fica {{3}} por mês, e você cancela quando quiser.` |
+| es | `¡Hola, {{1}}! Tus gastos siguen guardados aquí. Vuelve a Plus pagando solo {{2}} el primer mes: suscríbete en la app, entrando con este mismo número. Después son {{3}} al mes, y cancelas cuando quieras.` |
+| en | `Hi, {{1}}! Your expenses are still saved here. Come back to Plus for just {{2}} the first month: subscribe in the app, signing in with this same number. After that it's {{3}} a month, and you can cancel anytime.` |
 
 Botão de URL: **Quero a oferta** / **Quiero la oferta** / **Get the offer** → `https://www.meuazulao.com.br/oferta/{{1}}`
 
@@ -95,8 +94,8 @@ A Meta pode reclassificar `fim_teste` como Marketing. Se isso acontecer, ele con
 | O quê | URL | Segredo |
 |---|---|---|
 | RevenueCat → nosso servidor | `https://www.meuazulao.com.br/api/billing/revenuecat-webhook` | Header `Authorization` com o valor de `REVENUECAT_WEBHOOK_SECRET` (Vercel, projeto web) |
-| Link de assinatura (WhatsApp e site) | `https://www.meuazulao.com.br/assinar/<id da organização>` | Redireciona para o Web Purchase Link da offering `default` |
-| Link da oferta do dia 8 | `https://www.meuazulao.com.br/oferta/<id da organização>` | Redireciona para o Web Purchase Link da offering `winback` |
+| Link de assinatura (WhatsApp e site) | `https://www.meuazulao.com.br/assinar/<id da organização>` | Celular: redireciona para a App Store ou o Google Play. Computador: página com os dois botões |
+| Link da oferta do dia 8 | `https://www.meuazulao.com.br/oferta/<id da organização>` | Igual ao de cima; a oferta aparece no app |
 | Webhook do WhatsApp (Meta) | `https://<domínio do backend>/webhook` | `WHATSAPP_VERIFY_TOKEN` e `WHATSAPP_APP_SECRET` |
 | Código de login (Supabase Send SMS Hook) | `https://<domínio do backend>/api/auth/whatsapp-otp` | `SEND_SMS_HOOK_SECRET` |
 
@@ -105,14 +104,13 @@ A Meta pode reclassificar `fim_teste` como Marketing. Se isso acontecer, ele con
 | Onde | Variável | O que é |
 |---|---|---|
 | Vercel (web) | `REVENUECAT_WEBHOOK_SECRET` | Texto que você define no webhook do RevenueCat |
-| Vercel (web) | `RC_WEB_PURCHASE_URL` | Web Purchase Link da offering `default` (sem o id no final) |
-| Vercel (web) | `RC_WEB_WINBACK_URL` | Web Purchase Link da offering `winback` |
+| Vercel (web) | `APP_STORE_ID` | Apple ID numérico do app (App Store Connect → Informações do app). Sem ele, o iPhone vê a página com os botões em vez de ir direto para a loja, e o botão da App Store some |
 | EAS (app) | `EXPO_PUBLIC_RC_IOS_KEY` | Chave pública do RevenueCat para iOS |
 | EAS (app) | `EXPO_PUBLIC_RC_ANDROID_KEY` | Chave pública do RevenueCat para Android |
 
 ## 7. O que é seu (contas e consoles)
 
-1. Criar a conta no RevenueCat, o projeto MeuAzulão e os apps iOS, Android e Web Billing (com Stripe).
+1. Criar a conta no RevenueCat, o projeto MeuAzulão e os apps iOS e Android.
 2. Criar os produtos e preços nas duas lojas (seções 2 e 3) e importá-los no RevenueCat; entitlement `plus`; offerings `default` e `winback`.
 3. Configurar o webhook do RevenueCat (seção 5) e as variáveis (seção 6).
 4. Criar os dois templates na Meta (seção 4).

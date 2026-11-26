@@ -1,5 +1,5 @@
 /**
- * Billing for Zul: trial / Plus state, prices and subscribe links.
+ * Billing for Zul: trial / Plus state, prices and links to subscribe in the app.
  *
  * The model, prices and template names mirror @fintrack/shared/billing
  * (packages/shared/src/billing/index.js). The backend is deployed on its own
@@ -103,12 +103,12 @@ export function siteBase() {
   return (process.env.ZUL_DASHBOARD_URL || 'https://www.meuazulao.com.br').replace(/\/+$/, '');
 }
 
-/** Redirects to the RevenueCat Web Purchase Link of the `default` offering. */
+/** Day 7 / plans link: the site sends phones to the App Store or Google Play (Plus is sold only in the app). */
 export function subscribeLink(organizationId) {
   return `${siteBase()}/assinar/${encodeURIComponent(organizationId || '')}`;
 }
 
-/** Redirects to the Web Purchase Link of the `winback` offering (day 8). */
+/** Day 8 link: same store redirect; the app shows the first-month offer to expired trials. */
 export function winbackLink(organizationId) {
   return `${siteBase()}/oferta/${encodeURIComponent(organizationId || '')}`;
 }

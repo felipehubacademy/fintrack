@@ -4,8 +4,6 @@ import { useI18n } from '../../contexts/I18nContext';
 import { useBillingStatus } from '../../hooks/useBillingStatus';
 import PlanPrices from './PlanPrices';
 
-const CONTACT_EMAIL = 'contato@meuazulao.com.br';
-
 // Official subscription-management pages of each store.
 const STORE_LINKS = {
   app_store: 'https://apps.apple.com/account/subscriptions',
@@ -47,7 +45,6 @@ export default function PlanCard({ className = '', style }) {
   const cancelText = {
     app_store: t('web.billing.cancelAppStore'),
     play_store: t('web.billing.cancelPlayStore'),
-    stripe: t('web.billing.cancelWeb', { email: CONTACT_EMAIL }),
     promotional: t('web.billing.cancelPromotional'),
   }[source];
   const storeButton = {

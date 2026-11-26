@@ -87,9 +87,9 @@ describe('contacts and window', () => {
 
 describe('message text matches the approved templates', () => {
   const cases = [
-    { lang: 'pt', code: 'pt_BR', currency: 'BRL', phone: '5511987654321', name: 'Felipe', prices: ['R$ 9,90', 'R$ 79,90', 'R$ 0,99'], buttons: ['Assinar', 'Quero a oferta'] },
-    { lang: 'es', code: 'es', currency: 'MXN', phone: '525512345678', name: 'Sofía', prices: ['$59', '$449', '$9'], buttons: ['Suscribirme', 'Quiero la oferta'] },
-    { lang: 'en', code: 'en', currency: 'USD', phone: '14155551234', name: 'Alex', prices: ['$4.99', '$39.99', '$0.99'], buttons: ['Subscribe', 'Get the offer'] },
+    { lang: 'pt', code: 'pt_BR', currency: 'BRL', phone: '5511987654321', name: 'Felipe', prices: ['R$ 9,90', 'R$ 79,90', 'R$ 0,99'], buttons: ['Baixar o app', 'Quero a oferta'] },
+    { lang: 'es', code: 'es', currency: 'MXN', phone: '525512345678', name: 'Sofía', prices: ['$59', '$449', '$9'], buttons: ['Descargar la app', 'Quiero la oferta'] },
+    { lang: 'en', code: 'en', currency: 'USD', phone: '14155551234', name: 'Alex', prices: ['$4.99', '$39.99', '$0.99'], buttons: ['Get the app', 'Get the offer'] },
   ];
 
   for (const c of cases) {
@@ -172,7 +172,7 @@ describe('runTrialFunnel', () => {
 
     const free = wa.sent.find((s) => s.to === '5511987654321');
     assert.match(free.body, /^Oi, Felipe! Seu teste grátis do MeuAzulão termina hoje\./);
-    assert.deepEqual(free.cta, { label: 'Assinar', url: 'https://www.meuazulao.com.br/assinar/org-br' });
+    assert.deepEqual(free.cta, { label: 'Baixar o app', url: 'https://www.meuazulao.com.br/assinar/org-br' });
 
     const tpl = wa.sent.find((s) => s.to === '525512345678');
     assert.equal(tpl.template, 'oferta_primeiro_mes');

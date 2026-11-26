@@ -57,7 +57,6 @@ export default {
           'Sentry: recibe reportes de errores y fallos para que podamos corregir problemas.',
           'Twilio SendGrid: envía correos de la cuenta, como invitaciones, cuando usas correo.',
           'RevenueCat: administra las suscripciones y nos informa si tu hogar tiene Plus (id del hogar, producto, tienda y fechas).',
-          'Stripe: procesa los pagos hechos en nuestro sitio web o con un enlace enviado por WhatsApp.',
           'Apple (App Store) y Google (Google Play): procesan las compras hechas en la app, según sus propios términos y políticas de privacidad.',
         ],
         after: [
@@ -68,7 +67,7 @@ export default {
       {
         title: '5. Transferencias internacionales',
         body: [
-          'Algunos proveedores (como Meta, OpenAI, Vercel, Sentry, RevenueCat y Stripe) pueden tratar datos fuera de Brasil, incluso en Estados Unidos. Estas transferencias siguen el art. 33 de la LGPD, con base en cláusulas contractuales estándar y compromisos de protección de datos equivalentes.',
+          'Algunos proveedores (como Meta, OpenAI, Vercel, Sentry y RevenueCat) pueden tratar datos fuera de Brasil, incluso en Estados Unidos. Estas transferencias siguen el art. 33 de la LGPD, con base en cláusulas contractuales estándar y compromisos de protección de datos equivalentes.',
         ],
       },
       {
@@ -196,12 +195,12 @@ export default {
         title: '6. Precio, prueba gratis y suscripción',
         items: [
           'Prueba gratis: cada cuenta nueva tiene 7 días de MeuAzulão gratis, sin tarjeta. No se cobra nada cuando termina la prueba. Para seguir registrando, tú eliges si te suscribes a MeuAzulão Plus.',
-          'Planes: Plus se vende por mes o por año. El precio, el período de cobro y la moneda siempre se muestran antes de que confirmes la compra. Los precios pueden variar según la tienda (App Store, Google Play o nuestro sitio web) y el país, y pueden incluir impuestos.',
+          'Planes: Plus se vende por mes o por año. El precio, el período de cobro y la moneda siempre se muestran antes de que confirmes la compra. Los precios pueden variar según la tienda (App Store o Google Play) y el país, y pueden incluir impuestos.',
           'Renovación automática: Plus se renueva automáticamente al final de cada período, al precio vigente, hasta que lo canceles. Si el precio cambia, nosotros o la tienda te avisaremos antes, como exigen las reglas de la tienda y la ley.',
-          'Cancelación: puedes cancelar cuando quieras y conservas Plus hasta el final del período que ya pagaste. Si te suscribiste desde la app en iPhone o Android, cancela en la configuración de suscripciones de App Store o Google Play (no podemos cancelar suscripciones de las tiendas por ti). Si pagaste en nuestro sitio web o con un enlace enviado por WhatsApp, cancela con el enlace “Administrar suscripción” del correo de recibo o escríbenos a {{contactEmail}}.',
-          'Derecho de arrepentimiento: si compraste Plus por internet como consumidor en Brasil, puedes desistir dentro de los 7 días posteriores a la compra y recibir el reembolso total (Código de Defensa del Consumidor de Brasil, art. 49). Para compras en nuestro sitio web, escríbenos a {{contactEmail}}. Para compras en App Store o Google Play, pide el reembolso a la tienda, que procesa esos pagos; si necesitas ayuda, escríbenos.',
+          'Cancelación: puedes cancelar cuando quieras y conservas Plus hasta el final del período que ya pagaste. Plus se vende solo en la app, en App Store y Google Play. Para cancelar, usa la configuración de suscripciones de la tienda donde te suscribiste (no podemos cancelar suscripciones de las tiendas por ti).',
+          'Derecho de arrepentimiento: si compraste Plus por internet como consumidor en Brasil, puedes desistir dentro de los 7 días posteriores a la compra y recibir el reembolso total (Código de Defensa del Consumidor de Brasil, art. 49). Pide el reembolso a App Store o Google Play, que procesan esos pagos; si necesitas ayuda, escríbenos.',
           'Fuera de esos casos, los reembolsos siguen las reglas de la tienda donde compraste y las leyes de tu país.',
-          'Los pagos en nuestro sitio web los procesa Stripe, a través de RevenueCat. Nunca vemos ni guardamos el número completo de tu tarjeta.',
+          'Los pagos los procesa App Store o Google Play. Nunca vemos ni guardamos los datos de tu tarjeta.',
           'Si no te suscribes después de la prueba, tus datos no se borran: puedes seguir viéndolos, pero no puedes registrar nuevos movimientos hasta suscribirte. Puedes eliminar tu cuenta en cualquier momento (sección 10).',
         ],
       },

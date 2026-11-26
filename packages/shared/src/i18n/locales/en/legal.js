@@ -57,7 +57,6 @@ export default {
           'Sentry: receives error and crash reports so we can fix problems.',
           'Twilio SendGrid: sends account emails, such as invitations, when you use email.',
           'RevenueCat: manages subscriptions and tells us whether your household has Plus (household id, product, store and dates).',
-          'Stripe: processes payments made on our website or by a link sent on WhatsApp.',
           'Apple (App Store) and Google (Google Play): process purchases made in the app, under their own terms and privacy policies.',
         ],
         after: [
@@ -68,7 +67,7 @@ export default {
       {
         title: '5. International transfers',
         body: [
-          'Some providers (such as Meta, OpenAI, Vercel, Sentry, RevenueCat and Stripe) may process data outside Brazil, including in the United States. These transfers follow Art. 33 of the LGPD, based on standard contractual clauses and equivalent data protection commitments.',
+          'Some providers (such as Meta, OpenAI, Vercel, Sentry and RevenueCat) may process data outside Brazil, including in the United States. These transfers follow Art. 33 of the LGPD, based on standard contractual clauses and equivalent data protection commitments.',
         ],
       },
       {
@@ -196,12 +195,12 @@ export default {
         title: '6. Price, free trial and subscription',
         items: [
           'Free trial: every new account gets 7 days of MeuAzulão free, with no card required. Nothing is charged when the trial ends. To keep logging, you choose whether to subscribe to MeuAzulão Plus.',
-          'Plans: Plus is sold monthly or yearly. The price, the billing period and the currency are always shown before you confirm the purchase. Prices may differ by store (App Store, Google Play or our website) and by country, and may include taxes.',
+          'Plans: Plus is sold monthly or yearly. The price, the billing period and the currency are always shown before you confirm the purchase. Prices may differ by store (App Store or Google Play) and by country, and may include taxes.',
           'Auto-renewal: Plus renews automatically at the end of each period, at the price then in effect, until you cancel. If the price changes, we or the store will tell you in advance, as the store rules and the law require.',
-          'Cancelling: you can cancel anytime, and you keep Plus until the end of the period you already paid for. If you subscribed in the iPhone or Android app, cancel in your App Store or Google Play subscription settings (we cannot cancel store subscriptions for you). If you paid on our website or through a link sent on WhatsApp, cancel with the “Manage subscription” link in your receipt email, or write to {{contactEmail}}.',
-          'Right of withdrawal: if you bought Plus online as a consumer in Brazil, you may withdraw within 7 days of the purchase and get a full refund (Consumer Protection Code, Art. 49). For purchases on our website, write to {{contactEmail}}. For App Store or Google Play purchases, ask the store for the refund, since it processes those payments; if you need help, write to us.',
+          'Cancelling: you can cancel anytime, and you keep Plus until the end of the period you already paid for. Plus is sold only in the app, through the App Store and Google Play. To cancel, use the subscription settings of the store where you subscribed (we cannot cancel store subscriptions for you).',
+          'Right of withdrawal: if you bought Plus online as a consumer in Brazil, you may withdraw within 7 days of the purchase and get a full refund (Consumer Protection Code, Art. 49). Ask the App Store or Google Play for the refund, since they process those payments; if you need help, write to us.',
           'Outside these cases, refunds follow the rules of the store you bought from and the laws of your country.',
-          'Payments on our website are processed by Stripe, through RevenueCat. We never see or store your full card number.',
+          'Payments are processed by the App Store or Google Play. We never see or store your card details.',
           'If you don’t subscribe after the trial, your data is not deleted: you can still see it, but you can’t add new entries until you subscribe. You can delete your account at any time (section 10).',
         ],
       },
