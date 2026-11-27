@@ -4,8 +4,8 @@ Comandos, migrações, builds e merges ficam com a sessão do Claude Code no seu
 
 ## 1. Só você (segredos e painéis)
 
-1. **Vercel, projetos web e backend:** `WHATSAPP_TOKEN` = o token permanente novo (o arquivo `~/.secrets/meuazulao-whatsapp-token.txt` no seu Mac) e `PHONE_ID` = `1466026243268271`. O token antigo deixa de valer.
-2. **`CRON_SECRET` novo:** o mesmo valor na Vercel (web e backend) e nos Secrets do GitHub. O antigo vazou no git. Para gerar: `openssl rand -hex 32`.
+1. ✅ **Feito em 27/11.** **Vercel, projetos web e backend:** `WHATSAPP_TOKEN` = o token permanente novo (o arquivo `~/.secrets/meuazulao-whatsapp-token.txt` no seu Mac) e `PHONE_ID` = `1466026243268271`. O token antigo deixa de valer.
+2. ✅ **Feito em 27/11.** **`CRON_SECRET` novo:** o mesmo valor na Vercel (web e backend) e nos Secrets do GitHub. O antigo vazou no git. Para gerar: `openssl rand -hex 32`.
 3. **`APP_STORE_ID`** na Vercel (projeto web): o Apple ID numérico do app (App Store Connect, Informações do app). É o que manda o iPhone direto para a App Store.
 4. **Merge do PR #3** (segurança da API): CI verde. Antes do merge, `CRON_SECRET` (item 2) e `SUPABASE_SERVICE_ROLE_KEY` precisam estar na Vercel do web.
 
