@@ -184,16 +184,29 @@ export async function applyRevenueCatEvent(admin, event, { log = console } = {})
     return { handled: false, reason: 'unknown_organization', organizationId };
   }
 
-  // Access lasts until expiration; a cancellation or a billing issue changes nothing now.
+  const expiration = toTime(event.expiration_at_ms);
+  const current = toTime(org.plus_until);
+
+  // A refund ends access now (RevenueCat sets expiration_at_ms to the refund time).
+  if (type === 'CANCELLATION' && String(event.cancel_reason || '').toUpperCase() === 'CUSTOMER_SUPPORT') {
+    const endsAt = expiration ?? toTime(event.event_timestamp_ms) ?? Date.now();
+    if (current && current <= endsAt) return { handled: true, reason: 'no_change', organizationId };
+    const update = { plus_until: toIso(endsAt) };
+    await updateOrganization(admin, organizationId, update);
+    return { handled: true, organizationId, update };
+  }
+
+  // Otherwise access lasts until expiration; a cancellation or a billing issue changes nothing now.
   if (type === 'CANCELLATION' || type === 'BILLING_ISSUE') {
     return { handled: true, reason: 'no_change', organizationId };
   }
 
-  const expiration = toTime(event.expiration_at_ms);
-
   if (type === 'EXPIRATION') {
-    const plusUntil = toIso(expiration ?? event.event_timestamp_ms ?? Date.now());
-    const update = { plus_until: plusUntil };
+    const endsAt = expiration ?? toTime(event.event_timestamp_ms) ?? Date.now();
+    // A later purchase or renewal already moved plus_until past this period:
+    // the event is stale and must not take that time away.
+    if (current && current > endsAt) return { handled: true, reason: 'stale_expiration', organizationId };
+    const update = { plus_until: toIso(endsAt) };
     await updateOrganization(admin, organizationId, update);
     return { handled: true, organizationId, update };
   }
@@ -203,7 +216,6 @@ export async function applyRevenueCatEvent(admin, event, { log = console } = {})
     log.warn?.('[revenuecat] purchase event without expiration ignored', { type, organizationId });
     return { handled: false, reason: 'no_expiration', organizationId };
   }
-  const current = toTime(org.plus_until);
   const update = {
     plus_until: toIso(current && current > expiration ? current : expiration),
     plus_source: sourceForStore(event.store) || org.plus_source || null,

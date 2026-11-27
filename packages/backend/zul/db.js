@@ -31,7 +31,11 @@ export function phoneVariants(phone) {
     const [, ddd, local] = br;
     if (local.length === 8 && /^[6-9]/.test(local)) out.add(`55${ddd}9${local}`);
     if (local.length === 9 && local.startsWith('9')) out.add(`55${ddd}${local.slice(1)}`);
-    out.add(`${ddd}${local}`); // stored without country code
+    // Stored without the country code, with or without the ninth digit.
+    for (const v of [...out]) {
+      const m = v.match(/^55(\d{10,11})$/);
+      if (m) out.add(m[1]);
+    }
   }
   return [...out];
 }
@@ -132,8 +136,9 @@ export function createDb(supabase = getSupabase()) {
         .eq('is_active', true)
         .limit(10);
       if (error) throw error;
-      const match = (data || []).find((u) => variants.includes(digitsOnly(u.phone)))
-        || (data || []).find((u) => variants.some((v) => digitsOnly(u.phone).endsWith(v.slice(-10))));
+      // Exact match on known equivalent forms only: a suffix match could pick a
+      // user from another country whose number ends the same way.
+      const match = (data || []).find((u) => variants.includes(digitsOnly(u.phone)));
       if (!match) return null;
       const [{ data: organization }, { data: costCenters }] = await Promise.all([
         supabase.from('organizations').select('*').eq('id', match.organization_id).maybeSingle(),

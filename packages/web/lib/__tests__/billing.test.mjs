@@ -209,10 +209,26 @@ test('CANCELLATION and BILLING_ISSUE keep plus_until (access until expiry)', asy
 });
 
 test('EXPIRATION sets plus_until to the expiration time', async () => {
-  const { db, admin } = orgDb({ [ORG]: { plus_until: '2027-06-01T00:00:00.000Z', plus_source: 'app_store' } });
   const exp = Date.parse('2026-11-30T10:00:00Z');
+  const { db, admin } = orgDb({ [ORG]: { plus_until: new Date(exp).toISOString(), plus_source: 'app_store' } });
   await applyRevenueCatEvent(admin, ev('EXPIRATION', { expiration_at_ms: exp }), { log: silent });
   assert.equal(db[ORG].plus_until, new Date(exp).toISOString());
+});
+
+test('a stale EXPIRATION does not take away time from a newer renewal', async () => {
+  const until = '2027-01-30T10:00:00.000Z';
+  const { db, admin } = orgDb({ [ORG]: { plus_until: until, plus_source: 'app_store' } });
+  const r = await applyRevenueCatEvent(admin, ev('EXPIRATION', { expiration_at_ms: Date.parse('2026-11-30T10:00:00Z') }), { log: silent });
+  assert.equal(r.reason, 'stale_expiration');
+  assert.equal(db[ORG].plus_until, until);
+  assert.equal(updates(admin).length, 0);
+});
+
+test('a refund (CANCELLATION by customer support) ends access at the refund time', async () => {
+  const { db, admin } = orgDb({ [ORG]: { plus_until: '2027-01-30T10:00:00.000Z', plus_source: 'app_store' } });
+  const refundedAt = Date.parse('2026-12-05T12:00:00Z');
+  await applyRevenueCatEvent(admin, ev('CANCELLATION', { cancel_reason: 'CUSTOMER_SUPPORT', expiration_at_ms: refundedAt }), { log: silent });
+  assert.equal(db[ORG].plus_until, new Date(refundedAt).toISOString());
 });
 
 test('ids that are not an organization are ignored without writes', async () => {

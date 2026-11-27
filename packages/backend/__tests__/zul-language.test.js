@@ -21,6 +21,12 @@ describe('canonical phone (same E.164 as the app phone login)', () => {
     assert.ok(phoneVariants('525512345678').includes('5215512345678'));
     assert.ok(phoneVariants('5491123456789').includes('541123456789'));
     assert.ok(phoneVariants('551187654321').includes('5511987654321'));
+    assert.ok(phoneVariants('5511987654321').includes('11987654321'));
+    assert.ok(phoneVariants('5511987654321').includes('1187654321'));
+  });
+  it('lookup variants never cross countries', () => {
+    assert.ok(!phoneVariants('12079460958').includes('442079460958'));
+    assert.ok(!phoneVariants('442079460958').some((v) => v.endsWith('12079460958')));
   });
 });
 
