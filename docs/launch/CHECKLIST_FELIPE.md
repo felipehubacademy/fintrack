@@ -6,8 +6,10 @@ Comandos, migrações, builds e merges ficam com a sessão do Claude Code no seu
 
 1. ✅ **Feito em 27/11.** **Vercel, projetos web e backend:** `WHATSAPP_TOKEN` = o token permanente novo (o arquivo `~/.secrets/meuazulao-whatsapp-token.txt` no seu Mac) e `PHONE_ID` = `1466026243268271`. O token antigo deixa de valer.
 2. ✅ **Feito em 27/11.** **`CRON_SECRET` novo:** o mesmo valor na Vercel (web e backend) e nos Secrets do GitHub. O antigo vazou no git. Para gerar: `openssl rand -hex 32`.
-3. **`APP_STORE_ID`** na Vercel (projeto web): o Apple ID numérico do app (App Store Connect, Informações do app). É o que manda o iPhone direto para a App Store.
-4. **Merge do PR #3** (segurança da API): CI verde. Antes do merge, `CRON_SECRET` (item 2) e `SUPABASE_SERVICE_ROLE_KEY` precisam estar na Vercel do web.
+3. ✅ **Já está na Vercel.** **`APP_STORE_ID`** na Vercel (projeto web): o Apple ID numérico do app (App Store Connect, Informações do app). É o que manda o iPhone direto para a App Store.
+4. ✅ **Feito em 27/11.** **Merge do PR #3** (segurança da API): CI verde. Antes do merge, `CRON_SECRET` (item 2) e `SUPABASE_SERVICE_ROLE_KEY` precisam estar na Vercel do web.
+
+5. **`WHATSAPP_APP_SECRET`** na Vercel do backend (Meta, App settings, Basic, App secret). O `SEND_SMS_HOOK_SECRET` a sessão do Mac coloca quando ligar o Send SMS Hook.
 
 Confira também se já estão na Vercel do backend (detalhes em `META_SETUP.md` §5): `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` (novo, o antigo era público), `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`, `SEND_SMS_HOOK_SECRET`. E no RevenueCat, as chaves de `BILLING.md` §6.
 
