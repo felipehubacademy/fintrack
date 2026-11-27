@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js';
 import EngagementAnalyzer from '../../../services/engagementAnalyzer.js';
 import ZulMessages from '../../../services/zulMessages.js';
+import { requireCronSecret } from '../../../lib/apiAuth.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -50,11 +51,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  // Verificar autorização
-  const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Não autorizado' });
-  }
+  // Cron only: Authorization: Bearer <CRON_SECRET> (constant-time compare)
+  if (!requireCronSecret(req, res)) return;
 
   try {
     console.log('🔍 Iniciando verificação de engajamento diário...');

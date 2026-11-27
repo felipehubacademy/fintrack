@@ -12,24 +12,24 @@
 
 ```bash
 # WhatsApp Business API
-WHATSAPP_TOKEN=EAAafO1sejkwBPlb4sr9MzpmIioVDxZA1GdizLTeb1cK6oIYucblY0BzCIs9ZAMinB6G5Gw8UWRyCfuwWtkind9dV2R8EZAX2EYvZBrGkp5s2ESjWHPLNnk0aoJTQP8ReUT7JDb2tvINvasc4YuctwYStJhanKKt52PBg8YieZC74U9kRBYeoIXCoixk2AVQZDZD
+WHATSAPP_TOKEN=<token permanente do System User, guardado so no Vercel>
 PHONE_ID=801805679687987
 USER_PHONE=551151928551
-WHATSAPP_VERIFY_TOKEN=fintrack_verify_token
+WHATSAPP_VERIFY_TOKEN=<string aleatoria, guardada so no Vercel>
 ```
 
 ### 2. Webhook URL
 
 **URL do Webhook:** `https://fintrack-backend-theta.vercel.app/api/webhook`
 
-**Token de Verificação:** `fintrack_verify_token`
+**Token de Verificação:** o valor de `WHATSAPP_VERIFY_TOKEN` no Vercel
 
 ### 3. Configuração no Facebook Developer
 
 1. Acesse [Facebook Developers](https://developers.facebook.com/)
 2. Vá para sua aplicação WhatsApp Business
 3. Configure o webhook com a URL acima
-4. Use o token de verificação: `fintrack_verify_token`
+4. Use o token de verificação: o valor de `WHATSAPP_VERIFY_TOKEN` no Vercel
 5. Ative os eventos necessários:
    - `messages`
    - `message_deliveries`
@@ -39,7 +39,7 @@ WHATSAPP_VERIFY_TOKEN=fintrack_verify_token
 
 ```bash
 # Testar webhook
-curl -X GET "https://fintrack-backend-theta.vercel.app/webhook?hub.mode=subscribe&hub.challenge=test&hub.verify_token=fintrack_verify_token"
+curl -X GET "https://fintrack-backend-theta.vercel.app/webhook?hub.mode=subscribe&hub.challenge=test&hub.verify_token=$WHATSAPP_VERIFY_TOKEN"
 
 # Testar envio de mensagem
 curl -X POST "https://fintrack-backend-theta.vercel.app/webhook" \
@@ -75,7 +75,7 @@ curl -X POST "https://fintrack-backend-theta.vercel.app/webhook" \
 
 - [x] Phone Number ID atualizado: `801805679687987`
 - [ ] Webhook URL configurado no Facebook Developer
-- [ ] Token de verificação configurado: `fintrack_verify_token`
+- [ ] Token de verificação configurado: o valor de `WHATSAPP_VERIFY_TOKEN` no Vercel
 - [ ] Eventos do WhatsApp ativados
 - [ ] Teste de webhook realizado
 - [ ] Teste de envio de mensagem realizado
@@ -91,4 +91,4 @@ curl -X POST "https://fintrack-backend-theta.vercel.app/webhook" \
 
 **📞 Número do WhatsApp:** `801805679687987` (55 11 5192-8551)  
 **🔗 Webhook:** `https://fintrack-backend-theta.vercel.app/api/webhook`  
-**🔑 Token:** `fintrack_verify_token`
+**🔑 Token:** o valor de `WHATSAPP_VERIFY_TOKEN` no Vercel

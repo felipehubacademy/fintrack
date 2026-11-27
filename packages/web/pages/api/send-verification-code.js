@@ -1,10 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { randomBytes, randomInt } from 'crypto';
+import { requireUser, rateLimit, isValidPhone } from '../../lib/apiAuth.js';
+import { supabaseAdmin as supabase } from '../../lib/supabaseAdmin.js';
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
@@ -82,33 +79,28 @@ async function sendWhatsAppVerificationCode(to, code, userName) {
   }
 }
 
+/**
+ * POST /api/send-verification-code  (Authorization: Bearer <token>)
+ * Body: { userPhone }. Sends a WhatsApp code to verify the CALLER's phone;
+ * userId in the body is ignored.
+ */
 export default async function handler(req, res) {
-  // Headers para evitar cache e permitir CORS
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  console.log('🔍 [send-verification-code] Method:', req.method);
-  console.log('🔍 [send-verification-code] Headers:', req.headers);
-  
-  // Permitir preflight requests (CORS)
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  
+
   if (req.method !== 'POST') {
-    console.log('❌ [send-verification-code] Method not allowed:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const { userId, userPhone } = req.body;
-    console.log('🔍 [send-verification-code] Body:', { userId, userPhone });
+  const ctx = await requireUser(req, res);
+  if (!ctx) return;
+  if (!rateLimit(req, res, { key: 'send-verification-code', limit: 5, windowMs: 10 * 60_000 })) return;
 
-    if (!userId || !userPhone) {
-      return res.status(400).json({ error: 'userId e userPhone são obrigatórios' });
+  try {
+    const userId = ctx.userId;
+    const userPhone = String(req.body?.userPhone || '').replace(/\D/g, '');
+
+    if (!isValidPhone(userPhone)) {
+      return res.status(400).json({ error: 'userPhone é obrigatório' });
     }
 
     // Buscar usuário
@@ -183,10 +175,10 @@ export default async function handler(req, res) {
     }
 
     // Gerar código de 6 dígitos
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = randomInt(100000, 1000000).toString();
 
     // Gerar token para link alternativo
-    const token = require('crypto').randomBytes(32).toString('hex');
+    const token = randomBytes(32).toString('hex');
 
     // Salvar código no banco
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos
@@ -224,14 +216,6 @@ export default async function handler(req, res) {
         last_verification_attempt: new Date().toISOString()
       })
       .eq('id', userId);
-
-    // Log para desenvolvimento
-    console.log('📱 Código de verificação:', code);
-    console.log('🔗 Token:', token);
-    console.log('📞 Telefone:', userPhone);
-    console.log('👤 Usuário:', user.name);
-    console.log('🔒 IP:', ipAddress);
-    console.log('🌐 User Agent:', userAgent);
 
     // Enviar via WhatsApp Business API usando template
     const sent = await sendWhatsAppVerificationCode(userPhone, code, user.name);

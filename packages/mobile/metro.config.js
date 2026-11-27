@@ -16,7 +16,7 @@ config.resolver.nodeModulesPaths = [
 ];
 
 // Block resolution from parent node_modules to avoid duplicates
-config.resolver.blacklistRE = /node_modules\/\.\.\/\.\.\/node_modules\/(react|react-dom|react-native)\/.*/;
+config.resolver.blockList = /node_modules\/\.\.\/\.\.\/node_modules\/(react|react-dom|react-native)\/.*/;
 
 module.exports = config;
 

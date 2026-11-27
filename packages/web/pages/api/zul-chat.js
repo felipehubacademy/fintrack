@@ -1,37 +1,43 @@
+import { requireUser, rateLimit } from '../../lib/apiAuth.js';
+
+const MAX_MESSAGE_LENGTH = 4000;
+const MAX_HISTORY = 40;
+
+/**
+ * POST /api/zul-chat  (Authorization: Bearer <token>)
+ * Proxies the web chat to the Zul backend. The user and organization sent to
+ * the backend come from the token, never from the body.
+ */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const ctx = await requireUser(req, res);
+  if (!ctx) return;
+  if (!rateLimit(req, res, { key: `zul-chat:${ctx.userId}`, limit: 30, windowMs: 60_000 })) return;
+
   try {
-    const { message, userId, userName, userPhone, organizationId, context, conversationHistory } = req.body;
+    const { message, context, conversationHistory } = req.body || {};
     const useStream = req.query.stream === 'true';
 
-    if (!message) {
+    if (typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ error: 'Message is required' });
     }
-
-    console.log('📥 [API ZUL] Recebendo requisição:', {
-      message: message.substring(0, 50),
-      hasContext: !!context,
-      hasSummary: !!context?.summary,
-      summaryBalance: context?.summary?.balance,
-      month: context?.month,
-      contextKeys: Object.keys(context || {}),
-      historyLength: conversationHistory?.length || 0,
-      useStream
-    });
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      return res.status(413).json({ error: 'Message is too long' });
+    }
 
     // Fazer requisição para o backend
     const backendUrl = process.env.BACKEND_URL || 'https://fintrack-backend-theta.vercel.app';
     const requestBody = {
       message,
-      userId: userId || 'web-user',
-      userName: userName || 'Usuário Web',
-      userPhone: userPhone || null,
-      organizationId: organizationId || null,
-      context: context || {}, // Passar contexto financeiro completo
-      conversationHistory: conversationHistory || [] // Passar histórico de conversa
+      userId: ctx.userId,
+      userName: ctx.profile.name || null,
+      userPhone: ctx.profile.phone || null,
+      organizationId: ctx.organizationId,
+      context: context && typeof context === 'object' ? context : {},
+      conversationHistory: Array.isArray(conversationHistory) ? conversationHistory.slice(-MAX_HISTORY) : [],
     };
     
     // Se streaming, repassar SSE

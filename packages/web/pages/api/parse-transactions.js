@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { requireUser, rateLimit } from '../../lib/apiAuth.js';
 
 // Desabilitar body parser padrão do Next.js
 export const config = {
@@ -259,6 +260,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Authenticated callers only (this route spends OpenAI credits).
+  const ctx = await requireUser(req, res);
+  if (!ctx) return;
+  if (!rateLimit(req, res, { key: `parse-transactions:${ctx.userId}`, limit: 10, windowMs: 10 * 60_000 })) return;
+
   try {
 
     // Parse do form data
@@ -284,6 +290,20 @@ export default async function handler(req, res) {
 
     if (!cardId || !organizationId) {
       return res.status(400).json({ error: 'cardId e organizationId são obrigatórios' });
+    }
+
+    // The organization must be the caller's and the card must belong to it.
+    if (String(organizationId) !== String(ctx.organizationId)) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    const { data: card, error: cardError } = await supabase
+      .from('cards')
+      .select('id')
+      .eq('id', cardId)
+      .eq('organization_id', ctx.organizationId)
+      .maybeSingle();
+    if (cardError || !card) {
+      return res.status(403).json({ error: 'forbidden' });
     }
 
     console.log(`📄 [PARSE] Arquivo: ${file.originalFilename}, Tipo: ${file.mimetype}`);
