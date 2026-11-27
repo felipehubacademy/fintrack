@@ -233,9 +233,12 @@ async function applyTransfer(admin, event, { log }) {
   const from = (Array.isArray(event?.transferred_from) ? event.transferred_from : []).filter(isUuid);
   const to = (Array.isArray(event?.transferred_to) ? event.transferred_to : []).filter(isUuid);
 
+  // Read every source first, credit the destinations, and only then clear the
+  // sources. If a write fails, RevenueCat retries and the sources still hold
+  // the entitlement, so the retry can finish the move (crediting is idempotent).
   let bestUntil = null;
   let bestSource = null;
-  const moved = [];
+  const sources = [];
   for (const id of from) {
     const org = await findOrganization(admin, id);
     if (!org) continue;
@@ -244,10 +247,7 @@ async function applyTransfer(admin, event, { log }) {
       bestUntil = until;
       bestSource = org.plus_source || null;
     }
-    if (org.plus_until || org.plus_source) {
-      await updateOrganization(admin, id, { plus_until: null, plus_source: null });
-      moved.push(id);
-    }
+    if (org.plus_until || org.plus_source) sources.push(id);
   }
 
   const targets = [];
@@ -263,6 +263,13 @@ async function applyTransfer(admin, event, { log }) {
       await updateOrganization(admin, id, { plus_until: toIso(until), plus_source: bestSource || org.plus_source || null });
       targets.push(id);
     }
+  }
+
+  const moved = [];
+  for (const id of sources) {
+    if (to.includes(id)) continue;
+    await updateOrganization(admin, id, { plus_until: null, plus_source: null });
+    moved.push(id);
   }
   return { handled: true, reason: 'transfer', from: moved, to: targets };
 }

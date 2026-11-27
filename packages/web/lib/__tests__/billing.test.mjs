@@ -22,13 +22,15 @@ const silent = { info() {}, warn() {}, error() {} };
 afterEach(() => setFeatureOverride('paywall', undefined));
 
 /** In-memory organizations table on top of the chainable mock. */
-function orgDb(rows = {}, { selectError } = {}) {
+function orgDb(rows = {}, { selectError, failUpdateOnce } = {}) {
   const db = { ...rows };
+  let failPending = failUpdateOnce;
   const admin = createMockSupabase({
     resolve(op) {
       if (op.table === 'organizations') {
         const id = filterValue(op, 'eq', 'id');
         if (op.action === 'update') {
+          if (failPending && failPending === id) { failPending = null; return { data: null, error: { message: 'boom' } }; }
           if (db[id]) db[id] = { ...db[id], ...op.values };
           return { data: null, error: null };
         }
@@ -259,6 +261,20 @@ test('TRANSFER moves Plus from the old organization to the new one', async () =>
   assert.equal(db[ORG].plus_until, null);
   assert.equal(db[ORG2].plus_until, until);
   assert.equal(db[ORG2].plus_source, 'app_store');
+});
+
+test('TRANSFER that fails halfway is completed by the retry', async () => {
+  const until = '2027-05-01T00:00:00.000Z';
+  const { db, admin } = orgDb({
+    [ORG]: { plus_until: until, plus_source: 'app_store' },
+    [ORG2]: { plus_until: null, plus_source: null },
+  }, { failUpdateOnce: ORG2 });
+  const event = { type: 'TRANSFER', transferred_from: [ORG], transferred_to: [ORG2] };
+  await assert.rejects(applyRevenueCatEvent(admin, event, { log: silent }));
+  assert.equal(db[ORG].plus_until, until);
+  await applyRevenueCatEvent(admin, event, { log: silent });
+  assert.equal(db[ORG].plus_until, null);
+  assert.equal(db[ORG2].plus_until, until);
 });
 
 test('database errors propagate (so RevenueCat retries)', async () => {
