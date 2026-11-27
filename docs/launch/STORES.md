@@ -45,7 +45,6 @@ O app lê estas variáveis no build. Crie no site do Expo (Project → Environme
 cd packages/mobile
 eas env:create --environment production --name EXPO_PUBLIC_SUPABASE_URL --value "https://<projeto>.supabase.co" --visibility plaintext
 eas env:create --environment production --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<anon key>" --visibility plaintext
-eas env:create --environment production --name EXPO_PUBLIC_ZUL_WHATSAPP --value "<número do Zul só com dígitos, ex.: 5511999999999>" --visibility plaintext
 # Opcionais:
 eas env:create --environment production --name EXPO_PUBLIC_API_URL --value "https://meuazulao.com.br" --visibility plaintext   # padrão já é esse
 eas env:create --environment production --name SENTRY_DSN --value "<dsn>" --visibility sensitive                            # sem DSN o app funciona, só não manda crash

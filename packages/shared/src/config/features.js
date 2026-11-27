@@ -41,10 +41,13 @@ export function setFeatureOverride(name, value) {
   else overrides[name] = Boolean(value);
 }
 
+/** Zul's production number (+55 11 2770-9553), international format, digits only. */
+export const ZUL_WHATSAPP_DEFAULT = '551127709553';
+
 export const WHATSAPP = {
-  // Zul's number in international format, digits only. Set per environment.
+  // An env var overrides it per environment (staging, a test number).
   number: (typeof process !== 'undefined' && process.env
-    && (process.env.EXPO_PUBLIC_ZUL_WHATSAPP || process.env.NEXT_PUBLIC_ZUL_WHATSAPP)) || '',
+    && (process.env.EXPO_PUBLIC_ZUL_WHATSAPP || process.env.NEXT_PUBLIC_ZUL_WHATSAPP)) || ZUL_WHATSAPP_DEFAULT,
 };
 
 /** wa.me deep link that opens a chat with Zul and a pre-filled text. */

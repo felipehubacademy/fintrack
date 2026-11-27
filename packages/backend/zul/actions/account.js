@@ -56,7 +56,7 @@ export function invite(ctx) {
   const f = makeFormatter(ctx);
   const code = ctx.user?.organization?.invite_code;
   if (!code) return simpleReply(ctx, 'dashboard', { link: dashboardLink(ctx) });
-  const number = digitsOnly(process.env.ZUL_WHATSAPP_NUMBER || '');
+  const number = digitsOnly(process.env.ZUL_WHATSAPP_NUMBER || '551127709553');
   if (!number) return [{ text: f.t('invite_code', { code }) }];
   const link = `https://wa.me/${number}?text=${encodeURIComponent(f.t('invite_text', { code }))}`;
   return [{ text: f.t('invite_link', { link }) }];

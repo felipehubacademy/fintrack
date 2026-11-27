@@ -68,7 +68,7 @@ Em **Vercel > projeto backend > Settings > Environment Variables**, cadastre em 
 | `OPENAI_API_KEY` | sim | Chave da OpenAI (texto, áudio via whisper-1 e fotos de recibo). |
 | `ZUL_MODEL` | não | Modelo de chat. Padrão `gpt-4o-mini`. |
 | `SEND_SMS_HOOK_SECRET` | sim | Segredo do Send SMS Hook do Supabase (seção 8), no formato `v1,whsec_...`, copiado inteiro. |
-| `ZUL_WHATSAPP_NUMBER` | recomendada | Número do Zul em formato internacional só com dígitos (ex.: `5511999999999`). Usado no link de convite `wa.me`. Sem ela, o convite mostra só o código. |
+| `ZUL_WHATSAPP_NUMBER` | não | Número do Zul no link de convite `wa.me`, só dígitos. Padrão `551127709553` (+55 11 2770-9553). |
 | `ZUL_DASHBOARD_URL` | não | Base do link do painel. Padrão `https://meuazulao.com.br` (o Zul envia `/login?phone=+55...`). |
 | `ZUL_DELETE_ACCOUNT_URL` | não | Link para apagar a conta. Padrão `https://www.meuazulao.com.br/delete-account`. |
 | `ZUL_PLACEHOLDER_EMAIL_DOMAIN` | não | Domínio do e-mail interno das contas criadas pelo WhatsApp. Padrão `phone.meuazulao.invalid` (nunca recebe e-mail). |
