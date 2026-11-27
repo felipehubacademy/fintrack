@@ -1,12 +1,15 @@
+import { t } from '@fintrack/shared/i18n';
+import { appLocale } from './utils';
+import { formatMoney } from '@fintrack/shared/i18n';
 // ============================================================================
 // Financial Insights Library
 // Calculates trends, patterns, and generates insights for budget planning
 // ============================================================================
 
 const MACRO_LABELS = {
-  needs: 'Necessidades',
-  wants: 'Desejos',
-  investments: 'Investimentos'
+  get needs() { return t('web.shared.needs'); },
+  get wants() { return t('web.shared.wants'); },
+  get investments() { return t('web.shared.investments'); },
 };
 
 /**
@@ -23,7 +26,7 @@ export function calculateTrends(expenses, budgets, months = 6) {
   for (let i = months - 1; i >= 0; i--) {
     const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
     const monthKey = targetDate.toISOString().slice(0, 7);
-    const monthLabel = targetDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    const monthLabel = targetDate.toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' });
     
     // Filter expenses for this month
     const monthExpenses = expenses.filter(e => {
@@ -94,16 +97,16 @@ export function detectPatterns(expenses, budgets) {
       if (change > 30) {
         insights.push({
           type: 'warning',
-          title: `Aumento em ${MACRO_LABELS[macro]}`,
-          message: `Seus gastos com ${MACRO_LABELS[macro]} aumentaram ${change.toFixed(0)}% nos últimos 2 meses`,
+          title: t('web.financialInsights.isGoingUp', { p0: MACRO_LABELS[macro] }),
+          message: t('web.financialInsights.yourSpendingWentUpOver', { p0: MACRO_LABELS[macro], p1: change.toFixed(0) }),
           severity: 'medium',
           macro
         });
       } else if (change < -20 && macro !== 'investments') {
         insights.push({
           type: 'success',
-          title: `Redução em ${MACRO_LABELS[macro]}`,
-          message: `Parabéns! Você reduziu gastos com ${MACRO_LABELS[macro]} em ${Math.abs(change).toFixed(0)}%`,
+          title: t('web.financialInsights.isGoingDown', { p0: MACRO_LABELS[macro] }),
+          message: t('web.financialInsights.niceYouCutSpendingBy', { p0: MACRO_LABELS[macro], p1: Math.abs(change).toFixed(0) }),
           severity: 'low',
           macro
         });
@@ -125,8 +128,8 @@ export function detectPatterns(expenses, budgets) {
   if (allInvestmentsPositive) {
     insights.push({
       type: 'success',
-      title: 'Investindo consistentemente!',
-      message: 'Você está economizando e investindo todos os meses. Continue assim!',
+      title: t('web.financialInsights.savingEveryMonth'),
+      message: t('web.financialInsights.youReSavingEverySingle'),
       severity: 'low',
       macro: 'investments'
     });
@@ -144,8 +147,8 @@ export function detectPatterns(expenses, budgets) {
     if (percentage > 90) {
       insights.push({
         type: 'alert',
-        title: 'Orçamento próximo do limite',
-        message: `${budget.category_name || 'Uma categoria'} está em ${percentage.toFixed(0)}% do orçamento`,
+        title: t('web.financialInsights.budgetCloseToTheLimit'),
+        message: t('web.financialInsights.isAtOfItsBudget', { p0: budget.category_name || t('web.fixes.aCategory'), p1: percentage.toFixed(0) }),
         severity: 'high',
         categoryId: budget.category_id
       });
@@ -271,11 +274,11 @@ export function generateInsights(data) {
   patterns.slice(0, 5).forEach(p => insights.push(p.message));
   
   // Add score insight
-  insights.push(`Sua saúde financeira está ${score.rating.toLowerCase()} (${score.total}/100 pontos)`);
+  insights.push(t('web.insightsLib.healthScore', { score: score.total }));
   
   // Add prediction insight
   if (prediction.pace === 'high') {
-    insights.push(`No ritmo atual, você vai gastar R$ ${prediction.projected.toFixed(2)} até o fim do mês`);
+    insights.push(t('web.insightsLib.projected', { amount: formatMoney(prediction.projected) }));
   }
   
   return insights;

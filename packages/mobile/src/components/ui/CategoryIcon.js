@@ -33,7 +33,10 @@ import { WifiHigh } from 'phosphor-react-native/lib/module/icons/WifiHigh';
 import { Wrench } from 'phosphor-react-native/lib/module/icons/Wrench';
 import { BookOpen } from 'phosphor-react-native/lib/module/icons/BookOpen';
 import { useTheme } from '../../contexts/ThemeContext';
+import { categoryKey } from '../../utils/categoryLabel';
 
+// Keyed by the Portuguese default names stored in the database. Lookups also
+// go through categoryKey(), so accents/case variations ('alimentacao') match.
 const CATEGORY_MAP = {
   'Alimentação': { icon: ForkKnife, color: '#EF4444' },
   'Mercado': { icon: ShoppingCart, color: '#EF4444' },
@@ -72,13 +75,28 @@ const CATEGORY_MAP = {
   'Livros': { icon: BookOpen, color: '#7C3AED' },
   'Investimento': { icon: ArrowUp, color: '#10B981' },
   'Outros': { icon: Receipt, color: '#737373' },
+  'Feira': { icon: Storefront, color: '#16A34A' },
+  'Supermercado': { icon: ShoppingCart, color: '#EF4444' },
+  'Casa': { icon: House, color: '#3B82F6' },
+  'Investimentos': { icon: ArrowUp, color: '#10B981' },
+  'Transferência': { icon: ArrowDown, color: '#64748B' },
 };
+
+const BY_KEY = Object.entries(CATEGORY_MAP).reduce((acc, [name, config]) => {
+  const key = categoryKey(name);
+  if (key && !acc[key]) acc[key] = config;
+  return acc;
+}, {});
+
+function configFor(category) {
+  return CATEGORY_MAP[category] || BY_KEY[categoryKey(category)] || DEFAULT_CONFIG;
+}
 
 const DEFAULT_CONFIG = { icon: Question, color: '#737373' };
 
 export function CategoryIcon({ category, size = 40, iconSize = 20 }) {
   const { isDark } = useTheme();
-  const config = CATEGORY_MAP[category] || DEFAULT_CONFIG;
+  const config = configFor(category);
   const Icon = config.icon;
 
   return (
@@ -101,7 +119,7 @@ export function CategoryIcon({ category, size = 40, iconSize = 20 }) {
 }
 
 export function getCategoryColor(category) {
-  return (CATEGORY_MAP[category] || DEFAULT_CONFIG).color;
+  return configFor(category).color;
 }
 
 export const CATEGORIES = Object.keys(CATEGORY_MAP);

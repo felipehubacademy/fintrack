@@ -4,16 +4,18 @@ import { LineChart } from 'react-native-chart-kit';
 import { colors, spacing, radius } from '../../theme';
 import { Caption, Footnote } from '../ui/Text';
 import { Card } from '../ui/Card';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { width } = Dimensions.get('window');
 
 export function TrendLineChart({ data, height = 200 }) {
+  const { t, currencySymbol } = useI18n();
   // data: { labels: ['Jan', 'Fev', ...], datasets: [{ data: [100, 200, ...], label: 'Necessidades' }] }
   
   if (!data || !data.datasets || data.datasets.length === 0) {
     return (
       <Card style={styles.container}>
-        <Caption color="secondary">Sem dados de tendência</Caption>
+        <Caption color="secondary">{t('finances.charts.noTrend')}</Caption>
       </Card>
     );
   }
@@ -72,7 +74,7 @@ export function TrendLineChart({ data, height = 200 }) {
         withVerticalLines={false}
         withHorizontalLines={true}
         fromZero={true}
-        yAxisLabel="R$ "
+        yAxisLabel={`${currencySymbol()} `}
         yAxisSuffix="k"
       />
       {data.datasets.length > 1 && (

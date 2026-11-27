@@ -5,8 +5,10 @@ import { useOrganization } from '../../hooks/useOrganization';
 import { useDynamicUrls } from '../../hooks/useDynamicUrls';
 import OnboardingModal from '../../components/onboarding/OnboardingModal';
 import LoadingLogo from '../../components/LoadingLogo';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function OnboardingStepPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { step } = router.query;
   const { organization, user, loading: orgLoading, error: orgError } = useOrganization();
@@ -72,12 +74,12 @@ export default function OnboardingStepPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
+          <p className="text-gray-600 mb-4">{t('web.shared.youNeedAnInviteTo')}</p>
           <button
             onClick={() => router.push('/')}
             className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"
           >
-            Voltar ao início
+            {t('web.shared.backToHome2')}
           </button>
         </div>
       </div>

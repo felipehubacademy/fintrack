@@ -51,6 +51,7 @@ const OptionSheet = ({
   onSelect,
   onClose,
 }) => {
+  const { t } = useI18n();
   if (!visible) return null;
 
   return (
@@ -63,7 +64,7 @@ const OptionSheet = ({
         >
           <View style={styles.sheetHeader}>
             <Title2 weight="semiBold">{title}</Title2>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -98,7 +99,8 @@ const OptionSheet = ({
 };
 import { useToast } from '../ui/Toast';
 import { supabase } from '../../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
+import { sanitizeAmountInput, parseAmountInput, amountDecimalSeparator } from './amountInput';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { height } = Dimensions.get('window');
 
@@ -113,37 +115,9 @@ const getBrazilTodayString = () => {
   return `${year}-${month}-${day}`;
 };
 
-const parseAmountValue = (value) => {
-  if (typeof value === 'number') return value;
-  if (!value) return 0;
-  const normalized = String(value)
-    .replace(/\s/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.');
-  const parsed = Number(normalized);
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
+const parseAmountValue = (value) => parseAmountInput(value);
 
-const formatCurrencyInput = (value) => {
-  if (!value || value === 0) return '';
-  const num = typeof value === 'string' ? parseAmountValue(value) : value;
-  if (num === 0) return '';
-  return num.toFixed(2).replace('.', ',');
-};
-
-const processCurrencyInput = (value) => {
-  if (!value) return '';
-  let cleaned = value.replace(/[^0-9,.]/g, '');
-  cleaned = cleaned.replace(/\./g, '');
-  const parts = cleaned.split(',');
-  if (parts.length > 2) {
-    cleaned = parts[0] + ',' + parts.slice(1).join('');
-  }
-  if (parts.length === 2 && parts[1].length > 2) {
-    cleaned = parts[0] + ',' + parts[1].substring(0, 2);
-  }
-  return cleaned;
-};
+const processCurrencyInput = (value) => sanitizeAmountInput(value);
 
 export default function BankTransactionModal({
   visible,
@@ -153,6 +127,7 @@ export default function BankTransactionModal({
   onSuccess,
 }) {
   const { showToast } = useToast();
+  const { t, currencySymbol } = useI18n();
   const [formData, setFormData] = useState({
     to_account_id: '',
     amount: '',
@@ -186,7 +161,7 @@ export default function BankTransactionModal({
       setAvailableAccounts(data || []);
     } catch (error) {
       console.error('Erro ao buscar contas:', error);
-      showToast('Erro ao buscar contas disponíveis', 'error');
+      showToast(t('finances.form.accountsLoadError'), 'error');
     } finally {
       setLoadingAccounts(false);
     }
@@ -212,13 +187,13 @@ export default function BankTransactionModal({
 
   const handleSubmit = async () => {
     if (!formData.amount || !formData.to_account_id) {
-      showToast('Preencha todos os campos obrigatórios', 'warning');
+      showToast(t('finances.form.fillRequired'), 'warning');
       return;
     }
 
     const amount = parseAmountValue(formData.amount);
     if (amount <= 0) {
-      showToast('O valor deve ser maior que zero', 'warning');
+      showToast(t('finances.form.amountPositive'), 'warning');
       return;
     }
 
@@ -228,15 +203,15 @@ export default function BankTransactionModal({
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+      if (!user) throw new Error('Not authenticated');
 
-      if (!organizationId) throw new Error('Organização não encontrada');
+      if (!organizationId) throw new Error('Organization not found');
 
       const { error } = await supabase.rpc('transfer_between_accounts', {
         p_from_account_id: account.id,
         p_to_account_id: formData.to_account_id,
         p_amount: amount,
-        p_description: formData.description || 'Transferência entre contas',
+        p_description: formData.description || t('finances.transfer.defaultDescription'),
         p_date: formData.date,
         p_organization_id: organizationId,
         p_user_id: user.id,
@@ -245,15 +220,12 @@ export default function BankTransactionModal({
       if (error) throw error;
 
       resetForm();
-      showToast('Transferência realizada com sucesso!', 'success');
+      showToast(t('finances.transfer.done'), 'success');
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('Erro ao realizar transferência:', error);
-      showToast(
-        'Erro ao realizar transferência: ' + (error.message || 'Erro desconhecido'),
-        'error'
-      );
+      showToast(t('finances.transfer.error'), 'error');
     } finally {
       setSaving(false);
     }
@@ -280,9 +252,9 @@ export default function BankTransactionModal({
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerContent}>
-                <Title2 weight="semiBold">Transferir Entre Contas</Title2>
+                <Title2 weight="semiBold">{t('finances.transfer.title')}</Title2>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
                 <X size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
@@ -299,7 +271,7 @@ export default function BankTransactionModal({
               {/* Conta de Origem */}
               <View style={styles.field}>
                 <Caption color="secondary" weight="medium" style={styles.label}>
-                  Conta de Origem
+                  {t('finances.transfer.from')}
                 </Caption>
                 <Input
                   value={`${account?.name} - ${account?.bank || ''}`}
@@ -311,19 +283,19 @@ export default function BankTransactionModal({
               {/* Conta de Destino */}
               <View style={styles.field}>
                 <Caption color="secondary" weight="medium" style={styles.label}>
-                  Conta de Destino *
+                  {t('finances.transfer.to')}
                 </Caption>
                 {loadingAccounts ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="small" color={colors.brand.primary} />
                     <Caption color="secondary" style={{ marginLeft: spacing[1] }}>
-                      Carregando contas...
+                      {t('common.loading')}
                     </Caption>
                   </View>
                 ) : availableAccounts.length === 0 ? (
                   <View style={styles.warningContainer}>
                     <Caption color="secondary">
-                      Nenhuma outra conta ativa disponível para transferência
+                      {t('finances.transfer.noOtherAccounts')}
                     </Caption>
                   </View>
                 ) : (
@@ -334,7 +306,7 @@ export default function BankTransactionModal({
                         ? `${selectedToAccount.name} - ${selectedToAccount.bank || ''}`
                         : ''
                     }
-                    placeholder="Selecione a conta de destino"
+                    placeholder={t('finances.transfer.toPlaceholder')}
                     onPress={() => setActiveSheet('to_account')}
                     editable={!saving}
                   />
@@ -345,15 +317,15 @@ export default function BankTransactionModal({
               <View style={styles.row}>
                 <View style={[styles.field, { flex: 1, marginRight: spacing[1] }]}>
                   <Caption color="secondary" weight="medium" style={styles.label}>
-                    Valor (R$) *
+                    {t('finances.form.amount')}
                   </Caption>
                   <View style={styles.amountContainer}>
-                    <Caption style={styles.currencySymbol}>R$</Caption>
+                    <Caption style={styles.currencySymbol}>{currencySymbol()}</Caption>
                     <Input
                       value={formData.amount}
                       onChangeText={handleAmountChange}
-                      placeholder="0,00"
-                      keyboardType="numeric"
+                      placeholder={`0${amountDecimalSeparator()}00`}
+                      keyboardType="decimal-pad"
                       style={styles.amountInput}
                       editable={!saving}
                     />
@@ -362,7 +334,7 @@ export default function BankTransactionModal({
 
                 <View style={[styles.field, { flex: 1, marginLeft: spacing[1] }]}>
                   <Caption color="secondary" weight="medium" style={styles.label}>
-                    Data *
+                    {t('finances.form.date')}
                   </Caption>
                   <Input
                     value={formData.date}
@@ -376,12 +348,12 @@ export default function BankTransactionModal({
               {/* Descrição */}
               <View style={styles.field}>
                 <Caption color="secondary" weight="medium" style={styles.label}>
-                  Descrição (opcional)
+                  {t('finances.form.descriptionOptional')}
                 </Caption>
                 <Input
                   value={formData.description}
                   onChangeText={(text) => handleChange('description', text)}
-                  placeholder="Ex: Transferência para investimento, etc."
+                  placeholder={t('finances.transfer.descriptionPlaceholder')}
                   editable={!saving}
                 />
               </View>
@@ -391,14 +363,14 @@ export default function BankTransactionModal({
                 <View style={styles.visualIndicator}>
                   <View style={styles.visualItem}>
                     <Caption color="secondary" style={styles.visualLabel}>
-                      De
+                      {t('finances.transfer.fromShort')}
                     </Caption>
                     <Headline weight="semiBold">{account?.name}</Headline>
                   </View>
                   <ArrowRight size={20} color={colors.brand.primary} />
                   <View style={styles.visualItem}>
                     <Caption color="secondary" style={styles.visualLabel}>
-                      Para
+                      {t('finances.transfer.toShort')}
                     </Caption>
                     <Headline weight="semiBold">
                       {selectedToAccount?.name || ''}
@@ -411,14 +383,14 @@ export default function BankTransactionModal({
             {/* Footer */}
             <View style={styles.footer}>
               <Button
-                title="Cancelar"
+                title={t('common.cancel')}
                 variant="outline"
                 onPress={onClose}
                 disabled={saving}
                 style={styles.footerButton}
               />
               <Button
-                title={saving ? 'Transferindo...' : 'Transferir'}
+                title={saving ? t('common.loading') : t('finances.accounts.transfer')}
                 onPress={handleSubmit}
                 disabled={saving || availableAccounts.length === 0}
                 style={styles.footerButton}
@@ -440,7 +412,7 @@ export default function BankTransactionModal({
           handleChange('to_account_id', option.id);
           setActiveSheet(null);
         }}
-        title="Selecione a conta de destino"
+        title={t('finances.transfer.toPlaceholder')}
       />
     </>
   );

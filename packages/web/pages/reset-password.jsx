@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
 import { ArrowLeft, Mail, Loader2, CheckCircle } from 'lucide-react';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function ResetPassword() {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -24,10 +26,10 @@ export default function ResetPassword() {
 
       if (error) throw error;
 
-      setMessage('Link de recuperação enviado! Verifique seu email.');
+      setMessage(t('web.resetPassword.resetLinkSentCheckYour'));
       setIsSuccess(true);
     } catch (error) {
-      setMessage(error.message || 'Erro ao enviar link de recuperação');
+      setMessage(error.message || t('web.resetPassword.couldnTSendTheReset'));
       setIsSuccess(false);
     } finally {
       setLoading(false);
@@ -37,7 +39,7 @@ export default function ResetPassword() {
   return (
     <>
       <Head>
-        <title>Recuperar Senha - MeuAzulão</title>
+        <title>{t('web.resetPassword.resetPasswordMeuazulao')}</title>
         <meta name="description" content="Recupere sua senha no MeuAzulão" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -56,7 +58,7 @@ export default function ResetPassword() {
           className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Voltar para Login</span>
+          <span className="font-medium">{t('web.resetPassword.backToSignIn')}</span>
         </Link>
 
         {/* Reset Password Card */}
@@ -72,10 +74,10 @@ export default function ResetPassword() {
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Recuperar Senha
+                {t('web.resetPassword.resetPassword')}
               </h1>
               <p className="text-gray-600">
-                Digite seu email para receber o link de recuperação
+                {t('web.resetPassword.enterYourEmailAndWe')}
               </p>
             </div>
 
@@ -87,10 +89,10 @@ export default function ResetPassword() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    Email Enviado!
+                    {t('web.resetPassword.emailSent')}
                   </h3>
                   <p className="text-gray-600 mb-6">
-                    Verifique sua caixa de entrada em <span className="font-semibold">{email}</span>
+                    {t('web.resetPassword.checkYourInboxAt')} <span className="font-semibold">{email}</span>
                   </p>
                   <button
                     onClick={() => {
@@ -100,7 +102,7 @@ export default function ResetPassword() {
                     }}
                     className="text-blue-600 hover:text-blue-700 font-medium"
                   >
-                    Enviar para outro email
+                    {t('web.resetPassword.sendToAnotherEmail')}
                   </button>
                 </div>
               </div>
@@ -110,7 +112,7 @@ export default function ResetPassword() {
                 <form onSubmit={handleResetPassword} className="space-y-6">
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
+                      {t('web.shared.email')}
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -119,7 +121,7 @@ export default function ResetPassword() {
                       <input
                         id="email"
                         type="email"
-                        placeholder="seu@email.com"
+                        placeholder={t('web.shared.youEmailCom')}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
@@ -136,10 +138,10 @@ export default function ResetPassword() {
                     {loading ? (
                       <span className="flex items-center justify-center">
                         <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                        Enviando...
+                        {t('web.shared.sending')}
                       </span>
                     ) : (
-                      'Enviar Link de Recuperação'
+                      t('web.resetPassword.sendResetLink')
                     )}
                   </button>
                 </form>

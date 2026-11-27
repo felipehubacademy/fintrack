@@ -14,20 +14,15 @@ import { X, Check } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text, Callout, Caption, Title2 } from '../ui/Text';
 import { Button } from '../ui/Button';
+import { useI18n } from '../../contexts/I18nContext';
+import { categoryLabel } from '../../utils/categoryLabel';
 
 // Usar ScrollView nativo no Android para melhor detecção de scroll
 const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
 
 const { height } = Dimensions.get('window');
 
-const paymentMethodLabels = {
-  credit_card: 'Cartão de Crédito',
-  debit_card: 'Cartão de Débito',
-  cash: 'Dinheiro',
-  pix: 'PIX',
-  bank_transfer: 'Transferência',
-  boleto: 'Boleto',
-};
+const PAYMENT_METHOD_IDS = ['credit_card', 'debit_card', 'cash', 'pix', 'bank_transfer', 'boleto'];
 
 export function FilterSheet({
   visible,
@@ -38,8 +33,10 @@ export function FilterSheet({
   categories = [],
   paymentMethods = [],
   cards = [],
-  organizationName = 'Organização',
+  organizationName: organizationNameProp,
 }) {
+  const { t } = useI18n();
+  const organizationName = organizationNameProp || t('bills.family');
   const insets = useSafeAreaInsets();
   // Safe area apenas no Android
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
@@ -81,54 +78,54 @@ export function FilterSheet({
     );
     const orgOption = {
       value: 'organization',
-      label: organizationName || 'Organização',
+      label: organizationName,
     };
     return [
-      { value: null, label: 'Todos os responsáveis' },
+      { value: null, label: t('finances.filters.allPeople') },
       orgOption,
       ...activeCostCenters.map((cc) => ({
         value: cc.id,
-        label: cc.name || 'Sem nome',
+        label: cc.name || t('finances.form.noName'),
       })),
     ];
-  }, [costCenters, organizationName]);
+  }, [costCenters, organizationName, t]);
 
   const categoryOptions = useMemo(
     () => [
-      { value: null, label: 'Todas as categorias' },
+      { value: null, label: t('finances.filters.allCategories') },
       ...filteredCategories.map((cat) => ({
         value: cat.id,
-        label: cat.name || 'Sem categoria',
+        label: cat.name ? categoryLabel(cat.name) : t('finances.filters.noCategory'),
       })),
     ],
-    [filteredCategories]
+    [filteredCategories, t]
   );
 
   const paymentMethodOptions = useMemo(() => {
     const methods =
       paymentMethods && paymentMethods.length > 0
         ? paymentMethods
-        : Object.keys(paymentMethodLabels);
+        : PAYMENT_METHOD_IDS;
 
     return [
-      { value: null, label: 'Todas as formas' },
+      { value: null, label: t('finances.filters.allMethods') },
       ...methods.map((method) => ({
         value: method,
-        label: paymentMethodLabels[method] || method,
+        label: PAYMENT_METHOD_IDS.includes(method) ? t(`bills.paymentMethods.${method}`) : method,
       })),
     ];
-  }, [paymentMethods]);
+  }, [paymentMethods, t]);
 
   const cardOptions = useMemo(() => {
     const activeCards = (cards || []).filter((card) => card?.is_active !== false);
     return [
-      { value: null, label: 'Todos os cartões' },
+      { value: null, label: t('finances.filters.allCards') },
       ...activeCards.map((card) => ({
         value: card.id,
-        label: card.name || 'Cartão',
+        label: card.name || t('closing.card'),
       })),
     ];
-  }, [cards]);
+  }, [cards, t]);
 
   useEffect(() => {
     if (
@@ -151,7 +148,7 @@ export function FilterSheet({
 
   const responsibleLabel = useMemo(() => {
     if (localFilters.costCenter === 'organization') {
-      return organizationName || 'Organização';
+      return organizationName;
     }
     if (localFilters.costCenter === null || localFilters.costCenter === undefined) {
       return null;
@@ -236,7 +233,7 @@ export function FilterSheet({
       <View style={styles.field}>
         <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>{title}</Caption>
         {options.length === 0 ? (
-          <Caption color="tertiary">Nenhuma opção disponível</Caption>
+          <Caption color="tertiary">{t('bills.form.noOptions')}</Caption>
         ) : (
           <View style={styles.selectorContainer}>
             {options.map((option) => {
@@ -271,6 +268,7 @@ const OptionSheet = ({
   onSelect,
   onClose,
 }) => {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   // Safe area apenas no Android
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
@@ -299,7 +297,7 @@ const OptionSheet = ({
           >
             {options.length === 0 ? (
               <Caption color="secondary" style={{ textAlign: 'center', marginBottom: spacing[2] }}>
-                Nenhuma opção disponível
+                {t('bills.form.noOptions')}
               </Caption>
             ) : (
               options.map((option) => {
@@ -360,8 +358,8 @@ const OptionSheet = ({
 
           {/* Header */}
           <View style={styles.header}>
-            <Title2 weight="semiBold">Filtros</Title2>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Title2 weight="semiBold">{t('bills.filters.title')}</Title2>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -379,44 +377,44 @@ const OptionSheet = ({
             <View style={styles.form}>
               {/* Tipo */}
               <FilterSection
-                title="Tipo de transação"
+                title={t('finances.filters.type')}
                 options={[
-                  { id: 'all', name: 'Todas' },
-                  { id: 'expense', name: 'Despesas' },
-                  { id: 'income', name: 'Entradas' },
+                  { id: 'all', name: t('finances.filters.typeAll') },
+                  { id: 'expense', name: t('finances.filters.typeExpense') },
+                  { id: 'income', name: t('finances.filters.typeIncome') },
                 ]}
                 selectedValue={localFilters.type}
                 onSelect={(value) => setLocalFilters({ ...localFilters, type: value || 'all' })}
               />
 
               <SelectField
-                label="Responsável"
+                label={t('bills.markPaidModal.owner')}
                 value={responsibleLabel}
-                placeholder="Selecionar responsável"
+                placeholder={t('bills.markPaidModal.ownerPlaceholder')}
                 onPress={() => setActiveDropdown('responsible')}
               />
 
               <SelectField
-                label="Categoria"
+                label={t('bills.form.category')}
                 value={categoryLabel}
-                placeholder="Selecionar categoria"
+                placeholder={t('finances.form.chooseCategory')}
                 onPress={() => setActiveDropdown('category')}
               />
 
               {typeFilter !== 'income' && (
                 <SelectField
-                  label="Forma de pagamento"
+                  label={t('bills.form.paymentMethod')}
                   value={paymentLabel}
-                  placeholder="Selecionar forma de pagamento"
+                  placeholder={t('bills.form.paymentMethodPlaceholder')}
                   onPress={() => setActiveDropdown('payment')}
                 />
               )}
 
               {typeFilter !== 'income' && localFilters.paymentMethod === 'credit_card' && (
                 <SelectField
-                  label="Cartão"
+                  label={t('bills.form.card')}
                   value={cardLabel}
-                  placeholder="Selecionar cartão"
+                  placeholder={t('bills.form.cardPlaceholder')}
                   onPress={() => setActiveDropdown('card')}
                 />
               )}
@@ -426,13 +424,13 @@ const OptionSheet = ({
           {/* Footer */}
           <View style={[styles.footer, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, spacing[3]) : spacing[3] }]}>
             <Button
-              title="Limpar Filtros"
+              title={t('finances.filters.clear')}
               variant="outline"
               onPress={handleClear}
               style={{ flex: 1 }}
             />
             <Button
-              title="Aplicar Filtros"
+              title={t('finances.filters.apply')}
               variant="primary"
               onPress={handleApply}
               style={{ flex: 1 }}
@@ -441,7 +439,7 @@ const OptionSheet = ({
 
           <OptionSheet
             visible={activeDropdown === 'responsible'}
-            title="Responsáveis"
+            title={t('bills.markPaidModal.ownerSheetTitle')}
             options={responsibleOptions}
             selectedValue={localFilters.costCenter}
             onSelect={(value) =>
@@ -451,7 +449,7 @@ const OptionSheet = ({
           />
           <OptionSheet
             visible={activeDropdown === 'category'}
-            title="Categorias"
+            title={t('finances.form.categories')}
             options={categoryOptions}
             selectedValue={localFilters.category}
             onSelect={(value) =>
@@ -461,7 +459,7 @@ const OptionSheet = ({
           />
           <OptionSheet
             visible={activeDropdown === 'payment'}
-            title="Formas de Pagamento"
+            title={t('bills.form.paymentMethod')}
             options={paymentMethodOptions}
             selectedValue={localFilters.paymentMethod}
             onSelect={(value) =>
@@ -474,7 +472,7 @@ const OptionSheet = ({
           />
           <OptionSheet
             visible={activeDropdown === 'card'}
-            title="Cartões"
+            title={t('bills.form.cardPlaceholder')}
             options={cardOptions}
             selectedValue={localFilters.card}
             onSelect={(value) =>

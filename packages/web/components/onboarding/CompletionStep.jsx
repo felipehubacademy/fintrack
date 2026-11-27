@@ -1,7 +1,9 @@
 import { ArrowRight } from 'lucide-react';
 import { useEffect } from 'react';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function CompletionStep({ organization, onComplete }) {
+  const { t } = useI18n();
   useEffect(() => {
     // Criar confetes quando o componente montar
     const confettiCount = 400;
@@ -78,10 +80,10 @@ export default function CompletionStep({ organization, onComplete }) {
       {/* Title */}
       <div className="space-y-8">
         <h2 className="text-5xl md:text-6xl xl:text-7xl font-bold text-gray-900">
-          Tudo Pronto!
+          {t('web.completionStep.allSet')}
         </h2>
         <p className="text-2xl xl:text-3xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-          <span className="font-bold text-[#207DFF]">{organization?.name}</span> está configurada
+          <span className="font-bold text-[#207DFF]">{organization?.name}</span> {t('web.completionStep.isReady')}
         </p>
       </div>
 
@@ -91,7 +93,7 @@ export default function CompletionStep({ organization, onComplete }) {
           onClick={onComplete}
           className="inline-flex items-center space-x-3 px-10 py-5 xl:px-12 xl:py-6 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-full text-xl xl:text-2xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
         >
-          <span>Concluir</span>
+          <span>{t('web.shared.finish')}</span>
           <ArrowRight className="w-6 h-6 xl:w-7 xl:h-7" />
         </button>
       </div>

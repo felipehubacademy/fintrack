@@ -7,12 +7,15 @@ import { X, Upload, Camera, User, MessageCircle, CheckCircle2 } from 'lucide-rea
 import { useNotificationContext } from '../contexts/NotificationContext';
 import Avatar from './Avatar';
 import WhatsAppVerificationModal from './WhatsAppVerificationModal';
+import { useI18n } from '../contexts/I18nContext';
+import { contactLine, isPlaceholderEmail } from '../lib/contact';
 
 const AVATAR_BUCKET = 'avatar';
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 export default function ProfileModal({ isOpen, onClose }) {
+  const { t } = useI18n();
   const { user: orgUser, organization, refreshData, costCenters } = useOrganization();
   const { success, error: showError } = useNotificationContext();
   const [loading, setLoading] = useState(false);
@@ -41,7 +44,7 @@ export default function ProfileModal({ isOpen, onClose }) {
     if (isOpen && orgUser) {
       setFormData({
         name: orgUser.name || '',
-        email: orgUser.email || '',
+        email: contactLine(orgUser),
         avatar_url: orgUser.avatar_url || null,
         cost_center_color: userCostCenter?.color || '#3B82F6'
       });
@@ -54,13 +57,13 @@ export default function ProfileModal({ isOpen, onClose }) {
 
     // Validar tipo
     if (!ALLOWED_TYPES.includes(file.type)) {
-      showError('Formato inválido. Use JPG, PNG ou WebP.');
+      showError(t('web.profileModal.invalidFormatUseJpgPng'));
       return;
     }
 
     // Validar tamanho
     if (file.size > MAX_FILE_SIZE) {
-      showError('Arquivo muito grande. Máximo 2MB.');
+      showError(t('web.profileModal.fileTooBigMax2mb'));
       return;
     }
 
@@ -134,21 +137,21 @@ export default function ProfileModal({ isOpen, onClose }) {
         }
       }
 
-      success('Avatar atualizado com sucesso!');
+      success(t('web.profileModal.photoUpdated'));
       
       // Refetch user data
       if (refreshData) refreshData();
     } catch (error) {
       console.error('❌ Erro ao fazer upload:', error);
-      const errorMessage = error?.message || 'Erro desconhecido';
+      const errorMessage = error?.message || t('web.shared.unknownError');
       
       // Mensagens mais específicas baseadas no erro
       if (errorMessage.includes('permission') || errorMessage.includes('policy')) {
-        showError('Erro de permissão. Verifique se as políticas RLS do bucket estão configuradas.');
+        showError(t('web.profileModal.permissionErrorUploadingThePhoto'));
       } else if (errorMessage.includes('bucket')) {
-        showError('Bucket não encontrado. Verifique se o bucket "avatar" foi criado.');
+        showError(t('web.profileModal.photoStorageIsnTAvailable'));
       } else {
-        showError(`Erro ao fazer upload: ${errorMessage}`);
+        showError(t('web.profileModal.uploadFailed', { errorMessage }));
       }
     } finally {
       setUploading(false);
@@ -207,12 +210,12 @@ export default function ProfileModal({ isOpen, onClose }) {
       if (updateError) throw updateError;
 
       setFormData(prev => ({ ...prev, avatar_url: null }));
-      success('Avatar removido!');
+      success(t('web.profileModal.photoRemoved'));
 
       if (refreshData) refreshData();
     } catch (error) {
       console.error('❌ Erro ao remover avatar:', error);
-      showError('Erro ao remover avatar.');
+      showError(t('web.profileModal.couldnTRemoveThePhoto'));
     } finally {
       setUploading(false);
     }
@@ -220,7 +223,7 @@ export default function ProfileModal({ isOpen, onClose }) {
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      showError('Nome é obrigatório');
+      showError(t('web.profileModal.nameIsRequired'));
       return;
     }
 
@@ -252,13 +255,13 @@ export default function ProfileModal({ isOpen, onClose }) {
         }
       }
 
-      success('Perfil atualizado com sucesso!');
+      success(t('web.profileModal.profileUpdated'));
       
       if (refreshData) refreshData();
       onClose();
     } catch (error) {
       console.error('❌ Erro ao salvar:', error);
-      showError('Erro ao salvar perfil.');
+      showError(t('web.profileModal.couldnTSaveYourProfile'));
     } finally {
       setLoading(false);
     }
@@ -271,7 +274,7 @@ export default function ProfileModal({ isOpen, onClose }) {
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl border border-flight-blue/20 flex flex-col max-h-[90vh] sm:max-h-[95vh]">
         {/* Header */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Meu Perfil</h2>
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">{t('web.profileModal.myProfile')}</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -311,7 +314,7 @@ export default function ProfileModal({ isOpen, onClose }) {
                   className="flex items-center space-x-2"
                 >
                   <Upload className="h-4 w-4" />
-                  <span>{uploading ? 'Enviando...' : 'Alterar Foto'}</span>
+                  <span>{uploading ? t('web.shared.sending') : t('web.profileModal.changePhoto')}</span>
                 </Button>
 
                 {formData.avatar_url && (
@@ -322,12 +325,12 @@ export default function ProfileModal({ isOpen, onClose }) {
                     disabled={uploading}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
-                    Remover Foto
+                    {t('web.profileModal.removePhoto')}
                   </Button>
                 )}
 
                 <p className="text-xs text-gray-500 text-center max-w-xs">
-                  JPG, PNG ou WebP. Máximo 2MB.
+                  {t('web.profileModal.jpgPngOrWebpMax')}
                 </p>
               </div>
             </div>
@@ -336,36 +339,36 @@ export default function ProfileModal({ isOpen, onClose }) {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome Completo *
+                  {t('web.profileModal.fullName')}
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  placeholder="Seu nome completo"
+                  placeholder={t('web.profileModal.yourFullName')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
+                  {isPlaceholderEmail(orgUser?.email) ? t('web.profileExtra.phone') : t('web.shared.email')}
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   value={formData.email}
                   disabled
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  O email não pode ser alterado
+                  {t('web.profileModal.emailCanTBeChanged')}
                 </p>
               </div>
 
               {organization && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Organização
+                    {t('web.profileModal.household')}
                   </label>
                   <input
                     type="text"
@@ -379,7 +382,7 @@ export default function ProfileModal({ isOpen, onClose }) {
               {userCostCenter && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cor do Perfil
+                    {t('web.shared.profileColor')}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {colors.map((c) => (
@@ -393,12 +396,12 @@ export default function ProfileModal({ isOpen, onClose }) {
                             : 'hover:scale-105'
                         }`}
                         style={{ backgroundColor: c }}
-                        title={`Cor ${c}`}
+                        title={t('web.profileModal.color', { c })}
                       />
                     ))}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Esta cor será usada para identificar você em gráficos e análises
+                    {t('web.profileModal.thisColorMarksYouIn')}
                   </p>
                 </div>
               )}
@@ -409,11 +412,11 @@ export default function ProfileModal({ isOpen, onClose }) {
                   <div className="flex items-center space-x-2">
                     <MessageCircle className={`h-5 w-5 ${orgUser?.phone_verified ? 'text-green-600' : 'text-gray-400'}`} />
                     <label className="block text-sm font-medium text-gray-700">
-                      WhatsApp
+                      {t('web.shared.whatsapp')}
                       {orgUser?.phone_verified && (
                         <span className="ml-2 text-xs text-green-600 font-normal flex items-center">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Verificado
+                          {t('web.profileModal.verified')}
                         </span>
                       )}
                     </label>
@@ -427,16 +430,16 @@ export default function ProfileModal({ isOpen, onClose }) {
                       : 'bg-flight-blue hover:bg-flight-blue/90 text-white'
                     }
                   >
-                    {orgUser?.phone_verified ? 'Alterar' : 'Verificar'}
+                    {orgUser?.phone_verified ? t('web.profileModal.change') : t('web.profileModal.verify')}
                   </Button>
                 </div>
                 {orgUser?.phone_verified && orgUser?.phone ? (
                   <p className="text-sm text-gray-600">
-                    Número verificado: {orgUser.phone.replace('55', '')}
+                    {t('web.profileModal.verifiedNumber', { p0: orgUser.phone.replace('55', '') })}
                   </p>
                 ) : (
                   <p className="text-sm text-gray-500">
-                    Configure seu número para usar o Zul
+                    {t('web.profileModal.addYourNumberToChat')}
                   </p>
                 )}
               </div>
@@ -452,14 +455,14 @@ export default function ProfileModal({ isOpen, onClose }) {
             disabled={loading}
             className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={loading}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
-            {loading ? 'Salvando...' : 'Salvar'}
+            {loading ? t('web.shared.saving') : t('web.shared.save')}
           </Button>
         </div>
       </div>

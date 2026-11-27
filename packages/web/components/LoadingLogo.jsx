@@ -1,6 +1,8 @@
 import Image from 'next/image';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function LoadingLogo({ size = 'medium', message = '', className = '' }) {
+  const { t } = useI18n();
   // Tamanhos responsivos: mobile, md, lg, xl, 2xl
   const sizes = {
     small: 'h-10 w-10 md:h-12 md:w-12 lg:h-12 lg:w-12 xl:h-14 xl:w-14 2xl:h-14 2xl:w-14',
@@ -15,7 +17,7 @@ export default function LoadingLogo({ size = 'medium', message = '', className =
         <div className="absolute inset-0 opacity-30">
           <Image
             src="/images/logo_flat.svg"
-            alt="Carregando..."
+            alt={t('web.shared.loading')}
             fill
             className="logo-base object-contain"
           />
@@ -24,7 +26,7 @@ export default function LoadingLogo({ size = 'medium', message = '', className =
         <div className="absolute inset-0 animate-fill-logo">
           <Image
             src="/images/logo_flat.svg"
-            alt="Carregando..."
+            alt={t('web.shared.loading')}
             fill
             className="logo-fill object-contain"
           />

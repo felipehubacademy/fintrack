@@ -1,0 +1,28 @@
+name: Trial funnel
+
+on:
+  schedule:
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Só simular (1) ou enviar de verdade (0)'
+        default: '1'
+
+jobs:
+  trial-funnel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run trial funnel
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+        run: |
+          if [ -z "$BACKEND_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "BACKEND_URL or CRON_SECRET not set, skipping"
+            exit 0
+          fi
+          curl -sS --fail-with-body -X POST "$BACKEND_URL/api/cron/trial-funnel?dry_run=$DRY_RUN" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -w "\nHTTP %{http_code}\n"

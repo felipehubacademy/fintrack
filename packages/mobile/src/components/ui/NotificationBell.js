@@ -6,11 +6,13 @@ import { Text, Caption } from './Text';
 import { useInAppNotifications } from '../../hooks/useInAppNotifications';
 import { useOrganization } from '../../hooks/useOrganization';
 import NotificationModal from './NotificationModal';
+import { useI18n } from '../../contexts/I18nContext';
 
 export function NotificationBell() {
   const { user, organization } = useOrganization();
   const { unreadCount, loading } = useInAppNotifications(user?.id, organization?.id);
   const [showModal, setShowModal] = useState(false);
+  const { t } = useI18n();
 
   return (
     <>
@@ -19,8 +21,8 @@ export function NotificationBell() {
         style={styles.bellButton}
         activeOpacity={0.7}
         accessibilityRole="button"
-        accessibilityLabel={unreadCount > 0 ? `Notificações: ${unreadCount} não lidas` : "Notificações"}
-        accessibilityHint="Ver notificações"
+        accessibilityLabel={unreadCount > 0 ? `${t('dashboard.ui.notifications')}: ${t('dashboard.ui.notificationsUnread', { count: unreadCount })}` : t('dashboard.ui.notifications')}
+        accessibilityHint={t('dashboard.ui.notificationsHint')}
       >
         <Bell size={24} color={colors.text.secondary} />
         {unreadCount > 0 && (

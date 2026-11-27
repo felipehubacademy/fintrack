@@ -17,7 +17,14 @@ import { Text, Title2, Callout, Caption, Subheadline } from '../ui/Text';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { supabase } from '../../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
+import { useI18n } from '../../contexts/I18nContext';
+import { categoryLabel } from '../../utils/categoryLabel';
+import {
+  amountDecimalSeparator,
+  sanitizeAmountInput,
+  formatAmountInput,
+  parseAmountInput,
+} from './amountInput';
 import { CategoryManagementModal } from '../settings/CategoryManagementModal';
 
 const { height } = Dimensions.get('window');
@@ -25,33 +32,23 @@ const { height } = Dimensions.get('window');
 // Usar ScrollView nativo no Android para melhor detecção de scroll
 const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
 
-const MACRO_LABELS = {
-  needs: 'Necessidades',
-  wants: 'Desejos',
-  investments: 'Investimentos'
-};
+const MACRO_KEYS = ['needs', 'wants', 'investments'];
 
 const parseCurrencyInput = (value) => {
-  if (!value) return 0;
-  const cleaned = value.replace(/[^\d,]/g, '').replace(',', '.');
-  const parsed = parseFloat(cleaned);
-  if (isNaN(parsed)) return 0;
-  // Arredondar para 2 casas decimais para evitar problemas de precisão
+  const parsed = parseAmountInput(value);
+  // Round to cents to avoid floating point noise.
   return Math.round(parsed * 100) / 100;
 };
 
 const formatCurrencyInput = (value) => {
   if (!value && value !== 0) return '';
   const num = typeof value === 'string' ? parseCurrencyInput(value) : value;
-  if (num === 0) return '';
-  return num.toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return num ? formatAmountInput(num) : '';
 };
 
 // Componente OptionSheet para seleção de categorias
 const CategoryOptionSheet = ({ visible, onClose, options = [], selectedId, onSelect }) => {
+  const { t } = useI18n();
   if (!visible) return null;
 
   return (
@@ -63,8 +60,8 @@ const CategoryOptionSheet = ({ visible, onClose, options = [], selectedId, onSel
           onPress={(e) => e.stopPropagation()}
         >
           <View style={optionSheetStyles.header}>
-            <Title2 weight="semiBold">Selecionar categoria</Title2>
-            <TouchableOpacity onPress={onClose}>
+            <Title2 weight="semiBold">{t('finances.form.chooseCategory')}</Title2>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -75,7 +72,7 @@ const CategoryOptionSheet = ({ visible, onClose, options = [], selectedId, onSel
           >
             {options.length === 0 ? (
               <Caption color="secondary" style={{ textAlign: 'center', padding: spacing[4] }}>
-                Nenhuma categoria disponível
+                {t('finances.macro.noCategories')}
               </Caption>
             ) : (
               options.map((option) => {
@@ -93,7 +90,7 @@ const CategoryOptionSheet = ({ visible, onClose, options = [], selectedId, onSel
                     }}
                   >
                     <View style={{ flex: 1 }}>
-                      <Callout weight="medium">{option.name}</Callout>
+                      <Callout weight="medium">{categoryLabel(option.name)}</Callout>
                     </View>
                     {isSelected && (
                       <Check size={20} color={colors.brand.primary} />
@@ -119,6 +116,7 @@ export function MacroEditModal({
   onSave,
 }) {
   const { showToast } = useToast();
+  const { t, language, formatMoney: formatCurrency, currencySymbol } = useI18n();
   const insets = useSafeAreaInsets();
   
   const [macroDraft, setMacroDraft] = useState([]);
@@ -153,8 +151,8 @@ export function MacroEditModal({
     return categories
       .filter((category) => category.macro_group === macro.key)
       .filter((category) => !macroDraft.some((entry) => entry.categoryId === category.id))
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  }, [categories, macro, macroDraft]);
+      .sort((a, b) => categoryLabel(a.name).localeCompare(categoryLabel(b.name), language));
+  }, [categories, macro, macroDraft, language]);
 
   const macroDraftTotal = useMemo(() => {
     const total = macroDraft.reduce((sum, entry) => {
@@ -180,8 +178,7 @@ export function MacroEditModal({
       setMacroDraftTarget('');
       return;
     }
-    const cleaned = value.replace(/[^\d,]/g, '');
-    setMacroDraftTarget(cleaned);
+    setMacroDraftTarget(sanitizeAmountInput(value));
   };
 
   const handleMacroTargetBlur = () => {
@@ -200,16 +197,7 @@ export function MacroEditModal({
       });
       return;
     }
-    // Remover tudo exceto números e vírgula
-    let cleaned = value.replace(/[^\d,]/g, '');
-    
-    // Garantir apenas uma vírgula e limitar a 2 casas decimais
-    const commaIndex = cleaned.indexOf(',');
-    if (commaIndex !== -1) {
-      const beforeComma = cleaned.substring(0, commaIndex);
-      const afterComma = cleaned.substring(commaIndex + 1).replace(/,/g, '').substring(0, 2);
-      cleaned = beforeComma + (afterComma ? ',' + afterComma : '');
-    }
+    const cleaned = sanitizeAmountInput(value);
     
     setMacroDraft((prev) => {
       const updated = [...prev];
@@ -260,22 +248,22 @@ export function MacroEditModal({
     // Avisar sobre diferença, mas permitir salvar
     if (!macroDraftBalanced) {
       if (macroDraftDiff > 0) {
-        showToast(`Atenção: Faltam ${formatCurrency(macroDraftDiff)} para distribuir completamente.`, 'warning');
+        showToast(t('finances.macro.leftToSplit', { amount: formatCurrency(macroDraftDiff) }), 'warning');
       } else {
-        showToast(`Atenção: Excedeu ${formatCurrency(Math.abs(macroDraftDiff))} do valor planejado.`, 'warning');
+        showToast(t('finances.macro.overPlan', { amount: formatCurrency(Math.abs(macroDraftDiff)) }), 'warning');
       }
       // Continuar mesmo assim
     }
     
     // Avisar sobre overspend, mas permitir salvar
     if (macroDraftHasOverspend) {
-      showToast('Atenção: Algumas categorias possuem gastos maiores do que o valor planejado.', 'warning');
+      showToast(t('finances.macro.overspend'), 'warning');
       // Continuar mesmo assim
     }
 
     const monthYear = selectedMonth ? `${selectedMonth}-01` : null;
     if (!monthYear) {
-      showToast('Mês selecionado inválido.', 'error');
+      showToast(t('common.errorTryAgain'), 'error');
       return;
     }
 
@@ -334,12 +322,12 @@ export function MacroEditModal({
         await supabase.from('budgets').insert(inserts);
       }
 
-      showToast('Macro atualizada com sucesso!', 'success');
+      showToast(t('finances.macro.saved'), 'success');
       if (onSave) onSave();
       onClose();
     } catch (error) {
       console.error('Erro ao salvar macro:', error);
-      showToast('Erro ao salvar macro: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('finances.macro.saveError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -354,12 +342,12 @@ export function MacroEditModal({
           {/* Header */}
           <View style={[styles.header, { paddingTop: Math.max(insets.top, spacing[3]) }]}>
             <View style={styles.headerLeft}>
-              <Title2>Editar macro · {MACRO_LABELS[macro.key]}</Title2>
+              <Title2>{t('finances.macro.title', { group: MACRO_KEYS.includes(macro.key) ? t(`finances.macro.groups.${macro.key}`) : macro.key })}</Title2>
               <Caption color="secondary">
-                Ajuste o valor total e distribua entre as categorias vinculadas a esta macro.
+                {t('finances.macro.subtitle')}
               </Caption>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -379,19 +367,19 @@ export function MacroEditModal({
               contentContainerStyle={styles.statsScrollContainer}
             >
               <View style={styles.statCard}>
-                <Caption color="secondary" style={styles.statLabel}>Valor planejado</Caption>
+                <Caption color="secondary" style={styles.statLabel}>{t('finances.macro.planned')}</Caption>
                 <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit={true} minimumFontScale={0.7}>
                   {formatCurrency(macroDraftTarget)}
                 </Text>
               </View>
               <View style={styles.statCard}>
-                <Caption color="secondary" style={styles.statLabel}>Distribuído</Caption>
+                <Caption color="secondary" style={styles.statLabel}>{t('finances.macro.distributed')}</Caption>
                 <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit={true} minimumFontScale={0.7}>
                   {formatCurrency(macroDraftTotal)}
                 </Text>
               </View>
               <View style={styles.statCard}>
-                <Caption color="secondary" style={styles.statLabel}>Diferença</Caption>
+                <Caption color="secondary" style={styles.statLabel}>{t('finances.macro.difference')}</Caption>
                 <Text 
                   style={[styles.statValue, { color: macroDraftDiff < 0 ? colors.error.main : colors.success.main }]}
                   numberOfLines={1}
@@ -406,17 +394,18 @@ export function MacroEditModal({
             {/* Target Input */}
             <View style={styles.section}>
               <Subheadline weight="semiBold" style={styles.sectionTitle}>
-                Ajustar valor total planejado
+                {t('finances.macro.adjustTotal')}
               </Subheadline>
               <View style={styles.currencyInput}>
-                <Text style={styles.currencySymbol}>R$</Text>
+                <Text style={styles.currencySymbol}>{currencySymbol()}</Text>
                 <TextInput
                   style={styles.targetInput}
                   value={typeof macroDraftTarget === 'number' ? formatCurrencyInput(macroDraftTarget) : macroDraftTarget}
                   onChangeText={handleMacroTargetChange}
                   onBlur={handleMacroTargetBlur}
-                  placeholder="0,00"
-                  keyboardType="numeric"
+                  placeholder={`0${amountDecimalSeparator()}00`}
+                  accessibilityLabel={t('finances.macro.adjustTotal')}
+                  keyboardType="decimal-pad"
                 />
               </View>
             </View>
@@ -425,7 +414,7 @@ export function MacroEditModal({
             {macroDraft.length > 0 ? (
               <View style={styles.section}>
                 <Subheadline weight="semiBold" style={styles.sectionTitle}>
-                  Categorias
+                  {t('finances.form.categories')}
                 </Subheadline>
                 {macroDraft.map((entry, index) => {
                   const amount = typeof entry.amount === 'string' ? parseCurrencyInput(entry.amount) : Number(entry.amount) || 0;
@@ -440,34 +429,37 @@ export function MacroEditModal({
                           </Text>
                         </View>
                         <View style={styles.categoryInfo}>
-                          <Subheadline weight="semiBold">{entry.name}</Subheadline>
-                          <Caption color="secondary">Já gasto: {formatCurrency(entry.spent)}</Caption>
+                          <Subheadline weight="semiBold">{categoryLabel(entry.name)}</Subheadline>
+                          <Caption color="secondary">{t('finances.macro.alreadySpent', { amount: formatCurrency(entry.spent) })}</Caption>
                         </View>
                         <TouchableOpacity
                           onPress={() => handleRemoveMacroCategory(index)}
                           style={styles.removeButton}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('finances.macro.removeA11y', { name: categoryLabel(entry.name) })}
                         >
                           <Trash2 size={18} color={colors.error.main} />
                         </TouchableOpacity>
                       </View>
                       <View style={styles.categoryInputSection}>
-                        <Caption color="secondary" style={styles.inputLabel}>Valor planejado</Caption>
+                        <Caption color="secondary" style={styles.inputLabel}>{t('finances.macro.planned')}</Caption>
                         <View style={styles.currencyInput}>
-                          <Text style={styles.currencySymbol}>R$</Text>
+                          <Text style={styles.currencySymbol}>{currencySymbol()}</Text>
                           <TextInput
                             style={styles.categoryInput}
                             value={typeof entry.amount === 'number' ? formatCurrencyInput(entry.amount) : (entry.amount || '')}
                             onChangeText={(text) => handleMacroAmountChange(index, text)}
                             onBlur={() => handleMacroAmountBlur(index)}
-                            placeholder="0,00"
-                            keyboardType="numeric"
+                            placeholder={`0${amountDecimalSeparator()}00`}
+                            accessibilityLabel={t('finances.macro.plannedFor', { name: categoryLabel(entry.name) })}
+                            keyboardType="decimal-pad"
                           />
                         </View>
                         {hasOverspend && (
                           <View style={styles.warningBox}>
                             <AlertTriangle size={14} color={colors.error.main} />
                             <Caption style={styles.warningText}>
-                              Valor menor que o já gasto. Ajuste para pelo menos {formatCurrency(entry.spent)}.
+                              {t('finances.macro.belowSpent', { amount: formatCurrency(entry.spent) })}
                             </Caption>
                           </View>
                         )}
@@ -479,7 +471,7 @@ export function MacroEditModal({
             ) : (
               <View style={styles.emptyState}>
                 <Caption color="secondary" style={styles.emptyStateText}>
-                  Nenhuma categoria adicionada ainda. Utilize o seletor abaixo para incluir novas categorias nesta macro.
+                  {t('finances.macro.emptyDraft')}
                 </Caption>
               </View>
             )}
@@ -487,21 +479,22 @@ export function MacroEditModal({
             {/* Add Category */}
             <View style={styles.section}>
               <Subheadline weight="semiBold" style={styles.sectionTitle}>
-                Adicionar categoria
+                {t('finances.macro.addCategory')}
               </Subheadline>
               {availableMacroCategories.length > 0 ? (
                 <View style={styles.addCategoryContainer}>
                   <TouchableOpacity
                     style={styles.categorySelect}
                     onPress={() => setShowCategorySheet(true)}
+                    accessibilityRole="button"
                   >
                     <Caption color="secondary" style={{ flex: 1 }}>
-                      {categoryToAdd ? categories.find(c => c.id === categoryToAdd)?.name : 'Adicionar categoria existente...'}
+                      {categoryToAdd ? categoryLabel(categories.find(c => c.id === categoryToAdd)?.name || '') : t('finances.macro.addExisting')}
                     </Caption>
                     <ChevronDown size={16} color={colors.text.secondary} />
                   </TouchableOpacity>
                   <Button
-                    title="Adicionar"
+                    title={t('bills.form.add')}
                     variant="ghost"
                     size="sm"
                     onPress={handleAddMacroCategory}
@@ -510,11 +503,11 @@ export function MacroEditModal({
                 </View>
               ) : (
                 <Caption color="secondary" style={{ marginBottom: spacing[2] }}>
-                  Todas as categorias dessa macro já estão presentes neste planejamento.
+                  {t('finances.macro.allAdded')}
                 </Caption>
               )}
               <Button
-                title="Criar nova categoria"
+                title={t('finances.macro.newCategory')}
                 variant="outline"
                 size="sm"
                 onPress={() => setShowCategoryModal(true)}
@@ -530,10 +523,10 @@ export function MacroEditModal({
             ]}>
               <Caption style={styles.statusText}>
                 {macroDraftBalanced
-                  ? 'Distribuição fechada em 100% do valor planejado.'
+                  ? t('finances.macro.balanced')
                   : macroDraftDiff > 0
-                  ? `Faltam ${formatCurrency(Math.abs(macroDraftDiff))} para distribuir.`
-                  : `Excedeu ${formatCurrency(Math.abs(macroDraftDiff))} do valor planejado.`}
+                  ? t('finances.macro.leftToSplit', { amount: formatCurrency(Math.abs(macroDraftDiff)) })
+                  : t('finances.macro.overPlan', { amount: formatCurrency(Math.abs(macroDraftDiff)) })}
               </Caption>
             </View>
 
@@ -541,7 +534,7 @@ export function MacroEditModal({
             <View style={styles.warningBox}>
               <AlertTriangle size={16} color={colors.warning.main} />
               <Caption style={styles.warningText}>
-                Algumas categorias possuem gastos maiores do que o valor planejado. Considere ajustar os valores.
+                {t('finances.macro.overspend')}
               </Caption>
             </View>
           )}
@@ -549,8 +542,8 @@ export function MacroEditModal({
 
           {/* Footer */}
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing[3]), paddingTop: spacing[3] }]}>
-            <Button variant="outline" title="Cancelar" onPress={onClose} disabled={saving} style={styles.footerButton} />
-            <Button title={saving ? 'Salvando...' : 'Salvar'} onPress={handleSave} disabled={!canSave} style={styles.footerButton} />
+            <Button variant="outline" title={t('common.cancel')} onPress={onClose} disabled={saving} style={styles.footerButton} />
+            <Button title={saving ? t('investments.form.saving') : t('common.save')} onPress={handleSave} disabled={!canSave} style={styles.footerButton} />
           </View>
         </View>
       </View>

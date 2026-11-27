@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useI18n } from '../contexts/I18nContext';
 
 export function useNotifications(userId, organizationId) {
+  const { t } = useI18n();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ export function useNotifications(userId, organizationId) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Erro ao buscar notificações');
+        throw new Error(data.error || t('web.useNotifications.couldnTLoadNotifications'));
       }
 
       setNotifications(data.notifications);
@@ -49,7 +51,7 @@ export function useNotifications(userId, organizationId) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Erro ao marcar notificação como lida');
+        throw new Error(data.error || t('web.useNotifications.couldnTMarkTheNotification'));
       }
 
       // Atualizar estado local
@@ -85,7 +87,7 @@ export function useNotifications(userId, organizationId) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Erro ao marcar todas as notificações como lidas');
+        throw new Error(data.error || t('web.useNotifications.couldnTMarkAllNotifications'));
       }
 
       // Atualizar estado local
@@ -120,7 +122,7 @@ export function useNotifications(userId, organizationId) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Erro ao deletar notificação');
+        throw new Error(data.error || t('web.useNotifications.couldnTDeleteTheNotification'));
       }
 
       // Atualizar estado local
@@ -155,7 +157,7 @@ export function useNotifications(userId, organizationId) {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Erro ao criar notificação');
+        throw new Error(data.error || t('web.useNotifications.couldnTCreateTheNotification'));
       }
 
       // Adicionar à lista local

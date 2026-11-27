@@ -9,12 +9,14 @@ import { useTheme } from '../../contexts/ThemeContext';
  * Usage:
  * <Text variant="title1">Hello</Text>
  * <Text variant="body" color="secondary">Description</Text>
+ * <Text variant="amount" tabular>{formatMoney(v)}</Text>  // numbers line up
  */
 export function Text({ 
   variant = 'body',
   color = 'primary',
   align = 'left',
   weight,
+  tabular = false,
   children,
   style,
   accessibilityRole,
@@ -38,10 +40,11 @@ export function Text({
       textAlign: align,
     },
     fontWeight && { fontWeight },
+    tabular && typography.tabularNums,
     style,
   ];
 
-  // Determinar accessibilityRole baseado no variant se não fornecido
+  // Default accessibilityRole from the variant
   const role = accessibilityRole || (variant.includes('title') || variant === 'headline' ? 'header' : 'text');
 
   return (

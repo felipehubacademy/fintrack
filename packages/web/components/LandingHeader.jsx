@@ -1,7 +1,11 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useI18n } from '../contexts/I18nContext';
+import { zulChatLink } from '@fintrack/shared/config';
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function LandingHeader({ currentPage = 'home' }) {
+  const { t } = useI18n();
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -43,19 +47,23 @@ export default function LandingHeader({ currentPage = 'home' }) {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
+            <LanguageSwitcher tone={isTransparent ? 'dark' : 'light'} />
             {currentPage === 'home' && (
               <>
                 <a href="#features" className={`transition-colors text-sm font-medium ${linkColor}`}>
-                  Funcionalidades
+                  {t('web.landingHeader.features')}
                 </a>
                 <a href="#how-it-works" className={`transition-colors text-sm font-medium ${linkColor}`}>
-                  Como Funciona
+                  {t('web.landingHeader.howItWorks')}
+                </a>
+                <a href="#pricing" className={`transition-colors text-sm font-medium ${linkColor}`}>
+                  {t('web.landingHeader.pricing')}
                 </a>
               </>
             )}
             {(currentPage === 'privacy' || currentPage === 'terms' || currentPage === 'help' || currentPage === 'contact') && (
               <Link href="/" className={`transition-colors text-sm font-medium ${linkColor}`}>
-                Home
+                {t('web.landingHeader.home')}
               </Link>
             )}
             <Link
@@ -66,7 +74,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
                   : linkColor
               }`}
             >
-              Ajuda
+              {t('web.landingHeader.help')}
             </Link>
             <Link
               href="/contact"
@@ -76,27 +84,30 @@ export default function LandingHeader({ currentPage = 'home' }) {
                   : linkColor
               }`}
             >
-              Contato
+              {t('web.landingHeader.contact')}
             </Link>
             <Link href="/login" className={`transition-colors text-sm font-medium ${linkColor}`}>
-              Entrar
+              {t('web.landingHeader.signIn')}
             </Link>
             {currentPage === 'home' && (
-              <Link
-                href="/account-type"
+              <a
+                href={zulChatLink(t('web.zul.greeting'))}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`relative inline-flex items-center px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 hover:scale-105 ${
                   isTransparent
                     ? 'bg-[#F5A623] hover:bg-[#FFD080] text-gray-900 shadow-lg shadow-[#F5A623]/30'
                     : 'bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] text-white shadow-lg shadow-blue-500/30'
                 }`}
               >
-                Começar Agora
-              </Link>
+                {t('web.landingHeader.getStarted')}
+              </a>
             )}
           </div>
 
           {/* Mobile Menu */}
           <div className="md:hidden flex items-center space-x-3">
+            <LanguageSwitcher tone={isTransparent ? 'dark' : 'light'} />
             <Link
               href="/login"
               className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
@@ -105,7 +116,7 @@ export default function LandingHeader({ currentPage = 'home' }) {
                   : 'bg-gradient-to-r from-[#1A6AFF] to-[#0047CC] text-white shadow-lg shadow-blue-500/30'
               }`}
             >
-              Entrar
+              {t('web.landingHeader.signIn')}
             </Link>
           </div>
         </div>

@@ -4,16 +4,11 @@ import AlertModal from './AlertModal';
 const AlertContext = createContext(null);
 
 /**
- * Hook para usar o sistema de alerta
- * 
- * Uso:
+ * Alerts for the whole app.
+ *
  * const { alert } = useAlert();
- * 
- * alert({
- *   title: 'Alerta',
- *   message: 'Esta é uma mensagem',
- *   type: 'warning'
- * });
+ * alert({ title: t('...'), message: t('...'), type: 'warning' });
+ * A missing title falls back to a translated "Heads up".
  */
 export function useAlert() {
   const context = useContext(AlertContext);
@@ -24,7 +19,7 @@ export function useAlert() {
 }
 
 /**
- * Provider para gerenciar alertas globalmente
+ * Provider that renders one alert dialog for the whole app.
  */
 export function AlertProvider({ children }) {
   const [alertState, setAlertState] = useState({
@@ -38,7 +33,7 @@ export function AlertProvider({ children }) {
   const alert = (options) => {
     setAlertState({
       visible: true,
-      title: options.title || 'Alerta',
+      title: options.title,
       message: options.message || '',
       type: options.type || 'info',
       buttons: options.buttons || [],

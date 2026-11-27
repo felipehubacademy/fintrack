@@ -3,10 +3,12 @@ import { View, StyleSheet } from 'react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Title1, Caption, Footnote } from '../ui/Text';
 import { Card } from '../ui/Card';
+import { useI18n } from '../../contexts/I18nContext';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 export const FinancialScoreGauge = React.memo(function FinancialScoreGauge({ score = 0, maxScore = 100 }) {
   // score: 0-100
+  const { t } = useI18n();
   const percentage = useMemo(() => (score / maxScore) * 100, [score, maxScore]);
   
   // Determinar cor baseada no score - memoizado
@@ -18,11 +20,11 @@ export const FinancialScoreGauge = React.memo(function FinancialScoreGauge({ sco
   }, [score]);
 
   const scoreLabel = useMemo(() => {
-    if (score >= 80) return 'Excelente';
-    if (score >= 60) return 'Bom';
-    if (score >= 40) return 'Regular';
-    return 'Precisa Melhorar';
-  }, [score]);
+    if (score >= 80) return t('finances.score.excellent');
+    if (score >= 60) return t('finances.score.good');
+    if (score >= 40) return t('finances.score.fair');
+    return t('finances.score.needsWork');
+  }, [score, t]);
   const size = 200;
   const strokeWidth = 20;
   const center = size / 2;
@@ -32,7 +34,7 @@ export const FinancialScoreGauge = React.memo(function FinancialScoreGauge({ sco
 
   return (
     <Card style={styles.container}>
-      <Caption color="secondary" style={styles.title}>Saúde Financeira</Caption>
+      <Caption color="secondary" style={styles.title}>{t('finances.score.title')}</Caption>
       
       <View style={styles.gaugeContainer}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -64,7 +66,7 @@ export const FinancialScoreGauge = React.memo(function FinancialScoreGauge({ sco
           <Title1 weight="bold" style={{ color: scoreColor }}>
             {Math.round(score)}
           </Title1>
-          <Footnote color="secondary">de {maxScore}</Footnote>
+          <Footnote color="secondary">{t('finances.score.outOf', { max: maxScore })}</Footnote>
         </View>
       </View>
 
@@ -74,15 +76,15 @@ export const FinancialScoreGauge = React.memo(function FinancialScoreGauge({ sco
 
       <View style={styles.metrics}>
         <View style={styles.metricItem}>
-          <Footnote color="secondary">Orçamento</Footnote>
+          <Footnote color="secondary">{t('finances.score.budget')}</Footnote>
           <View style={[styles.metricBar, { width: `${Math.min(score, 100)}%`, backgroundColor: scoreColor }]} />
         </View>
         <View style={styles.metricItem}>
-          <Footnote color="secondary">Poupança</Footnote>
+          <Footnote color="secondary">{t('finances.score.savings')}</Footnote>
           <View style={[styles.metricBar, { width: `${Math.min(score * 0.8, 100)}%`, backgroundColor: scoreColor }]} />
         </View>
         <View style={styles.metricItem}>
-          <Footnote color="secondary">Dívidas</Footnote>
+          <Footnote color="secondary">{t('finances.score.debts')}</Footnote>
           <View style={[styles.metricBar, { width: `${Math.min(score * 0.9, 100)}%`, backgroundColor: scoreColor }]} />
         </View>
       </View>

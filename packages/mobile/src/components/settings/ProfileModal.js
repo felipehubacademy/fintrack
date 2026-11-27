@@ -21,6 +21,8 @@ import { useToast } from '../ui/Toast';
 import { useOrganization } from '../../hooks/useOrganization';
 import { supabase } from '../../services/supabase';
 import { WhatsAppVerificationModal } from './WhatsAppVerificationModal';
+import { useI18n } from '../../contexts/I18nContext';
+import { displayContact, formatPhone, isPlaceholderEmail } from '../financial/contactDisplay';
 
 const { height } = Dimensions.get('window');
 const AVATAR_BUCKET = 'avatar';
@@ -57,6 +59,7 @@ const PROFILE_COLORS = [
 
 export function ProfileModal({ visible, onClose, user, organization, onRefresh }) {
   const { showToast } = useToast();
+  const { t } = useI18n();
   const { costCenters, refetch } = useOrganization();
   const insets = useSafeAreaInsets();
   // Safe area apenas no Android
@@ -112,7 +115,7 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
     try {
       const ImagePickerModule = await getImagePicker();
       if (!ImagePickerModule) {
-        showToast('Funcionalidade de imagem não disponível', 'error');
+        showToast(t('finances.settings.profile.imageUnavailable'), 'error');
         return;
       }
 
@@ -120,8 +123,8 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
       const { status } = await ImagePickerModule.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
-          'Permissão necessária',
-          'Precisamos de permissão para acessar suas fotos.',
+          t('finances.settings.profile.permissionTitle'),
+          t('finances.settings.profile.permissionBody'),
           [{ text: 'OK' }]
         );
         return;
@@ -143,14 +146,14 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
       
       // Validar tamanho
       if (asset.fileSize > MAX_FILE_SIZE) {
-        showToast('Arquivo muito grande. Máximo 2MB.', 'warning');
+        showToast(t('finances.settings.profile.fileTooLarge'), 'warning');
         return;
       }
 
       await handleUploadAvatar(asset.uri);
     } catch (error) {
       console.error('Erro ao selecionar imagem:', error);
-      showToast('Erro ao selecionar imagem', 'error');
+      showToast(t('finances.settings.profile.pickError'), 'error');
     }
   };
 
@@ -218,12 +221,12 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
         }
       }
 
-      showToast('Avatar atualizado com sucesso!', 'success');
+      showToast(t('finances.settings.profile.avatarUpdated'), 'success');
       if (onRefresh) onRefresh();
       if (refetch) refetch();
     } catch (error) {
       console.error('❌ Erro ao fazer upload:', error);
-      showToast('Erro ao fazer upload: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('finances.settings.profile.uploadError', { message: error.message || t('finances.settings.profile.unknownError') }), 'error');
     } finally {
       setUploading(false);
     }
@@ -263,7 +266,7 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
       if (refetch) refetch();
     } catch (error) {
       console.error('❌ Erro ao remover avatar:', error);
-      showToast('Erro ao remover avatar.', 'error');
+      showToast(t('finances.settings.profile.removeAvatarError'), 'error');
     } finally {
       setUploading(false);
     }
@@ -271,7 +274,7 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      showToast('Nome é obrigatório', 'warning');
+      showToast(t('finances.settings.profile.nameRequired'), 'warning');
       return;
     }
 
@@ -303,14 +306,14 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
         }
       }
 
-      showToast('Perfil atualizado com sucesso!', 'success');
+      showToast(t('finances.settings.profile.saved'), 'success');
       
       if (onRefresh) onRefresh();
       if (refetch) refetch();
       onClose();
     } catch (error) {
       console.error('❌ Erro ao salvar:', error);
-      showToast('Erro ao salvar perfil.', 'error');
+      showToast(t('finances.settings.profile.saveError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -330,7 +333,7 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
           <View style={[styles.modal, { marginBottom: safeBottom }]}>
             {/* Header */}
             <View style={styles.header}>
-              <Title2 weight="bold">Meu Perfil</Title2>
+              <Title2 weight="bold">{t('finances.settings.profile.title')}</Title2>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <X size={24} color={colors.text.secondary} />
               </TouchableOpacity>
@@ -380,7 +383,7 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
                   )}
 
                   <Caption color="tertiary" align="center">
-                    JPG, PNG ou WebP. Máximo 2MB.
+                    {t('finances.settings.profile.photoHint')}
                   </Caption>
                 </View>
               </View>
@@ -388,28 +391,28 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
               {/* Form Fields */}
               <View style={styles.formFields}>
                 <Input
-                  label="Nome Completo *"
+                  label={t('finances.settings.profile.fullName')}
                   value={formData.name}
                   onChangeText={(text) => setFormData({ ...formData, name: text })}
-                  placeholder="Seu nome completo"
+                  placeholder={t('finances.settings.profile.fullNamePlaceholder')}
                 />
 
                 <View style={styles.field}>
                   <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                    Email
+                    {isPlaceholderEmail(formData.email) ? t('finances.settings.profile.phone') : t('finances.settings.profile.email')}
                   </Caption>
                   <View style={styles.disabledInput}>
-                    <Text>{formData.email}</Text>
+                    <Text>{displayContact({ email: formData.email, phone: user?.phone })}</Text>
                   </View>
                   <Caption color="tertiary" style={{ marginTop: spacing[0.5] }}>
-                    O email não pode ser alterado
+                    {isPlaceholderEmail(formData.email) ? t('finances.settings.profile.phoneLocked') : t('finances.settings.profile.emailLocked')}
                   </Caption>
                 </View>
 
                 {organization && (
                   <View style={styles.field}>
                     <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[1] }}>
-                      Organização
+                      {t('finances.settings.profile.organization')}
                     </Caption>
                     <View style={styles.disabledInput}>
                       <Text>{organization.name}</Text>
@@ -420,7 +423,7 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
                 {userCostCenter && (
                   <View style={styles.field}>
                     <Caption color="secondary" weight="medium" style={{ marginBottom: spacing[2] }}>
-                      Cor do Perfil
+                      {t('finances.settings.profile.color')}
                     </Caption>
                     <View style={styles.colorPicker}>
                       {PROFILE_COLORS.map((color) => (
@@ -440,7 +443,7 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
                       ))}
                     </View>
                     <Caption color="tertiary" style={{ marginTop: spacing[1] }}>
-                      Esta cor será usada para identificar você em gráficos e análises
+                      {t('finances.settings.profile.colorHint')}
                     </Caption>
                   </View>
                 )}
@@ -459,7 +462,7 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
                           <View style={styles.verifiedBadge}>
                             <CheckCircle2 size={12} color={colors.success.main} />
                             <Caption style={{ color: colors.success.main, marginLeft: spacing[0.5] }}>
-                              Verificado
+                              {t('finances.settings.profile.verified')}
                             </Caption>
                           </View>
                         )}
@@ -476,11 +479,11 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
                   </View>
                   {user?.phone_verified && user?.phone ? (
                     <Caption color="secondary" style={{ marginTop: spacing[1] }}>
-                      Número verificado: {user.phone.replace('55', '')}
+                      {t('finances.settings.profile.verifiedNumber', { phone: formatPhone(user.phone) })}
                     </Caption>
                   ) : (
                     <Caption color="tertiary" style={{ marginTop: spacing[1] }}>
-                      Configure seu número para usar o Zul
+                      {t('finances.settings.profile.setupWhatsApp')}
                     </Caption>
                   )}
                 </View>
@@ -490,14 +493,14 @@ export function ProfileModal({ visible, onClose, user, organization, onRefresh }
             {/* Footer */}
             <View style={styles.footer}>
               <Button
-                title="Cancelar"
+                title={t('finances.settings.profile.cancel')}
                 variant="outline"
                 onPress={onClose}
                 disabled={saving}
                 style={{ flex: 1, marginRight: spacing[2] }}
               />
               <Button
-                title={saving ? 'Salvando...' : 'Salvar'}
+                title={saving ? t('finances.settings.profile.saving') : t('finances.settings.profile.save')}
                 onPress={handleSave}
                 disabled={saving || !formData.name.trim()}
                 style={{ flex: 1 }}

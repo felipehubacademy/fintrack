@@ -1,0 +1,32 @@
+// goals strings (pt). Keys are referenced as t('goals.<key>').
+export default {
+  title: 'Metas',
+  loading: 'Carregando metas…',
+  overall: 'Progresso geral',
+  reachedLabel_one: 'meta atingida',
+  reachedLabel_other: 'metas atingidas',
+  saved: 'Guardado',
+  target: 'Meta',
+  toGo: 'Faltam {{amount}}',
+  reached: 'Meta atingida!',
+  over: 'Passou {{amount}} da meta',
+  deadline: 'Até {{date}}',
+  add: 'Nova meta',
+  edit: 'Editar meta',
+  remove: 'Excluir meta',
+  created: 'Meta criada',
+  updated: 'Meta atualizada',
+  saveError: 'Não deu para salvar a meta. Tente de novo.',
+  delete: {
+    title: 'Excluir meta',
+    message: 'Excluir a meta "{{name}}"?',
+    done: 'Meta excluída',
+    error: 'Não deu para excluir a meta. Tente de novo.',
+  },
+  empty: {
+    title: 'Nenhuma meta ainda',
+    body: 'Crie uma meta aqui e siga mandando pro Zul o que gasta, tipo "{{example}}", para ver quanto falta guardar.',
+    example: 'almoço 25',
+    create: 'Criar meta',
+  },
+};

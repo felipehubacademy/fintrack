@@ -31,6 +31,11 @@ import { useOrganization } from '../hooks/useOrganization';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
 import TransactionModal from './TransactionModal';
+import TrialBanner from './billing/TrialBanner';
+import { useI18n } from '../contexts/I18nContext';
+import { isFeatureEnabled, zulChatLink } from '@fintrack/shared/config';
+import WhatsAppIcon from './WhatsAppIcon';
+import { contactLine } from '../lib/contact';
 
 const SIDEBAR_EXPANDED_WIDTH = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 80;
@@ -41,6 +46,7 @@ export default function Header({
   pageTitle = null,
   children = null
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const { getDynamicUrl } = useDynamicUrls();
   const { organization: orgFromHook, user: orgUserFromHook, costCenters } = useOrganization();
@@ -77,7 +83,7 @@ export default function Header({
       items: [
         {
           id: 'dashboard',
-          label: 'Painel Principal',
+          label: t('web.header.home'),
           href: '/dashboard',
           icon: LayoutDashboard
         }
@@ -85,29 +91,29 @@ export default function Header({
     },
     {
       id: 'finance',
-      title: 'Financeiro',
+      title: t('web.header.money'),
       items: [
         {
           id: 'transactions',
-          label: 'Transações',
+          label: t('web.shared.transactions'),
           href: '/dashboard/transactions',
           icon: ArrowLeftRight
         },
         {
           id: 'accounts',
-          label: 'Contas Bancárias',
+          label: t('web.header.bankAccounts'),
           href: '/dashboard/bank-accounts',
           icon: Wallet
         },
         {
           id: 'cards',
-          label: 'Cartões de Crédito',
+          label: t('web.header.creditCards'),
           href: '/dashboard/cards',
           icon: CreditCard
         },
         {
           id: 'bills',
-          label: 'Contas a Pagar',
+          label: t('web.header.bills'),
           href: '/dashboard/bills',
           icon: FileText
         }
@@ -115,37 +121,41 @@ export default function Header({
     },
     {
       id: 'planning',
-      title: 'Planejamento',
+      title: t('web.header.planning'),
       items: [
         {
           id: 'budgets',
-          label: 'Orçamento',
+          label: t('web.header.budget'),
           href: '/dashboard/budgets',
           icon: Target
         },
         {
           id: 'insights',
-          label: 'Insights',
+          label: t('web.header.insights'),
           href: '/dashboard/insights',
-          icon: BarChart3
+          icon: BarChart3,
+          feature: 'insights'
         },
         {
           id: 'goals',
-          label: 'Metas',
+          label: t('web.header.goals'),
           href: '/dashboard/goals',
-          icon: Flag
+          icon: Flag,
+          feature: 'goals'
         },
         {
           id: 'investments',
-          label: 'Investimentos',
+          label: t('web.shared.investments'),
           href: '/dashboard/investments',
-          icon: TrendingUp
+          icon: TrendingUp,
+          feature: 'investments'
         },
         {
           id: 'closing',
-          label: 'Fechamento',
+          label: t('web.header.monthClose'),
           href: '/dashboard/closing',
-          icon: ClipboardCheck
+          icon: ClipboardCheck,
+          feature: 'closing'
         }
       ]
     },
@@ -155,13 +165,18 @@ export default function Header({
       items: [
         {
           id: 'config',
-          label: 'Configurações',
+          label: t('web.header.settings'),
           href: '/dashboard/config',
           icon: Settings
         }
       ]
     }
-  ]), []);
+  ])
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.feature || isFeatureEnabled(item.feature))
+    }))
+    .filter((section) => section.items.length > 0), []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -247,7 +262,7 @@ export default function Header({
       <aside
         className="hidden lg:flex fixed inset-y-0 left-0 z-50 flex-col border-r border-gray-100/80 bg-white shadow-sm transition-all duration-200 ease-in-out"
         style={{ width: `${sidebarWidth}px` }}
-        aria-label="Menu principal"
+        aria-label={t('web.header.mainMenu')}
         onMouseEnter={() => isSidebarCollapsed && setIsSidebarHovered(true)}
         onMouseLeave={() => setIsSidebarHovered(false)}
       >
@@ -256,7 +271,7 @@ export default function Header({
           onClick={() => setIsSidebarCollapsed((prev) => !prev)}
           style={{ width: '24px', height: '24px', minWidth: '24px', minHeight: '24px', padding: '2px' }}
           className="absolute top-[70px] -right-2.5 flex items-center justify-center rounded-full bg-white shadow-sm border border-gray-200 transition hover:shadow-md hover:border-flight-blue z-10"
-          aria-label={isSidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+          aria-label={isSidebarCollapsed ? t('web.header.expandMenu') : t('web.header.collapseMenu')}
         >
           {isSidebarCollapsed ? <ChevronRight style={{ width: '18px', height: '18px' }} className="text-gray-600" /> : <ChevronLeft style={{ width: '18px', height: '18px' }} className="text-gray-600" />}
         </button>
@@ -278,7 +293,7 @@ export default function Header({
                   </p>
                   {orgUser && (
                 <p className="text-xs text-gray-500 truncate whitespace-nowrap">
-                      Olá, {userFirstName || orgUser.name}
+                      {t('web.header.hi', { p0: userFirstName || orgUser.name })}
                     </p>
                   )}
             </div>
@@ -288,13 +303,13 @@ export default function Header({
             <button
               onClick={() => setShowTransactionModal(true)}
               className="flex items-center rounded-2xl h-10 w-full bg-flight-blue text-white hover:bg-flight-blue/90 shadow-md hover:shadow-lg transition-colors duration-200 py-2.5 pl-[18px] pr-3"
-              title={!isSidebarExpanded ? 'Nova Despesa' : undefined}
+              title={!isSidebarExpanded ? t('web.shared.newExpense') : undefined}
             >
               <div className="w-5 flex items-center justify-center flex-shrink-0">
               <Plus className="h-5 w-5" />
               </div>
               <span className={`ml-3 text-sm font-medium whitespace-nowrap overflow-hidden transition-all duration-200 ${!isSidebarExpanded ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
-                Nova Despesa
+                {t('web.shared.newExpense')}
               </span>
             </button>
           </div>
@@ -322,8 +337,8 @@ export default function Header({
 
           <div className="mt-auto pt-6 text-center">
             <p className={`text-xs text-gray-400 leading-relaxed px-2 transition-all duration-200 ${!isSidebarExpanded ? 'h-0 overflow-hidden opacity-0' : 'opacity-100'}`}>
-              © 2025 MeuAzulão.<br />
-              Todos os direitos reservados.
+              {t('web.header.n2026Meuazulao')}<br />
+              {t('web.header.allRightsReserved')}
             </p>
           </div>
         </div>
@@ -359,6 +374,16 @@ export default function Header({
             </div>
 
               <div className="ml-auto flex items-center gap-3">
+                <a
+                  href={zulChatLink(t('web.zul.greeting'))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-whatsapp px-3 sm:px-4 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-whatsapp focus-visible:ring-offset-2"
+                  aria-label={t('web.zul.logOnWhatsapp')}
+                >
+                  <WhatsAppIcon className="h-5 w-5" />
+                  <span className="hidden sm:inline">{t('web.zul.logOnWhatsapp')}</span>
+                </a>
                 {orgUser && organization && (
                   <NotificationBell
                     userId={orgUser.id}
@@ -393,7 +418,7 @@ export default function Header({
                             />
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-gray-900">{orgUser.name}</p>
-                              <p className="truncate text-xs text-gray-500">{orgUser.email}</p>
+                              <p className="truncate text-xs text-gray-500">{contactLine(orgUser)}</p>
                             </div>
                           </div>
                         </div>
@@ -406,7 +431,7 @@ export default function Header({
                           className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-50"
                         >
                           <User className="h-4 w-4" />
-                          <span>Meu Perfil</span>
+                          <span>{t('web.header.myProfile')}</span>
                         </button>
 
                         <Link
@@ -415,7 +440,7 @@ export default function Header({
                           className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-50"
                         >
                           <Settings className="h-4 w-4" />
-                          <span>Configurações</span>
+                          <span>{t('web.header.settings')}</span>
                         </Link>
 
                         <div className="border-t border-gray-100 px-4 py-3">
@@ -427,7 +452,7 @@ export default function Header({
                             className="flex w-full items-center gap-3 text-sm text-red-600 transition-colors hover:text-red-700"
                           >
                             <LogOut className="h-4 w-4" />
-                            <span>Sair</span>
+                            <span>{t('web.header.signOut')}</span>
                           </button>
                         </div>
                       </div>
@@ -456,6 +481,7 @@ export default function Header({
         </header>
 
         <div className="flex-1 flex flex-col bg-white">
+          <TrialBanner />
           {children}
         </div>
       </div>
@@ -501,7 +527,7 @@ export default function Header({
                   }}
                 >
                   <Plus className="h-5 w-5" />
-                  <span className="text-sm font-semibold">Adicionar Transação</span>
+                  <span className="text-sm font-semibold">{t('web.header.addTransaction')}</span>
                 </Button>
               </div>
 
@@ -543,7 +569,7 @@ export default function Header({
                   className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
                 >
                   <Settings className="h-5 w-5" />
-                  <span>Configurações</span>
+                  <span>{t('web.header.settings')}</span>
                 </Link>
                 <button
                   onClick={() => {
@@ -553,7 +579,7 @@ export default function Header({
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                 >
                   <LogOut className="h-5 w-5" />
-                  <span>Sair</span>
+                  <span>{t('web.header.signOut')}</span>
                 </button>
               </div>
             </div>

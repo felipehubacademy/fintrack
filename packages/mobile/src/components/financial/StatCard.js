@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight } from 'lucide-react-native';
 import { colors, spacing, radius, shadows } from '../../theme';
 import { Text } from '../ui/Text';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
  * StatCard - Cartão minimalista para exibir estatísticas financeiras
@@ -20,6 +21,7 @@ export const StatCard = React.memo(function StatCard({
   style,
   valueColor, // Cor customizada para o valor
 }) {
+  const { t } = useI18n();
   const gradientColors = useMemo(() => getGradientColors(variant), [variant]);
   const trendColor = useMemo(() => getTrendColor(trend), [trend]);
 
@@ -32,7 +34,7 @@ export const StatCard = React.memo(function StatCard({
       activeOpacity={onPress ? 0.8 : 1}
       accessibilityRole={onPress ? "button" : "none"}
       accessibilityLabel={onPress ? `${label}: ${value}` : undefined}
-      accessibilityHint={onPress ? "Toque para ver detalhes" : undefined}
+      accessibilityHint={onPress ? t('finances.charts.tapForDetails') : undefined}
     >
       <LinearGradient
         colors={gradientColors}

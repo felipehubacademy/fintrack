@@ -6,8 +6,11 @@ import { Tag, Plus, Edit, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import ConfirmationModal from './ConfirmationModal';
+import { useI18n } from '../contexts/I18nContext';
+import { categoryName } from '../lib/categoryName';
 
 export default function CategoryManagementModal({ isOpen, onClose, organization, preSelectedMacro = null, preSelectedTab = 'expense' }) {
+  const { t } = useI18n();
   const { success, error: showError, warning } = useNotificationContext();
   const INCOME_MACRO_KEY = 'income';
   const [categories, setCategories] = useState([]);
@@ -25,9 +28,9 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
   const [categoryToDelete, setCategoryToDelete] = useState(null);
 
   const macroOptions = [
-    { value: 'needs', label: 'Necessidades' },
-    { value: 'wants', label: 'Desejos' },
-    { value: 'investments', label: 'Poupança / Investimentos' }
+    { value: 'needs', label: t('web.shared.needs') },
+    { value: 'wants', label: t('web.shared.wants') },
+    { value: 'investments', label: t('web.shared.savingsInvesting') }
   ];
 
   const colors = [
@@ -95,14 +98,14 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      warning('Nome da categoria é obrigatório');
+      warning(t('web.categoryManagementModal.categoryNameIsRequired'));
       return;
     }
 
     const selectedMacro = activeTab === 'income' ? INCOME_MACRO_KEY : formData.macro_group;
 
     if (activeTab !== 'income' && !selectedMacro) {
-      warning('Selecione a categoria macro');
+      warning(t('web.categoryManagementModal.pickAGroup'));
       return;
     }
 
@@ -139,17 +142,17 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
 
       await fetchCategories();
       resetForm();
-      success(editingCategory ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!');
+      success(editingCategory ? t('web.categoryManagementModal.categoryUpdated') : t('web.categoryManagementModal.categoryCreated'));
     } catch (error) {
       console.error('Erro ao salvar categoria:', error);
-      showError('Erro ao salvar categoria');
+      showError(t('web.categoryManagementModal.couldnTSaveTheCategory'));
     }
   };
 
   const handleEdit = (category) => {
     // Bloquear edição de categorias padrão
     if (category.is_default) {
-      warning('Categorias padrão do sistema não podem ser editadas');
+      warning(t('web.categoryManagementModal.defaultCategoriesCanTBe'));
       return;
     }
     
@@ -166,7 +169,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
   const handleDelete = (categoryId, isDefault, organizationId) => {
     // Bloquear deleção de categorias padrão (tanto globais quanto da organização)
     if (isDefault) {
-      warning('Categorias padrão não podem ser excluídas');
+      warning(t('web.categoryManagementModal.defaultCategoriesCanTBe2'));
       return;
     }
 
@@ -186,10 +189,10 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
       if (error) throw error;
 
       await fetchCategories();
-      success('Categoria excluída com sucesso!');
+      success(t('web.categoryManagementModal.categoryDeleted'));
     } catch (error) {
       console.error('Erro ao excluir categoria:', error);
-      showError('Erro ao excluir categoria: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.categoryManagementModal.couldnTDeleteTheCategory') + (error.message || t('web.shared.unknownError')));
     } finally {
       setShowConfirmModal(false);
       setCategoryToDelete(null);
@@ -214,7 +217,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-4xl 2xl:max-w-5xl max-h-[90vh] sm:max-h-[95vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">Gerenciar Categorias</h2>
+          <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">{t('web.categoryManagementModal.manageCategories')}</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -235,7 +238,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Saídas
+            {t('web.shared.spending')}
           </button>
           <button
             onClick={() => setActiveTab('income')}
@@ -245,7 +248,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Entradas
+            {t('web.shared.income')}
           </button>
         </div>
 
@@ -255,50 +258,50 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
             {showForm && (
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="font-medium text-gray-900 mb-4">
-                  {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
+                  {editingCategory ? t('web.categoryManagementModal.editCategory') : t('web.categoryManagementModal.newCategory')}
                 </h3>
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-gray-700">
-                        Nome da Categoria
+                        {t('web.categoryManagementModal.categoryName')}
                       </label>
                       <input
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                        placeholder="Ex: Alimentação, Transporte..."
+                        placeholder={t('web.categoryManagementModal.eGFoodTransport')}
                         required
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                        <span>Descrição</span>
-                        <span className="text-xs text-gray-400">(Opcional)</span>
+                        <span>{t('web.shared.description2')}</span>
+                        <span className="text-xs text-gray-400">{t('web.categoryManagementModal.optional')}</span>
                       </label>
                       <textarea
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                         rows="1"
-                        placeholder="Ex: Gastos com alimentação fora de casa"
+                        placeholder={t('web.categoryManagementModal.eGEatingOut')}
                       />
                     </div>
                     {activeTab === 'income' ? (
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">
-                          Categoria Macro
+                          {t('web.categoryManagementModal.group')}
                         </label>
                         <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-600">
-                          Recebimentos (definido automaticamente)
+                          {t('web.categoryManagementModal.incomeSetAutomatically')}
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">
-                          Categoria Macro
+                          {t('web.categoryManagementModal.group')}
                         </label>
                         <select
                           value={formData.macro_group}
@@ -318,7 +321,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cor
+                      {t('web.categoryManagementModal.color')}
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {colors.map((color) => (
@@ -342,13 +345,13 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
                       onClick={resetForm}
                       className="border-gray-300 text-gray-700 hover:bg-gray-50"
                     >
-                      Cancelar
+                      {t('web.shared.cancel')}
                     </Button>
                     <Button 
                       type="submit" 
                       className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
                     >
-                      {editingCategory ? 'Salvar' : 'Criar'}
+                      {editingCategory ? t('web.shared.save') : t('web.categoryManagementModal.create')}
                     </Button>
                   </div>
                 </form>
@@ -358,7 +361,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
             {/* Categories List */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-medium text-gray-900">Categorias ({categories.length})</h3>
+                <h3 className="font-medium text-gray-900">{t('web.categoryManagementModal.categories', { length: categories.length })}</h3>
                 {!showForm && (
                   <Button
                     onClick={() => setShowForm(true)}
@@ -366,7 +369,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
                     size="sm"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Nova Categoria
+                    {t('web.categoryManagementModal.newCategory')}
                   </Button>
                 )}
               </div>
@@ -374,12 +377,12 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
               {loading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Carregando categorias...</p>
+                  <p className="mt-2 text-gray-600">{t('web.categoryManagementModal.loadingCategories')}</p>
                 </div>
               ) : categories.length === 0 ? (
                 <div className="text-center py-8">
                   <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Nenhuma categoria encontrada</p>
+                  <p className="text-gray-600">{t('web.categoryManagementModal.noCategoriesFound')}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -394,10 +397,10 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
                         />
                         <div>
                           <div className="flex items-center space-x-2">
-                            <p className="font-medium text-gray-900">{category.name}</p>
+                            <p className="font-medium text-gray-900">{categoryName(category.name)}</p>
                             {category.is_default && (
                               <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                                Padrão
+                                {t('web.categoryManagementModal.default')}
                               </Badge>
                             )}
                           </div>
@@ -440,7 +443,7 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
             onClick={onClose}
             className="border-gray-300 text-gray-700 hover:bg-gray-50"
           >
-            Fechar
+            {t('web.shared.close')}
           </Button>
         </div>
       </div>
@@ -453,10 +456,10 @@ export default function CategoryManagementModal({ isOpen, onClose, organization,
           setCategoryToDelete(null);
         }}
         onConfirm={confirmDelete}
-        title="Confirmar exclusão"
-        message="Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita."
-        confirmText="Excluir"
-        cancelText="Cancelar"
+        title={t('web.shared.confirmDelete')}
+        message={t('web.categoryManagementModal.deleteThisCategoryThisCan')}
+        confirmText={t('web.shared.delete')}
+        cancelText={t('web.shared.cancel')}
         type="danger"
       />
     </div>

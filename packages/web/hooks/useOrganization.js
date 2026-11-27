@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useI18n } from '../contexts/I18nContext';
 
 export function useOrganization() {
+  const { t } = useI18n();
   const [organization, setOrganization] = useState(null);
   const [user, setUser] = useState(null);
   const [costCenters, setCostCenters] = useState([]);
@@ -25,7 +27,7 @@ export function useOrganization() {
       if (authError) throw authError;
       if (!currentUser) {
         console.log('❌ [useOrganization] Usuário não autenticado');
-        setError('Usuário não autenticado');
+        setError(t('web.shared.youReNotSignedIn'));
         return;
       }
 
@@ -46,13 +48,13 @@ export function useOrganization() {
       
       if (!userRow) {
         console.log('❌ [useOrganization] Usuário não encontrado');
-        setError('Usuário não encontrado. Por favor, faça login novamente.');
+        setError(t('web.useOrganization.weCouldnTFindYour'));
         return;
       }
       
       if (!userRow.organization_id) {
         console.log('❌ [useOrganization] Usuário sem organização');
-        setError('Organização não encontrada. Você precisa ser convidado para uma organização.');
+        setError(t('web.useOrganization.householdNotFoundYouNeed'));
         return;
       }
 
@@ -147,7 +149,7 @@ export function useOrganization() {
 
     } catch (error) {
       console.error('Erro ao buscar dados da organização:', error);
-      setError(error.message || 'Erro desconhecido');
+      setError(error.message || t('web.shared.unknownError'));
     } finally {
       setLoading(false);
     }

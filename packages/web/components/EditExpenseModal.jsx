@@ -5,7 +5,11 @@ import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useOrganization } from '../hooks/useOrganization';
-import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
+import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -34,7 +38,7 @@ const aggregateSplits = (splits) => {
   return aggregated;
 };
 
-export default function EditExpenseModal({ 
+function EditExpenseModal({ 
   isOpen, 
   expenseId,
   onClose, 
@@ -43,6 +47,7 @@ export default function EditExpenseModal({
   categories = [], // Adicionar categorias via props
   organization = null
 }) {
+  const { t } = useI18n();
   const { success, error: showError, warning } = useNotificationContext();
   const { organization: orgFromHook, isSoloUser, user: orgUser } = useOrganization();
   
@@ -228,7 +233,7 @@ export default function EditExpenseModal({
       }
     } catch (error) {
       console.error('Erro ao buscar despesa:', error);
-      showError('Erro ao carregar despesa');
+      showError(t('web.editExpenseModal.couldnTLoadTheExpense'));
       onClose();
     } finally {
       setLoading(false);
@@ -338,12 +343,12 @@ export default function EditExpenseModal({
 
   const handleSave = async () => {
     if (!editData.owner || !editData.description || !editData.amount || !editData.date) {
-      warning('Preencha todos os campos obrigatórios');
+      warning(t('web.shared.fillInAllRequiredFields'));
       return;
     }
 
     if (isShared && totalPercentage !== 100) {
-      warning('A divisão deve somar exatamente 100%');
+      warning(t('web.editExpenseModal.theSplitMustAddUp'));
       return;
     }
 
@@ -364,7 +369,7 @@ export default function EditExpenseModal({
       // Se já era cartão de crédito E continua sendo cartão
       if (isCredit && wasCredit && isExistingInstallment) {
         if (!editData.card_id) {
-          warning('Selecione um cartão de crédito');
+          warning(t('web.editExpenseModal.pickACreditCard'));
           setSaving(false);
           return;
         }
@@ -407,10 +412,10 @@ export default function EditExpenseModal({
         // Se o número de parcelas mudou OU a data mudou, recriar o grupo
         if (currentInstallmentCount !== newInstallmentCount || dateChanged) {
           const reason = dateChanged && currentInstallmentCount !== newInstallmentCount 
-            ? 'Número de parcelas E data mudaram' 
+            ? t('web.editExpenseModal.numberOfInstallmentsAndDate') 
             : dateChanged 
-              ? 'Data mudou' 
-              : 'Número de parcelas mudou';
+              ? t('web.editExpenseModal.dateChanged') 
+              : t('web.editExpenseModal.numberOfInstallmentsChanged');
           console.log(`🔄 [EDIT EXPENSE MODAL] ${reason}! Recriando grupo...`);
 
           // Deletar todas as parcelas antigas
@@ -546,12 +551,12 @@ export default function EditExpenseModal({
       } else if (isCredit && (!wasCredit || !isExistingInstallment)) {
         // Converter para cartão de crédito (criar novas parcelas)
         if (!editData.card_id) {
-          warning('Selecione um cartão de crédito');
+          warning(t('web.editExpenseModal.pickACreditCard'));
           setSaving(false);
           return;
         }
         if (!editData.installments || editData.installments < 1) {
-          warning('Selecione o número de parcelas');
+          warning(t('web.editExpenseModal.pickTheNumberOfInstallments'));
           setSaving(false);
           return;
         }
@@ -748,10 +753,10 @@ export default function EditExpenseModal({
 
       onSuccess();
       onClose();
-      success('Despesa atualizada com sucesso!');
+      success(t('web.editExpenseModal.expenseUpdated'));
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      showError('Erro ao salvar despesa');
+      showError(t('web.editExpenseModal.couldnTSaveTheExpense'));
     } finally {
       setSaving(false);
     }
@@ -763,7 +768,7 @@ export default function EditExpenseModal({
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-xl p-8">
-          <p className="text-gray-600">Carregando...</p>
+          <p className="text-gray-600">{t('web.shared.loading')}</p>
         </div>
       </div>
     );
@@ -774,7 +779,7 @@ export default function EditExpenseModal({
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] border border-flight-blue/20 flex flex-col">
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-6 pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
-          <h2 className="text-gray-900 font-semibold text-lg">Editar Despesa</h2>
+          <h2 className="text-gray-900 font-semibold text-lg">{t('web.editExpenseModal.editExpense')}</h2>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -789,20 +794,20 @@ export default function EditExpenseModal({
         <div className="flex-1 overflow-y-auto p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.description')}</label>
                 <input
                   type="text"
                   value={editData.description}
                   onChange={(e) => setEditData({ ...editData, description: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  placeholder="Ex: Mercado, Farmácia"
+                  placeholder={t('web.shared.eGGroceriesPharmacy')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Valor *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.amount')}</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="text"
                     value={editData.amount}
@@ -816,20 +821,20 @@ export default function EditExpenseModal({
                       }
                       const parsed = parseCurrencyInput(value);
                       if (parsed > 0) {
-                        const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         setEditData({ ...editData, amount: formatted });
                       } else {
                         setEditData({ ...editData, amount: '' });
                       }
                     }}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Data *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.date')}</label>
                 <input
                   type="date"
                   value={editData.date}
@@ -838,34 +843,34 @@ export default function EditExpenseModal({
                 />
                 {isCredit && (expense?.parent_expense_id || expense?.installment_info) && (
                   <p className="mt-1 text-xs text-gray-500">
-                    Data da primeira parcela. Ao mudar a data ou o nº de parcelas, todas serão recriadas.
+                    {t('web.editExpenseModal.dateOfTheFirstInstallment')}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.category')}</label>
                 <select
                   value={editData.category_id}
                   onChange={(e) => setEditData({ ...editData, category_id: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
-                  <option value="">Selecione...</option>
-                  {categories?.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <option value="">{t('web.shared.select')}</option>
+                  {dedupeCategories(categories, [editData.category_id]).map(cat => (
+                    <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                   ))}
                 </select>
               </div>
 
               {!isSoloUser ? (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.owner')}</label>
                   <select
                     value={editData.owner}
                     onChange={(e) => setEditData({ ...editData, owner: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
-                    <option value="">Selecione...</option>
+                    <option value="">{t('web.shared.select')}</option>
                     {ownerOptions.map(o => (
                       <option key={o.name} value={o.name}>{o.name}</option>
                     ))}
@@ -874,53 +879,53 @@ export default function EditExpenseModal({
               ) : null}
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.paymentMethod')}</label>
                 <select
                   value={editData.payment_method}
                   onChange={(e) => setEditData({ ...editData, payment_method: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
-                  <option value="">Selecione...</option>
-                  <option value="cash">Dinheiro</option>
-                  <option value="debit_card">Cartão de Débito</option>
-                  <option value="pix">PIX</option>
-                  <option value="credit_card">Cartão de Crédito</option>
-                  <option value="boleto">Boleto</option>
-                  <option value="bank_transfer">Transferência Bancária</option>
-                  <option value="other">Outros</option>
+                  <option value="">{t('web.shared.select')}</option>
+                  <option value="cash">{t('web.shared.cash')}</option>
+                  <option value="debit_card">{t('web.shared.debitCard')}</option>
+                  <option value="pix">{t('web.shared.pix')}</option>
+                  <option value="credit_card">{t('web.shared.creditCard')}</option>
+                  <option value="boleto">{t('web.shared.bankSlipBoleto')}</option>
+                  <option value="bank_transfer">{t('web.shared.bankTransfer')}</option>
+                  <option value="other">{t('web.shared.other')}</option>
                 </select>
               </div>
 
               {isCredit && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Cartão *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.card2')}</label>
                     <select
                       value={editData.card_id}
                       onChange={(e) => setEditData({ ...editData, card_id: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                       disabled={cards.length === 0}
                     >
-                      <option value="">Selecione...</option>
+                      <option value="">{t('web.shared.select')}</option>
                       {cards.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
                     {cards.length === 0 && (
                       <p className="mt-2 text-sm text-gray-500">
-                        Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                        {t('web.shared.noCreditCardYetAdd')}
                       </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Parcelas *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.installments')}</label>
                     <select
                       value={editData.installments}
                       onChange={(e) => setEditData({ ...editData, installments: Number(e.target.value) })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                     >
                       {Array.from({ length: 12 }).map((_, i) => (
-                        <option key={i+1} value={i+1}>{i+1}x</option>
+                        <option key={i+1} value={i+1}>{t('web.shared.x', { p0: i+1 })}</option>
                       ))}
                     </select>
                   </div>
@@ -932,13 +937,13 @@ export default function EditExpenseModal({
             {isShared && (
               <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-medium text-gray-900">Divisão da Despesa</h4>
+                  <h4 className="font-medium text-gray-900">{t('web.editExpenseModal.expenseSplit')}</h4>
                   <button
                     type="button"
                     onClick={() => showSplitConfig ? resetToDefaultSplit() : setShowSplitConfig(true)}
                     className="text-sm text-flight-blue hover:text-flight-blue/80 font-medium"
                   >
-                    {showSplitConfig ? 'Usar Padrão' : 'Personalizar'}
+                    {showSplitConfig ? t('web.shared.useDefault') : t('web.shared.customize')}
                   </button>
                 </div>
 
@@ -963,14 +968,14 @@ export default function EditExpenseModal({
                           />
                           <span className="text-sm text-gray-500 w-6">%</span>
                           <span className="text-sm text-gray-600 w-24 text-right">
-                            R$ {split.amount.toFixed(2)}
+                            {formatMoney(split.amount)}
                           </span>
                         </div>
                       </div>
                     ))}
                     
                     <div className="pt-3 border-t border-gray-300 flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">Total:</span>
+                      <span className="text-sm font-medium text-gray-700">{t('web.shared.total')}</span>
                       <span className={`text-sm font-bold ${totalPercentage === 100 ? 'text-green-600' : 'text-red-600'}`}>
                         {totalPercentage.toFixed(2)}%
                       </span>
@@ -988,7 +993,7 @@ export default function EditExpenseModal({
                           <span className="text-gray-700">{split.name}</span>
                         </div>
                         <span className="text-gray-600 font-medium">
-                          {split.percentage}% (R$ {split.amount.toFixed(2)})
+                          {split.percentage}% ({formatMoney(split.amount)})
                         </span>
                       </div>
                     ))}
@@ -1006,14 +1011,14 @@ export default function EditExpenseModal({
             disabled={saving}
             className="border-gray-300 text-gray-700 hover:bg-gray-50"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
             className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md"
           >
-            {saving ? 'Salvando...' : 'Salvar Alterações'}
+            {saving ? t('web.shared.saving') : t('web.shared.saveChanges')}
           </Button>
         </div>
       </div>
@@ -1021,3 +1026,4 @@ export default function EditExpenseModal({
   );
 }
 
+export default withPaywall(EditExpenseModal);

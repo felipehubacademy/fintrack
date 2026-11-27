@@ -3,8 +3,10 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { CheckCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function EmailConfirmed() {
+  const { t } = useI18n();
   const router = useRouter();
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function EmailConfirmed() {
   return (
     <>
       <Head>
-        <title>Email Confirmado - MeuAzulão</title>
+        <title>{t('web.authEmailConfirmed.emailConfirmedMeuazulao')}</title>
         <meta name="description" content="Sua conta foi ativada com sucesso" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -38,7 +40,7 @@ export default function EmailConfirmed() {
           className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Voltar</span>
+          <span className="font-medium">{t('web.shared.back')}</span>
         </Link>
 
         {/* Main Card */}
@@ -60,17 +62,17 @@ export default function EmailConfirmed() {
               </div>
               
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Email Confirmado!
+                {t('web.authEmailConfirmed.emailConfirmed')}
               </h1>
               <p className="text-gray-600">
-                Sua conta foi ativada com sucesso. Redirecionando...
+                {t('web.authEmailConfirmed.yourAccountIsActiveRedirecting')}
               </p>
             </div>
 
             {/* Loading Indicator */}
             <div className="flex items-center justify-center gap-2 text-blue-600 mb-6">
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-sm font-medium">Redirecionando para o login em instantes...</span>
+              <span className="text-sm font-medium">{t('web.authEmailConfirmed.takingYouToSignIn')}</span>
             </div>
 
             {/* Create Account Link */}
@@ -79,7 +81,7 @@ export default function EmailConfirmed() {
                 href="/login"
                 className="w-full inline-flex items-center justify-center px-6 py-3.5 bg-gray-50 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all font-semibold transform hover:scale-[1.02]"
               >
-                Ir para login agora
+                {t('web.authEmailConfirmed.goToSignInNow')}
               </Link>
             </div>
           </div>

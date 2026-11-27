@@ -16,12 +16,15 @@ import { Input } from '../ui/Input';
 import { useToast } from '../ui/Toast';
 import { useConfirmation } from '../ui/ConfirmationProvider';
 import { supabase } from '../../services/supabase';
+import { useI18n } from '../../contexts/I18nContext';
+import { displayContact } from '../financial/contactDisplay';
 
 const { height } = Dimensions.get('window');
 
 export function MemberManagementModal({ visible, onClose, organization, orgUser }) {
   const { showToast } = useToast();
   const { confirm } = useConfirmation();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [members, setMembers] = useState([]);
   const [pendingInvites, setPendingInvites] = useState([]);
@@ -46,7 +49,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
 
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('id, name, email, role, created_at')
+        .select('id, name, email, phone, role, created_at')
         .eq('organization_id', organization.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -65,7 +68,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
       setPendingInvites(invitesData || []);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
-      showToast('Erro ao carregar dados da organização', 'error');
+      showToast(t('finances.settings.members.loadError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -73,7 +76,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
 
   const handleInvite = async () => {
     if (!formData.email.trim() || !formData.name.trim()) {
-      showToast('Preencha todos os campos', 'warning');
+      showToast(t('finances.settings.members.fillAll'), 'warning');
       return;
     }
 
@@ -90,13 +93,13 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
 
       if (error) throw error;
 
-      showToast('Convite enviado com sucesso!', 'success');
+      showToast(t('finances.settings.members.inviteSent'), 'success');
       setFormData({ name: '', email: '', role: 'member' });
       setShowInviteForm(false);
       await fetchData();
     } catch (error) {
       console.error('Erro ao enviar convite:', error);
-      showToast('Erro ao enviar convite: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('finances.settings.members.inviteError', { message: error.message || t('finances.settings.profile.unknownError') }), 'error');
     } finally {
       setInviting(false);
     }
@@ -104,14 +107,14 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
 
   const handleRemoveMember = async (member) => {
     if (member.id === orgUser.id) {
-      showToast('Você não pode remover a si mesmo', 'warning');
+      showToast(t('finances.settings.members.cannotRemoveSelf'), 'warning');
       return;
     }
 
     try {
       await confirm({
-        title: 'Remover membro',
-        message: `Tem certeza que deseja remover ${member.name} da organização?`,
+        title: t('finances.settings.members.removeTitle'),
+        message: t('finances.settings.members.removeMessage', { name: member.name }),
         type: 'danger',
         onConfirm: async () => {
           const { error } = await supabase
@@ -121,7 +124,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
 
           if (error) throw error;
 
-          showToast('Membro removido com sucesso!', 'success');
+          showToast(t('finances.settings.members.removed'), 'success');
           await fetchData();
         },
       });
@@ -133,8 +136,8 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
   const handleCancelInvite = async (invite) => {
     try {
       await confirm({
-        title: 'Cancelar convite',
-        message: `Tem certeza que deseja cancelar o convite para ${invite.email}?`,
+        title: t('finances.settings.members.cancelInviteTitle'),
+        message: t('finances.settings.members.cancelInviteMessage', { email: invite.email }),
         type: 'warning',
         onConfirm: async () => {
           const { error } = await supabase
@@ -144,7 +147,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
 
           if (error) throw error;
 
-          showToast('Convite cancelado!', 'success');
+          showToast(t('finances.settings.members.inviteCancelled'), 'success');
           await fetchData();
         },
       });
@@ -171,7 +174,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
         >
           {/* Header */}
           <View style={styles.header}>
-            <Title2 weight="bold">Gerenciar Membros</Title2>
+            <Title2 weight="bold">{t('finances.settings.members.title')}</Title2>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -187,7 +190,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
           >
             {loading ? (
               <View style={styles.loadingContainer}>
-                <Caption color="secondary">Carregando...</Caption>
+                <Caption color="secondary">{t('finances.settings.members.loading')}</Caption>
               </View>
             ) : (
               <>
@@ -195,22 +198,22 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
                 {showInviteForm ? (
                   <View style={styles.inviteForm}>
                     <Input
-                      label="Nome *"
+                      label={t('finances.settings.members.name')}
                       value={formData.name}
                       onChangeText={(text) => setFormData({ ...formData, name: text })}
-                      placeholder="Nome do membro"
+                      placeholder={t('finances.settings.members.namePlaceholder')}
                     />
                     <Input
-                      label="Email *"
+                      label={t('finances.settings.members.email')}
                       value={formData.email}
                       onChangeText={(text) => setFormData({ ...formData, email: text })}
-                      placeholder="email@exemplo.com"
+                      placeholder={t('finances.settings.members.emailPlaceholder')}
                       keyboardType="email-address"
                       autoCapitalize="none"
                     />
                     <View style={styles.formActions}>
                       <Button
-                        title="Cancelar"
+                        title={t('finances.settings.members.cancel')}
                         variant="outline"
                         onPress={() => {
                           setShowInviteForm(false);
@@ -219,7 +222,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
                         style={{ flex: 1, marginRight: spacing[2] }}
                       />
                       <Button
-                        title={inviting ? 'Enviando...' : 'Enviar Convite'}
+                        title={inviting ? t('finances.settings.members.sending') : t('finances.settings.members.sendInvite')}
                         onPress={handleInvite}
                         disabled={inviting}
                         style={{ flex: 1 }}
@@ -228,7 +231,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
                   </View>
                 ) : (
                   <Button
-                    title="Convidar Novo Membro"
+                    title={t('finances.settings.members.inviteNew')}
                     onPress={() => setShowInviteForm(true)}
                     icon={<Plus size={20} color={colors.neutral[0]} />}
                     style={{ marginBottom: spacing[3] }}
@@ -238,15 +241,17 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
                 {/* Members List */}
                 <View style={styles.section}>
                   <Caption color="secondary" weight="semiBold" style={{ marginBottom: spacing[2] }}>
-                    Membros ({members.length})
+                    {t('finances.settings.members.membersCount', { n: members.length })}
                   </Caption>
                   {members.map((member) => (
                     <View key={member.id} style={styles.memberItem}>
                       <View style={styles.memberInfo}>
                         <Callout weight="medium">{member.name}</Callout>
-                        <Caption color="secondary">{member.email}</Caption>
+                        {displayContact(member) ? (
+                          <Caption color="secondary">{displayContact(member)}</Caption>
+                        ) : null}
                         <Caption color="tertiary" style={{ marginTop: spacing[0.5] }}>
-                          {member.role === 'admin' ? 'Administrador' : 'Membro'}
+                          {member.role === 'admin' ? t('finances.settings.members.admin') : t('finances.settings.members.member')}
                         </Caption>
                       </View>
                       {member.id !== orgUser.id && (
@@ -265,7 +270,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
                 {pendingInvites.length > 0 && (
                   <View style={styles.section}>
                     <Caption color="secondary" weight="semiBold" style={{ marginBottom: spacing[2] }}>
-                      Convites Pendentes ({pendingInvites.length})
+                      {t('finances.settings.members.pendingCount', { n: pendingInvites.length })}
                     </Caption>
                     {pendingInvites.map((invite) => (
                       <View key={invite.id} style={styles.memberItem}>
@@ -273,7 +278,7 @@ export function MemberManagementModal({ visible, onClose, organization, orgUser 
                           <Callout weight="medium">{invite.name || invite.email}</Callout>
                           <Caption color="secondary">{invite.email}</Caption>
                           <Caption color="tertiary" style={{ marginTop: spacing[0.5] }}>
-                            Pendente
+                            {t('finances.settings.members.pending')}
                           </Caption>
                         </View>
                         <TouchableOpacity

@@ -3,7 +3,11 @@ import { X } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput } from '../lib/utils';
+import { handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
+import { currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
 const BudgetModal = ({ 
   isOpen, 
@@ -13,6 +17,7 @@ const BudgetModal = ({
   categories = [], 
   selectedMonth = '2025-10' 
   }) => {
+  const { t } = useI18n();
   const { warning } = useNotificationContext();
   
   const [formData, setFormData] = useState({
@@ -54,7 +59,7 @@ const BudgetModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.category_id || !formData.limit_amount) {
-      warning('Preencha todos os campos obrigatórios');
+      warning(t('web.shared.fillInAllRequiredFields'));
       return;
     }
 
@@ -91,7 +96,7 @@ const BudgetModal = ({
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl pr-2">
-            {isEdit ? 'Editar Orçamento' : 'Novo Orçamento'}
+            {isEdit ? t('web.budgetModal.editBudget') : t('web.budgetModal.newBudget')}
           </h2>
           <Button 
             variant="ghost" 
@@ -109,7 +114,7 @@ const BudgetModal = ({
             {/* Categoria */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categoria *
+                {t('web.budgetModal.category')}
               </label>
               <select
                 value={formData.category_id}
@@ -118,16 +123,16 @@ const BudgetModal = ({
                 className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue disabled:bg-gray-100 disabled:text-gray-600 disabled:cursor-not-allowed"
                 required
               >
-                <option value="">Selecione uma categoria...</option>
-                {[...categories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(category => (
+                <option value="">{t('web.budgetModal.pickACategory')}</option>
+                {dedupeCategories(categories, [formData.category_id]).sort((a, b) => categoryName(a.name).localeCompare(categoryName(b.name), appLocale())).map(category => (
                   <option key={category.id} value={category.id}>
-                    {category.name}
+                    {categoryName(category.name)}
                   </option>
                 ))}
               </select>
               {isEdit && (
                 <p className="text-xs text-gray-500 mt-1">
-                  A categoria não pode ser alterada. Para mudar, exclua e crie um novo orçamento.
+                  {t('web.budgetModal.theCategoryCanTBe')}
                 </p>
               )}
             </div>
@@ -135,10 +140,10 @@ const BudgetModal = ({
             {/* Valor */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valor do Orçamento (R$) *
+                {t('web.budgetModal.budgetAmount')}
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                 <input
                   type="text"
                   value={formData.limit_amount}
@@ -152,13 +157,13 @@ const BudgetModal = ({
                     }
                     const parsed = parseCurrencyInput(value);
                     if (parsed > 0) {
-                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       setFormData({ ...formData, limit_amount: formatted });
                     } else {
                       setFormData({ ...formData, limit_amount: '' });
                     }
                   }}
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                   className="w-full pl-10 pr-3 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 />
@@ -176,14 +181,14 @@ const BudgetModal = ({
             disabled={saving}
             className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px] order-2 sm:order-1"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={saving || !formData.category_id || !formData.limit_amount}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px] order-1 sm:order-2"
           >
-            {saving ? 'Salvando...' : (isEdit ? 'Atualizar' : 'Criar Orçamento')}
+            {saving ? t('web.shared.saving') : (isEdit ? t('web.shared.update') : t('web.budgetModal.createBudget'))}
           </Button>
         </div>
       </div>
@@ -191,4 +196,4 @@ const BudgetModal = ({
   );
 };
 
-export default BudgetModal;
+export default withPaywall(BudgetModal);

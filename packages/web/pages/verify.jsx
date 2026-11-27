@@ -3,8 +3,10 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function VerifyPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { token } = router.query;
   const [status, setStatus] = useState('verifying'); // 'verifying' | 'success' | 'error'
@@ -27,11 +29,11 @@ export default function VerifyPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao verificar token');
+        throw new Error(data.error || t('web.verify.couldnTVerifyTheLink'));
       }
 
       setStatus('success');
-      setMessage('WhatsApp verificado com sucesso!');
+      setMessage(t('web.verify.whatsappVerified'));
 
       // Redirecionar para o dashboard após 3 segundos
       setTimeout(() => {
@@ -48,7 +50,7 @@ export default function VerifyPage() {
   return (
     <>
       <Head>
-        <title>Verificar WhatsApp - MeuAzulão</title>
+        <title>{t('web.verify.verifyWhatsappMeuazulao')}</title>
         <meta name="description" content="Verificação de WhatsApp" />
       </Head>
 
@@ -76,10 +78,10 @@ export default function VerifyPage() {
                     <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                   </div>
                   <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                    Verificando...
+                    {t('web.shared.checking')}
                   </h1>
                   <p className="text-gray-600">
-                    Aguarde enquanto validamos seu WhatsApp
+                    {t('web.verify.hangOnWhileWeVerify')}
                   </p>
                 </>
               )}
@@ -90,14 +92,14 @@ export default function VerifyPage() {
                     <CheckCircle className="w-8 h-8 text-green-600" />
                   </div>
                   <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                    WhatsApp Verificado!
+                    {t('web.verify.whatsappVerified2')}
                   </h1>
                   <p className="text-gray-600 mb-6">
                     {message}
                   </p>
                   <div className="p-4 bg-green-50 rounded-xl border border-green-200">
                     <p className="text-sm text-green-800">
-                      Redirecionando para o dashboard...
+                      {t('web.verify.takingYouToTheDashboard')}
                     </p>
                   </div>
                 </>
@@ -109,7 +111,7 @@ export default function VerifyPage() {
                     <AlertCircle className="w-8 h-8 text-red-600" />
                   </div>
                   <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                    Erro na Verificação
+                    {t('web.verify.verificationFailed')}
                   </h1>
                   <p className="text-gray-600 mb-6">
                     {message}
@@ -119,13 +121,13 @@ export default function VerifyPage() {
                       href="/dashboard"
                       className="w-full inline-flex items-center justify-center px-6 py-3.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-semibold transform hover:scale-[1.02]"
                     >
-                      Ir para o Dashboard
+                      {t('web.verify.goToDashboard')}
                     </Link>
                     <Link
                       href="/"
                       className="w-full inline-flex items-center justify-center px-6 py-3.5 bg-gray-50 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all font-medium"
                     >
-                      Voltar ao Início
+                      {t('web.shared.backToHome')}
                     </Link>
                   </div>
                 </>

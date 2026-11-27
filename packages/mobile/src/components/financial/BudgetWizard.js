@@ -20,7 +20,14 @@ import { SimplePieChart } from './SimplePieChart';
 import { useToast } from '../ui/Toast';
 import { useAlert } from '../ui/AlertProvider';
 import { supabase } from '../../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
+import { useI18n } from '../../contexts/I18nContext';
+import { categoryLabel } from '../../utils/categoryLabel';
+import {
+  amountDecimalSeparator,
+  sanitizeAmountInput,
+  formatAmountInput,
+  parseAmountInput,
+} from './amountInput';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -28,17 +35,17 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MACRO_GROUPS = {
   needs: {
     key: 'needs',
-    label: 'Necessidades',
+    labelKey: 'finances.macro.groups.needs',
     basePercentage: 50,
   },
   wants: {
     key: 'wants',
-    label: 'Desejos',
+    labelKey: 'finances.macro.groups.wants',
     basePercentage: 30,
   },
   investments: {
     key: 'investments',
-    label: 'Poupança / Investimentos',
+    labelKey: 'finances.wizard.savingsGroup',
     basePercentage: 20,
   },
 };
@@ -117,7 +124,7 @@ function calculateBudgetDistribution(monthlyIncome, investmentPercentage = 20, a
       distributions.push({
         id: `${macroKey}-placeholder`,
         categoryId: null,
-        categoryName: `${MACRO_GROUPS[macroKey].label}`,
+        categoryName: MACRO_GROUPS[macroKey].labelKey,
         macro_group: macroKey,
         percentage: macroPct,
         amount: macroAmount,
@@ -133,13 +140,13 @@ function calculateBudgetDistribution(monthlyIncome, investmentPercentage = 20, a
     const totalRounded = perCategoryAmount * macroCategories.length;
     // Calcular diferença devido ao arredondamento
     const difference = Math.round((macroAmount - totalRounded) * 100) / 100;
-    
+
     macroCategories.forEach((category, index) => {
       // Distribuir a diferença na primeira categoria para garantir soma exata
-      const finalAmount = index === 0 
+      const finalAmount = index === 0
         ? Math.round((perCategoryAmount + difference) * 100) / 100
         : perCategoryAmount;
-      
+
       distributions.push({
         id: category.id,
         categoryId: category.id,
@@ -217,9 +224,9 @@ const PROGRESS_STEPS = [STEPS.WELCOME, STEPS.INCOME, STEPS.INVESTMENT, STEPS.SUB
 const PROGRESS_TOTAL = PROGRESS_STEPS.length;
 
 const MACRO_LABELS = {
-  needs: 'Necessidades',
-  wants: 'Desejos',
-  investments: 'Investimentos',
+  needs: 'finances.macro.groups.needs',
+  wants: 'finances.macro.groups.wants',
+  investments: 'finances.macro.groups.investments',
 };
 
 const MACRO_COLORS = {
@@ -228,31 +235,17 @@ const MACRO_COLORS = {
   investments: '#10B981',
 };
 
-// Funções de formatação de moeda
-const parseCurrency = (value) => {
-  if (!value) return 0;
-  if (typeof value === 'number') return value;
-  const cleaned = value.replace(/\./g, '').replace(',', '.');
-  const parsed = parseFloat(cleaned);
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
+// Amount helpers follow the active locale's decimal separator.
+const parseCurrency = (value) => parseAmountInput(value);
 
 const formatCurrencyInput = (value) => {
   if (!value && value !== 0) return '';
   const numValue = typeof value === 'string' ? parseCurrency(value) : value;
   if (isNaN(numValue)) return '';
-  return numValue.toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return numValue === 0 ? `0${amountDecimalSeparator()}00` : formatAmountInput(numValue);
 };
 
-const parseCurrencyInput = (formattedValue) => {
-  if (!formattedValue) return 0;
-  const cleaned = formattedValue.replace(/\./g, '').replace(',', '.');
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
-};
+const parseCurrencyInput = (formattedValue) => parseAmountInput(formattedValue);
 
 const formatMonthYear = (selectedMonth) => {
   if (!selectedMonth) return null;
@@ -270,12 +263,12 @@ const formatMonthYear = (selectedMonth) => {
 
 async function loadPreviousBudgets({ organizationId, selectedMonth, budgetCategories }) {
   if (!organizationId || !selectedMonth) {
-    return { success: false, message: 'Organização ou mês inválido.' };
+    return { success: false, messageKey: 'common.errorTryAgain' };
   }
 
   const currentMonth = formatMonthYear(selectedMonth);
   if (!currentMonth) {
-    return { success: false, message: 'Mês selecionado inválido.' };
+    return { success: false, messageKey: 'common.errorTryAgain' };
   }
 
   const baseDate = new Date(currentMonth);
@@ -293,7 +286,7 @@ async function loadPreviousBudgets({ organizationId, selectedMonth, budgetCatego
   }
 
   if (!data || data.length === 0) {
-    return { success: false, message: 'Nenhum planejamento encontrado para o mês anterior.' };
+    return { success: false, messageKey: 'finances.wizard.copy.noPrevious' };
   }
 
   const expenseCategories = budgetCategories.filter(
@@ -319,13 +312,13 @@ async function loadPreviousBudgets({ organizationId, selectedMonth, budgetCatego
   if (!entries.length) {
     return {
       success: false,
-      message: 'As categorias do mês anterior não correspondem às categorias disponíveis atualmente.',
+      messageKey: 'finances.wizard.copy.categoriesChanged',
     };
   }
 
   const totalAmount = entries.reduce((sum, item) => sum + item.amount, 0);
   if (!totalAmount) {
-    return { success: false, message: 'O planejamento anterior não possui valores válidos.' };
+    return { success: false, messageKey: 'finances.wizard.copy.noValues' };
   }
 
   const distributions = entries.map(({ category, amount }) => ({
@@ -358,6 +351,7 @@ export function BudgetWizard({
 }) {
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
+  const { t, formatMoney: formatCurrency, formatPercent, currencySymbol } = useI18n();
   const { alert } = useAlert();
   const confettiParticles = useRef([]);
 
@@ -411,7 +405,7 @@ export function BudgetWizard({
     const income = parseCurrency(monthlyIncome);
     const summary = Object.keys(MACRO_LABELS).map((macro) => ({
       key: macro,
-      label: MACRO_LABELS[macro],
+      label: t(MACRO_LABELS[macro]),
       amount: 0,
       percentage: 0,
     }));
@@ -457,18 +451,8 @@ export function BudgetWizard({
   };
 
   const handleIncomeChange = (text) => {
-    // Remover tudo exceto números e vírgula
-    let cleaned = text.replace(/[^\d,]/g, '');
-    
-    // Garantir apenas uma vírgula
-    const commaIndex = cleaned.indexOf(',');
-    if (commaIndex !== -1) {
-      // Manter apenas a primeira vírgula e limitar a 2 casas decimais
-      const beforeComma = cleaned.substring(0, commaIndex);
-      const afterComma = cleaned.substring(commaIndex + 1).replace(/,/g, '').substring(0, 2);
-      cleaned = beforeComma + (afterComma ? ',' + afterComma : '');
-    }
-    
+    const cleaned = sanitizeAmountInput(text);
+
     setMonthlyIncome(cleaned);
     setAutoRecalculate(true);
   };
@@ -507,7 +491,7 @@ export function BudgetWizard({
       return;
     }
 
-    const cleaned = newAmount.replace(/[^\d,]/g, '');
+    const cleaned = sanitizeAmountInput(newAmount);
     setDistributions((prev) =>
       prev.map((dist) => (dist.categoryId === categoryId ? { ...dist, amount: cleaned } : dist))
     );
@@ -555,17 +539,17 @@ export function BudgetWizard({
     setDistributions((prev) =>
       prev.map((dist, index) => {
         if (dist.macro_group !== macroKey) return dist;
-        
+
         // Encontrar o índice dentro do macro
         const macroIndex = prev
           .filter((d) => d.macro_group === macroKey)
           .findIndex((d) => d.categoryId === dist.categoryId);
-        
+
         // Distribuir a diferença na primeira categoria para garantir soma exata
         const finalAmount = macroIndex === 0
           ? Math.round((amountPerCategory + difference) * 100) / 100
           : amountPerCategory;
-        
+
         return {
           ...dist,
           amount: finalAmount,
@@ -588,8 +572,8 @@ export function BudgetWizard({
 
       if (!result.success) {
         alert({
-          title: 'Atenção',
-          message: result.message,
+          title: t('bills.attention'),
+          message: t(result.messageKey),
           type: 'warning',
         });
         return;
@@ -607,10 +591,10 @@ export function BudgetWizard({
       setDistributions(adjustedDistributions);
       transitionToStep(STEPS.INCOME);
       handleNext();
-      showToast('Planejamento do mês anterior carregado! Revise e confirme.', 'success');
+      showToast(t('finances.wizard.copy.loaded'), 'success');
     } catch (error) {
       console.error('Erro ao copiar planejamento anterior:', error);
-      showToast('Não foi possível copiar o planejamento anterior.', 'error');
+      showToast(t('finances.wizard.copy.error'), 'error');
     } finally {
       setLoadingPreviousPlan(false);
     }
@@ -618,25 +602,25 @@ export function BudgetWizard({
 
   const handleSave = async () => {
     if (!organization?.id) {
-      showToast('Organização não encontrada', 'error');
+      showToast(t('common.errorTryAgain'), 'error');
       return;
     }
     const income = parseCurrency(monthlyIncome);
     if (!income) {
-      showToast('Informe a renda mensal antes de salvar', 'warning');
+      showToast(t('finances.wizard.incomeRequired'), 'warning');
       return;
     }
 
     const finalDistributions = adjustTo100Percent(distributions, income);
 
     if (!validateDistribution(finalDistributions)) {
-      showToast('A distribuição precisa somar 100%', 'warning');
+      showToast(t('closing.allocation.splitMustBe100'), 'warning');
       return;
     }
 
     const monthYear = formatMonthYear(selectedMonth);
     if (!monthYear) {
-      showToast('Selecione um mês válido', 'warning');
+      showToast(t('common.errorTryAgain'), 'warning');
       return;
     }
 
@@ -657,7 +641,7 @@ export function BudgetWizard({
       });
 
     if (payload.length === 0) {
-      showToast('Nenhuma categoria com valor para salvar!', 'error');
+      showToast(t('finances.wizard.nothingToSave'), 'error');
       return;
     }
 
@@ -677,13 +661,13 @@ export function BudgetWizard({
         }
       }
 
-      showToast('Planejamento salvo com sucesso!', 'success');
+      showToast(t('finances.wizard.saved'), 'success');
       transitionToStep(STEPS.SUCCESS);
       // Criar confetes quando entrar no step de sucesso
       setTimeout(() => createConfetti(), 100);
     } catch (error) {
       console.error('Erro ao salvar planejamento:', error);
-      showToast('Erro ao salvar planejamento: ' + (error.message || 'Erro desconhecido'), 'error');
+      showToast(t('finances.wizard.saveError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -782,18 +766,18 @@ export function BudgetWizard({
               <View style={styles.badge}>
                 <Sparkles size={16} color={colors.brand.primary} />
                 <Text style={styles.badgeText}>
-                  Planejamento inteligente {isSoloUser ? 'pessoal' : 'da família'}
+                  {isSoloUser ? t('finances.wizard.badgeSolo') : t('finances.wizard.badgeFamily')}
                 </Text>
               </View>
-              <Title1 style={styles.welcomeTitle}>Vamos iniciar seu planejamento mensal?</Title1>
+              <Title1 style={styles.welcomeTitle}>{t('finances.wizard.welcomeTitle')}</Title1>
               <Text style={styles.welcomeDescription}>
-                Responda algumas perguntas rápidas e nós sugeriremos o melhor plano de orçamento, com base nas melhores práticas de educação financeira.
+                {t('finances.wizard.welcomeBody')}
               </Text>
               <View style={styles.welcomeButtons}>
-                <Button title="Vamos lá" onPress={handleNext} style={styles.welcomeButton} />
+                <Button title={t('finances.wizard.start')} onPress={handleNext} style={styles.welcomeButton} />
                 <Button title="Mais tarde" variant="outline" onPress={onClose} style={styles.welcomeButton} />
                 <Button
-                  title={loadingPreviousPlan ? 'Carregando...' : 'Copiar planejamento anterior'}
+                  title={loadingPreviousPlan ? t('common.loading') : t('finances.wizard.copyPrevious')}
                   variant="ghost"
                   onPress={handleCopyPreviousPlan}
                   disabled={loadingPreviousPlan}
@@ -807,27 +791,28 @@ export function BudgetWizard({
       case STEPS.INCOME:
         return (
           <View style={[styles.stepContainer, baseClasses]}>
-            <ScrollView 
-              style={styles.scrollContent} 
+            <ScrollView
+              style={styles.scrollContent}
               contentContainerStyle={styles.scrollContentContainer}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
               <Title2 style={styles.stepTitle}>
-                {isSoloUser ? 'Qual a entrada programada para o mês?' : 'Qual a entrada familiar programada para o mês?'}
+                {isSoloUser ? t('finances.wizard.incomeQuestionSolo') : t('finances.wizard.incomeQuestionFamily')}
               </Title2>
               <Text style={styles.stepDescription}>
-                {isSoloUser ? '(Salário, recebimentos etc.)' : '(Salários, recebimentos etc.)'}
+                {t('finances.wizard.incomeHint')}
               </Text>
               <View style={styles.incomeInputContainer}>
-                <Text style={styles.currencySymbol}>R$</Text>
+                <Text style={styles.currencySymbol}>{currencySymbol()}</Text>
                 <TextInput
                   style={styles.incomeInput}
                   value={monthlyIncome}
                   onChangeText={handleIncomeChange}
                   onBlur={handleIncomeBlur}
-                  placeholder="0,00"
-                  keyboardType="numeric"
+                  placeholder={`0${amountDecimalSeparator()}00`}
+                  accessibilityLabel={isSoloUser ? t('finances.wizard.incomeQuestionSolo') : t('finances.wizard.incomeQuestionFamily')}
+                  keyboardType="decimal-pad"
                   autoFocus
                 />
               </View>
@@ -848,20 +833,20 @@ export function BudgetWizard({
           <View style={[styles.stepContainer, baseClasses]}>
             <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
               <Title2 style={styles.stepTitle}>
-                Que tal manter a meta de economizar 20% da sua renda mensal e investir esse saldo?
+                {t('finances.wizard.investQuestion')}
               </Title2>
 
               {income > 0 && (
                 <View style={styles.investmentInfoBox}>
                   <Text style={styles.investmentInfoText}>
-                    <Text weight="bold">Por quê 20%?</Text> Esta é uma meta recomendada pelos especialistas em finanças pessoais do MeuAzulão para garantir uma poupança saudável e crescimento patrimonial a longo prazo.
+                    <Text weight="bold">{t('finances.wizard.whyTitle')}</Text> {t('finances.wizard.whyBody')}
                   </Text>
                 </View>
               )}
 
               <View style={styles.investmentControls}>
                 <Text style={styles.investmentLabel}>Ajuste o percentual que deseja investir mensalmente</Text>
-                
+
                 <View style={styles.sliderWrapper}>
                   <TouchableOpacity
                     style={styles.sliderButton}
@@ -873,7 +858,7 @@ export function BudgetWizard({
                   >
                     <Text style={styles.sliderButtonText}>-</Text>
                   </TouchableOpacity>
-                  
+
                   <View style={styles.sliderContainer}>
                     <TextInput
                       style={styles.percentageInput}
@@ -887,7 +872,7 @@ export function BudgetWizard({
                     />
                     <Text style={styles.percentageLabel}>%</Text>
                   </View>
-                  
+
                   <TouchableOpacity
                     style={styles.sliderButton}
                     onPress={() => {
@@ -899,7 +884,7 @@ export function BudgetWizard({
                     <Text style={styles.sliderButtonText}>+</Text>
                   </TouchableOpacity>
                 </View>
-                
+
                 <View style={styles.sliderTrack}>
                   <View style={[styles.sliderFill, { width: `${(investmentPercentage / 80) * 100}%` }]} />
                 </View>
@@ -915,7 +900,7 @@ export function BudgetWizard({
                     <View style={[styles.summaryDot, { backgroundColor: item.color }]} />
                     <Text style={styles.summaryLabel}>{item.label}</Text>
                     <Text style={styles.summaryValue}>
-                      {item.percentage.toFixed(1)}% · {formatCurrency(item.amount)}
+                      {formatPercent(item.percentage / 100, { maximumFractionDigits: 1 })} · {formatCurrency(item.amount)}
                     </Text>
                   </View>
                 ))}
@@ -923,7 +908,7 @@ export function BudgetWizard({
 
               <View style={styles.investmentButtonContainer}>
                 <Button
-                  title="Ajustar subcategorias"
+                  title={t('finances.wizard.adjustCategories')}
                   onPress={handleNext}
                   disabled={!isValidDistribution}
                   style={styles.stepButton}
@@ -936,13 +921,13 @@ export function BudgetWizard({
       case STEPS.SUBCATEGORIES:
         return (
           <View style={[styles.stepContainer, baseClasses]}>
-            <ScrollView 
-              style={styles.scrollContent} 
+            <ScrollView
+              style={styles.scrollContent}
               contentContainerStyle={styles.scrollContentContainer}
               showsVerticalScrollIndicator={false}
             >
-              <Title2 style={styles.stepTitle}>Ajuste os valores para cada categoria</Title2>
-              <Text style={styles.stepDescription}>Distribua o valor de cada macro entre as subcategorias</Text>
+              <Title2 style={styles.stepTitle}>{t('finances.wizard.categoriesTitle')}</Title2>
+              <Text style={styles.stepDescription}>{t('finances.wizard.categoriesBody')}</Text>
 
               {Object.keys(MACRO_LABELS).map((macroKey) => {
                 const macroTotal = fixedMacroTotals[macroKey] || 0;
@@ -965,7 +950,7 @@ export function BudgetWizard({
                       <View style={styles.macroHeaderTop}>
                         <View style={styles.macroHeaderLeft}>
                           <View style={[styles.macroDot, { backgroundColor: MACRO_COLORS[macroKey] }]} />
-                          <Text style={styles.macroLabel}>{MACRO_LABELS[macroKey]}</Text>
+                          <Text style={styles.macroLabel}>{t(MACRO_LABELS[macroKey])}</Text>
                           <Text style={styles.macroAmount}>{formatCurrency(macroTotal)}</Text>
                         </View>
                         {isExpanded ? (
@@ -977,7 +962,7 @@ export function BudgetWizard({
                       {!isBalanced && (
                         <View style={styles.macroHeaderBottom}>
                           <Text style={styles.macroAdjust}>
-                            Ajustar: {formatCurrency(Math.abs(macroDiff))}
+                            {t('finances.wizard.adjustBy', { amount: formatCurrency(Math.abs(macroDiff)) })}
                           </Text>
                         </View>
                       )}
@@ -987,10 +972,10 @@ export function BudgetWizard({
                       <View style={styles.macroContent}>
                         <View style={styles.macroContentHeader}>
                           <Text style={styles.macroCategoryCount}>
-                            {macroCategories.length} {macroCategories.length === 1 ? 'categoria' : 'categorias'}
+                            {t('finances.wizard.categoryCount', { count: macroCategories.length })}
                           </Text>
                           <Button
-                            title="Distribuir igualmente"
+                            title={t('finances.wizard.splitEvenly')}
                             variant="ghost"
                             size="sm"
                             onPress={() => handleDistributeEvenly(macroKey)}
@@ -1004,18 +989,19 @@ export function BudgetWizard({
                           return (
                             <View key={category.categoryId} style={styles.categoryInputCard}>
                               <View style={styles.categoryInputHeader}>
-                                <Text style={styles.categoryName}>{category.categoryName}</Text>
-                                <Text style={styles.categoryPercentage}>{percentage.toFixed(0)}%</Text>
+                                <Text style={styles.categoryName}>{category.isPlaceholder ? t(category.categoryName) : categoryLabel(category.categoryName)}</Text>
+                                <Text style={styles.categoryPercentage}>{formatPercent(percentage / 100)}</Text>
                               </View>
                               <View style={styles.categoryInputWrapper}>
-                                <Text style={styles.categoryInputCurrency}>R$</Text>
+                                <Text style={styles.categoryInputCurrency}>{currencySymbol()}</Text>
                                 <TextInput
                                   style={styles.categoryInput}
                                   value={typeof category.amount === 'number' ? formatCurrencyInput(category.amount) : category.amount || ''}
                                   onChangeText={(text) => handleSubcategoryChange(category.categoryId, text, macroKey)}
                                   onBlur={() => handleSubcategoryBlur(category.categoryId, macroKey)}
-                                  placeholder="0,00"
-                                  keyboardType="numeric"
+                                  placeholder={`0${amountDecimalSeparator()}00`}
+                                  accessibilityLabel={category.isPlaceholder ? t(category.categoryName) : categoryLabel(category.categoryName)}
+                                  keyboardType="decimal-pad"
                                 />
                               </View>
                             </View>
@@ -1025,7 +1011,7 @@ export function BudgetWizard({
                         {!isBalanced && (
                           <View style={styles.balanceWarning}>
                             <Text style={styles.balanceWarningText}>
-                              ⚠️ A soma das subcategorias deve totalizar {formatCurrency(macroTotal)}
+                              {t('finances.wizard.mustTotal', { amount: formatCurrency(macroTotal) })}
                             </Text>
                           </View>
                         )}
@@ -1037,7 +1023,7 @@ export function BudgetWizard({
 
               <View style={styles.subcategoriesFooter}>
                 <Button
-                  title={saving ? 'Salvando...' : 'Salvar'}
+                  title={saving ? t('investments.form.saving') : t('common.save')}
                   onPress={handleSave}
                   disabled={saving}
                   style={styles.footerButton}
@@ -1088,11 +1074,11 @@ export function BudgetWizard({
             })}
             <View style={styles.successBadge}>
               <Sparkles size={20} color={colors.brand.primary} />
-              <Text style={styles.successBadgeText}>Planejamento concluído</Text>
+              <Text style={styles.successBadgeText}>{t('finances.wizard.doneBadge')}</Text>
             </View>
-            <Title1 style={styles.successTitle}>Parabéns!</Title1>
+            <Title1 style={styles.successTitle}>{t('finances.wizard.doneTitle')}</Title1>
             <Text style={styles.successDescription}>
-              Seu planejamento mensal está definido! Vamos monitorar automaticamente seus gastos e avisar quando as metas estiverem próximas do limite. Você pode ajustar os valores a qualquer momento na página de Orçamentos.
+              {t('finances.wizard.doneBody')}
             </Text>
             <Button title="Ver planejamento" onPress={handleFinish} style={styles.stepButton} />
           </View>
@@ -1112,13 +1098,13 @@ export function BudgetWizard({
             <View style={[styles.header, { paddingTop: Math.max(insets.top, spacing[3]) }]}>
               <View style={styles.headerLeft}>
                 {progressIndex > 0 && (
-                  <TouchableOpacity onPress={handlePrevious} style={styles.backButton}>
+                  <TouchableOpacity onPress={handlePrevious} style={styles.backButton} accessibilityRole="button" accessibilityLabel={t('common.back')}>
                     <ChevronLeft size={24} color={colors.text.secondary} />
                   </TouchableOpacity>
                 )}
                 <View style={styles.progressContainer}>
                   <Text style={styles.progressText}>
-                    Passo {progressIndex + 1} de {PROGRESS_TOTAL}
+                    {t('finances.wizard.step', { current: progressIndex + 1, total: PROGRESS_TOTAL })}
                   </Text>
                   <View style={styles.progressBar}>
                     <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />

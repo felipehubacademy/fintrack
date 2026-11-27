@@ -5,7 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { X, Users, User } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, appLocale, formatCurrencyInput } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
+import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
 // Helper: Agregar splits por cost_center_id para evitar duplicatas
 const aggregateSplits = (splits) => {
@@ -34,7 +38,8 @@ const aggregateSplits = (splits) => {
   return aggregated;
 };
 
-export default function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction = null, categories = [] }) {
+function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction = null, categories = [] }) {
+  const { t } = useI18n();
   const { organization, user: orgUser, costCenters, incomeCategories, budgetCategories, isSoloUser, loading: orgLoading } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
   
@@ -82,7 +87,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       // para garantir que o valor corresponda exatamente ao dropdown
       const rawOwnerName = editingTransaction.cost_center?.name 
         || editingTransaction.owner 
-        || (editingTransaction.is_shared ? (organization?.name || 'Família') : '');
+        || (editingTransaction.is_shared ? (organization?.name || t('web.shared.household')) : '');
       
       // Buscar o nome correspondente usando costCenters diretamente
       let ownerName = rawOwnerName;
@@ -101,7 +106,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           ownerName = matchingCenter.name;
         } else if (editingTransaction.is_shared || normalize(rawOwnerName) === normalize(organization?.name || 'Família')) {
           // Se for compartilhado, usar o nome exato da família
-          ownerName = organization?.name || 'Família';
+          ownerName = organization?.name || t('web.shared.household');
         }
       }
       
@@ -357,20 +362,20 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
   const handleSave = async () => {
     if (!organization?.id || !orgUser?.id) {
-      showError('Família ou usuário não encontrados');
+      showError(t('web.transactionModal.householdOrUserNotFound'));
       return;
     }
     if (!form.description || !form.amount || !form.date) {
-      warning('Preencha todos os campos obrigatórios');
+      warning(t('web.shared.fillInAllRequiredFields'));
       return;
     }
     if (!form.owner_name) {
-      warning('Selecione um responsável');
+      warning(t('web.transactionModal.pickAnOwner'));
       return;
     }
     
     if (!form.category_id) {
-      warning('Selecione uma categoria');
+      warning(t('web.transactionModal.pickACategory'));
       return;
     }
 
@@ -379,12 +384,12 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
     
     // Validar splits se for compartilhado
     if (willBeShared && splitDetails.length === 0) {
-      warning('É necessário configurar a divisão da despesa compartilhada');
+      warning(t('web.transactionModal.setUpHowTheShared'));
       return;
     }
 
     if (willBeShared && totalPercentage !== 100) {
-      warning(`A divisão deve somar exatamente 100%. Atual: ${totalPercentage}%`);
+      warning(t('web.transactionModal.theSplitMustAddUp', { totalPercentage }));
       return;
     }
     
@@ -396,12 +401,12 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         const category = expenseCategories.find(c => c.id === form.category_id);
         
         if (!category) {
-          warning('Categoria inválida. Atualize a página e tente novamente.');
+          warning(t('web.transactionModal.invalidCategoryReloadThePage'));
           return;
         }
         
         if (!selectedOption) {
-          throw new Error('Responsável inválido');
+          throw new Error(t('web.transactionModal.invalidOwner'));
         }
         
         const isOptionShared = selectedOption.isShared || willBeShared;
@@ -423,7 +428,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
         if (isCredit && wasCredit && isExistingInstallment) {
           // Atualizar parcelas existentes
-          if (!form.card_id) throw new Error('Cartão de crédito é obrigatório');
+          if (!form.card_id) throw new Error(t('web.transactionModal.creditCardIsRequired'));
 
           // Buscar o parent_expense_id correto
           const parentId = editingTransaction.parent_expense_id === editingTransaction.id 
@@ -463,10 +468,10 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           // Se o número de parcelas mudou OU a data mudou, recriar o grupo
           if (currentInstallmentCount !== newInstallmentCount || dateChanged) {
             const reason = dateChanged && currentInstallmentCount !== newInstallmentCount 
-              ? 'Número de parcelas E data mudaram' 
+              ? t('web.transactionModal.numberOfInstallmentsAndDate') 
               : dateChanged 
-                ? 'Data mudou' 
-                : 'Número de parcelas mudou';
+                ? t('web.transactionModal.dateChanged') 
+                : t('web.transactionModal.numberOfInstallmentsChanged');
             console.log(`🔄 [TRANSACTION MODAL] ${reason}! Recriando grupo...`);
 
             // Deletar todas as parcelas antigas
@@ -602,7 +607,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
         } else if (isCredit && (!editingTransaction || !wasCredit || !isExistingInstallment)) {
           // Criar novas parcelas (novo ou convertendo para cartão)
-          if (!form.card_id || !form.installments) throw new Error('Cartão e parcelas são obrigatórios');
+          if (!form.card_id || !form.installments) throw new Error(t('web.transactionModal.cardAndInstallmentsAreRequired'));
           
           console.log('🔄 [TRANSACTION MODAL] Criando novas parcelas');
           
@@ -883,12 +888,12 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
       
       onClose?.();
       const action = editingTransaction ? 'atualizada' : 'salva';
-      success(`Despesa ${action} com sucesso!`);
+      success(t('web.transactionModal.expense', { action }));
       onSuccess?.();
     } catch (e) {
       console.error('❌ [TRANSACTION MODAL] Erro ao salvar:', e);
-      const errorMessage = e?.message || e?.error?.message || 'Erro desconhecido';
-      showError(`Erro ao salvar: ${errorMessage}`);
+      const errorMessage = e?.message || e?.error?.message || t('web.shared.unknownError');
+      showError(t('web.transactionModal.couldnTSave', { errorMessage }));
     } finally {
       setSaving(false);
     }
@@ -902,7 +907,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
-            {editingTransaction ? 'Editar Despesa' : 'Nova Despesa'}
+            {editingTransaction ? t('web.transactionModal.editExpense') : t('web.shared.newExpense')}
           </h2>
           <Button 
             variant="ghost" 
@@ -919,20 +924,20 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           {/* Toggle de tipo */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.description')}</label>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                placeholder="Ex: Mercado, Farmácia"
+                placeholder={t('web.shared.eGGroceriesPharmacy')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Valor *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.amount')}</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                 <input
                   type="text"
                   value={form.amount}
@@ -946,20 +951,20 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                     }
                     const parsed = parseCurrencyInput(value);
                     if (parsed > 0) {
-                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       setForm({ ...form, amount: formatted });
                     } else {
                       setForm({ ...form, amount: '' });
                     }
                   }}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Data *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.date')}</label>
               <input
                 type="date"
                 value={form.date}
@@ -970,44 +975,44 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
 
             {/* Categoria */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.category')}</label>
               <select
                 value={form.category_id}
                 onChange={(e) => setForm({ ...form, category_id: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
               >
-                <option value="">Selecione...</option>
-                {[...expenseCategories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                <option value="">{t('web.shared.select')}</option>
+                {dedupeCategories(expenseCategories, [form.category_id]).sort((a, b) => categoryName(a.name).localeCompare(categoryName(b.name), appLocale())).map(cat => (
+                  <option key={cat.id} value={cat.id}>{categoryName(cat.name)}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.paymentMethod')}</label>
               <select
                 value={form.payment_method}
                 onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
               >
-                <option value="cash">Dinheiro</option>
-                <option value="debit_card">Cartão de Débito</option>
-                <option value="pix">PIX</option>
-                <option value="credit_card">Cartão de Crédito</option>
-                <option value="boleto">Boleto</option>
-                <option value="bank_transfer">Transferência Bancária</option>
-                <option value="other">Outros</option>
+                <option value="cash">{t('web.shared.cash')}</option>
+                <option value="debit_card">{t('web.shared.debitCard')}</option>
+                <option value="pix">{t('web.shared.pix')}</option>
+                <option value="credit_card">{t('web.shared.creditCard')}</option>
+                <option value="boleto">{t('web.shared.bankSlipBoleto')}</option>
+                <option value="bank_transfer">{t('web.shared.bankTransfer')}</option>
+                <option value="other">{t('web.shared.other')}</option>
               </select>
             </div>
 
             {!isSoloUser ? (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Responsável *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.owner')}</label>
                 <select
                   value={form.owner_name}
                   onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 >
-                  <option value="">Selecione...</option>
+                  <option value="">{t('web.shared.select')}</option>
                   {ownerOptions.map(o => (
                     <option key={o.id ?? o.name} value={o.name}>{o.name}</option>
                   ))}
@@ -1019,33 +1024,33 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             {isCredit && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Cartão *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.card2')}</label>
                   <select
                     value={form.card_id}
                     onChange={(e) => setForm({ ...form, card_id: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                     disabled={cards.length === 0}
                   >
-                    <option value="">Selecione...</option>
+                    <option value="">{t('web.shared.select')}</option>
                     {cards.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                   {cards.length === 0 && (
                     <p className="mt-2 text-sm text-gray-500">
-                      Nenhum cartão de crédito cadastrado. Cadastre um cartão primeiro.
+                      {t('web.shared.noCreditCardYetAdd')}
                     </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Parcelas *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('web.shared.installments')}</label>
                   <select
                     value={form.installments}
                     onChange={(e) => setForm({ ...form, installments: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   >
                     {Array.from({ length: 12 }).map((_, i) => (
-                      <option key={i+1} value={i+1}>{i+1}x</option>
+                      <option key={i+1} value={i+1}>{t('web.shared.x', { p0: i+1 })}</option>
                     ))}
                   </select>
                 </div>
@@ -1057,13 +1062,13 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
           {isShared && (
             <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="font-medium text-gray-900">Divisão</h4>
+                <h4 className="font-medium text-gray-900">{t('web.transactionModal.split')}</h4>
                 <button
                   type="button"
                   onClick={() => showSplitConfig ? resetToDefaultSplit() : setShowSplitConfig(true)}
                   className="text-sm text-flight-blue hover:text-flight-blue/80 font-medium"
                 >
-                  {showSplitConfig ? 'Usar Padrão' : 'Personalizar'}
+                  {showSplitConfig ? t('web.shared.useDefault') : t('web.shared.customize')}
                 </button>
               </div>
 
@@ -1088,14 +1093,14 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                         />
                         <span className="text-sm text-gray-500 w-6">%</span>
                         <span className="text-sm text-gray-600 w-24 text-right">
-                          R$ {split.amount.toFixed(2)}
+                          {formatMoney(split.amount)}
                         </span>
                       </div>
                     </div>
                   ))}
                   
                   <div className="pt-3 border-t border-gray-300 flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Total:</span>
+                    <span className="text-sm font-medium text-gray-700">{t('web.shared.total')}</span>
                     <span className={`text-sm font-bold ${totalPercentage === 100 ? 'text-green-600' : 'text-red-600'}`}>
                       {totalPercentage.toFixed(2)}%
                     </span>
@@ -1113,7 +1118,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
                         <span className="text-gray-700">{split.name}</span>
                       </div>
                       <span className="text-gray-600 font-medium">
-                        {split.percentage}% (R$ {split.amount.toFixed(2)})
+                        {split.percentage}% ({formatMoney(split.amount)})
                       </span>
                     </div>
                   ))}
@@ -1131,14 +1136,14 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
             disabled={saving}
             className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving || !isFormValid}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
-            {saving ? 'Salvando...' : 'Salvar'}
+            {saving ? t('web.shared.saving') : t('web.shared.save')}
           </Button>
         </div>
       </div>
@@ -1146,3 +1151,4 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, editingTr
   );
 }
 
+export default withPaywall(TransactionModal);

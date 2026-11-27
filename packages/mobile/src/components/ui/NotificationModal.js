@@ -14,7 +14,8 @@ import { Button } from './Button';
 import { Card } from './Card';
 import { useInAppNotifications } from '../../hooks/useInAppNotifications';
 import { useOrganization } from '../../hooks/useOrganization';
-import { formatBrazilDayMonthNumeric } from '../../utils/date';
+import { formatDayMonthNumeric } from '../../utils/date';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { height } = Dimensions.get('window');
 
@@ -51,16 +52,16 @@ const getTypeIcon = (type) => {
   return <cfg.Icon size={20} color={cfg.color} />;
 };
 
-const formatTime = (dateString) => {
+const formatTime = (dateString, t) => {
   if (!dateString) return '';
   const date = new Date(dateString);
   const now = new Date();
   const diffInMinutes = Math.floor((now - date) / (1000 * 60));
 
-  if (diffInMinutes < 1) return 'Agora';
+  if (diffInMinutes < 1) return t('dashboard.ui.now');
   if (diffInMinutes < 60) return `${diffInMinutes}m`;
   if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
-  return formatBrazilDayMonthNumeric(dateString);
+  return formatDayMonthNumeric(dateString);
 };
 
 export default function NotificationModal({ visible, onClose }) {
@@ -75,6 +76,7 @@ export default function NotificationModal({ visible, onClose }) {
     deleteNotification,
   } = useInAppNotifications(user?.id, organization?.id);
 
+  const { t } = useI18n();
   const displayNotifications = notifications.slice(0, 20);
 
   if (!visible) return null;
@@ -98,10 +100,10 @@ export default function NotificationModal({ visible, onClose }) {
             <View style={styles.headerLeft}>
               <Bell size={24} color={colors.text.primary} />
               <View style={styles.headerTitle}>
-                <Title2 weight="semiBold">Notificações</Title2>
+                <Title2 weight="semiBold">{t('dashboard.ui.notifications')}</Title2>
                 {unreadCount > 0 && (
                   <Caption color="secondary">
-                    {unreadCount} {unreadCount === 1 ? 'não lida' : 'não lidas'}
+                    {t('dashboard.ui.notificationsUnread', { count: unreadCount })}
                   </Caption>
                 )}
               </View>
@@ -115,11 +117,11 @@ export default function NotificationModal({ visible, onClose }) {
                 >
                   <CheckCircle size={18} color={colors.brand.primary} />
                   <Caption style={{ color: colors.brand.primary, marginLeft: spacing[0.5] }}>
-                    Todas
+                    {t('dashboard.ui.markAllRead')}
                   </Caption>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
                 <X size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
@@ -133,13 +135,13 @@ export default function NotificationModal({ visible, onClose }) {
           >
             {loading ? (
               <View style={styles.emptyContainer}>
-                <Text color="secondary">Carregando notificações...</Text>
+                <Text color="secondary">{t('dashboard.ui.notificationsLoading')}</Text>
               </View>
             ) : displayNotifications.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Bell size={48} color={colors.text.tertiary} />
                 <Text color="secondary" style={{ marginTop: spacing[2] }}>
-                  Nenhuma notificação
+                  {t('dashboard.ui.notificationsEmpty')}
                 </Text>
               </View>
             ) : (
@@ -175,7 +177,7 @@ export default function NotificationModal({ visible, onClose }) {
                           </Caption>
                           <View style={styles.notificationFooter}>
                             <Caption color="tertiary" style={{ fontSize: 11 }}>
-                              {formatTime(notification.created_at)}
+                              {formatTime(notification.created_at, t)}
                             </Caption>
                             <View
                               style={[
@@ -187,7 +189,7 @@ export default function NotificationModal({ visible, onClose }) {
                               ]}
                             >
                               <Caption style={{ color: priorityColors.text, fontSize: 10 }}>
-                                {notification.priority || 'normal'}
+                                {t(`dashboard.ui.priority.${notification.priority || 'normal'}`, { defaultValue: notification.priority })}
                               </Caption>
                             </View>
                           </View>
@@ -206,6 +208,8 @@ export default function NotificationModal({ visible, onClose }) {
                         <TouchableOpacity
                           onPress={() => deleteNotification(notification.id)}
                           style={styles.actionButton}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('dashboard.ui.deleteNotification')}
                           activeOpacity={0.7}
                         >
                           <Trash2 size={16} color={colors.error.main} />

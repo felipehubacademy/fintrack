@@ -1,6 +1,8 @@
-import ZulAssistant from '../services/zulAssistant.js';
+// Web chat only needs the Chat Completions assistant. The old ZulAssistant
+// (Assistants API, shut down by OpenAI) is no longer imported here.
+import ZulWebChat from '../services/zulWebChat.js';
 
-const zul = new ZulAssistant();
+const webChat = new ZulWebChat();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -20,7 +22,6 @@ export default async function handler(req, res) {
     // Usar dados padrão se não fornecidos
     const userIdFinal = userId || 'web-user';
     const userNameFinal = userName || 'Usuário Web';
-    const userPhoneFinal = userPhone || null;
 
     console.log(`💬 Zul Chat - Usuário: ${userNameFinal} (${userIdFinal})`);
     console.log(`📝 Mensagem: ${message}`);
@@ -44,7 +45,7 @@ export default async function handler(req, res) {
     }
     
     // Se streaming, retornar SSE
-    if (useStream && !userPhoneFinal) {
+    if (useStream) {
       // Configurar headers para SSE
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
@@ -53,7 +54,7 @@ export default async function handler(req, res) {
       
       try {
         // Usar streaming do webChat
-        const stream = zul.sendWebChatMessageStream(
+        const stream = webChat.sendWebChatMessageStream(
           userIdFinal,
           message,
           { userName: userNameFinal, ...contextToPass }
@@ -86,20 +87,16 @@ export default async function handler(req, res) {
       historyLength: contextToPass.conversationHistory?.length || 0
     });
     
-    const response = await zul.processMessage(
-      message,
+    const reply = await webChat.sendWebChatMessage(
       userIdFinal,
-      userNameFinal,
-      userPhoneFinal,
-      contextToPass
+      message,
+      { userName: userNameFinal, ...contextToPass }
     );
-
-    console.log(`🤖 Resposta do Zul: ${response.message}`);
 
     return res.status(200).json({
       success: true,
-      message: response.message,
-      threadId: response.threadId,
+      message: reply,
+      threadId: null,
       timestamp: new Date().toISOString()
     });
 

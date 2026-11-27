@@ -4,8 +4,10 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { ArrowLeft, User, Users, ChevronRight } from 'lucide-react';
 import InterestListModal from '../components/InterestListModal';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function AccountType() {
+  const { t } = useI18n();
   const router = useRouter();
   const [selectedType, setSelectedType] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -20,7 +22,7 @@ export default function AccountType() {
   return (
     <>
       <Head>
-        <title>Comece a usar o MeuAzulão - MeuAzulão</title>
+        <title>{t('web.accountType.getStartedMeuazulao')}</title>
         <meta name="description" content="Escolha como usar o MeuAzulão" />
       </Head>
 
@@ -38,7 +40,7 @@ export default function AccountType() {
           className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Voltar</span>
+          <span className="font-medium">{t('web.shared.back')}</span>
         </Link>
 
         {/* Content */}
@@ -54,10 +56,10 @@ export default function AccountType() {
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Como você quer usar o MeuAzulão?
+                {t('web.accountType.howWillYouUseMeuazulao')}
               </h1>
               <p className="text-gray-600">
-                Escolha a opção que melhor se adapta à sua necessidade
+                {t('web.accountType.pickWhatFitsYouBest')}
               </p>
             </div>
 
@@ -82,10 +84,10 @@ export default function AccountType() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 text-lg">
-                      Uso Individual
+                      {t('web.accountType.justMe')}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Para controle pessoal das suas finanças
+                      {t('web.accountType.forYourOwnMoney')}
                     </p>
                   </div>
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
@@ -119,10 +121,10 @@ export default function AccountType() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 text-lg">
-                      Uso em Família
+                      {t('web.accountType.coupleOrFamily')}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Para controle compartilhado em família
+                      {t('web.accountType.shareMoneyWithYourPartner')}
                     </p>
                   </div>
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
@@ -144,16 +146,16 @@ export default function AccountType() {
               disabled={!selectedType}
               className="w-full bg-gradient-to-r from-[#207DFF] to-[#0D2C66] text-white font-semibold py-4 px-6 rounded-xl hover:shadow-lg hover:shadow-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
-              <span>Continuar</span>
+              <span>{t('web.shared.continue')}</span>
               <ChevronRight className="w-5 h-5" />
             </button>
 
             {/* Info Footer */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-500">
-                Já tem uma conta?{' '}
+                {t('web.shared.alreadyHaveAnAccount')}
                 <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Fazer login
+                  {t('web.shared.signIn')}
                 </Link>
               </p>
             </div>

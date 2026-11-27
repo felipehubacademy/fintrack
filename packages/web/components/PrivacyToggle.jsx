@@ -1,11 +1,13 @@
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function PrivacyToggle({ value, onChange, orgName }) {
+  const { t } = useI18n();
   const options = [
-    { key: 'all', label: 'Todas' },
-    { key: 'individual', label: 'Só Minhas' },
-    { key: 'org', label: `Só ${orgName}` }
+    { key: 'all', label: t('web.shared.all') },
+    { key: 'individual', label: t('web.privacyToggle.onlyMine') },
+    { key: 'org', label: t('web.privacyToggle.only', { orgName }) }
   ];
 
   return (

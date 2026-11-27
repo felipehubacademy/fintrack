@@ -13,6 +13,11 @@ import { Title2, Caption, Callout, Text } from '../ui/Text';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { ALL_BANK_OPTIONS, getBankLabel } from '../../assets/banks/availableBanks';
+import { parseAmountInput, sanitizeAmountInput, amountDecimalSeparator } from './amountInput';
+import { useI18n } from '../../contexts/I18nContext';
+
+// Bank names stay as they are; only the "Other" option is translated.
+const bankLabel = (id, t) => (id === 'other' ? t('finances.accountForm.otherBank') : getBankLabel(id));
 
 const { height } = Dimensions.get('window');
 
@@ -53,6 +58,7 @@ const SelectField = ({ label, value, placeholder, onPress, disabled }) => (
 
 // Componente OptionSheet
 const OptionSheet = ({ visible, title, options = [], selectedId, onSelect, onClose }) => {
+  const { t } = useI18n();
   if (!visible) return null;
 
   return (
@@ -68,7 +74,7 @@ const OptionSheet = ({ visible, title, options = [], selectedId, onSelect, onClo
             <TouchableOpacity 
               onPress={onClose}
               accessibilityRole="button"
-              accessibilityLabel="Fechar"
+              accessibilityLabel={t('common.close')}
             >
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -104,6 +110,8 @@ const OptionSheet = ({ visible, title, options = [], selectedId, onSelect, onClo
 };
 
 export function CardFormModal({ visible, onClose, onSave, card }) {
+  const { t } = useI18n();
+  const bankOptions = ALL_BANK_OPTIONS.map((b) => (b.id === 'other' ? { ...b, label: bankLabel('other', t) } : b));
   const [formData, setFormData] = useState(defaultForm);
   const [activeSheet, setActiveSheet] = useState(null);
 
@@ -123,7 +131,7 @@ export function CardFormModal({ visible, onClose, onSave, card }) {
         holder_name: card.holder_name || '',
         credit_limit:
           card.credit_limit !== undefined && card.credit_limit !== null
-            ? String(card.credit_limit)
+            ? String(card.credit_limit).replace('.', amountDecimalSeparator())
             : '',
         billing_day:
           card.billing_day !== undefined && card.billing_day !== null
@@ -159,27 +167,27 @@ export function CardFormModal({ visible, onClose, onSave, card }) {
 
   const handleSubmit = () => {
     if (!formData.name.trim()) {
-      alert('Informe o nome do cartão.');
+      alert(t('finances.cardForm.nameRequired'));
       return;
     }
 
     if (!formData.bank || formData.bank === '') {
-      alert('Selecione o banco.');
+      alert(t('finances.cardForm.bankRequired'));
       return;
     }
 
     if (!formData.holder_name.trim()) {
-      alert('Informe o titular.');
+      alert(t('finances.cardForm.holderRequired'));
       return;
     }
 
-    if (!formData.credit_limit || Number(formData.credit_limit.replace(/[^0-9.,]/g, '').replace(',', '.')) <= 0) {
-      alert('Limite do cartão deve ser maior que zero.');
+    if (!formData.credit_limit || parseAmountInput(formData.credit_limit) <= 0) {
+      alert(t('finances.cardForm.limitRequired'));
       return;
     }
 
     if (!formData.billing_day || parseInt(formData.billing_day) < 1 || parseInt(formData.billing_day) > 31) {
-      alert('Dia de vencimento deve ser entre 1 e 31.');
+      alert(t('finances.cardForm.dueDayRange'));
       return;
     }
 
@@ -193,7 +201,7 @@ export function CardFormModal({ visible, onClose, onSave, card }) {
     }
 
     // Converter limite para número
-    const creditLimit = Number(formData.credit_limit.replace(/[^0-9.,]/g, '').replace(',', '.'));
+    const creditLimit = parseAmountInput(formData.credit_limit);
 
     // Se for "Outros", salva como string vazia ou null para usar logo da app
     const bankValue = formData.bank === 'other' ? '' : formData.bank;
@@ -226,14 +234,13 @@ export function CardFormModal({ visible, onClose, onSave, card }) {
 
           <View style={styles.header}>
             <Title2 weight="semiBold">
-              {card ? 'Editar Cartão' : 'Novo Cartão'}
+              {card ? t('finances.cardForm.editTitle') : t('finances.cardForm.newTitle')}
             </Title2>
             <TouchableOpacity 
               onPress={onClose} 
               style={styles.closeButton}
               accessibilityRole="button"
-              accessibilityLabel="Fechar"
-              accessibilityHint="Fechar formulário de cartão"
+              accessibilityLabel={t('common.close')}
             >
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -247,65 +254,65 @@ export function CardFormModal({ visible, onClose, onSave, card }) {
             bounces={false}
           >
             <View style={styles.field}>
-              <Caption color="secondary" weight="medium">Nome *</Caption>
+              <Caption color="secondary" weight="medium">{t('finances.accountForm.name')}</Caption>
               <Input
                 value={formData.name}
                 onChangeText={(text) => handleChange('name', text)}
-                placeholder="Ex: Cartão Azul"
+                placeholder={t('finances.cardForm.namePlaceholder')}
               />
             </View>
 
             <SelectField
-              label="Banco *"
-              value={formData.bank ? getBankLabel(formData.bank) : ''}
-              placeholder="Selecione o banco"
+              label={t('finances.cardForm.bank')}
+              value={formData.bank ? bankLabel(formData.bank, t) : ''}
+              placeholder={t('finances.accountForm.bankPlaceholder')}
               onPress={() => setActiveSheet('bank')}
             />
 
             <View style={styles.field}>
-              <Caption color="secondary" weight="medium">Titular *</Caption>
+              <Caption color="secondary" weight="medium">{t('finances.cardForm.holder')}</Caption>
               <Input
                 value={formData.holder_name}
                 onChangeText={(text) => handleChange('holder_name', text)}
-                placeholder="Nome completo"
+                placeholder={t('finances.cardForm.holderPlaceholder')}
               />
             </View>
 
             <View style={styles.field}>
-              <Caption color="secondary" weight="medium">Limite de Crédito *</Caption>
+              <Caption color="secondary" weight="medium">{t('finances.cardForm.limit')}</Caption>
               <Input
                 value={formData.credit_limit}
-                onChangeText={(text) => handleChange('credit_limit', text.replace(/[^0-9.,]/g, ''))}
+                onChangeText={(text) => handleChange('credit_limit', sanitizeAmountInput(text))}
                 keyboardType="decimal-pad"
-                placeholder="0,00"
+                placeholder={`0${amountDecimalSeparator()}00`}
               />
             </View>
 
             <View style={styles.doubleRow}>
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Dia de Vencimento *</Caption>
+                <Caption color="secondary" weight="medium">{t('finances.cardForm.dueDay')}</Caption>
                 <Input
                   value={formData.billing_day}
                   onChangeText={(text) => handleChange('billing_day', text.replace(/[^0-9]/g, ''))}
                   keyboardType="numeric"
-                  placeholder="Ex: 15"
+                  placeholder={t('finances.cardForm.dayPlaceholder', { day: 15 })}
                   maxLength={2}
                 />
               </View>
               <View style={styles.field}>
-                <Caption color="secondary" weight="medium">Dia de Fechamento</Caption>
+                <Caption color="secondary" weight="medium">{t('finances.cardForm.closingDay')}</Caption>
                 <Input
                   value={formData.closing_day}
                   onChangeText={(text) => handleChange('closing_day', text.replace(/[^0-9]/g, ''))}
                   keyboardType="numeric"
-                  placeholder="Ex: 10"
+                  placeholder={t('finances.cardForm.dayPlaceholder', { day: 10 })}
                   maxLength={2}
                 />
               </View>
             </View>
 
             <View style={styles.field}>
-              <Caption color="secondary" weight="medium">Cor</Caption>
+              <Caption color="secondary" weight="medium">{t('finances.cardForm.color')}</Caption>
               <View style={styles.colorsRow}>
                 {COLOR_OPTIONS.map((color) => (
                   <TouchableOpacity
@@ -316,6 +323,9 @@ export function CardFormModal({ visible, onClose, onSave, card }) {
                       formData.color === color && styles.colorDotActive,
                     ]}
                     onPress={() => handleChange('color', color)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('finances.cardForm.color')}
+                    accessibilityState={{ selected: formData.color === color }}
                   />
                 ))}
               </View>
@@ -324,13 +334,13 @@ export function CardFormModal({ visible, onClose, onSave, card }) {
 
           <View style={styles.footer}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               style={{ flex: 1 }}
             />
             <Button
-              title={card ? 'Salvar' : 'Adicionar'}
+              title={card ? t('common.save') : t('finances.accountForm.add')}
               variant="primary"
               onPress={handleSubmit}
               style={{ flex: 1 }}
@@ -342,8 +352,8 @@ export function CardFormModal({ visible, onClose, onSave, card }) {
       {/* Option Sheets */}
       <OptionSheet
         visible={activeSheet === 'bank'}
-        title="Selecione o Banco"
-        options={ALL_BANK_OPTIONS}
+        title={t('finances.accountForm.bankPlaceholder')}
+        options={bankOptions}
         selectedId={formData.bank}
         onSelect={(option) => handleChange('bank', option.id)}
         onClose={() => setActiveSheet(null)}

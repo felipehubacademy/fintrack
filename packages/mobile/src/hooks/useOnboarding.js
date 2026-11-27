@@ -7,7 +7,7 @@ export function useOnboarding(user, organization) {
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  const totalSteps = 6; // 0-5
+  const totalSteps = 2; // language/currency, then open Zul
 
   // Fetch progress from database
   const fetchProgress = useCallback(async () => {
@@ -27,7 +27,7 @@ export function useOnboarding(user, organization) {
         .limit(1);
 
       if (error) {
-        console.error('❌ Erro ao buscar progresso do onboarding:', error);
+        console.error('Error loading onboarding progress:', error);
         setLoading(false);
         return;
       }
@@ -75,7 +75,7 @@ export function useOnboarding(user, organization) {
         await createInitialProgress(type);
       }
     } catch (error) {
-      console.error('❌ Erro ao buscar progresso:', error);
+      console.error('Error loading progress:', error);
       setLoading(false);
     } finally {
       setLoading(false);
@@ -110,7 +110,7 @@ export function useOnboarding(user, organization) {
       setProgress(data);
       setCurrentStep(0);
     } catch (error) {
-      console.error('❌ Erro ao criar progresso inicial:', error);
+      console.error('Error creating initial progress:', error);
       // Se mesmo com upsert der erro, apenas log (não bloqueia)
     }
   };
@@ -149,7 +149,7 @@ export function useOnboarding(user, organization) {
 
       setProgress(prev => ({ ...prev, ...updates }));
     } catch (error) {
-      console.error('❌ Erro ao salvar progresso:', error);
+      console.error('Error saving progress:', error);
     } finally {
       setSaving(false);
     }
@@ -239,10 +239,10 @@ export function useOnboarding(user, organization) {
 
   // Complete onboarding
   const completeOnboarding = useCallback(async () => {
-    console.log('🎉 Completando onboarding...', { progress });
+    console.log('Completing onboarding', { progress });
     
     if (!progress) {
-      console.error('❌ Progress não encontrado');
+      console.error('Onboarding progress not found');
       return;
     }
 
@@ -251,9 +251,9 @@ export function useOnboarding(user, organization) {
         is_completed: true,
         completed_at: new Date().toISOString()
       });
-      console.log('✅ Onboarding completado com sucesso!');
+      console.log('Onboarding completed');
     } catch (error) {
-      console.error('❌ Erro ao completar onboarding:', error);
+      console.error('Error completing onboarding:', error);
     }
   }, [progress, saveProgress]);
 

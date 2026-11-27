@@ -1,8 +1,12 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, Area, AreaChart } from 'recharts';
 import { useState } from 'react';
 import { useResponsiveChart } from '../hooks/useResponsiveChart';
+import { useI18n } from '../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { formatMoneyCompact } from '@fintrack/shared/i18n';
 
 export default function MonthlyComparison({ monthlyData = [] }) {
+  const { t } = useI18n();
   const [selectedPeriod, setSelectedPeriod] = useState('12');
   const { isMobile, getChartHeight } = useResponsiveChart();
   // Debug logs
@@ -40,28 +44,28 @@ export default function MonthlyComparison({ monthlyData = [] }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: '#9CA3AF' }}></div>
-                  <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-600`}>Crédito</span>
+                  <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-600`}>{t('web.shared.credit')}</span>
                 </div>
                 <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 ml-4`}>
-                  - R$ {cartoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  -{formatMoney(cartoes)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: '#6B7280' }}></div>
-                  <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-600`}>À Vista</span>
+                  <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-600`}>{t('web.shared.paidNow')}</span>
                 </div>
                 <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 ml-4`}>
-                  - R$ {despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  -{formatMoney(despesas)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-flight-blue`}></div>
-                  <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-600`}>Entradas</span>
+                  <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-600`}>{t('web.shared.income')}</span>
                 </div>
                 <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 ml-4`}>
-                  R$ {entradas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {formatMoney(entradas)}
                 </span>
               </div>
             </div>
@@ -76,8 +80,8 @@ export default function MonthlyComparison({ monthlyData = [] }) {
     return (
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden">
         <div className="p-6 bg-flight-blue/5 rounded-t-2xl">
-          <h2 className="text-xl font-bold text-gray-900">Comparativo Mensal</h2>
-          <p className="text-sm text-gray-600 mt-1">Evolução dos gastos nos últimos 12 meses</p>
+          <h2 className="text-xl font-bold text-gray-900">{t('web.monthlyComparison.monthByMonth')}</h2>
+          <p className="text-sm text-gray-600 mt-1">{t('web.monthlyComparison.spendingOverTheLast12')}</p>
         </div>
         <div className="p-12 text-center">
           <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-fog-mist to-feather-blue/50 rounded-2xl flex items-center justify-center">
@@ -85,8 +89,8 @@ export default function MonthlyComparison({ monthlyData = [] }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhum dado disponível</h3>
-          <p className="text-gray-500 max-w-md mx-auto">Adicione despesas para visualizar o comparativo mensal.</p>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('web.monthlyComparison.nothingHereYet')}</h3>
+          <p className="text-gray-500 max-w-md mx-auto">{t('web.monthlyComparison.logAFewExpensesWith')}</p>
         </div>
       </div>
     );
@@ -99,19 +103,19 @@ export default function MonthlyComparison({ monthlyData = [] }) {
         <div className="p-6 bg-flight-blue/5 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Comparativo Mensal</h2>
-              <p className="text-sm text-gray-600 mt-1">Evolução das transações nos últimos {selectedPeriod} meses</p>
+              <h2 className="text-xl font-bold text-gray-900">{t('web.monthlyComparison.monthByMonth')}</h2>
+              <p className="text-sm text-gray-600 mt-1">{t('web.monthlyComparison.transactionsOverTheLastMonths', { selectedPeriod })}</p>
             </div>
             <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-gray-700">Período:</label>
+              <label className="text-sm font-medium text-gray-700">{t('web.monthlyComparison.period')}</label>
               <select
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-transparent text-sm bg-white/50"
               >
-                <option value="3">3 meses</option>
-                <option value="6">6 meses</option>
-                <option value="12">12 meses</option>
+                <option value="3">{t('web.monthlyComparison.n3Months')}</option>
+                <option value="6">{t('web.monthlyComparison.n6Months')}</option>
+                <option value="12">{t('web.monthlyComparison.n12Months')}</option>
               </select>
             </div>
           </div>
@@ -141,12 +145,7 @@ export default function MonthlyComparison({ monthlyData = [] }) {
               axisLine={false}
               tickLine={false}
               width={isMobile ? 50 : 60}
-              tickFormatter={(value) => {
-                if (isMobile && value >= 1000000) {
-                  return `R$ ${(value / 1000000).toFixed(1)}M`;
-                }
-                return `R$ ${(value / 1000).toFixed(0)}k`;
-              }}
+              tickFormatter={(value) => formatMoneyCompact(value)}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend 
@@ -159,21 +158,21 @@ export default function MonthlyComparison({ monthlyData = [] }) {
             />
             <Bar 
               dataKey="cartoes" 
-              name="Crédito"
+              name={t('web.shared.credit')}
               stackId="despesas"
               fill="url(#cartoesGradient)"
               radius={[0, 0, 0, 0]}
             />
             <Bar 
               dataKey="despesas" 
-              name="À Vista"
+              name={t('web.shared.upfront')}
               stackId="despesas"
               fill="url(#despesasGradient)"
               radius={[4, 4, 0, 0]}
             />
             <Bar 
               dataKey="entradas" 
-              name="Entradas"
+              name={t('web.shared.income')}
               fill="url(#entradasGradient)"
               radius={[4, 4, 0, 0]}
             />

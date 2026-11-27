@@ -3,9 +3,13 @@ import { supabase } from '../lib/supabaseClient';
 import { Button } from './ui/Button';
 import { X } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput } from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, appLocale, formatCurrencyInput } from '../lib/utils';
+import { useI18n } from '../contexts/I18nContext';
+import { currencySymbol } from '@fintrack/shared/i18n';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
-export default function BankIncomeModal({ 
+function BankIncomeModal({ 
   isOpen, 
   onClose, 
   onSuccess, 
@@ -15,6 +19,7 @@ export default function BankIncomeModal({
   selectedAccount = null,
   currentUser
 }) {
+  const { t } = useI18n();
   const { success, error: showError } = useNotificationContext();
   const [saving, setSaving] = useState(false);
   
@@ -42,22 +47,22 @@ export default function BankIncomeModal({
   const handleSave = async () => {
     // Validações
     if (!form.description?.trim()) {
-      showError('Informe uma descrição');
+      showError(t('web.bankIncomeModal.addADescription'));
       return;
     }
 
     if (!form.amount || parseCurrencyInput(form.amount) <= 0) {
-      showError('Informe um valor válido');
+      showError(t('web.bankIncomeModal.enterAValidAmount'));
       return;
     }
 
     if (!form.category_id) {
-      showError('Selecione uma categoria');
+      showError(t('web.bankIncomeModal.pickACategory'));
       return;
     }
 
     if (!form.bank_account_id) {
-      showError('Selecione a conta de destino');
+      showError(t('web.bankIncomeModal.pickTheDestinationAccount'));
       return;
     }
 
@@ -110,12 +115,12 @@ export default function BankIncomeModal({
 
       console.log('✅ Transação bancária criada e saldo atualizado');
 
-      success('Entrada registrada com sucesso!');
+      success(t('web.bankIncomeModal.incomeLogged'));
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('❌ Erro ao registrar entrada:', error);
-      showError(error.message || 'Erro ao registrar entrada');
+      showError(error.message || t('web.bankIncomeModal.couldnTLogTheIncome'));
     } finally {
       setSaving(false);
     }
@@ -132,7 +137,7 @@ export default function BankIncomeModal({
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <div>
             <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
-              Registrar Entrada
+              {t('web.bankIncomeModal.logIncome')}
             </h2>
             {selectedAccount && (
               <p className="text-sm text-gray-500 mt-1">{selectedAccount.name}</p>
@@ -156,13 +161,13 @@ export default function BankIncomeModal({
             {/* Descrição */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descrição *
+                {t('web.shared.description')}
               </label>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Ex: Salário Novembro, Freelance"
+                placeholder={t('web.bankIncomeModal.eGNovemberSalaryFreelance')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 disabled={saving}
               />
@@ -171,10 +176,10 @@ export default function BankIncomeModal({
             {/* Valor */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valor *
+                {t('web.shared.amount')}
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                 <input
                   type="text"
                   value={form.amount}
@@ -188,13 +193,13 @@ export default function BankIncomeModal({
                     }
                     const parsed = parseCurrencyInput(value);
                     if (parsed > 0) {
-                      const formatted = parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      const formatted = parsed.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       setForm(prev => ({ ...prev, amount: formatted }));
                     } else {
                       setForm(prev => ({ ...prev, amount: '' }));
                     }
                   }}
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   disabled={saving}
                 />
@@ -204,7 +209,7 @@ export default function BankIncomeModal({
             {/* Data */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data *
+                {t('web.shared.date')}
               </label>
               <input
                 type="date"
@@ -218,7 +223,7 @@ export default function BankIncomeModal({
             {/* Categoria */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categoria *
+                {t('web.bankIncomeModal.category')}
               </label>
               <select
                 value={form.category_id}
@@ -226,12 +231,12 @@ export default function BankIncomeModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 disabled={saving}
               >
-                <option value="">Selecione...</option>
-                {incomeCategories
-                  .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+                <option value="">{t('web.shared.select')}</option>
+                {dedupeCategories(incomeCategories, [form.category_id])
+                  .sort((a, b) => categoryName(a.name).localeCompare(categoryName(b.name), appLocale()))
                   .map(cat => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.name}
+                      {categoryName(cat.name)}
                     </option>
                   ))}
               </select>
@@ -248,14 +253,14 @@ export default function BankIncomeModal({
             disabled={saving}
             className="px-4 py-2"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
             className="bg-flight-blue hover:bg-flight-blue/90 text-white px-4 py-2"
           >
-            {saving ? 'Registrando...' : 'Registrar Entrada'}
+            {saving ? t('web.bankIncomeModal.saving') : t('web.bankIncomeModal.logIncome')}
           </Button>
         </div>
       </div>
@@ -263,3 +268,4 @@ export default function BankIncomeModal({
   );
 }
 
+export default withPaywall(BankIncomeModal);

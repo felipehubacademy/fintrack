@@ -28,7 +28,7 @@ export function useInAppNotifications(userId, organizationId) {
       setNotifications(data || []);
       setUnreadCount((data || []).filter((n) => !n.read_at).length);
     } catch (err) {
-      console.error('Erro ao buscar notificações:', err);
+      console.error('Error loading notifications:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -58,7 +58,7 @@ export function useInAppNotifications(userId, organizationId) {
 
         setUnreadCount((prev) => Math.max(0, prev - 1));
       } catch (err) {
-        console.error('Erro ao marcar notificação como lida:', err);
+        console.error('Error marking notification as read:', err);
         setError(err.message);
       }
     },
@@ -87,7 +87,7 @@ export function useInAppNotifications(userId, organizationId) {
 
       setUnreadCount(0);
     } catch (err) {
-      console.error('Erro ao marcar todas como lidas:', err);
+      console.error('Error marking all as read:', err);
       setError(err.message);
     }
   }, [userId, organizationId]);
@@ -114,7 +114,7 @@ export function useInAppNotifications(userId, organizationId) {
           setUnreadCount((prev) => Math.max(0, prev - 1));
         }
       } catch (err) {
-        console.error('Erro ao deletar notificação:', err);
+        console.error('Error deleting notification:', err);
         setError(err.message);
       }
     },
@@ -149,7 +149,7 @@ export function useInAppNotifications(userId, organizationId) {
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          console.log('Nova notificação recebida:', payload);
+          console.log('New notification received:', payload);
           setNotifications((prev) => [payload.new, ...prev]);
           setUnreadCount((prev) => prev + 1);
         }

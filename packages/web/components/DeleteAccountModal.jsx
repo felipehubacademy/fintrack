@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from './ui/Button';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function DeleteAccountModal({ 
   isOpen, 
@@ -8,8 +9,9 @@ export default function DeleteAccountModal({
   onConfirm,
   loading = false
 }) {
+  const { t } = useI18n();
   const [confirmText, setConfirmText] = useState('');
-  const requiredText = 'Deletar minha conta';
+  const requiredText = t('web.deleteAccountModal.deleteMyAccount');
   const isConfirmed = confirmText.trim() === requiredText;
 
   if (!isOpen) return null;
@@ -24,7 +26,7 @@ export default function DeleteAccountModal({
               <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
             <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 truncate">
-              Excluir Conta Permanentemente
+              {t('web.deleteAccountModal.deleteAccountForGood')}
             </h2>
           </div>
           <button
@@ -42,20 +44,20 @@ export default function DeleteAccountModal({
             {/* Aviso Principal */}
             <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
               <p className="text-red-900 font-semibold mb-2">
-                Esta ação é irreversível
+                {t('web.deleteAccountModal.thisCanTBeUndone')}
               </p>
               <p className="text-red-800 text-sm">
-                Ao excluir sua conta, <strong>todos os seus dados serão permanentemente removidos</strong> do sistema.
+                {t('web.deleteAccountModal.ifYouDeleteYourAccount')} <strong>{t('web.deleteAccountModal.allYourDataWillBe')}</strong>{/^[.,]/.test(t('web.deleteAccountModal.text')) ? '' : ' '}{t('web.deleteAccountModal.text')}
               </p>
               <p className="text-red-800 text-sm mt-3 font-medium">
-                Esta ação não pode ser desfeita.
+                {t('web.deleteAccountModal.thisCanTBeUndone2')}
               </p>
             </div>
 
             {/* Campo de Confirmação */}
             <div>
               <label htmlFor="confirm-delete" className="block text-sm font-medium text-gray-700 mb-2">
-                Digite <span className="font-mono font-semibold text-gray-900">"{requiredText}"</span> para confirmar:
+                {t('web.deleteAccountModal.type')} <span className="font-mono font-semibold text-gray-900">"{requiredText}"</span> {t('web.deleteAccountModal.toConfirm')}
               </label>
               <input
                 id="confirm-delete"
@@ -80,7 +82,7 @@ export default function DeleteAccountModal({
                 disabled={loading}
                 className="w-full sm:w-auto px-6 py-2 min-h-[44px]"
               >
-                Cancelar
+                {t('web.shared.cancel')}
               </Button>
               <Button
                 onClick={() => {
@@ -91,7 +93,7 @@ export default function DeleteAccountModal({
                 disabled={!isConfirmed || loading}
                 className="w-full sm:w-auto px-6 py-2 min-h-[44px] bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Excluindo...' : 'Excluir Conta Permanentemente'}
+                {loading ? t('web.deleteAccountModal.deleting') : t('web.deleteAccountModal.deleteAccountForGood')}
               </Button>
             </div>
           </div>

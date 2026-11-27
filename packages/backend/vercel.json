@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/webhook.js": { "maxDuration": 60 },
+    "api/auth/whatsapp-otp.js": { "maxDuration": 15 },
+    "api/cron/trial-funnel.js": { "maxDuration": 60 }
+  },
   "rewrites": [
     {
       "source": "/webhook",

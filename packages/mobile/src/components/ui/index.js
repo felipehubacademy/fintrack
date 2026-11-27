@@ -8,4 +8,5 @@ export { CategoryIcon } from './CategoryIcon';
 export { default as LoadingSpinner } from './LoadingSpinner';
 export { default as LoadingLogo } from './LoadingLogo';
 export { EmptyState } from './EmptyState';
+export { WhatsAppButton, openZulChat } from './WhatsAppButton';
 export { Badge } from './Badge';

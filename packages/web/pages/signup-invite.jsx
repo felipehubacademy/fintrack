@@ -4,8 +4,10 @@ import { supabase } from '../lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
 import { ArrowLeft, Mail, Phone, User, Lock, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function SignupInvite() {
+  const { t } = useI18n();
   const router = useRouter();
   const { email, invite_code } = router.query;
   
@@ -59,7 +61,7 @@ export default function SignupInvite() {
       console.log('📊 Resultado do convite:', { inviteData, inviteError });
 
       if (inviteError) {
-        setError('Convite inválido, expirado ou já foi usado');
+        setError(t('web.signupInvite.thisInviteIsInvalidExpired'));
       } else {
         setInvite(inviteData);
         setOrganization(inviteData.organizations);
@@ -77,7 +79,7 @@ export default function SignupInvite() {
       }
     } catch (error) {
       console.error('❌ Erro ao buscar convite:', error);
-      setError('Erro ao carregar convite');
+      setError(t('web.signupInvite.couldnTLoadTheInvite'));
     }
   };
 
@@ -185,13 +187,13 @@ export default function SignupInvite() {
     try {
       // Validações finais
       if (!validation.name || !validation.phone || !validation.password || !validation.confirmPassword) {
-        setError('Por favor, preencha todos os campos corretamente');
+        setError(t('web.shared.pleaseFillInEveryField'));
         return;
       }
 
       // Verificar se o email do convite confere
       if (invite && email !== invite.email) {
-        setError('Este convite é para um email diferente');
+        setError(t('web.signupInvite.thisInviteIsForA'));
         return;
       }
 
@@ -213,12 +215,12 @@ export default function SignupInvite() {
       
       if (duplicateData.hasDuplicates) {
         if (duplicateData.checks.phone?.exists) {
-          setError('Este telefone já está cadastrado. Use outro número ou faça login.');
+          setError(t('web.signupInvite.thisPhoneIsAlreadyRegistered'));
           setLoading(false);
           return;
         }
         if (duplicateData.checks.email?.exists) {
-          setError('Este email já está cadastrado. Faça login para continuar.');
+          setError(t('web.signupInvite.thisEmailIsAlreadyRegistered'));
           setLoading(false);
           return;
         }
@@ -240,7 +242,7 @@ export default function SignupInvite() {
       if (authError) throw authError;
 
       if (!authData.user) {
-        throw new Error('Erro ao criar usuário');
+        throw new Error(t('web.signupInvite.couldnTCreateYourUser'));
       }
 
       // Criar registro do usuário na nossa tabela
@@ -304,7 +306,7 @@ export default function SignupInvite() {
 
     } catch (err) {
       console.error('❌ Erro no cadastro:', err);
-      setError(err.message || 'Erro ao criar conta');
+      setError(err.message || t('web.signupInvite.couldnTCreateYourAccount'));
     } finally {
       setLoading(false);
     }
@@ -314,19 +316,19 @@ export default function SignupInvite() {
     return (
       <>
         <Head>
-          <title>Convite Inválido - MeuAzulão</title>
+          <title>{t('web.signupInvite.invalidInviteMeuazulao')}</title>
         </Head>
         <div className="min-h-screen bg-gradient-to-br from-fog-mist to-gray-100 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <div className="bg-white rounded-2xl shadow-2xl p-8">
               <div className="text-red-500 text-6xl mb-4">❌</div>
-              <h1 className="text-2xl font-bold text-deep-sky mb-4">Convite Inválido</h1>
+              <h1 className="text-2xl font-bold text-deep-sky mb-4">{t('web.signupInvite.invalidInvite')}</h1>
               <p className="text-gray-600 mb-6">{error}</p>
               <Link 
                 href="/" 
                 className="bg-gradient-to-r from-flight-blue to-feather-blue text-white px-6 py-3 rounded-xl hover:from-deep-sky hover:to-flight-blue inline-block transition-all"
               >
-                Voltar ao início
+                {t('web.shared.backToHome2')}
               </Link>
             </div>
           </div>
@@ -338,7 +340,7 @@ export default function SignupInvite() {
   return (
     <>
       <Head>
-        <title>Convite para {organization?.name} - MeuAzulão</title>
+        <title>{t('web.signupInvite.inviteToMeuazulao', { name: organization?.name })}</title>
       </Head>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
         {/* Animated Background Grid */}
@@ -354,7 +356,7 @@ export default function SignupInvite() {
           className="absolute top-8 left-8 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors z-10 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Voltar</span>
+          <span className="font-medium">{t('web.shared.back')}</span>
         </Link>
 
         {/* Form Card */}
@@ -370,22 +372,22 @@ export default function SignupInvite() {
                 />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Convite para {organization?.name}
+                {t('web.signupInvite.inviteTo', { name: organization?.name })}
               </h1>
               <p className="text-gray-600 mb-6">
-                Você foi convidado por <strong>{invite?.inviter?.name}</strong>
+                {t('web.signupInvite.youWereInvitedBy')} <strong>{invite?.inviter?.name}</strong>
               </p>
             </div>
 
             <p className="text-sm text-gray-600 mb-6 text-center">
-              Olá, <strong>{invite?.name?.split(' ')[0]}</strong>! Complete seus dados para entrar na organização.
+              {t('web.signupInvite.hi')} <strong>{invite?.name?.split(' ')[0]}</strong>{t('web.signupInvite.fillInYourDetailsTo')}
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Nome */}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Seu Nome Completo
+                  {t('web.signupInvite.yourFullName')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -394,7 +396,7 @@ export default function SignupInvite() {
                   <input
                     id="name"
                     type="text"
-                    placeholder="Ex: João Silva"
+                    placeholder={t('web.shared.eGAlexSmith')}
                     required
                     readOnly
                     value={formData.name}
@@ -411,14 +413,14 @@ export default function SignupInvite() {
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Nome preenchido a partir do convite
+                  {t('web.signupInvite.nameTakenFromTheInvite')}
                 </p>
               </div>
 
               {/* WhatsApp */}
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Seu WhatsApp
+                  {t('web.shared.yourWhatsapp')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -449,12 +451,12 @@ export default function SignupInvite() {
                 </div>
                 {phoneDuplicate && (
                   <p className="text-xs text-red-600 mt-1">
-                    Este telefone já está cadastrado. Use outro número ou faça login.
+                    {t('web.signupInvite.thisPhoneIsAlreadyRegistered')}
                   </p>
                 )}
                 {!phoneDuplicate && validation.phone === null && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Formato: DDD + 9 dígitos (ex: 11 99999-9999)
+                    {t('web.signupInvite.includeYourCountryAndArea')}
                   </p>
                 )}
               </div>
@@ -462,7 +464,7 @@ export default function SignupInvite() {
               {/* Senha */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Senha
+                  {t('web.shared.password')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -471,7 +473,7 @@ export default function SignupInvite() {
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder={t('web.shared.atLeast8Characters')}
                     required
                     value={formData.password}
                     onChange={(e) => handleChange('password', e.target.value)}
@@ -504,7 +506,7 @@ export default function SignupInvite() {
                 </div>
                 {validation.password === false && (
                   <p className="text-xs text-red-600 mt-1">
-                    A senha deve ter no mínimo 8 caracteres
+                    {t('web.signupInvite.passwordMustHaveAtLeast')}
                   </p>
                 )}
               </div>
@@ -512,7 +514,7 @@ export default function SignupInvite() {
               {/* Confirmar Senha */}
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirmar Senha
+                  {t('web.shared.confirmPassword')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -521,7 +523,7 @@ export default function SignupInvite() {
                   <input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Digite a senha novamente"
+                    placeholder={t('web.shared.typeThePasswordAgain')}
                     required
                     value={formData.confirmPassword}
                     onChange={(e) => handleChange('confirmPassword', e.target.value)}
@@ -555,8 +557,8 @@ export default function SignupInvite() {
                 {validation.confirmPassword === false && (
                   <p className="text-xs text-red-600 mt-1">
                     {formData.password && formData.confirmPassword ? 
-                      'As senhas não coincidem' : 
-                      'A senha deve ter no mínimo 8 caracteres'
+                      t('web.shared.passwordsDonTMatch') : 
+                      t('web.signupInvite.passwordMustHaveAtLeast')
                     }
                   </p>
                 )}
@@ -575,18 +577,18 @@ export default function SignupInvite() {
                 disabled={loading || !validation.name || !validation.phone || phoneDuplicate || !validation.password || !validation.confirmPassword}
                 className="w-full bg-gradient-to-r from-flight-blue to-feather-blue text-white font-semibold py-3 px-4 rounded-xl hover:from-deep-sky hover:to-flight-blue focus:outline-none focus:ring-2 focus:ring-flight-blue focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
               >
-                {loading ? 'Criando conta...' : 'Criar Conta e Entrar'}
+                {loading ? t('web.signupInvite.creatingAccount') : t('web.signupInvite.createAccountAndJoin')}
               </button>
             </form>
 
             <div className="mt-8 pt-6 border-t border-gray-200">
               <p className="text-xs text-gray-500 text-center">
-                Já tem uma conta?{' '}
+                {t('web.shared.alreadyHaveAnAccount')}
                 <Link 
                   href={`/login?redirect=/invite/${invite_code}`}
                   className="text-blue-600 hover:underline font-medium"
                 >
-                  Fazer login
+                  {t('web.shared.signIn')}
                 </Link>
               </p>
             </div>

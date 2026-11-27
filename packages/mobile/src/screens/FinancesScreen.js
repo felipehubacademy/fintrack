@@ -34,7 +34,6 @@ import { ScreenHeader } from '../components/layout/ScreenHeader';
 import { StatCard } from '../components/financial/StatCard';
 import { BankIcon } from '../components/financial/BankIcon';
 import { CardBrandIcon } from '../components/financial/CardBrandIcon';
-import { formatCurrency } from '@fintrack/shared/utils';
 import { StatsDetailSheet } from '../components/financial/StatsDetailSheet';
 import { BankAccountsSheet } from '../components/financial/BankAccountsSheet';
 import { CardFormModal } from '../components/financial/CardFormModal';
@@ -45,6 +44,11 @@ import BankIncomeModal from '../components/financial/BankIncomeModal';
 import BankTransactionsModal from '../components/financial/BankTransactionsModal';
 import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { useToast } from '../components/ui/Toast';
+import { useI18n } from '../contexts/I18nContext';
+import { CommittedMonthsCard } from '../components/financial/CommittedMonthsCard';
+import { useCommittedInstallments } from '../components/financial/useCommittedInstallments';
+import { ZulEmptyState } from '../components/financial/ZulEmptyState';
+import { accountTypeLabel } from '../components/financial/accountTypes';
 
 const { width } = Dimensions.get('window');
 const STAT_CARD_WIDTH = (width - spacing[2] * 3) / 2.2;
@@ -75,23 +79,12 @@ const resolveCardColor = (color) => {
   return CARD_COLOR_MAP[color] || colors.brand.primary;
 };
 
-const getAccountTypeLabel = (type) => {
-  const typeLabels = {
-    'checking': 'Conta Corrente',
-    'savings': 'Poupança',
-    'pension': 'Previdência',
-    'investment': 'Investimento',
-    'loan': 'Empréstimo'
-  };
-  return typeLabels[type] || 'Conta';
-};
-
-const getOwnerLabel = (account) => {
+const getOwnerLabel = (account, t) => {
   if (account.owner_type === 'individual') {
-    return account.cost_center?.name || 'Individual';
+    return account.cost_center?.name || t('finances.accounts.individual');
   } else {
     const shares = account.bank_account_shares || [];
-    return shares.map(s => s.cost_center?.name).filter(Boolean).join(', ') || 'Compartilhada';
+    return shares.map(s => s.cost_center?.name).filter(Boolean).join(', ') || t('finances.accounts.shared');
   }
 };
 
@@ -99,6 +92,7 @@ const getOwnerLabel = (account) => {
 
 export default function FinancesScreen({ navigation }) {
   const { colors } = useTheme();
+  const { t, formatMoney, formatDate } = useI18n();
   const { organization, user, loading: orgLoading } = useOrganization();
   const { confirm } = useConfirmation();
   const { showToast } = useToast();
@@ -110,7 +104,7 @@ export default function FinancesScreen({ navigation }) {
   const [selectedTab, setSelectedTab] = useState('cards'); // cards, accounts
   const [invoiceSheetVisible, setInvoiceSheetVisible] = useState(false);
   const [invoiceSheetData, setInvoiceSheetData] = useState([]);
-  const [invoiceSheetTitle, setInvoiceSheetTitle] = useState('Faturas por Cartão');
+  const [invoiceSheetTitle, setInvoiceSheetTitle] = useState('');
   const [bankAccountsSheetVisible, setBankAccountsSheetVisible] = useState(false);
   const [cardModalVisible, setCardModalVisible] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
@@ -225,6 +219,7 @@ export default function FinancesScreen({ navigation }) {
   const onRefresh = () => {
     setRefreshing(true);
     loadFinanceData();
+    reloadCommitted();
   };
 
   const getTotalCards = () => {
@@ -240,6 +235,10 @@ export default function FinancesScreen({ navigation }) {
     () => cards.filter((card) => card.type === 'credit'),
     [cards]
   );
+
+  const { data: committed, reload: reloadCommitted } = useCommittedInstallments(creditCards, {
+    organizationId: organization?.id,
+  });
 
   const cardStats = useMemo(() => {
     if (!creditCards.length) {
@@ -321,7 +320,7 @@ export default function FinancesScreen({ navigation }) {
           : undefined,
     }));
 
-    setInvoiceSheetTitle('Faturas por Cartão');
+    setInvoiceSheetTitle(t('finances.overview.statementsByCard'));
     setInvoiceSheetData(sheetData);
     setInvoiceSheetVisible(true);
   };
@@ -344,13 +343,13 @@ export default function FinancesScreen({ navigation }) {
       const sheetData = (data || []).map((expense) => ({
         label: expense.description,
         value: Number(expense.amount || 0),
-        subtitle: formatBrazilDate(expense.date),
+        subtitle: formatDate(expense.date, 'dayMonth'),
       }));
 
-      setInvoiceSheetTitle(`Fatura - ${card.name}`);
+      setInvoiceSheetTitle(t('finances.overview.cardStatement', { card: card.name }));
       setInvoiceSheetData(sheetData);
       setInvoiceSheetVisible(true);
-    } catch (error) {showToast('Não foi possível carregar a fatura deste cartão.', 'error');
+    } catch (error) {showToast(t('finances.overview.loadStatementError'), 'error');
     }
   };
 
@@ -399,7 +398,7 @@ export default function FinancesScreen({ navigation }) {
 
       handleCloseCardModal();
       await loadFinanceData();
-    } catch (error) {showToast('Não foi possível salvar o cartão.', 'error');
+    } catch (error) {showToast(t('finances.overview.saveCardError'), 'error');
     }
   };
 
@@ -441,7 +440,7 @@ export default function FinancesScreen({ navigation }) {
 
       handleCloseAccountModal();
       await loadFinanceData();
-    } catch (error) {showToast('Não foi possível salvar a conta.', 'error');
+    } catch (error) {showToast(t('finances.overview.saveAccountError'), 'error');
     }
   };
 
@@ -461,13 +460,13 @@ export default function FinancesScreen({ navigation }) {
   };
 
   const handleToggleAccountActive = async (account) => {
-    const action = account.is_active ? 'desativar' : 'reativar';
+    const deactivating = account.is_active;
     try {
       await confirm({
-        title: `${action.charAt(0).toUpperCase() + action.slice(1)} conta`,
-        message: `Tem certeza que deseja ${action} a conta "${account.name}"?`,
-        type: account.is_active ? 'warning' : 'info',
-        confirmText: account.is_active ? 'Desativar' : 'Ativar',
+        title: t(deactivating ? 'finances.accounts.deactivateTitle' : 'finances.accounts.reactivateTitle'),
+        message: t(deactivating ? 'finances.accounts.deactivateMessage' : 'finances.accounts.reactivateMessage', { name: account.name }),
+        type: deactivating ? 'warning' : 'info',
+        confirmText: t(deactivating ? 'finances.accounts.deactivate' : 'finances.accounts.reactivate'),
         onConfirm: async () => {
           try {
             await supabase
@@ -488,10 +487,10 @@ export default function FinancesScreen({ navigation }) {
   const handleRemoveBelvoAccount = async (account) => {
     try {
       await confirm({
-        title: 'Remover conta do app',
-        message: `Deseja remover "${account.name}" do MeuAzulão?\n\nA conta será ocultada, mas a sincronização Open Finance com o banco continuará ativa.\n\nVocê pode adicionar esta conta novamente em Configurações > Open Finance.`,
+        title: t('finances.accounts.removeLinkedTitle'),
+        message: t('finances.accounts.removeLinkedMessage', { name: account.name }),
         type: 'warning',
-        confirmText: 'Remover',
+        confirmText: t('finances.accounts.remove'),
         onConfirm: async () => {
           try {
             await supabase
@@ -520,10 +519,10 @@ export default function FinancesScreen({ navigation }) {
   const handleDeleteCard = async (card) => {
     try {
       await confirm({
-        title: 'Excluir cartão',
-        message: `Deseja excluir "${card.name}"?`,
+        title: t('finances.card.deleteTitle'),
+        message: t('finances.card.deleteMessage', { name: card.name }),
         type: 'danger',
-        confirmText: 'Excluir',
+        confirmText: t('common.delete'),
         onConfirm: async () => {
           try {
             await supabase
@@ -544,8 +543,8 @@ export default function FinancesScreen({ navigation }) {
   if (orgLoading || loading) {
     return (
       <View style={styles.container}>
-        <ScreenHeader user={user} title="Finanças" showLogo={true} rightIcon={<CreditCard size={24} color={colors.text.secondary} />} />
-        <LoadingLogo fullScreen message="Carregando finanças..." />
+        <ScreenHeader user={user} title={t('finances.overview.title')} showLogo={true} rightIcon={<CreditCard size={24} color={colors.text.secondary} />} />
+        <LoadingLogo fullScreen message={t('common.loading')} />
       </View>
     );
   }
@@ -555,7 +554,7 @@ export default function FinancesScreen({ navigation }) {
       {/* Header Consistente - Igual Dashboard e Transações */}
       <ScreenHeader
         user={user}
-        title="Finanças"
+        title={t('finances.overview.title')}
         showLogo={true}
         rightIcon={<Plus size={24} color={colors.text.secondary} />}
         onRightIconPress={handleAddPress}
@@ -566,6 +565,8 @@ export default function FinancesScreen({ navigation }) {
         <TouchableOpacity
           style={[styles.tab, selectedTab === 'cards' && styles.tabActive]}
           onPress={() => setSelectedTab('cards')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: selectedTab === 'cards' }}
         >
           <CreditCard 
             size={20} 
@@ -576,13 +577,15 @@ export default function FinancesScreen({ navigation }) {
             weight="medium"
             style={{ color: selectedTab === 'cards' ? colors.brand.primary : colors.text.secondary }}
           >
-            Cartões
+            {t('finances.overview.cardsTab')}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.tab, selectedTab === 'accounts' && styles.tabActive]}
           onPress={() => setSelectedTab('accounts')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: selectedTab === 'accounts' }}
         >
           <Wallet 
             size={20} 
@@ -593,7 +596,7 @@ export default function FinancesScreen({ navigation }) {
             weight="medium"
             style={{ color: selectedTab === 'accounts' ? colors.brand.primary : colors.text.secondary }}
           >
-            Contas
+            {t('finances.overview.accountsTab')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -620,15 +623,15 @@ export default function FinancesScreen({ navigation }) {
                   decelerationRate="fast"
                 >
                   <StatCard
-                    label="Limite Total"
-                    value={formatCurrency(cardStats.totalLimit)}
+                    label={t('finances.card.totalLimit')}
+                    value={formatMoney(cardStats.totalLimit)}
                     icon={<CreditCard size={20} color={colors.brand.primary} />}
                     style={{ width: STAT_CARD_WIDTH }}
                   />
                   
                   <StatCard
-                    label="Disponível"
-                    value={formatCurrency(cardStats.totalAvailable)}
+                    label={t('finances.card.available')}
+                    value={formatMoney(cardStats.totalAvailable)}
                     icon={<TrendingUp size={20} color={colors.success.main} />}
                     variant="income"
                     style={{ width: STAT_CARD_WIDTH }}
@@ -636,8 +639,8 @@ export default function FinancesScreen({ navigation }) {
                   
                   <View style={{ position: 'relative', width: STAT_CARD_WIDTH }}>
                     <StatCard
-                      label="Faturas"
-                      value={formatCurrency(totalInvoices)}
+                      label={t('finances.card.statements')}
+                      value={formatMoney(totalInvoices)}
                       icon={<TrendingDown size={20} color={colors.warning.main} />}
                       variant="expense"
                       style={{ width: STAT_CARD_WIDTH }}
@@ -652,16 +655,21 @@ export default function FinancesScreen({ navigation }) {
                 </ScrollView>
               </View>
             )}
+            {creditCards.length > 0 && (
+              <View style={styles.section}>
+                <CommittedMonthsCard data={committed} scope="all" />
+              </View>
+            )}
           </>
         ) : null}
 
         {selectedTab === 'cards' ? (
           cards.length === 0 ? (
             <View style={styles.section}>
-            <EmptyState
-              icon={<CreditCard size={48} color={colors.text.tertiary} />}
-              title="Nenhum cartão cadastrado"
-              description="Adicione seus cartões para acompanhar os gastos"
+            <ZulEmptyState
+              icon={<CreditCard size={40} color={colors.text.tertiary} />}
+              message={t('finances.empty.cardMessage')}
+              example={t('finances.empty.cardExample')}
             />
             </View>
           ) : (
@@ -698,7 +706,7 @@ export default function FinancesScreen({ navigation }) {
                           {card.name}
                         </Text>
                         <Caption style={styles.cardBank}>
-                          {card.bank || 'Banco não informado'}
+                          {card.bank || t('finances.card.noBank')}
                         </Caption>
                       </View>
                           </View>
@@ -708,7 +716,7 @@ export default function FinancesScreen({ navigation }) {
                       <View style={styles.cardBottom}>
                         <View style={styles.cardBottomLeft}>
                           <Caption style={styles.cardHolder}>
-                            {card.holder_name || 'Não informado'}
+                            {card.holder_name || t('finances.card.noHolder')}
                           </Caption>
                           </View>
 
@@ -716,7 +724,7 @@ export default function FinancesScreen({ navigation }) {
                           <View style={styles.cardBottomRight}>
                           <View style={styles.progressContainer}>
                               <View style={styles.progressHeader}>
-                                <Caption style={styles.progressLabel}>Limite utilizado</Caption>
+                                <Caption style={styles.progressLabel}>{t('finances.card.limitUsed')}</Caption>
                                 <Caption style={styles.progressPercentage}>
                                   {usagePct.toFixed(0)}%
                                 </Caption>
@@ -740,9 +748,9 @@ export default function FinancesScreen({ navigation }) {
                             </View>
                           </View>
                             <View style={styles.invoiceContainer}>
-                              <Caption style={styles.invoiceLabel}>Fatura atual</Caption>
+                              <Caption style={styles.invoiceLabel}>{t('finances.card.currentStatement')}</Caption>
                               <Callout weight="bold" style={styles.cardInvoiceAmount}>
-                                {formatCurrency(used)}
+                                {formatMoney(used)}
                               </Callout>
                           </View>
                           </View>
@@ -768,24 +776,24 @@ export default function FinancesScreen({ navigation }) {
                   decelerationRate="fast"
                 >
                   <StatCard
-                    label="Total"
-                    value={formatCurrency(accountStats.totalBalance)}
+                    label={t('finances.accounts.total')}
+                    value={formatMoney(accountStats.totalBalance)}
                     icon={<Wallet size={20} color={colors.brand.primary} />}
                     style={{ width: STAT_CARD_WIDTH }}
                     onPress={() => setBankAccountsSheetVisible(true)}
                   />
                   
                   <StatCard
-                    label="Positivo"
-                    value={formatCurrency(accountStats.positiveBalance)}
+                    label={t('finances.accounts.positive')}
+                    value={formatMoney(accountStats.positiveBalance)}
                     icon={<TrendingUp size={20} color={colors.success.main} />}
                     variant="income"
                     style={{ width: STAT_CARD_WIDTH }}
                   />
                   
                   <StatCard
-                    label="Negativo"
-                    value={formatCurrency(accountStats.negativeBalance)}
+                    label={t('finances.accounts.negative')}
+                    value={formatMoney(accountStats.negativeBalance)}
                     icon={<TrendingDown size={20} color={colors.error.main} />}
                     variant="expense"
                     style={{ width: STAT_CARD_WIDTH }}
@@ -798,8 +806,10 @@ export default function FinancesScreen({ navigation }) {
               <View style={styles.section}>
               <EmptyState
                 icon={<Wallet size={48} color={colors.text.tertiary} />}
-                title="Nenhuma conta cadastrada"
-                description="Conecte suas contas bancárias"
+                title={t('finances.empty.accountsTitle')}
+                description={t('finances.empty.accountsMessage')}
+                actionLabel={t('finances.empty.accountsAction')}
+                onAction={() => handleOpenAccountModal(null)}
               />
               </View>
             ) : (
@@ -807,7 +817,7 @@ export default function FinancesScreen({ navigation }) {
               <View style={styles.list}>
               {bankAccounts.map((account) => {
                 const balance = Number(account.current_balance || account.balance || 0);
-                const accountTypeLabel = getAccountTypeLabel(account.account_type);
+                const typeLabel = accountTypeLabel(account.account_type, t);
                 
                 return (
                     <TouchableOpacity
@@ -834,10 +844,10 @@ export default function FinancesScreen({ navigation }) {
                         </View>
                         <View style={styles.accountCardRight}>
                           <Text variant="headline" weight="semiBold" style={styles.accountCardName}>
-                            {account.name || account.nickname || 'Conta'}
+                            {account.name || account.nickname || t('finances.accountTypes.default')}
                           </Text>
                           <Caption color="secondary" style={styles.accountCardBank}>
-                            {account.bank || account.institution_name || 'Banco'}
+                            {account.bank || account.institution_name || t('finances.accounts.bank')}
                           </Caption>
                         </View>
                       </View>
@@ -855,7 +865,7 @@ export default function FinancesScreen({ navigation }) {
                           {!account.is_active && (
                           <View style={[styles.accountBadge, { backgroundColor: colors.error.bg }]}>
                             <Caption weight="semiBold" style={{ color: colors.error.main }}>
-                                Inativa
+                                {t('finances.accounts.inactive')}
                               </Caption>
                             </View>
                           )}
@@ -864,15 +874,15 @@ export default function FinancesScreen({ navigation }) {
                       {/* Informações */}
                       <View style={styles.accountCardInfo}>
                         <View style={styles.accountCardInfoLeft}>
-                          <Caption color="secondary">{accountTypeLabel}</Caption>
+                          <Caption color="secondary">{typeLabel}</Caption>
                           <Caption color="tertiary" style={{ marginTop: spacing[0.5] }}>
-                            {getOwnerLabel(account)}
+                            {getOwnerLabel(account, t)}
                         </Caption>
                       </View>
                         <View style={styles.accountCardInfoRight}>
-                          <Caption color="secondary">Saldo</Caption>
+                          <Caption color="secondary">{t('finances.accounts.balance')}</Caption>
                           <Text variant="headline" weight="bold" style={styles.accountCardBalance}>
-                        {formatCurrency(balance)}
+                        {formatMoney(balance)}
                           </Text>
                     </View>
                     </View>

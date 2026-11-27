@@ -1,46 +1,49 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { colors, spacing } from '../../theme';
+import { spacing } from '../../theme';
 import { Text, Title2, Callout } from './Text';
 import { Button } from './Button';
 import Logo from './Logo';
+import { WhatsAppButton } from './WhatsAppButton';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
- * EmptyState - Componente para estados vazios melhorado
- * 
+ * EmptyState
+ *
+ * Launch rule: an empty state never just says "no data". It tells the user
+ * what to text Zul and offers a button that opens WhatsApp with that text.
+ *
  * Props:
- * - emoji: Emoji para exibir (string)
- * - icon: Componente de ícone (React element)
- * - logo: Se true, exibe o logo da app ao invés de emoji/icon
- * - title: Título principal
- * - subtitle: Subtítulo/descrição
- * - description: Alias para subtitle
- * - actionLabel: Label do botão de ação
- * - actionTitle: Alias para actionLabel
- * - onAction: Callback quando botão é pressionado
- * - style: Estilos adicionais
+ * - icon / emoji / logo: visual on top
+ * - title, description (alias: subtitle): copy (pass translated strings)
+ * - zulText: example message for Zul; shows the WhatsApp button pre-filled
+ * - whatsappLabel: label for that button (default "Log it on WhatsApp")
+ * - actionLabel (alias: actionTitle) + onAction: secondary button (e.g. manual add)
  */
-export default function EmptyState({
+export function EmptyState({
   emoji,
   icon,
   logo = false,
-  title = 'Nenhum item',
-  subtitle = 'Não há itens para exibir',
+  title,
+  subtitle,
   description,
+  zulText,
+  whatsappLabel,
   actionLabel,
   actionTitle,
   onAction,
   style,
 }) {
-  const displayTitle = title;
-  const displayDescription = description || subtitle;
+  const { t } = useI18n();
+  const displayTitle = title || t('dashboard.ui.emptyTitle');
+  const displayDescription = description || subtitle || (title ? '' : t('dashboard.ui.emptyBody'));
   const displayActionLabel = actionLabel || actionTitle;
 
   return (
-    <View 
+    <View
       style={[styles.container, style]}
       accessibilityRole="text"
-      accessibilityLabel={`${displayTitle}. ${displayDescription}`}
+      accessibilityLabel={displayDescription ? `${displayTitle}. ${displayDescription}` : displayTitle}
     >
       {logo && (
         <View style={styles.logoContainer}>
@@ -53,19 +56,25 @@ export default function EmptyState({
         </View>
       )}
       {!logo && icon && <View style={styles.iconContainer}>{icon}</View>}
-      
+
       <Title2 weight="semiBold" align="center" style={styles.title}>
         {displayTitle}
       </Title2>
-      
-      <Callout color="secondary" align="center" style={styles.description}>
-        {displayDescription}
-      </Callout>
-      
+
+      {!!displayDescription && (
+        <Callout color="secondary" align="center" style={styles.description}>
+          {displayDescription}
+        </Callout>
+      )}
+
+      {!!zulText && (
+        <WhatsAppButton text={zulText} label={whatsappLabel} style={styles.whatsapp} />
+      )}
+
       {displayActionLabel && onAction && (
         <Button
           title={displayActionLabel}
-          variant="primary"
+          variant={zulText ? 'ghost' : 'primary'}
           onPress={onAction}
           style={styles.button}
         />
@@ -73,6 +82,8 @@ export default function EmptyState({
     </View>
   );
 }
+
+export default EmptyState;
 
 const styles = StyleSheet.create({
   container: {
@@ -105,13 +116,15 @@ const styles = StyleSheet.create({
     maxWidth: 300,
   },
   description: {
-    marginBottom: spacing[4],
-    maxWidth: 280,
+    marginBottom: spacing[3],
+    maxWidth: 300,
     lineHeight: 20,
   },
+  whatsapp: {
+    marginTop: spacing[0.5],
+  },
   button: {
-    marginTop: spacing[1],
+    marginTop: spacing[1.5],
     minWidth: 160,
   },
 });
-

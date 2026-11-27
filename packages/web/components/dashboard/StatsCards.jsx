@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, DollarSign } from 'lucide-react';
 import Link from 'next/link';
+import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function StatsCards({ 
   totalExpenses = 0,
@@ -11,6 +13,7 @@ export default function StatsCards({
     totalIncomes: 0
   }
 }) {
+  const { t } = useI18n();
   // Calcular percentual de crescimento para cada categoria
   const calculateGrowth = (current, previous) => {
     if (!current || current === 0) return 0;
@@ -27,8 +30,8 @@ export default function StatsCards({
 
   const stats = [
     {
-      title: "Total de Entradas",
-      value: `R$ ${(totalIncomes || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      title: t('web.shared.totalIncome'),
+      value: `${formatMoney((totalIncomes || 0))}`,
       icon: ArrowDownCircle,
       trend: incomesGrowth > 0 ? "up" : incomesGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(incomesGrowth || 0).toFixed(1)}%`,
@@ -37,8 +40,8 @@ export default function StatsCards({
       borderColor: "border-flight-blue/20"
     },
     {
-      title: "Total de Despesas",
-      value: `- R$ ${(totalExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      title: t('web.shared.totalExpenses'),
+      value: `- ${formatMoney((totalExpenses || 0))}`,
       icon: ArrowUpCircle,
       trend: expensesGrowth > 0 ? "up" : expensesGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(expensesGrowth || 0).toFixed(1)}%`,
@@ -47,8 +50,8 @@ export default function StatsCards({
       borderColor: "border-gray-200"
     },
     {
-      title: "Saldo do Mês",
-      value: `${balance >= 0 ? '' : '-'} R$ ${Math.abs(balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      title: t('web.statsCards.monthBalance'),
+      value: `${balance >= 0 ? '' : '-'} ${formatMoney(Math.abs(balance))}`,
       icon: DollarSign,
       trend: balanceGrowth > 0 ? "up" : balanceGrowth < 0 ? "down" : "neutral",
       trendValue: `${Math.abs(balanceGrowth || 0).toFixed(1)}%`,
@@ -99,7 +102,7 @@ export default function StatsCards({
                       <span className="text-gray-500">0%</span>
                     </>
                   )}
-                  <span className="text-gray-500">vs mês anterior</span>
+                  <span className="text-gray-500">{t('web.shared.vsLastMonth')}</span>
                 </div>
                 {/* descrição removida para visual mais limpo */}
               </CardContent>

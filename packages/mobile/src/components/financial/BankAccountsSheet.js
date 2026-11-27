@@ -15,6 +15,7 @@ import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { BankIcon } from './BankIcon';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { useI18n } from '../../contexts/I18nContext';
 
 // Usar ScrollView nativo no Android para melhor detecção de scroll
 const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
@@ -25,6 +26,7 @@ const { height } = Dimensions.get('window');
  * BankAccountsSheet - Bottom Sheet para listar contas bancárias com saldos
  */
 export function BankAccountsSheet({ visible, onClose, accounts = [] }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   // Safe area apenas no Android
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
@@ -48,13 +50,12 @@ export function BankAccountsSheet({ visible, onClose, accounts = [] }) {
 
           {/* Header */}
           <View style={styles.header}>
-            <Title2 weight="semiBold">Contas Bancárias</Title2>
+            <Title2 weight="semiBold">{t('finances.accountsSheet.title')}</Title2>
             <TouchableOpacity 
               onPress={onClose} 
               style={styles.closeButton}
               accessibilityRole="button"
-              accessibilityLabel="Fechar"
-              accessibilityHint="Fechar lista de contas"
+              accessibilityLabel={t('common.close')}
             >
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -71,7 +72,7 @@ export function BankAccountsSheet({ visible, onClose, accounts = [] }) {
           >
             {accounts.length === 0 ? (
               <View style={styles.emptyState}>
-                <Caption color="secondary">Nenhuma conta cadastrada</Caption>
+                <Caption color="secondary" align="center">{t('finances.empty.accountsMessage')}</Caption>
               </View>
             ) : (
               <View style={styles.list}>
@@ -84,14 +85,14 @@ export function BankAccountsSheet({ visible, onClose, accounts = [] }) {
                       <View style={styles.accountLeft}>
                         <View style={styles.bankIconContainer}>
                           <BankIcon
-                            bankName={account.bank || account.institution_name || 'Banco'}
+                            bankName={account.bank || account.institution_name || ''}
                             size={32}
                           />
                         </View>
                         <View style={styles.accountInfo}>
-                          <Callout weight="medium">{account.name || 'Conta'}</Callout>
+                          <Callout weight="medium">{account.name || t('finances.accountTypes.default')}</Callout>
                           <Caption color="secondary" style={styles.accountBank}>
-                            {account.bank || account.institution_name || 'Banco'}
+                            {account.bank || account.institution_name || t('finances.accounts.bank')}
                           </Caption>
                         </View>
                       </View>

@@ -12,7 +12,7 @@ import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Title2, Headline, Callout, Caption } from '../ui/Text';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { formatCurrency } from '@fintrack/shared/utils';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
  * RolloverInvoiceModal - Modal para mover saldo restante para próxima fatura
@@ -25,6 +25,7 @@ export default function RolloverInvoiceModal({
   card,
   remainingAmount
 }) {
+  const { t, formatMoney } = useI18n();
   const [isConfirming, setIsConfirming] = useState(false);
   
   // Animações
@@ -88,13 +89,15 @@ export default function RolloverInvoiceModal({
                 <AlertTriangle size={24} color={colors.error.main} />
               </View>
               <Headline weight="semiBold" style={{ flex: 1 }}>
-                Lançar saldo restante
+                {t('finances.rollover.title')}
               </Headline>
             </View>
             <TouchableOpacity 
               onPress={onClose}
               disabled={isConfirming}
               style={styles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.close')}
             >
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -103,15 +106,15 @@ export default function RolloverInvoiceModal({
           {/* Content */}
           <View style={styles.content}>
             <Caption color="secondary" style={styles.description}>
-              O saldo restante desta fatura será lançado como uma despesa na próxima fatura.
+              {t('finances.rollover.description')}
             </Caption>
 
             {/* Valor */}
             <Card style={styles.amountCard}>
               <View style={styles.amountRow}>
-                <Caption weight="medium" color="secondary">Valor a transferir:</Caption>
+                <Caption weight="medium" color="secondary">{t('finances.rollover.amount')}</Caption>
                 <Headline weight="bold" style={{ color: colors.error.main }}>
-                  {formatCurrency(remainingAmount)}
+                  {formatMoney(remainingAmount)}
                 </Headline>
               </View>
             </Card>
@@ -121,13 +124,13 @@ export default function RolloverInvoiceModal({
               <View style={styles.disclaimerItem}>
                 <Text style={styles.bullet}>•</Text>
                 <Caption color="secondary" style={styles.disclaimerText}>
-                  A despesa aparecerá na próxima fatura com a descrição <Callout weight="semiBold">"Saldo anterior"</Callout>.
+                  {t('finances.rollover.note1', { label: t('finances.invoice.previousBalance') })}
                 </Caption>
               </View>
               <View style={styles.disclaimerItem}>
                 <Text style={styles.bullet}>•</Text>
                 <Caption color="secondary" style={styles.disclaimerText}>
-                  Eventuais <Callout weight="semiBold">encargos e juros</Callout> calculados pelo banco precisarão ser lançados manualmente.
+                  {t('finances.rollover.note2')}
                 </Caption>
               </View>
             </View>
@@ -141,7 +144,7 @@ export default function RolloverInvoiceModal({
               disabled={isConfirming}
               style={styles.cancelButton}
             >
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button
               onPress={handleConfirm}
@@ -152,11 +155,11 @@ export default function RolloverInvoiceModal({
                 <View style={styles.loadingButton}>
                   <ActivityIndicator size="small" color={colors.neutral[0]} />
                   <Callout weight="semiBold" style={{ color: colors.neutral[0], marginLeft: spacing[1] }}>
-                    Lançando...
+                    {t('common.loading')}
                   </Callout>
                 </View>
               ) : (
-                'Confirmar'
+                t('common.confirm')
               )}
             </Button>
           </View>

@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import ZulFloatingButton from '../ZulFloatingButton';
+import { useI18n } from '../../contexts/I18nContext';
+import { categoryName } from '../../lib/categoryName';
 
 const defaultCategories = [
   { name: 'Alimentação', color: '#EF4444' },
@@ -31,6 +33,7 @@ const availableColors = [
 ];
 
 export default function CategoriesStep({ organization, onComplete, onDataChange, onboardingType }) {
+  const { t } = useI18n();
   const [categories, setCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState(new Set());
   const [orgCategoryNames, setOrgCategoryNames] = useState(new Set()); // Para bloquear categorias da org
@@ -259,15 +262,15 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
                   <Tag className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900 text-base">Dica Importante</h4>
-                  <p className="text-xs text-gray-600">Sobre categorias</p>
+                  <h4 className="font-bold text-gray-900 text-base">{t('web.categoriesStep.tip')}</h4>
+                  <p className="text-xs text-gray-600">{t('web.categoriesStep.aboutCategories')}</p>
                 </div>
               </div>
               
               <div className="space-y-3">
                 <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                   <p className="text-xs text-blue-800 font-medium leading-relaxed">
-                    Escolha ou crie categorias que façam sentido para o seu dia a dia. Você pode adicionar, editar ou remover categorias a qualquer momento nas configurações!
+                    {t('web.categoriesStep.pickOrCreateCategoriesThat')}
                   </p>
                 </div>
               </div>
@@ -280,17 +283,17 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
         {/* Header */}
         <div className="text-center">
         <h2 className="text-3xl md:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
-          Organize por Categorias
+          {t('web.categoriesStep.organizeByCategory')}
         </h2>
         <p className="text-gray-600 text-lg xl:text-xl">
-          Selecione ou crie as categorias que fazem sentido para você
+          {t('web.categoriesStep.pickOrCreateTheCategories')}
         </p>
       </div>
 
       {/* Selected Categories */}
       <div>
         <h3 className="text-xl xl:text-2xl font-bold text-gray-900 mb-4">
-          Categorias Selecionadas {selectedCategories.size > 0 && `(${selectedCategories.size})`}
+          {t('web.categoriesStep.selectedCategories')} {selectedCategories.size > 0 && `(${selectedCategories.size})`}
         </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
           {/* Essential Categories (locked) */}
@@ -304,7 +307,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
                 style={{ backgroundColor: category.color }}
               />
               <div className="text-left flex-1">
-                <div className="font-semibold text-gray-900 text-sm">{category.name}</div>
+                <div className="font-semibold text-gray-900 text-sm">{categoryName(category.name)}</div>
               </div>
               <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#207DFF] rounded-full flex items-center justify-center">
                 <Check className="w-2.5 h-2.5 text-white" />
@@ -333,7 +336,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
                   style={{ backgroundColor: category.color }}
                 />
                 <div className="flex-1 text-left">
-                  <div className="font-semibold text-gray-900 text-sm">{category.name}</div>
+                  <div className="font-semibold text-gray-900 text-sm">{categoryName(category.name)}</div>
                 </div>
                 <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2.5 h-2.5 text-white" />
@@ -356,7 +359,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
                   style={{ backgroundColor: category.color }}
                 />
                 <div className="flex-1 text-left">
-                  <div className="font-semibold text-gray-900 text-sm">{category.name}</div>
+                  <div className="font-semibold text-gray-900 text-sm">{categoryName(category.name)}</div>
                 </div>
                 <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-2.5 h-2.5 text-white" />
@@ -369,7 +372,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
       {/* Add Custom Category */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 xl:p-8 shadow-lg">
         <h3 className="text-xl xl:text-2xl font-bold text-gray-900 mb-4">
-          Criar Categoria Personalizada
+          {t('web.categoriesStep.createYourOwnCategory')}
         </h3>
         
         {/* All in one line */}
@@ -383,7 +386,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
           {/* Name input */}
           <input
             type="text"
-            placeholder="Nome"
+            placeholder={t('web.categoriesStep.name')}
             value={customCategory}
             onChange={(e) => setCustomCategory(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && addCustomCategory()}
@@ -393,7 +396,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
           {/* Description input */}
           <input
             type="text"
-            placeholder="Descrição (opcional)"
+            placeholder={t('web.shared.descriptionOptional')}
             value={customDescription}
             onChange={(e) => setCustomDescription(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && addCustomCategory()}
@@ -407,14 +410,14 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
             className="px-4 py-2.5 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-md"
           >
             <Plus className="w-4 h-4" />
-            <span>Adicionar</span>
+            <span>{t('web.shared.add')}</span>
           </button>
         </div>
         
         {/* Full color palette below (optional) */}
         <div className="mt-3 pt-3 border-t border-gray-200">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Selecione uma cor
+            {t('web.categoriesStep.pickAColor')}
           </label>
           <div className="flex flex-wrap gap-2">
             {availableColors.map((color) => (
@@ -439,7 +442,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
       {suggestedCategories.some(c => !selectedCategories.has(c.name)) && (
         <div>
           <h3 className="text-xl xl:text-2xl font-bold text-gray-900 mb-4">
-            Sugestões para Você {suggestedCategories.filter(c => !selectedCategories.has(c.name)).length > 0 && `(${suggestedCategories.filter(c => !selectedCategories.has(c.name)).length})`}
+            {t('web.categoriesStep.suggestionsForYou')} {suggestedCategories.filter(c => !selectedCategories.has(c.name)).length > 0 && `(${suggestedCategories.filter(c => !selectedCategories.has(c.name)).length})`}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
             {suggestedCategories
@@ -454,7 +457,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
                     className="w-6 h-6 rounded-full flex-shrink-0"
                     style={{ backgroundColor: category.color }}
                   />
-                  <div className="font-semibold text-gray-900 text-xs sm:text-sm text-left">{category.name}</div>
+                  <div className="font-semibold text-gray-900 text-xs sm:text-sm text-left">{categoryName(category.name)}</div>
                 </button>
               ))}
           </div>
@@ -469,7 +472,7 @@ export default function CategoriesStep({ organization, onComplete, onDataChange,
           disabled={!canProceed || saving}
           className="px-8 py-4 xl:px-10 xl:py-5 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-full font-bold text-lg xl:text-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          {saving ? 'Salvando...' : canProceed ? 'Salvar e Continuar' : 'Selecione pelo menos uma'}
+          {saving ? t('web.shared.saving') : canProceed ? t('web.categoriesStep.saveAndContinue') : t('web.categoriesStep.pickAtLeastOne')}
         </button>
       </div>
       </div>

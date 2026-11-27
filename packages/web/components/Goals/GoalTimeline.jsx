@@ -1,7 +1,12 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import HelpTooltip from '../ui/HelpTooltip';
+import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
+import { formatMoneyCompact } from '@fintrack/shared/i18n';
 
 export default function GoalTimeline({ goal, contributions = [] }) {
+  const { t } = useI18n();
   // Preparar dados para o gráfico
   const prepareChartData = () => {
     if (!goal || contributions.length === 0) return [];
@@ -18,7 +23,7 @@ export default function GoalTimeline({ goal, contributions = [] }) {
 
     // Ponto inicial (quando a meta foi criada)
     data.push({
-      date: new Date(goal.created_at).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+      date: new Date(goal.created_at).toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' }),
       valor: accumulated,
       meta: parseFloat(goal.target_amount)
     });
@@ -27,7 +32,7 @@ export default function GoalTimeline({ goal, contributions = [] }) {
     sortedContributions.forEach(contribution => {
       accumulated += parseFloat(contribution.amount || 0);
       data.push({
-        date: new Date(contribution.contribution_date).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+        date: new Date(contribution.contribution_date).toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' }),
         valor: accumulated,
         meta: parseFloat(goal.target_amount),
         contribution: parseFloat(contribution.amount)
@@ -49,7 +54,7 @@ export default function GoalTimeline({ goal, contributions = [] }) {
         
         accumulated += goal.monthly_contribution;
         data.push({
-          date: projectionDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+          date: projectionDate.toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' }),
           projecao: Math.min(accumulated, parseFloat(goal.target_amount)),
           meta: parseFloat(goal.target_amount),
           isProjection: true
@@ -65,7 +70,7 @@ export default function GoalTimeline({ goal, contributions = [] }) {
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center py-12 text-gray-500">
-        <p>Adicione contribuições para visualizar a evolução</p>
+        <p>{t('web.goalTimeline.addMoneyToSeeHow')}</p>
       </div>
     );
   }
@@ -78,17 +83,17 @@ export default function GoalTimeline({ goal, contributions = [] }) {
           <p className="text-sm font-semibold text-gray-900 mb-2">{data.date}</p>
           {data.valor !== undefined && (
             <p className="text-sm text-gray-700">
-              <span className="font-medium">Valor:</span> R$ {data.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <span className="font-medium">{t('web.goalTimeline.amount')}</span> {formatMoney(data.valor)}
             </p>
           )}
           {data.projecao !== undefined && (
             <p className="text-sm text-blue-600">
-              <span className="font-medium">Projeção:</span> R$ {data.projecao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <span className="font-medium">{t('web.goalTimeline.projection')}</span> {formatMoney(data.projecao)}
             </p>
           )}
           {data.contribution && (
             <p className="text-sm text-green-600 mt-1">
-              + R$ {data.contribution.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              +{formatMoney(data.contribution)}
             </p>
           )}
         </div>
@@ -102,21 +107,21 @@ export default function GoalTimeline({ goal, contributions = [] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          Evolução da Meta
-          <HelpTooltip content="Acompanhe o progresso ao longo do tempo. A linha azul mostra o valor acumulado e a linha tracejada mostra a projeção futura." />
+          {t('web.goalTimeline.goalProgress')}
+          <HelpTooltip content={t('web.goalTimeline.trackProgressOverTimeThe')} />
         </h3>
         <div className="flex items-center space-x-4 text-sm">
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-flight-blue rounded-full" />
-            <span className="text-gray-600">Valor Atual</span>
+            <span className="text-gray-600">{t('web.shared.currentAmount')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 border-2 border-flight-blue border-dashed rounded-full" />
-            <span className="text-gray-600">Projeção</span>
+            <span className="text-gray-600">{t('web.goalTimeline.projection2')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-green-500 rounded-full" />
-            <span className="text-gray-600">Meta</span>
+            <span className="text-gray-600">{t('web.goalTimeline.goal')}</span>
           </div>
         </div>
       </div>
@@ -134,7 +139,7 @@ export default function GoalTimeline({ goal, contributions = [] }) {
             <YAxis 
               stroke="#6B7280"
               style={{ fontSize: '12px' }}
-              tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+              tickFormatter={(value) => formatMoneyCompact(value)}
             />
             <Tooltip content={<CustomTooltip />} />
             
@@ -173,10 +178,10 @@ export default function GoalTimeline({ goal, contributions = [] }) {
       {contributions.length > 0 && (
         <div className="bg-blue-50 border-l-4 border-flight-blue rounded p-3">
           <p className="text-sm text-gray-700">
-            <strong>{contributions.length}</strong> {contributions.length === 1 ? 'contribuição realizada' : 'contribuições realizadas'}
+            <strong>{contributions.length}</strong> {contributions.length === 1 ? t('web.goalTimeline.depositMade') : t('web.goalTimeline.depositsMade')}
             {goal.monthly_contribution > 0 && (
               <span className="ml-2">
-                · Próxima contribuição esperada: <strong>R$ {goal.monthly_contribution.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                {t('web.goalTimeline.nextDepositExpected')} <strong>{formatMoney(goal.monthly_contribution)}</strong>
               </span>
             )}
           </p>

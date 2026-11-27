@@ -2,16 +2,18 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { logoFlatSvg } from '../../assets/logoFlatSvg';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
- * Logo - Componente reutilizável do logo MeuAzulão
+ * Logo: reusable MeuAzulão logo.
  * 
  * Props:
  * - size: 'xsmall' | 'small' | 'medium' | 'large' (default: 'medium')
  * - color: 'blue' | 'white' (default: 'blue')
- * - style: Estilos adicionais
+ * - style: extra styles
  */
 export default function Logo({ size = 'medium', color = 'blue', style }) {
+  const { t } = useI18n();
   const sizes = {
     xsmall: 28,
     small: 40,
@@ -34,7 +36,7 @@ export default function Logo({ size = 'medium', color = 'blue', style }) {
         xml={logoSvg}
         width={logoSize}
         height={logoSize}
-        accessibilityLabel="Logo MeuAzulão"
+        accessibilityLabel={t('dashboard.ui.logoLabel')}
       />
     </View>
   );

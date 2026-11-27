@@ -10,30 +10,26 @@ import { AlertTriangle, X, Info, CheckCircle } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text, Title2, Callout } from './Text';
 import { Button } from './Button';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { width } = Dimensions.get('window');
 
 /**
- * AlertModal - Modal de alerta simples (sem confirmação)
- * 
- * Uso:
- * <AlertModal
- *   visible={visible}
- *   onClose={onClose}
- *   title="Alerta"
- *   message="Esta é uma mensagem de alerta"
- *   type="warning" // warning, danger, info, success
- * />
+ * AlertModal: simple alert (no confirmation). Pass translated strings.
+ *
+ * <AlertModal visible onClose={onClose} title={t('...')} message={t('...')} type="warning" />
  */
 export default function AlertModal({
   visible,
   onClose,
-  title = 'Alerta',
+  title,
   message = '',
   type = 'info', // warning, danger, info, success
   buttons = [],
 }) {
+  const { t } = useI18n();
   if (!visible) return null;
+  const titleText = title || t('dashboard.ui.alertTitle');
 
   const getIcon = () => {
     switch (type) {
@@ -63,14 +59,14 @@ export default function AlertModal({
             <View style={styles.headerContent}>
               <View style={styles.iconContainer}>{getIcon()}</View>
               <Title2 weight="semiBold" style={styles.title}>
-                {title}
+                {titleText}
               </Title2>
             </View>
             <TouchableOpacity 
               onPress={onClose} 
               style={styles.closeButton}
               accessibilityRole="button"
-              accessibilityLabel="Fechar"
+              accessibilityLabel={t('common.close')}
             >
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -102,7 +98,7 @@ export default function AlertModal({
               ))
             ) : (
               <Button
-                title="OK"
+                title={t('common.ok')}
                 onPress={onClose}
                 style={styles.footerButton}
               />

@@ -2,8 +2,12 @@ import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildIncomeCategoryColorMap, normalizeKey, resolveColor } from '../lib/colors';
 import { useResponsiveChart } from '../hooks/useResponsiveChart';
+import { useI18n } from '../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 export default function IncomeCharts({ incomes, expenses, costCenters = [], incomeCategories = [], isSoloUser = false }) {
+  const { t } = useI18n();
   const [hoverCategory, setHoverCategory] = useState(null);
   
   const parseAmount = (raw) => {
@@ -23,9 +27,13 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
   const canon = normalizeKey;
 
   // Pizza 1: Entradas por Categorias
+  const rawCategoryByName = {};
   const categoryData = (incomes || []).reduce((acc, income) => {
     if (!income) return acc;
-    const category = income.category || 'Outros';
+    const rawCategory = income.category || 'Outros';
+    // Group PT/EN/ES rows of the same default category under one name
+    const category = categoryName(rawCategory);
+    if (!rawCategoryByName[category]) rawCategoryByName[category] = rawCategory;
     if (!acc[category]) {
       acc[category] = 0;
     }
@@ -34,7 +42,7 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
   }, {});
 
   const categoryChartData = Object.entries(categoryData)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({ name, rawName: rawCategoryByName[name] || name, value }))
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
 
@@ -43,7 +51,7 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
   const typeData = (incomes || []).reduce((acc, income) => {
     if (!income) return acc;
     // Para Solo, sempre individual
-    const type = isSoloUser ? 'Individual' : (income.is_shared ? 'Compartilhada' : 'Individual');
+    const type = isSoloUser ? t('web.shared.individual') : (income.is_shared ? t('web.shared.shared') : t('web.shared.individual'));
     if (!acc[type]) acc[type] = 0;
     acc[type] += parseAmount(income.amount);
     return acc;
@@ -110,7 +118,7 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
 
   // Cores para tipo de entrada
   const getTypeColor = (name) => {
-    return name === 'Compartilhada' ? '#8B5CF6' : '#10B981';
+    return name === t('web.shared.shared') ? '#8B5CF6' : '#10B981';
   };
 
   // Dados para o gráfico de Balanço (Entradas, Despesas, Saldo)
@@ -119,9 +127,9 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
   const balance = totalIncomesCalc - totalExpenses;
   
   const balanceChartData = [
-    { name: 'Entradas', value: totalIncomesCalc, fill: '#207DFF' },
-    { name: 'Despesas', value: totalExpenses, fill: '#6B7280' },
-    { name: 'Saldo', value: Math.abs(balance), fill: balance >= 0 ? '#10B981' : '#EF4444' }
+    { key: 'income', name: t('web.charts.income'), value: totalIncomesCalc, fill: '#207DFF' },
+    { key: 'expenses', name: t('web.charts.expenses'), value: totalExpenses, fill: '#6B7280' },
+    { key: 'balance', name: t('web.charts.balance'), value: Math.abs(balance), fill: balance >= 0 ? '#10B981' : '#EF4444' }
   ].filter(item => item.value > 0);
 
   // Componente específico para o gráfico de Balanço
@@ -169,7 +177,7 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
 
     return (
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-4 md:p-6">
-        <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6 text-center">Balanço do Mês</h3>
+        <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6 text-center">{t('web.incomeCharts.monthBalance')}</h3>
         <div className="relative">
           <ResponsiveContainer width="100%" height={chartHeight}>
             <PieChart>
@@ -207,9 +215,9 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
               <div className={`text-center px-2 ${isMobile ? 'max-w-[120px]' : 'max-w-[140px]'} mx-auto`}>
                 <p className={`text-[11px] font-semibold text-gray-900 truncate`}>{hovered.name}</p>
                 <p className={`text-sm font-bold text-gray-900`}>
-                  {hovered.name === 'Despesas' ? '-' : ''} R$ {Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {hovered.key === 'expenses' ? '-' : ''} {formatMoney(Number(hovered.value || 0))}
                 </p>
-                <p className={`text-[10px] text-gray-500 font-medium`}>{total > 0 ? `${((hovered.value / total) * 100).toFixed(1)}% do total` : ''}</p>
+                <p className={`text-[10px] text-gray-500 font-medium`}>{total > 0 ? t('web.incomeCharts.ofTotal', { p0: ((hovered.value / total) * 100).toFixed(1) }) : ''}</p>
               </div>
             </div>
           )}
@@ -287,11 +295,11 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
               {chartData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
-                  fill={title === 'Entradas por Responsável'
+                  fill={title === t('web.incomeCharts.incomeByPerson')
                     ? resolveColor(entry.name, ownerColorMap)
-                    : title === 'Entradas por Categorias'
-                      ? resolveColor(entry.name, incomeCategoryColorMap)
-                      : resolveColor(entry.name, incomeCategoryColorMap)
+                    : title === t('web.incomeCharts.incomeByCategory')
+                      ? resolveColor(entry.rawName || entry.name, incomeCategoryColorMap)
+                      : resolveColor(entry.rawName || entry.name, incomeCategoryColorMap)
                   }
                   style={{ opacity: 1, cursor: isMobile ? 'pointer' : 'default' }}
                 />
@@ -304,8 +312,8 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
             <div className={`text-center px-2 ${isMobile ? 'max-w-[120px]' : 'max-w-[140px]'} mx-auto`}>
               <p className={`text-[11px] font-semibold text-gray-900 truncate`}>{hovered.name}</p>
-              <p className={`text-sm font-bold text-gray-900`}>{`R$ ${Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</p>
-              <p className={`text-[10px] text-gray-500 font-medium`}>{total > 0 ? `${((hovered.value / total) * 100).toFixed(1)}% do total` : ''}</p>
+              <p className={`text-sm font-bold text-gray-900`}>{`${formatMoney(Number(hovered.value || 0))}`}</p>
+              <p className={`text-[10px] text-gray-500 font-medium`}>{total > 0 ? t('web.incomeCharts.ofTotal', { p0: ((hovered.value / total) * 100).toFixed(1) }) : ''}</p>
             </div>
           </div>
         )}
@@ -322,15 +330,15 @@ export default function IncomeCharts({ incomes, expenses, costCenters = [], inco
       {/* Grid dos gráficos pizza - ajustar colunas baseado em quantos gráficos mostrar */}
       <div className={`grid grid-cols-1 ${shouldShowTypeChart ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
         {/* Pizza 1: Por Categorias */}
-        <ProfessionalPieChart data={categoryChartData} title="Entradas por Categorias" />
+        <ProfessionalPieChart data={categoryChartData} title={t('web.incomeCharts.incomeByCategory')} />
         
         {/* Pizza 2: Tipo de Entrada (Individual vs Compartilhada) - apenas para Family */}
         {shouldShowTypeChart && (
-          <ProfessionalPieChart data={typeChartData} title="Tipo de Entrada" />
+          <ProfessionalPieChart data={typeChartData} title={t('web.incomeCharts.incomeType')} />
         )}
         
         {/* Pizza 3: Por Responsável */}
-        <ProfessionalPieChart data={ownerData} title="Entradas por Responsável" />
+        <ProfessionalPieChart data={ownerData} title={t('web.incomeCharts.incomeByPerson')} />
         
         {/* Pizza 4: Balanço do Mês */}
         {balanceChartData.length > 0 && <BalancePieChart />}

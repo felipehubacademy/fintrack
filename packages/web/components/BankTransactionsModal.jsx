@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { X, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { useI18n } from '../contexts/I18nContext';
+import { appLocale } from '../lib/utils';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
+  const { t: tr } = useI18n();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,16 +48,13 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
   if (!isOpen || !account) return null;
 
   const formatCurrency = (value) => {
-    return Number(value || 0).toLocaleString('pt-BR', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    });
+    return formatMoney(Number(value || 0));
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const getTransactionLabel = (type) => {
@@ -61,11 +62,11 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
     const creditTypes = ['income_deposit', 'transfer_in'];
     
     if (creditTypes.includes(type)) {
-      return 'Entrada';
+      return tr('web.bankTransactionsModal.income');
     }
     
     // Todo o resto é saída (débito)
-    return 'Saída';
+    return tr('web.bankTransactionsModal.expense');
   };
 
   // Calcular totais
@@ -87,7 +88,7 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{account.name}</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Histórico de transações - Saldo atual: R$ {formatCurrency(account.current_balance || 0)}
+              {tr('web.bankTransactionsModal.transactionHistoryCurrentBalance', { p0: formatCurrency(account.current_balance || 0) })}
             </p>
           </div>
           <button
@@ -104,29 +105,29 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-sm text-gray-600">Total de Entradas</p>
+                <p className="text-sm text-gray-600">{tr('web.shared.totalIncome')}</p>
                 <TrendingUp className="h-4 w-4 text-flight-blue" />
               </div>
               <p className="text-xl font-bold text-flight-blue">
-                R$ {formatCurrency(totalCredits)}
+                {formatCurrency(totalCredits)}
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-sm text-gray-600">Total de Saídas</p>
+                <p className="text-sm text-gray-600">{tr('web.bankTransactionsModal.totalExpenses')}</p>
                 <TrendingDown className="h-4 w-4 text-gray-600" />
               </div>
               <p className="text-xl font-bold text-gray-900">
-                R$ {formatCurrency(totalDebits)}
+                {formatCurrency(totalDebits)}
               </p>
             </div>
             <div className={`p-4 rounded-lg border ${balance >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
               <div className="flex items-center justify-between mb-1">
-                <p className="text-sm text-gray-600">Saldo Líquido</p>
+                <p className="text-sm text-gray-600">{tr('web.bankTransactionsModal.netBalance')}</p>
                 <DollarSign className={`h-4 w-4 ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
               </div>
               <p className={`text-xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {balance >= 0 ? '+' : '-'} R$ {formatCurrency(Math.abs(balance))}
+                {balance >= 0 ? '+' : '-'} {formatCurrency(Math.abs(balance))}
               </p>
             </div>
           </div>
@@ -134,23 +135,23 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
           {/* Transações */}
           {loading ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">Carregando transações...</p>
+              <p className="text-gray-500">{tr('web.bankTransactionsModal.loadingTransactions')}</p>
             </div>
           ) : transactions.length > 0 ? (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                 <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
-                Transações ({transactions.length})
+                {tr('web.bankTransactionsModal.transactions', { length: transactions.length })}
               </h3>
               <div className="bg-gray-50 rounded-lg overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Data</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Tipo</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Descrição</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Valor</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Saldo</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{tr('web.shared.date2')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{tr('web.bankTransactionsModal.type')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">{tr('web.shared.description2')}</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">{tr('web.shared.amount2')}</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">{tr('web.shared.balance')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -169,10 +170,10 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
                           <td className={`px-4 py-3 text-sm text-right font-semibold ${
                             isCredit ? 'text-flight-blue' : 'text-gray-900'
                           }`}>
-                            {isCredit ? '+' : '-'} R$ {formatCurrency(transaction.amount)}
+                            {isCredit ? '+' : '-'} {formatCurrency(transaction.amount)}
                           </td>
                           <td className="px-4 py-3 text-sm text-right text-gray-600">
-                            R$ {formatCurrency(transaction.balance_after)}
+                            {formatCurrency(transaction.balance_after)}
                           </td>
                         </tr>
                       );
@@ -183,7 +184,7 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-500">Nenhuma transação registrada.</p>
+              <p className="text-gray-500">{tr('web.bankTransactionsModal.nothingLoggedYet')}</p>
             </div>
           )}
         </div>
@@ -194,7 +195,7 @@ const BankTransactionsModal = ({ isOpen, onClose, account, organization }) => {
             onClick={onClose}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
           >
-            Fechar
+            {tr('web.shared.close')}
           </button>
         </div>
       </div>

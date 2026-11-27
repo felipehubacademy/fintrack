@@ -1,17 +1,18 @@
+import { t } from '@fintrack/shared/i18n';
 const MACRO_GROUPS = {
   needs: {
     key: 'needs',
-    label: 'Necessidades',
+    get label() { return t('web.shared.needs'); },
     basePercentage: 50
   },
   wants: {
     key: 'wants',
-    label: 'Desejos',
+    get label() { return t('web.shared.wants'); },
     basePercentage: 30
   },
   investments: {
     key: 'investments',
-    label: 'Poupança / Investimentos',
+    get label() { return t('web.shared.savingsInvesting'); },
     basePercentage: 20
   }
 };

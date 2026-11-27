@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/Button';
 import { X, AlertCircle } from 'lucide-react';
+import { useI18n } from '../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import withPaywall from './billing/withPaywall';
 
-export default function MarkBillAsPaidModal({ 
+function MarkBillAsPaidModal({ 
   isOpen, 
   onClose, 
   onConfirm,
@@ -10,6 +13,7 @@ export default function MarkBillAsPaidModal({
   costCenters = [],
   organization = null
 }) {
+  const { t } = useI18n();
   const [selectedOwner, setSelectedOwner] = useState('');
   const [isShared, setIsShared] = useState(false);
 
@@ -53,7 +57,7 @@ export default function MarkBillAsPaidModal({
           <div className="flex items-center space-x-3">
             <AlertCircle className="w-8 h-8 text-yellow-600" />
             <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900">
-              Confirmar pagamento
+              {t('web.markBillAsPaidModal.confirmPayment')}
             </h2>
           </div>
           <button
@@ -67,16 +71,16 @@ export default function MarkBillAsPaidModal({
         {/* Content */}
         <div className="p-4 sm:p-5 md:p-6 overflow-y-auto flex-1">
           <p className="text-gray-600 mb-4">
-            Marcar <strong>{bill.description}</strong> (R$ {Number(bill.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) como paga?
+            {t('web.markBillAsPaidModal.mark')} <strong>{bill.description}</strong> ({formatMoney(Number(bill.amount))}{t('web.markBillAsPaidModal.asPaid')}
           </p>
           <p className="text-sm text-gray-500 mb-6">
-            Isso criará uma despesa automaticamente.
+            {t('web.markBillAsPaidModal.thisCreatesAnExpenseAutomatically')}
           </p>
 
           {/* Quem pagou? */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Quem pagou? *
+              {t('web.markBillAsPaidModal.whoPaid')}
             </label>
             
             {/* Opção Compartilhado */}
@@ -92,7 +96,7 @@ export default function MarkBillAsPaidModal({
                   className="w-4 h-4 text-flight-blue focus:ring-flight-blue border-gray-300"
                 />
                 <span className="text-gray-700">
-                  {organization?.name || 'Família'}
+                  {organization?.name || t('web.shared.household')}
                 </span>
               </label>
             </div>
@@ -112,7 +116,7 @@ export default function MarkBillAsPaidModal({
                   }}
                   className="w-4 h-4 text-flight-blue focus:ring-flight-blue border-gray-300"
                 />
-                <span className="text-gray-700">Individual</span>
+                <span className="text-gray-700">{t('web.shared.individual')}</span>
               </label>
             </div>
 
@@ -125,7 +129,7 @@ export default function MarkBillAsPaidModal({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 >
-                  <option value="">Selecione o responsável...</option>
+                  <option value="">{t('web.markBillAsPaidModal.pickWhoPaid')}</option>
                   {ownerOptions.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -143,14 +147,14 @@ export default function MarkBillAsPaidModal({
               onClick={onClose}
               className="w-full sm:w-auto px-6 py-2 min-h-[44px]"
             >
-              Cancelar
+              {t('web.shared.cancel')}
             </Button>
             <Button
               onClick={handleConfirm}
               disabled={!isShared && !selectedOwner}
               className="w-full sm:w-auto px-6 py-2 min-h-[44px] bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Marcar como Paga
+              {t('web.markBillAsPaidModal.markAsPaid')}
             </Button>
           </div>
         </div>
@@ -161,3 +165,4 @@ export default function MarkBillAsPaidModal({
   );
 }
 
+export default withPaywall(MarkBillAsPaidModal);

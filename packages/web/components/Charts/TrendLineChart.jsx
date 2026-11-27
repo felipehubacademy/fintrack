@@ -1,4 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { useI18n } from '../../contexts/I18nContext';
 
 const COLORS = {
   needs: '#2563EB',
@@ -7,9 +9,10 @@ const COLORS = {
 };
 
 export default function TrendLineChart({ data, showPercentage = false }) {
+  const { t } = useI18n();
   const formatCurrency = (value) => {
     if (showPercentage) return `${value.toFixed(1)}%`;
-    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `${formatMoney(value)}`;
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -57,7 +60,7 @@ export default function TrendLineChart({ data, showPercentage = false }) {
           dataKey="needs" 
           stroke={COLORS.needs} 
           strokeWidth={2}
-          name="Necessidades"
+          name={t('web.shared.needs')}
           dot={{ fill: COLORS.needs, r: 4 }}
           activeDot={{ r: 6 }}
         />
@@ -66,7 +69,7 @@ export default function TrendLineChart({ data, showPercentage = false }) {
           dataKey="wants" 
           stroke={COLORS.wants} 
           strokeWidth={2}
-          name="Desejos"
+          name={t('web.shared.wants')}
           dot={{ fill: COLORS.wants, r: 4 }}
           activeDot={{ r: 6 }}
         />
@@ -75,7 +78,7 @@ export default function TrendLineChart({ data, showPercentage = false }) {
           dataKey="investments" 
           stroke={COLORS.investments} 
           strokeWidth={2}
-          name="Investimentos"
+          name={t('web.shared.investments')}
           dot={{ fill: COLORS.investments, r: 4 }}
           activeDot={{ r: 6 }}
         />

@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
 import { Upload, X, FileText, File } from 'lucide-react';
 import { Button } from './ui/Button';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function FileUploadButton({ onFileSelect, disabled, uploading, progress }) {
+  const { t } = useI18n();
   const fileInputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState(null);
@@ -81,10 +83,10 @@ export default function FileUploadButton({ onFileSelect, disabled, uploading, pr
         >
           <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
           <p className="text-sm text-gray-600 mb-1">
-            Clique ou arraste um arquivo
+            {t('web.fileUploadButton.clickOrDropAFile')}
           </p>
           <p className="text-xs text-gray-500">
-            PDF, CSV ou Excel (máx. 10MB)
+            {t('web.fileUploadButton.pdfCsvOrExcelMax')}
           </p>
         </div>
       ) : (

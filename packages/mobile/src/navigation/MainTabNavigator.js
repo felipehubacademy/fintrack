@@ -5,6 +5,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LayoutGrid, List, PieChart, MoreHorizontal, Plus } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useI18n } from '../contexts/I18nContext';
+import { TAB_ROUTES } from './routes';
+import { useBilling } from '../hooks/useBilling';
 
 import DashboardScreen from '../screens/DashboardScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
@@ -18,6 +21,15 @@ function AddPlaceholder() { return null; }
 export default function MainTabNavigator() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
+  const { requireAccess } = useBilling();
+
+  // Route names stay fixed (other screens navigate by them); labels are translated.
+  const label = (key) => ({
+    title: t(`navigation.tabs.${key}`),
+    tabBarLabel: t(`navigation.tabs.${key}`),
+    tabBarAccessibilityLabel: t(`navigation.tabs.${key}`),
+  });
 
   return (
     <Tab.Navigator
@@ -38,41 +50,52 @@ export default function MainTabNavigator() {
       }}
     >
       <Tab.Screen
-        name="Início"
+        name={TAB_ROUTES.home}
         component={DashboardScreen}
-        options={{ tabBarIcon: ({ color, size }) => <LayoutGrid size={size - 2} color={color} /> }}
+        options={{ ...label('home'), tabBarIcon: ({ color, size }) => <LayoutGrid size={size - 2} color={color} /> }}
       />
       <Tab.Screen
-        name="Transações"
+        name={TAB_ROUTES.transactions}
         component={TransactionsScreen}
-        options={{ tabBarIcon: ({ color, size }) => <List size={size - 2} color={color} /> }}
+        options={{ ...label('transactions'), tabBarIcon: ({ color, size }) => <List size={size - 2} color={color} /> }}
       />
       <Tab.Screen
-        name="Adicionar"
+        name={TAB_ROUTES.add}
         component={AddPlaceholder}
         options={({ navigation }) => ({
+          ...label('add'),
           tabBarButton: () => (
-            <GoldFAB isDark={isDark} onPress={() => navigation.getParent()?.navigate('AddTransaction')} />
+            <GoldFAB
+              isDark={isDark}
+              accessibilityLabel={t('navigation.tabs.add')}
+              onPress={() => requireAccess(() => navigation.getParent()?.navigate('AddTransaction'))}
+            />
           ),
         })}
       />
       <Tab.Screen
-        name="Orçamento"
+        name={TAB_ROUTES.budget}
         component={BudgetsScreen}
-        options={{ tabBarIcon: ({ color, size }) => <PieChart size={size - 2} color={color} /> }}
+        options={{ ...label('budget'), tabBarIcon: ({ color, size }) => <PieChart size={size - 2} color={color} /> }}
       />
       <Tab.Screen
-        name="Mais"
+        name={TAB_ROUTES.more}
         component={MoreStackNavigator}
-        options={{ tabBarIcon: ({ color, size }) => <MoreHorizontal size={size - 2} color={color} /> }}
+        options={{ ...label('more'), tabBarIcon: ({ color, size }) => <MoreHorizontal size={size - 2} color={color} /> }}
       />
     </Tab.Navigator>
   );
 }
 
-function GoldFAB({ isDark, onPress }) {
+function GoldFAB({ isDark, onPress, accessibilityLabel }) {
   return (
-    <TouchableOpacity style={styles.fabContainer} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={styles.fabContainer}
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
       <View style={[styles.fab, isDark && styles.fabDark]}>
         <Plus size={22} color="#FFFFFF" strokeWidth={2.5} />
       </View>

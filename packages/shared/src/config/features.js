@@ -1,0 +1,57 @@
+/**
+ * Launch feature flags (shared by mobile and web).
+ *
+ * Launch model (approved 2026-11-26): 7-day free trial, then Plus (see
+ * ../billing). Everything is a switch here so a scope change is one line.
+ *
+ * To flip a flag for launch, change FEATURE_DEFAULTS. FEATURE_<NAME> env
+ * vars override it on the server only (bundlers don't inline dynamic keys).
+ */
+export const FEATURE_DEFAULTS = {
+  investments: false, // screen crashed before; hidden unless decided otherwise
+  goals: true,
+  closing: true,
+  insights: true,
+  paywall: true, // 7-day trial, then Plus (approved 2026-11-26)
+  manualEntry: true, // hidden manual form; WhatsApp is the main path
+};
+
+function envFlag(name) {
+  const keys = [`EXPO_PUBLIC_FEATURE_${name}`, `NEXT_PUBLIC_FEATURE_${name}`, `FEATURE_${name}`];
+  for (const k of keys) {
+    const v = typeof process !== 'undefined' && process.env ? process.env[k] : undefined;
+    if (v === 'true' || v === '1') return true;
+    if (v === 'false' || v === '0') return false;
+  }
+  return undefined;
+}
+
+const overrides = {};
+
+export function isFeatureEnabled(name) {
+  if (name in overrides) return overrides[name];
+  const env = envFlag(String(name).toUpperCase());
+  if (env !== undefined) return env;
+  return Boolean(FEATURE_DEFAULTS[name]);
+}
+
+/** Runtime override (tests, remote config later). */
+export function setFeatureOverride(name, value) {
+  if (value === undefined) delete overrides[name];
+  else overrides[name] = Boolean(value);
+}
+
+/** Zul's production number (+55 11 2770-9553), international format, digits only. */
+export const ZUL_WHATSAPP_DEFAULT = '551127709553';
+
+export const WHATSAPP = {
+  // An env var overrides it per environment (staging, a test number).
+  number: (typeof process !== 'undefined' && process.env
+    && (process.env.EXPO_PUBLIC_ZUL_WHATSAPP || process.env.NEXT_PUBLIC_ZUL_WHATSAPP)) || ZUL_WHATSAPP_DEFAULT,
+};
+
+/** wa.me deep link that opens a chat with Zul and a pre-filled text. */
+export function zulChatLink(text = '') {
+  const base = WHATSAPP.number ? `https://wa.me/${WHATSAPP.number}` : 'https://wa.me/';
+  return text ? `${base}?text=${encodeURIComponent(text)}` : base;
+}

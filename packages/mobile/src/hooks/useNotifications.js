@@ -31,7 +31,7 @@ export function useNotifications(userId) {
       const pushToken = await notificationService.registerForPushNotifications(userId);
       setToken(pushToken);
     } catch (err) {
-      console.error('Erro ao registrar notificações:', err);
+      console.error('Error registering notifications:', err);
       setError(err);
     }
   };
@@ -41,7 +41,7 @@ export function useNotifications(userId) {
       const id = await notificationService.scheduleLocalNotification(notificationData);
       return id;
     } catch (err) {
-      console.error('Erro ao agendar notificação:', err);
+      console.error('Error scheduling notification:', err);
       setError(err);
       return null;
     }
@@ -51,7 +51,7 @@ export function useNotifications(userId) {
     try {
       await notificationService.cancelScheduledNotification(notificationId);
     } catch (err) {
-      console.error('Erro ao cancelar notificação:', err);
+      console.error('Error cancelling notification:', err);
       setError(err);
     }
   };
@@ -60,7 +60,7 @@ export function useNotifications(userId) {
     try {
       await notificationService.cancelAllScheduledNotifications();
     } catch (err) {
-      console.error('Erro ao cancelar todas as notificações:', err);
+      console.error('Error cancelling all notifications:', err);
       setError(err);
     }
   };

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
+const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_GRAPH_VERSION || 'v21.0'}`;
 
 /**
  * Enviar mensagem de texto via WhatsApp
@@ -19,7 +19,7 @@ export async function sendTextMessage(phoneNumberId, to, message) {
       },
       {
         headers: {
-          'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN}`,
           'Content-Type': 'application/json'
         }
       }

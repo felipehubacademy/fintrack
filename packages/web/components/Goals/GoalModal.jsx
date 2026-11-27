@@ -1,46 +1,51 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { X, PiggyBank, CreditCard, ShoppingBag, TrendingUp, Wallet } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
+import { t, formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { formatCurrencyInput } from '../../lib/utils';
+import withPaywall from '../billing/withPaywall';
 
 const GOAL_TYPES = {
   emergency_fund: {
-    label: 'Reserva de Emergência',
+    get label() { return t('web.goalModal.emergencyFund'); },
     icon: PiggyBank,
     color: '#10B981',
-    description: '3-6 meses de despesas',
+    get description() { return t('web.goalModal.n36MonthsOfExpenses'); },
     suggestedAmount: 20000
   },
   debt_payment: {
-    label: 'Quitação de Dívida',
+    get label() { return t('web.goalModal.payOffDebt'); },
     icon: CreditCard,
     color: '#EF4444',
-    description: 'Elimine dívidas',
+    get description() { return t('web.goalModal.getRidOfDebt'); },
     suggestedAmount: 5000
   },
   purchase: {
-    label: 'Compra Planejada',
+    get label() { return t('web.goalModal.plannedPurchase'); },
     icon: ShoppingBag,
     color: '#8B5CF6',
-    description: 'Carro, casa, viagem',
+    get description() { return t('web.goalModal.carHomeTrip'); },
     suggestedAmount: 50000
   },
   investment: {
-    label: 'Investimento',
+    get label() { return t('web.shared.investing'); },
     icon: TrendingUp,
     color: '#3B82F6',
-    description: 'Construa patrimônio',
+    get description() { return t('web.goalModal.buildWealth'); },
     suggestedAmount: 100000
   },
   savings: {
-    label: 'Poupança Geral',
+    get label() { return t('web.goalModal.generalSavings'); },
     icon: Wallet,
     color: '#F59E0B',
-    description: 'Meta livre',
+    get description() { return t('web.goalModal.anythingYouWant'); },
     suggestedAmount: 10000
   }
 };
 
-export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null }) {
+function GoalModal({ isOpen, onClose, onSave, editingGoal = null }) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     name: '',
     goal_type: 'savings',
@@ -118,7 +123,7 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
-            {editingGoal ? 'Editar Meta' : 'Nova Meta Financeira'}
+            {editingGoal ? t('web.goalModal.editGoal') : t('web.goalModal.newGoal')}
           </h2>
           <Button 
             variant="ghost" 
@@ -137,7 +142,7 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
             {/* Goal Type Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Tipo de Meta
+                {t('web.goalModal.goalType')}
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {Object.entries(GOAL_TYPES).map(([key, type]) => {
@@ -180,13 +185,13 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
             {/* Goal Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome da Meta *
+                {t('web.goalModal.goalName')}
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Ex: Reserva de emergência, Viagem para Europa, etc."
+                placeholder={t('web.goalModal.eGEmergencyFundTrip')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 required
               />
@@ -196,17 +201,17 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor Alvo (R$) *
+                  {t('web.goalModal.targetAmount')}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={formData.target_amount}
                     onChange={(e) => setFormData(prev => ({ ...prev, target_amount: e.target.value }))}
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                     required
                   />
@@ -215,22 +220,22 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor Atual (R$)
+                  {t('web.goalModal.currentAmount')}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={formData.current_amount}
                     onChange={(e) => setFormData(prev => ({ ...prev, current_amount: e.target.value }))}
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Quanto você já tem economizado?
+                  {t('web.goalModal.howMuchHaveYouSaved')}
                 </p>
               </div>
             </div>
@@ -239,28 +244,28 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contribuição Mensal (R$)
+                  {t('web.goalModal.monthlyAmount')}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={formData.monthly_contribution}
                     onChange={(e) => setFormData(prev => ({ ...prev, monthly_contribution: e.target.value }))}
-                    placeholder="0,00"
+                    placeholder={formatCurrencyInput(0)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Quanto pretende guardar por mês?
+                  {t('web.goalModal.howMuchWillYouSave')}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Data Alvo (opcional)
+                  {t('web.goalModal.targetDateOptional')}
                 </label>
                 <input
                   type="date"
@@ -274,12 +279,12 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descrição (opcional)
+                {t('web.shared.descriptionOptional')}
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Adicione detalhes sobre sua meta..."
+                placeholder={t('web.goalModal.addDetailsAboutYourGoal')}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue resize-none"
               />
@@ -288,18 +293,18 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
             {/* Projection Preview */}
             {formData.target_amount && formData.monthly_contribution && parseFloat(formData.monthly_contribution) > 0 && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">📊 Projeção</h4>
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">{t('web.goalModal.projection')}</h4>
                 <div className="space-y-1 text-sm text-gray-700">
                   <div className="flex justify-between">
-                    <span>Falta economizar:</span>
+                    <span>{t('web.goalModal.stillToSave')}</span>
                     <span className="font-semibold">
-                      R$ {(parseFloat(formData.target_amount) - parseFloat(formData.current_amount || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {formatMoney((parseFloat(formData.target_amount) - parseFloat(formData.current_amount || 0)))}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Tempo estimado:</span>
+                    <span>{t('web.goalModal.estimatedTime')}</span>
                     <span className="font-semibold">
-                      {Math.ceil((parseFloat(formData.target_amount) - parseFloat(formData.current_amount || 0)) / parseFloat(formData.monthly_contribution))} meses
+                      {t('web.goalModal.months', { p0: Math.ceil((parseFloat(formData.target_amount) - parseFloat(formData.current_amount || 0)) / parseFloat(formData.monthly_contribution)) })}
                     </span>
                   </div>
                 </div>
@@ -316,14 +321,14 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
               disabled={saving}
               className="w-full sm:w-auto"
             >
-              Cancelar
+              {t('web.shared.cancel')}
             </Button>
             <Button
               type="submit"
               disabled={saving || !formData.name || !formData.target_amount}
               className="w-full sm:w-auto"
             >
-              {saving ? 'Salvando...' : editingGoal ? 'Salvar Alterações' : 'Criar Meta'}
+              {saving ? t('web.shared.saving') : editingGoal ? t('web.shared.saveChanges') : t('web.goalModal.createGoal')}
             </Button>
           </div>
         </form>
@@ -331,3 +336,5 @@ export default function GoalModal({ isOpen, onClose, onSave, editingGoal = null 
     </div>
   );
 }
+
+export default withPaywall(GoalModal);

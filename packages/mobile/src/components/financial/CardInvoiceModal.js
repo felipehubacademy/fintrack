@@ -14,8 +14,7 @@ import { Text, Title2, Headline, Callout, Caption, Subheadline, Footnote } from 
 import { Card } from '../ui/Card';
 import { useOrganization } from '../../hooks/useOrganization';
 import { supabase } from '../../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
-import { formatBrazilDate, formatBrazilMonthYear } from '../../utils/date';
+import { useI18n } from '../../contexts/I18nContext';
 import MarkInvoiceAsPaidModal from './MarkInvoiceAsPaidModal';
 import RolloverInvoiceModal from './RolloverInvoiceModal';
 import { useToast } from '../ui/Toast';
@@ -27,6 +26,8 @@ import { useToast } from '../ui/Toast';
 export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice, onRolloverInvoice }) {
   const { organization, user } = useOrganization();
   const { showToast } = useToast();
+  const { t, formatMoney, formatDate: formatLocaleDate } = useI18n();
+  const formatCurrency = formatMoney;
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentCycle, setCurrentCycle] = useState(null);
@@ -134,7 +135,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
       if (invoicesError) {
         console.error('[CardInvoiceModal] fetchInvoices: Erro ao buscar faturas:', invoicesError);
         console.error('[CardInvoiceModal] fetchInvoices: Detalhes do erro:', JSON.stringify(invoicesError, null, 2));
-        showToast('Erro ao carregar faturas', 'error');
+        showToast(t('finances.invoices.loadError'), 'error');
         setInvoices([]);
         return;
       }
@@ -225,7 +226,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
     }
   };
 
-  const formatDate = (dateStr) => formatBrazilMonthYear(dateStr);
+  const formatDate = (dateStr) => formatLocaleDate(dateStr, 'monthYear');
 
   const handleMarkInvoiceAsPaid = async (paymentData) => {
     if (!selectedInvoice || !card) return;
@@ -246,7 +247,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
             p_bank_account_id: bank_account_id,
             p_transaction_type: 'manual_debit',
             p_amount: amount,
-            p_description: `Pagamento Fatura ${card.name} - ${formatDate(selectedInvoice.startDate)}`,
+            p_description: t('finances.invoice.paymentDescription', { card: card.name, month: formatDate(selectedInvoice.startDate) }),
             p_date: getBrazilTodayString(),
             p_organization_id: organization.id,
             p_user_id: user?.id
@@ -264,7 +265,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
           .single();
 
         if (!bankTransaction) {
-          throw new Error('Transação bancária não encontrada após criação');
+          throw new Error('Bank transaction not found after creation');
         }
 
         bankTransactionId = bankTransaction.id;
@@ -367,9 +368,9 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
       await fetchInvoices();
       
       if (isFullPayment) {
-        showToast(`Fatura de ${formatCurrency(totalInvoice)} paga! Limite do cartão liberado.`, 'success');
+        showToast(t('finances.invoice.paidFull', { amount: formatMoney(totalInvoice) }), 'success');
       } else {
-        showToast(`Pagamento parcial de ${formatCurrency(amount)} registrado. Saldo restante: ${formatCurrency(totalInvoice - amount)}`, 'success');
+        showToast(t('finances.invoice.paidPartial', { amount: formatMoney(amount), remaining: formatMoney(totalInvoice - amount) }), 'success');
       }
       
       setShowMarkAsPaidModal(false);
@@ -378,7 +379,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
       
     } catch (error) {
       console.error('Erro ao processar pagamento:', error);
-      showToast('Erro ao processar pagamento. Tente novamente.', 'error');
+      showToast(t('finances.invoice.paymentError'), 'error');
     }
   };
 
@@ -449,11 +450,11 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
       const { error: expenseError } = await supabase
         .from('expenses')
         .insert({
-          description: `Saldo anterior - ${card.name}`,
+          description: t('finances.invoice.previousBalanceDescription', { card: card.name }),
           amount: remainingAmount,
           date: nextCycleDateStr,
           category_id: category?.id || null,
-          category: category?.name || 'Saldo Anterior',
+          category: category?.name || t('finances.invoice.previousBalance'),
           payment_method: 'credit_card',
           card_id: card.id,
           status: 'confirmed',
@@ -498,7 +499,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
 
       await fetchInvoices();
       
-      showToast(`Saldo de ${formatCurrency(remainingAmount)} transferido para a próxima fatura!`, 'success');
+      showToast(t('finances.invoice.rolledOver', { amount: formatMoney(remainingAmount) }), 'success');
       
       setShowRolloverModal(false);
       setSelectedInvoice(null);
@@ -506,7 +507,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
       
     } catch (error) {
       console.error('Erro ao transferir saldo:', error);
-      showToast('Erro ao transferir saldo. Tente novamente.', 'error');
+      showToast(t('finances.invoice.rolloverError'), 'error');
     }
   };
 
@@ -546,11 +547,13 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
               <View style={styles.headerContent}>
                 <CreditCard size={24} color={colors.brand.primary} />
                 <View style={styles.headerText}>
-                  <Headline weight="semiBold">Faturas - {card.name}</Headline>
-                  <Caption color="secondary">Vence no dia {card.billing_day}</Caption>
+                  <Headline weight="semiBold">{t('finances.invoices.title', { card: card.name })}</Headline>
+                  {card.billing_day ? (
+                    <Caption color="secondary">{t('finances.invoices.dueOn', { day: card.billing_day })}</Caption>
+                  ) : null}
                 </View>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
                 <X size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
@@ -568,14 +571,14 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={colors.brand.primary} />
                   <Caption color="secondary" style={{ marginTop: spacing[2] }}>
-                    Carregando faturas...
+                    {t('common.loading')}
                   </Caption>
                 </View>
               ) : invoices.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <CreditCard size={64} color={colors.text.tertiary} />
                   <Caption color="secondary" style={{ marginTop: spacing[2] }}>
-                    Nenhuma fatura encontrada
+                    {t('finances.invoices.empty')}
                   </Caption>
                 </View>
               ) : (
@@ -620,15 +623,9 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                       hasClosed
                     });
                     
-                    let statusLabel = '';
-                    if (isCurrentCycle) {
-                      statusLabel = 'Fatura Atual';
-                    } else {
-                      const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-                      const monthName = monthNames[dueDate.getMonth()];
-                      statusLabel = `Fatura de ${monthName}`;
-                    }
+                    const statusLabel = isCurrentCycle
+                      ? t('finances.card.currentStatement')
+                      : t('finances.card.statementOf', { month: formatLocaleDate(dueDate, 'monthYear') });
                     
                     const invoiceKey = `${invoice.startDate}-${invoice.endDate}`;
                     const isExpanded = expandedInvoices.has(invoiceKey);
@@ -652,7 +649,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                             <View style={styles.invoiceHeaderLeft}>
                               <Callout weight="medium">{statusLabel}</Callout>
                               <Caption color="secondary" style={{ color: colors.success.main, marginTop: spacing[0.5] }}>
-                                ✓ Paga
+                                {t('finances.invoices.paid')}
                               </Caption>
                             </View>
                             <Callout weight="bold">{formatCurrency(invoice.total)}</Callout>
@@ -679,6 +676,8 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                                 <TouchableOpacity
                                   onPress={toggleExpand}
                                   style={styles.expandButton}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={t(isExpanded ? 'finances.invoices.collapse' : 'finances.invoices.expand')}
                                 >
                                   {isExpanded ? (
                                     <ChevronUp size={20} color={colors.text.secondary} />
@@ -703,13 +702,13 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                             
                             {/* Segunda linha: Data do ciclo */}
                             <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                              Data do ciclo: {formatBrazilDate(invoice.startDate)} - {formatBrazilDate(invoice.endDate)}
+                              {t('finances.card.statementRange', { start: formatLocaleDate(invoice.startDate, 'dayMonth'), end: formatLocaleDate(invoice.endDate, 'dayMonth') })}
                             </Caption>
                             
                             {/* Terceira linha: Fechou em... */}
                             {hasClosed && !isFuture && (
                               <Caption style={{ color: colors.warning.main, marginTop: spacing[0.5] }}>
-                                Fechou em {formatBrazilDate(closingDate)}
+                                {t('finances.invoices.closedOn', { date: formatLocaleDate(closingDate, 'dayMonth') })}
                               </Caption>
                             )}
                             
@@ -717,10 +716,10 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                             {invoice.status === 'paid_partial' && invoice.paid_amount > 0 && (
                               <View style={{ marginTop: spacing[1] }}>
                                 <Caption style={{ color: colors.success.main }}>
-                                  Pago: {formatCurrency(invoice.paid_amount)}
+                                  {t('finances.invoices.paidAmount', { amount: formatMoney(invoice.paid_amount) })}
                                 </Caption>
                                 <Caption style={{ color: colors.warning.main }}>
-                                  Restante: {formatCurrency(invoice.total - invoice.paid_amount)}
+                                  {t('finances.invoices.remaining', { amount: formatMoney(invoice.total - invoice.paid_amount) })}
                                 </Caption>
                               </View>
                             )}
@@ -731,7 +730,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                         {isExpanded && expenses.length > 0 && (
                           <View style={styles.expensesContainer}>
                             <Subheadline weight="semiBold" style={{ marginBottom: spacing[2] }}>
-                              Transações ({expenses.length})
+                              {t('finances.history.count', { count: expenses.length })}
                             </Subheadline>
                             <View style={styles.expensesList}>
                               {expenses
@@ -742,17 +741,17 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                                     expense.installment_info.total_installments > 1;
                                   const displayAmount = expense.installmentAmount || expense.amount || 0;
                                   const installmentText = isInstallment 
-                                    ? `${expense.installment_info.current_installment}/${expense.installment_info.total_installments}`
+                                    ? t('finances.card.installmentOf', { current: expense.installment_info.current_installment, total: expense.installment_info.total_installments })
                                     : '';
                                   
                                   return (
                                     <View key={expense.id || expIndex} style={styles.expenseItem}>
                                       <Caption color="secondary">
-                                        {formatBrazilDate(expenseDate)}
+                                        {formatLocaleDate(expenseDate, 'dayMonth')}
                                       </Caption>
                                       <View style={styles.expenseContent}>
                                         <Callout numberOfLines={1}>
-                                          {expense.description || 'Sem descrição'}
+                                          {expense.description || t('finances.invoices.noDescription')}
                                           {installmentText && (
                                             <Caption color="secondary" style={{ marginLeft: spacing[0.5] }}>
                                               {installmentText}
@@ -787,7 +786,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                               >
                                 <CheckCircle size={18} color={colors.success.main} />
                                 <Callout weight="semiBold" style={{ color: colors.success.main, marginLeft: spacing[1] }}>
-                                  Pagar
+                                  {t('finances.invoices.pay')}
                                 </Callout>
                               </TouchableOpacity>
                             )}
@@ -806,7 +805,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
                               >
                                 <ArrowRight size={18} color={colors.error.main} />
                                 <Callout weight="semiBold" style={{ color: colors.error.main, marginLeft: spacing[1] }}>
-                                  Lançar saldo na próxima fatura
+                                  {t('finances.invoices.rollover')}
                                 </Callout>
                               </TouchableOpacity>
                             )}
@@ -823,7 +822,7 @@ export default function CardInvoiceModal({ visible, onClose, card, onPayInvoice,
             <View style={styles.footer}>
               <TouchableOpacity style={styles.closeFooterButton} onPress={onClose}>
                 <Callout weight="semiBold" style={{ color: colors.brand.primary }}>
-                  Fechar
+                  {t('common.close')}
                 </Callout>
               </TouchableOpacity>
             </View>

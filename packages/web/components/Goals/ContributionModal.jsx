@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { X, Plus, TrendingUp } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney, currencySymbol } from '@fintrack/shared/i18n';
+import { formatCurrencyInput } from '../../lib/utils';
+import withPaywall from '../billing/withPaywall';
 
-export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
+function ContributionModal({ isOpen, onClose, onSave, goal }) {
+  const { t } = useI18n();
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -46,7 +51,7 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <div>
             <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl">
-              Adicionar Contribuição
+              {t('web.contributionModal.addMoney')}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               {goal.name}
@@ -66,15 +71,15 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
         <div className="px-4 sm:px-5 md:px-6 py-4 bg-gray-50 border-b border-gray-200 flex-shrink-0">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Valor Atual:</span>
+              <span className="text-gray-600">{t('web.contributionModal.currentAmount')}</span>
               <div className="font-semibold text-gray-900 mt-1">
-                R$ {parseFloat(goal.current_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                {formatMoney(parseFloat(goal.current_amount || 0))}
               </div>
             </div>
             <div>
-              <span className="text-gray-600">Meta:</span>
+              <span className="text-gray-600">{t('web.contributionModal.goal')}</span>
               <div className="font-semibold text-gray-900 mt-1">
-                R$ {parseFloat(goal.target_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                {formatMoney(parseFloat(goal.target_amount))}
               </div>
             </div>
           </div>
@@ -82,7 +87,7 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
           {/* Progress Bar */}
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-              <span>Progresso</span>
+              <span>{t('web.shared.progress')}</span>
               <span>{((parseFloat(goal.current_amount || 0) / parseFloat(goal.target_amount)) * 100).toFixed(1)}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -101,17 +106,17 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
             {/* Amount */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valor da Contribuição (R$) *
+                {t('web.contributionModal.amount')}
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{currencySymbol()}</span>
                 <input
                   type="number"
                   step="0.01"
                   min="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0,00"
+                  placeholder={formatCurrencyInput(0)}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                   autoFocus
@@ -122,7 +127,7 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
             {/* Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data da Contribuição *
+                {t('web.contributionModal.date')}
               </label>
               <input
                 type="date"
@@ -136,12 +141,12 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
             {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Observações (opcional)
+                {t('web.contributionModal.notesOptional')}
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex: Bônus do trabalho, economia do mês, etc."
+                placeholder={t('web.contributionModal.eGWorkBonusMonthly')}
                 rows={2}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue resize-none"
               />
@@ -152,31 +157,31 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex items-center space-x-2 mb-3">
                   <TrendingUp className="h-4 w-4 text-green-600" />
-                  <h4 className="text-sm font-semibold text-gray-900">Após esta contribuição:</h4>
+                  <h4 className="text-sm font-semibold text-gray-900">{t('web.contributionModal.afterThisDeposit')}</h4>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Novo total:</span>
+                    <span className="text-gray-600">{t('web.contributionModal.newTotal')}</span>
                     <span className="font-semibold text-gray-900">
-                      R$ {newTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {formatMoney(newTotal)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Novo progresso:</span>
+                    <span className="text-gray-600">{t('web.contributionModal.newProgress')}</span>
                     <span className="font-semibold text-green-600">
                       {newProgress.toFixed(1)}%
                     </span>
                   </div>
                   {remaining > 0 ? (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Faltam:</span>
+                      <span className="text-gray-600">{t('web.contributionModal.left')}</span>
                       <span className="font-semibold text-gray-900">
-                        R$ {remaining.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {formatMoney(remaining)}
                       </span>
                     </div>
                   ) : (
                     <div className="text-center pt-2 border-t border-green-300">
-                      <span className="text-green-700 font-bold">🎉 Meta atingida!</span>
+                      <span className="text-green-700 font-bold">{t('web.contributionModal.goalReached')}</span>
                     </div>
                   )}
                 </div>
@@ -193,14 +198,14 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
               disabled={saving}
               className="w-full sm:w-auto"
             >
-              Cancelar
+              {t('web.shared.cancel')}
             </Button>
             <Button
               type="submit"
               disabled={saving || !amount || parseFloat(amount) <= 0}
               className="w-full sm:w-auto"
             >
-              {saving ? 'Salvando...' : 'Adicionar Contribuição'}
+              {saving ? t('web.shared.saving') : t('web.contributionModal.addMoney')}
             </Button>
           </div>
         </form>
@@ -208,3 +213,5 @@ export default function ContributionModal({ isOpen, onClose, onSave, goal }) {
     </div>
   );
 }
+
+export default withPaywall(ContributionModal);

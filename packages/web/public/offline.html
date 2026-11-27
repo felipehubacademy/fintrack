@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1F5BFF">
+  <title>MeuAzulão</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #FFFFFF; color: #0B1220; text-align: center; padding: 24px; box-sizing: border-box; }
+    img { width: 72px; height: 72px; margin-bottom: 16px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p { color: #5B6475; margin: 0 0 24px; line-height: 1.5; }
+    button { background: #1F5BFF; color: #FFFFFF; border: 0; border-radius: 999px; padding: 12px 28px;
+      font-size: 16px; font-weight: 600; cursor: pointer; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0B0F17; color: #F4F6FA; }
+      p { color: #9AA3B2; }
+      button { background: #4C7DFF; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/images/logo_flat.svg" alt="MeuAzulão">
+    <h1 id="title">You’re offline</h1>
+    <p id="body">Check your connection and try again. You can still text Zul on WhatsApp.</p>
+    <button id="retry" type="button" onclick="location.reload()">Try again</button>
+  </main>
+  <script>
+    (function () {
+      var copy = {
+        pt: ['Você está sem internet', 'Confira sua conexão e tente de novo. Você ainda pode mandar mensagem para o Zul no WhatsApp.', 'Tentar de novo'],
+        es: ['Estás sin conexión', 'Revisa tu conexión e inténtalo de nuevo. Igual puedes escribirle a Zul por WhatsApp.', 'Intentar de nuevo']
+      };
+      var lang = String((navigator.languages && navigator.languages[0]) || navigator.language || 'en').slice(0, 2).toLowerCase();
+      var c = copy[lang];
+      if (!c) return;
+      document.documentElement.lang = lang;
+      document.getElementById('title').textContent = c[0];
+      document.getElementById('body').textContent = c[1];
+      document.getElementById('retry').textContent = c[2];
+    })();
+  </script>
+</body>
+</html>

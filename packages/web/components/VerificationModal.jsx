@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Smartphone, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function VerificationModal({ user, onVerified }) {
+  const { t } = useI18n();
   const { success, showError } = useNotificationContext();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,10 +34,10 @@ export default function VerificationModal({ user, onVerified }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao enviar código');
+        throw new Error(data.error || t('web.verificationModal.couldnTSendTheCode'));
       }
 
-      setMessage('Código enviado! Verifique seu WhatsApp');
+      setMessage(t('web.verificationModal.codeSentCheckYourWhatsapp'));
       setCountdown(60); // 1 minuto antes de poder enviar novamente
 
       // Em desenvolvimento, mostrar o código no console
@@ -55,7 +57,7 @@ export default function VerificationModal({ user, onVerified }) {
     e.preventDefault();
     
     if (code.length !== 6) {
-      setMessage('Digite um código de 6 dígitos');
+      setMessage(t('web.verificationModal.enterA6DigitCode'));
       setIsError(true);
       return;
     }
@@ -77,10 +79,10 @@ export default function VerificationModal({ user, onVerified }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Código inválido');
+        throw new Error(data.error || t('web.shared.invalidCode'));
       }
 
-      setMessage('WhatsApp verificado com sucesso!');
+      setMessage(t('web.verificationModal.whatsappVerified'));
       setIsError(false);
       
       // Aguardar 1 segundo antes de chamar callback
@@ -111,10 +113,10 @@ export default function VerificationModal({ user, onVerified }) {
             <Smartphone className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Verificar WhatsApp
+            {t('web.shared.verifyWhatsapp')}
           </h2>
           <p className="text-gray-600 text-sm">
-            Enviamos um código de 6 dígitos para <span className="font-semibold">{user.phone}</span>
+            {t('web.verificationModal.weSentA6Digit')} <span className="font-semibold">{user.phone}</span>
           </p>
         </div>
 
@@ -124,7 +126,7 @@ export default function VerificationModal({ user, onVerified }) {
           {/* Code Input */}
           <div>
             <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
-              Código de Verificação
+              {t('web.shared.verificationCode')}
             </label>
             <input
               id="code"
@@ -140,7 +142,7 @@ export default function VerificationModal({ user, onVerified }) {
               autoFocus
             />
             <p className="text-xs text-gray-500 mt-2 text-center">
-              Digite o código de 6 dígitos recebido no WhatsApp
+              {t('web.verificationModal.enterThe6DigitCode')}
             </p>
           </div>
 
@@ -154,10 +156,10 @@ export default function VerificationModal({ user, onVerified }) {
             {loading ? (
               <span className="flex items-center justify-center">
                 <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                Verificando...
+                {t('web.shared.checking')}
               </span>
             ) : (
-              'Verificar Código'
+              t('web.verificationModal.verifyCode')
             )}
           </button>
 
@@ -171,17 +173,17 @@ export default function VerificationModal({ user, onVerified }) {
             {sending ? (
               <>
                 <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                Enviando...
+                {t('web.shared.sending')}
               </>
             ) : countdown > 0 ? (
               <>
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Reenviar em {countdown}s
+                {t('web.shared.resendInS', { countdown })}
               </>
             ) : (
               <>
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Enviar Novo Código
+                {t('web.verificationModal.sendANewCode')}
               </>
             )}
           </button>
@@ -193,10 +195,10 @@ export default function VerificationModal({ user, onVerified }) {
             <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-blue-900 font-medium mb-1">
-                Não recebeu o código?
+                {t('web.verificationModal.didnTGetTheCode')}
               </p>
               <p className="text-xs text-blue-700">
-                Verifique se o número {user.phone} está correto e se você tem WhatsApp ativo. Aguarde até 2 minutos antes de solicitar novo código.
+                {t('web.verificationModal.checkThatIsRightAnd', { phone: user.phone })}
               </p>
             </div>
           </div>
@@ -206,7 +208,7 @@ export default function VerificationModal({ user, onVerified }) {
         {/* Footer fixo */}
         <div className="p-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-b-3xl flex-shrink-0">
           <p className="text-xs text-gray-500 text-center">
-            Precisamos verificar seu WhatsApp para enviar notificações e permitir que você converse com o Zul
+            {t('web.verificationModal.weNeedToVerifyYour')}
           </p>
         </div>
       </div>

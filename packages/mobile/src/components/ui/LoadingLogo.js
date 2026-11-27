@@ -4,12 +4,14 @@ import { SvgXml } from 'react-native-svg';
 import { colors } from '../../theme';
 import { Text } from './Text';
 import { logoFlatSvg } from '../../assets/logoFlatSvg';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
  * LoadingLogo - Logo animado da app (substitui ActivityIndicator)
  * Simula o comportamento do LoadingLogo do web
  */
 export default function LoadingLogo({ size = 'medium', message = '', fullScreen = false }) {
+  const { t } = useI18n();
   const fillAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function LoadingLogo({ size = 'medium', message = '', fullScreen 
       <View 
         style={[styles.container, fullScreen && styles.fullScreenContent]}
         accessibilityRole="progressbar"
-        accessibilityLabel={message || "Carregando"}
+        accessibilityLabel={message || t('common.loading')}
         accessibilityLiveRegion="polite"
       >
         <View

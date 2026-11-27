@@ -5,14 +5,13 @@ import { Button } from './ui/Button';
 import { useOrganization } from '../hooks/useOrganization';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
-import {
-  getBrazilTodayString,
-  handleCurrencyChange,
-  parseCurrencyInput,
-  formatCurrencyInput
-} from '../lib/utils';
+import { getBrazilTodayString, handleCurrencyChange, parseCurrencyInput, formatCurrencyInput, appLocale, appCurrency } from '../lib/utils';
 import FileUploadButton from './FileUploadButton';
 import { useFileUpload } from '../hooks/useFileUpload';
+import { useI18n } from '../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { categoryName, dedupeCategories } from '../lib/categoryName';
+import withPaywall from './billing/withPaywall';
 
 const MAX_INSTALLMENTS = 24;
 
@@ -25,7 +24,8 @@ const createEmptyTransaction = () => ({
   installments: 1
 });
 
-export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuccess }) {
+function CardBulkTransactionsModal({ isOpen, onClose, card, onSuccess }) {
+  const { t } = useI18n();
   const { organization, user: orgUser, costCenters, budgetCategories, isSoloUser } = useOrganization();
   const { success, error: showError, warning } = useNotificationContext();
 
@@ -119,7 +119,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
     if (organization) {
       options.push({
         value: 'shared',
-        label: organization?.name || 'Família',
+        label: organization?.name || t('web.shared.household'),
         type: 'shared',
         reference: null
       });
@@ -196,7 +196,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
         ownerName = selectedResponsibility.label;
         costCenterId = selectedResponsibility.reference?.id || null;
       } else if (selectedResponsibility?.type === 'shared') {
-        ownerName = organization?.name || 'Família';
+        ownerName = organization?.name || t('web.shared.household');
         isShared = true;
       } else if (isSoloUser && userCostCenter) {
         ownerName = userCostCenter.name;
@@ -224,7 +224,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
 
   const handleFileSelect = async (selectedFile) => {
     if (!card || !organization) {
-      warning('Informações do cartão ou organização não encontradas.');
+      warning(t('web.cardBulkTransactionsModal.cardOrHouseholdInfoNot'));
       return;
     }
 
@@ -264,7 +264,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
       });
 
       setTransactions(mapped);
-      success(`${mapped.length} transações extraídas com sucesso!`);
+      success(t('web.cardBulkTransactionsModal.transactionsReadFromTheFile', { length: mapped.length }));
       setShowUploadSection(false);
     } else if (uploadError) {
       showError(uploadError);
@@ -301,7 +301,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
       if (error) throw error;
 
       if (existing && existing.length > 0) {
-        const monthYear = oldestDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        const monthYear = oldestDate.toLocaleDateString(appLocale(), { month: 'long', year: 'numeric' });
         return {
           count: existing.length,
           monthYear,
@@ -322,12 +322,12 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
     setShowValidation(true);
 
     if (!card || !organization || !orgUser) {
-      warning('Informações do cartão ou organização não encontradas.');
+      warning(t('web.cardBulkTransactionsModal.cardOrHouseholdInfoNot'));
       return;
     }
 
     if (!allValid) {
-      warning('Preencha todos os campos antes de salvar.');
+      warning(t('web.cardBulkTransactionsModal.fillInEveryFieldBefore'));
       return;
     }
 
@@ -357,7 +357,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
 
         if (cancelError) {
           console.error('❌ Erro ao cancelar transações:', cancelError);
-          warning('Erro ao cancelar transações existentes. Prosseguindo com mesclagem.');
+          warning(t('web.cardBulkTransactionsModal.couldnTCancelExistingTransactions'));
         }
       }
 
@@ -372,15 +372,15 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
         throw error;
       }
 
-      success('Transações adicionadas com sucesso!');
+      success(t('web.cardBulkTransactionsModal.transactionsAdded'));
       setShowDuplicateModal(false);
       setDuplicateInfo(null);
       onClose?.();
       onSuccess?.();
     } catch (err) {
       console.error('❌ [CardBulkTransactionsModal] Erro ao salvar transações:', err);
-      const message = err?.message || err?.details || 'Erro desconhecido ao salvar transações em massa.';
-      showError(`Erro ao salvar transações: ${message}`);
+      const message = err?.message || err?.details || t('web.cardBulkTransactionsModal.unknownErrorSavingTheTransactions');
+      showError(t('web.cardBulkTransactionsModal.couldnTSaveTheTransactions', { message }));
     } finally {
       setIsSaving(false);
     }
@@ -399,10 +399,10 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
         <div className="px-6 py-4 border-b border-gray-100 bg-flight-blue/5 rounded-t-xl">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Transações em Massa</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('web.cardBulkTransactionsModal.bulkTransactions')}</h2>
               {card && (
                 <p className="text-sm text-gray-600 mt-1">
-                  Cartão: <span className="font-medium">{card.name}</span>
+                  {t('web.cardBulkTransactionsModal.card')} <span className="font-medium">{card.name}</span>
                 </p>
               )}
             </div>
@@ -415,14 +415,14 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                 disabled={uploading}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                {showUploadSection ? 'Cancelar Upload' : 'Upload de Arquivo'}
+                {showUploadSection ? t('web.cardBulkTransactionsModal.cancelUpload') : t('web.cardBulkTransactionsModal.uploadAFile')}
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
                 className="text-gray-700 hover:bg-gray-100"
-                aria-label="Fechar modal"
+                aria-label={t('web.cardBulkTransactionsModal.close')}
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -432,8 +432,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
           {transactions.length > 0 && (
             <div className="flex items-center gap-4 text-xs text-gray-600">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-gray-900">{transactions.length}</span>
-                <span>transaç{transactions.length === 1 ? 'ão' : 'ões'}</span>
+                <span>{t('web.fixes.transactionsCount', { count: transactions.length })}</span>
               </div>
               <div className="h-3 w-px bg-gray-300" />
               <div className="flex items-center gap-1.5">
@@ -444,13 +443,13 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                       if (tx._isRefund) return sum - amount;
                       return sum + amount;
                     }, 0);
-                    return new Intl.NumberFormat('pt-BR', {
+                    return new Intl.NumberFormat(appLocale(), {
                       style: 'currency',
-                      currency: 'BRL'
+                      currency: appCurrency()
                     }).format(total);
                   })()}
                 </span>
-                <span>total da fatura</span>
+                <span>{t('web.cardBulkTransactionsModal.billTotal')}</span>
               </div>
             </div>
           )}
@@ -461,7 +460,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
           {showUploadSection && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Upload de Fatura/Extrato
+                {t('web.cardBulkTransactionsModal.uploadAStatement')}
               </h3>
               <FileUploadButton
                 onFileSelect={handleFileSelect}
@@ -478,7 +477,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                 <p className="text-sm text-red-600 mt-2">{uploadError}</p>
               )}
               <p className="text-xs text-gray-500 mt-2">
-                Formatos aceitos: PDF, CSV, Excel. As transações extraídas aparecerão abaixo para revisão antes de salvar.
+                {t('web.cardBulkTransactionsModal.pdfCsvOrExcelThe')}
               </p>
             </div>
           )}
@@ -513,7 +512,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                         type="text"
                         value={transaction.description}
                         onChange={(e) => handleFieldChange(index, 'description', e.target.value)}
-                        placeholder="Ex: Compra no supermercado"
+                        placeholder={t('web.cardBulkTransactionsModal.eGGroceries')}
                         className={`w-full h-10 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${showInvalidState && !transaction.description.trim() ? 'border-red-300' : 'border-gray-300'}`}
                       />
                     </div>
@@ -525,10 +524,10 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                         disabled={specialCategoryLock}
                         className={`w-full h-10 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${showInvalidState && !transaction.category_id ? 'border-red-300' : 'border-gray-300'} ${specialCategoryLock ? 'bg-gray-100 text-gray-500' : ''}`}
                       >
-                        <option value="">{specialCategoryLock ? 'Categoria automática' : 'Categoria'}</option>
-                        {expenseCategories.map((category) => (
+                        <option value="">{specialCategoryLock ? t('web.cardBulkTransactionsModal.autoCategory') : t('web.shared.category')}</option>
+                        {dedupeCategories(expenseCategories, [transaction.category_id]).map((category) => (
                           <option key={category.id} value={category.id}>
-                            {category.name}
+                            {categoryName(category.name)}
                           </option>
                         ))}
                       </select>
@@ -541,7 +540,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                           onChange={(e) => handleFieldChange(index, 'responsibility', e.target.value)}
                           className={`w-full h-10 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${showInvalidState && !transaction.responsibility ? 'border-red-300' : 'border-gray-300'}`}
                         >
-                          <option value="">Responsável</option>
+                          <option value="">{t('web.shared.owner2')}</option>
                           {ownerOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
@@ -575,7 +574,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                           const parsed = parseCurrencyInput(e.target.value);
                           handleFieldChange(index, 'amount', parsed ? formatCurrencyInput(parsed) : '');
                         }}
-                        placeholder="R$ 0,00"
+                        placeholder={formatMoney(0)}
                         className={`w-full h-10 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue ${showInvalidState && parseCurrencyInput(transaction.amount) <= 0 ? 'border-red-300' : 'border-gray-300'}`}
                       />
                     </div>
@@ -587,7 +586,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                         onClick={() => removeTransactionRow(index)}
                         disabled={transactions.length === 1}
                         className="text-red-500 hover:bg-red-50 disabled:opacity-40 disabled:hover:bg-transparent"
-                        aria-label="Remover transação"
+                        aria-label={t('web.cardBulkTransactionsModal.removeTransaction')}
                       >
                         <Trash2 className="h-5 w-5" />
                       </Button>
@@ -596,7 +595,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
 
                   {showInvalidState && (
                     <p className="mt-3 text-sm text-red-600">
-                      Preencha todos os campos obrigatórios para esta transação.
+                      {t('web.cardBulkTransactionsModal.fillInAllRequiredFields')}
                     </p>
                   )}
                 </div>
@@ -611,7 +610,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
               size="icon"
               onClick={addTransactionRow}
               className="border-dashed border-2 border-flight-blue text-flight-blue hover:bg-flight-blue/5"
-              aria-label="Adicionar nova transação"
+              aria-label={t('web.cardBulkTransactionsModal.addTransaction')}
             >
               <Plus className="h-5 w-5" />
             </Button>
@@ -625,14 +624,14 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
             onClick={onClose}
             disabled={isSaving}
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             className="bg-flight-blue hover:bg-flight-blue/90 text-white disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={isSaving || !allValid}
           >
-            {isSaving ? 'Salvando...' : 'Salvar transações'}
+            {isSaving ? t('web.shared.saving') : t('web.cardBulkTransactionsModal.saveTransactions')}
           </Button>
         </div>
       </div>
@@ -642,14 +641,13 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100000] p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Transações Existentes Detectadas
+              {t('web.cardBulkTransactionsModal.existingTransactionsFound')}
             </h3>
             <p className="text-sm text-gray-700 mb-4">
-              Já existem <strong>{duplicateInfo.count} transações</strong> para o cartão{' '}
-              <strong>{duplicateInfo.cardName}</strong> em <strong>{duplicateInfo.monthYear}</strong>.
+              {t('web.fixes.duplicatesFound', { count: duplicateInfo.count, card: duplicateInfo.cardName, month: duplicateInfo.monthYear })}
             </p>
             <p className="text-sm text-gray-600 mb-6">
-              O que deseja fazer?
+              {t('web.cardBulkTransactionsModal.whatDoYouWantTo')}
             </p>
             <div className="space-y-3">
               <Button
@@ -660,7 +658,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                 className="w-full bg-flight-blue hover:bg-flight-blue/90 text-white"
                 disabled={isSaving}
               >
-                ✅ Mesclar (adicionar às existentes)
+                {t('web.cardBulkTransactionsModal.mergeAddToExisting')}
               </Button>
               <Button
                 onClick={() => {
@@ -671,7 +669,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                 className="w-full border-orange-500 text-orange-600 hover:bg-orange-50"
                 disabled={isSaving}
               >
-                🔄 Substituir (cancelar existentes)
+                {t('web.cardBulkTransactionsModal.replaceCancelExisting')}
               </Button>
               <Button
                 onClick={() => {
@@ -682,7 +680,7 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
                 className="w-full"
                 disabled={isSaving}
               >
-                ❌ Cancelar
+                {t('web.cardBulkTransactionsModal.cancel')}
               </Button>
             </div>
           </div>
@@ -693,4 +691,4 @@ export default function CardBulkTransactionsModal({ isOpen, onClose, card, onSuc
   );
 }
 
-
+export default withPaywall(CardBulkTransactionsModal);

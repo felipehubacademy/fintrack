@@ -10,6 +10,7 @@ import { useOrganization } from '../hooks/useOrganization';
 import { supabase } from '../lib/supabaseClient';
 import Image from 'next/image';
 import Avatar from './Avatar';
+import { useI18n } from '../contexts/I18nContext';
 
 // Função para formatar mensagens do Zul com markdown básico
 const formatZulMessage = (message, isUser = false) => {
@@ -62,6 +63,7 @@ const formatZulMessage = (message, isUser = false) => {
 };
 
 export default function ZulFloatingButton() {
+  const { t } = useI18n();
   const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
@@ -811,8 +813,8 @@ export default function ZulFloatingButton() {
 
       const firstName = getFirstName();
       const greeting = firstName 
-        ? `E aí, ${firstName}! 👋 Como posso te ajudar hoje?`
-        : 'E aí! 👋 Como posso te ajudar hoje?';
+        ? t('web.zulFloatingButton.heyHowCanIHelp', { firstName })
+        : t('web.zulFloatingButton.heyHowCanIHelp2');
 
       setMessages([
         {
@@ -1039,7 +1041,7 @@ export default function ZulFloatingButton() {
       // Despesas por cost center/responsável
       const ownerTotals = {};
       expenses?.forEach(e => {
-        const ownerName = costCenterMap[e.cost_center_id] || 'Compartilhado';
+        const ownerName = costCenterMap[e.cost_center_id] || t('web.shared.shared2');
         ownerTotals[ownerName] = (ownerTotals[ownerName] || 0) + parseFloat(e.amount || 0);
       });
       const expensesByOwner = Object.entries(ownerTotals)
@@ -1115,7 +1117,7 @@ export default function ZulFloatingButton() {
             // Adicionar nome da categoria aos budgets
             budgets = budgets.map(b => ({
               ...b,
-              category_name: budgetCategoryMap[b.category_id] || 'Sem categoria'
+              category_name: budgetCategoryMap[b.category_id] || t('web.zulFloatingButton.noCategory')
             }));
           }
         }
@@ -1327,7 +1329,7 @@ export default function ZulFloatingButton() {
       const errorMessage = {
         id: Date.now() + 1,
         type: 'zul',
-        message: 'Desculpe, ocorreu um erro. Tente novamente em alguns instantes.',
+        message: t('web.zulFloatingButton.sorrySomethingWentWrongTry'),
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -1432,7 +1434,7 @@ export default function ZulFloatingButton() {
                           className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-xs px-3 py-1 h-7"
                         >
                           <ChevronLeft className="h-3 w-3 mr-1" />
-                          Anterior
+                          {t('web.shared.previous')}
                         </Button>
                       )}
                       <Button
@@ -1440,7 +1442,7 @@ export default function ZulFloatingButton() {
                         onClick={isLastStep() ? completeTour : nextStep}
                         className="bg-blue-600 hover:bg-blue-700 text-white border-0 text-xs px-3 py-1 h-7 flex-1"
                       >
-                        {isLastStep() ? 'Finalizar' : 'Próximo'}
+                        {isLastStep() ? t('web.zulFloatingButton.finish') : t('web.shared.next')}
                         {!isLastStep() && <ChevronRight className="h-3 w-3 ml-1" />}
                       </Button>
                     </>
@@ -1459,7 +1461,7 @@ export default function ZulFloatingButton() {
                         onClick={dismissTip}
                         className="text-gray-500 text-xs px-3 py-1 h-7"
                       >
-                        Depois
+                        {t('web.zulFloatingButton.later')}
                       </Button>
                     </>
                   )}
@@ -1498,7 +1500,7 @@ export default function ZulFloatingButton() {
                 </div>
                 <div>
                   <h2 className="text-lg font-medium text-gray-900">Zul</h2>
-                  <p className="text-xs text-gray-500">Assistente financeiro</p>
+                  <p className="text-xs text-gray-500">{t('web.zulFloatingButton.moneyAssistant')}</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={handleCloseChat} className="h-8 w-8">
@@ -1574,7 +1576,7 @@ export default function ZulFloatingButton() {
               <div className="flex space-x-2">
                 <input
                   type="text"
-                  placeholder="Digite sua mensagem..."
+                  placeholder={t('web.zulFloatingButton.typeAMessage')}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
@@ -1587,7 +1589,7 @@ export default function ZulFloatingButton() {
                   disabled={!inputMessage.trim() || isLoading}
                   className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                 >
-                  {isLoading ? '...' : 'Enviar'}
+                  {isLoading ? '...' : t('web.zulFloatingButton.send')}
                 </Button>
               </div>
             </div>

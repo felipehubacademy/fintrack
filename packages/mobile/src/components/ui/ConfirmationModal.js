@@ -11,21 +11,21 @@ import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Title2, Callout } from './Text';
 import { Button } from './Button';
 import { HapticFeedback } from '../../utils/haptics';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { width } = Dimensions.get('window');
 
 /**
- * ConfirmationModal - Modal de confirmação genérico
+ * ConfirmationModal: generic confirmation dialog. Pass translated strings;
+ * missing ones fall back to generic translated defaults.
  * 
  * Uso:
  * <ConfirmationModal
  *   visible={visible}
  *   onClose={onClose}
  *   onConfirm={handleConfirm}
- *   title="Confirmar ação"
- *   message="Tem certeza que deseja continuar?"
- *   confirmText="Confirmar"
- *   cancelText="Cancelar"
+ *   title={t('...')}
+ *   message={t('...')}
  *   type="warning" // warning, danger, info
  * />
  */
@@ -33,14 +33,19 @@ export default function ConfirmationModal({
   visible,
   onClose,
   onConfirm,
-  title = 'Confirmar ação',
-  message = 'Tem certeza que deseja continuar?',
-  confirmText = 'Confirmar',
-  cancelText = 'Cancelar',
+  title,
+  message,
+  confirmText,
+  cancelText,
   type = 'warning', // warning, danger, info
   loading = false,
 }) {
+  const { t } = useI18n();
   if (!visible) return null;
+  const titleText = title || t('dashboard.ui.confirmTitle');
+  const messageText = message || t('dashboard.ui.confirmMessage');
+  const confirmLabel = confirmText || t('common.confirm');
+  const cancelLabel = cancelText || t('common.cancel');
 
   const getIcon = () => {
     switch (type) {
@@ -93,7 +98,7 @@ export default function ConfirmationModal({
             <View style={styles.headerContent}>
               <View style={styles.iconContainer}>{getIcon()}</View>
               <Title2 weight="semiBold" style={styles.title}>
-                {title}
+                {titleText}
               </Title2>
             </View>
             <TouchableOpacity 
@@ -101,7 +106,7 @@ export default function ConfirmationModal({
               style={styles.closeButton} 
               disabled={loading}
               accessibilityRole="button"
-              accessibilityLabel="Fechar"
+              accessibilityLabel={t('common.close')}
               accessibilityState={{ disabled: loading }}
             >
               <X size={24} color={colors.text.secondary} />
@@ -111,21 +116,21 @@ export default function ConfirmationModal({
           {/* Content */}
           <View style={styles.content}>
             <Callout color="secondary" style={styles.message}>
-              {message}
+              {messageText}
             </Callout>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
             <Button
-              title={cancelText}
+              title={cancelLabel}
               variant="outline"
               onPress={handleClose}
               disabled={loading}
               style={styles.footerButton}
             />
             <Button
-              title={confirmText}
+              title={confirmLabel}
               onPress={handleConfirm}
               disabled={loading}
               loading={loading}

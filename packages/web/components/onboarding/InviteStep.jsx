@@ -4,8 +4,10 @@ import { useNotificationContext } from '../../contexts/NotificationContext';
 import ZulFloatingButton from '../ZulFloatingButton';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
+import { useI18n } from '../../contexts/I18nContext';
 
 export default function InviteStep({ organization, user, onComplete, onDataChange }) {
+  const { t } = useI18n();
   const { success, showError } = useNotificationContext();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -39,12 +41,12 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
 
   const sendInvite = async () => {
     if (!validateEmail(email)) {
-      showError('Por favor, insira um email válido');
+      showError(t('web.inviteStep.pleaseEnterAValidEmail'));
       return;
     }
 
     if (!name.trim()) {
-      showError('Por favor, insira o nome da pessoa');
+      showError(t('web.inviteStep.pleaseEnterTheirName'));
       return;
     }
 
@@ -83,7 +85,7 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
         }
         
         // Mostrar mensagem de sucesso
-        success('Convite enviado com sucesso!');
+        success(t('web.inviteStep.inviteSent'));
         
         // Avançar automaticamente após enviar
         setTimeout(() => {
@@ -92,11 +94,11 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
           }
         }, 800); // Pequeno delay para feedback visual
       } else {
-        showError(data.error || 'Erro ao enviar convite');
+        showError(data.error || t('web.shared.couldnTSendTheInvite'));
       }
     } catch (error) {
       console.error('❌ Erro ao enviar convite:', error);
-      showError('Erro ao enviar convite. Tente novamente.');
+      showError(t('web.inviteStep.couldnTSendTheInvite'));
     } finally {
       setLoading(false);
     }
@@ -138,26 +140,26 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
                   <Lightbulb className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900 text-base">Dica Importante</h4>
-                  <p className="text-xs text-gray-600">Entenda os tipos de acesso</p>
+                  <h4 className="font-bold text-gray-900 text-base">{t('web.inviteStep.tip')}</h4>
+                  <p className="text-xs text-gray-600">{t('web.inviteStep.accessLevels')}</p>
                 </div>
               </div>
 
               {/* Roles */}
               <div className="space-y-3">
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="font-semibold text-blue-900 text-sm mb-1">Visualizador</div>
-                  <p className="text-xs text-blue-700">Apenas visualiza despesas e relatórios. Sem permissão para criar.</p>
+                  <div className="font-semibold text-blue-900 text-sm mb-1">{t('web.inviteStep.viewer')}</div>
+                  <p className="text-xs text-blue-700">{t('web.inviteStep.seesExpensesAndReportsCan')}</p>
                 </div>
                 
                 <div className="p-3 bg-blue-50 border border-blue-300 rounded-lg">
-                  <div className="font-semibold text-blue-900 text-sm mb-1">Membro</div>
-                  <p className="text-xs text-blue-700">Pode criar despesas e gerenciar seu próprio centro de custo.</p>
+                  <div className="font-semibold text-blue-900 text-sm mb-1">{t('web.inviteStep.member')}</div>
+                  <p className="text-xs text-blue-700">{t('web.inviteStep.canAddExpensesAndManage')}</p>
                 </div>
                 
                 <div className="p-3 bg-blue-100 border border-blue-400 rounded-lg">
-                  <div className="font-semibold text-blue-950 text-sm mb-1">Admin</div>
-                  <p className="text-xs text-blue-800">Acesso total: gerenciar usuários, configurações e tudo na organização.</p>
+                  <div className="font-semibold text-blue-950 text-sm mb-1">{t('web.inviteStep.admin')}</div>
+                  <p className="text-xs text-blue-800">{t('web.inviteStep.fullAccessMembersSettingsAnd')}</p>
                 </div>
               </div>
             </CardContent>
@@ -169,10 +171,10 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
         {/* Header */}
         <div className="text-center">
           <h2 className="text-3xl md:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
-            Convide um Familiar
+            {t('web.inviteStep.inviteYourPartnerOrFamily')}
           </h2>
           <p className="text-gray-600 text-lg xl:text-xl">
-            Adicione alguém para compartilhar o controle financeiro
+            {t('web.inviteStep.addSomeoneToShareYour')}
           </p>
         </div>
 
@@ -181,13 +183,13 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
         <div className="space-y-4">
           <div>
             <label className="block text-gray-700 text-sm xl:text-base font-medium mb-2">
-              Email do Familiar
+              {t('web.inviteStep.theirEmail')}
             </label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 xl:w-6 xl:h-6 text-gray-400" />
               <input
                 type="email"
-                placeholder="email@exemplo.com"
+                placeholder={t('web.inviteStep.nameExampleCom')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendInvite()}
@@ -198,11 +200,11 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
 
           <div>
             <label className="block text-gray-700 text-sm xl:text-base font-medium mb-2">
-              Nome Completo
+              {t('web.inviteStep.fullName')}
             </label>
             <input
               type="text"
-              placeholder="Ex: Maria Silva"
+              placeholder={t('web.inviteStep.eGSamLee')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendInvite()}
@@ -212,7 +214,7 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
 
           <div>
             <label className="block text-gray-700 text-sm xl:text-base font-medium mb-2">
-              Nível de Acesso
+              {t('web.inviteStep.accessLevel')}
             </label>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -224,7 +226,7 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
                     : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                 }`}
               >
-                Visualizador
+                {t('web.inviteStep.viewer')}
               </button>
               <button
                 type="button"
@@ -235,7 +237,7 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
                     : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                 }`}
               >
-                Membro
+                {t('web.inviteStep.member')}
               </button>
               <button
                 type="button"
@@ -246,19 +248,19 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
                     : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                 }`}
               >
-                Admin
+                {t('web.inviteStep.admin')}
               </button>
             </div>
             <p className="text-gray-500 text-xs xl:text-sm mt-2">
-              {role === 'viewer' && 'Apenas visualiza despesas e relatórios'}
-              {role === 'member' && 'Pode criar despesas e gerenciar seu centro de custo'}
-              {role === 'admin' && 'Acesso total: gerenciar usuários, configurações e despesas'}
+              {role === 'viewer' && t('web.inviteStep.seesExpensesAndReports')}
+              {role === 'member' && t('web.inviteStep.canAddExpensesAndManage2')}
+              {role === 'admin' && t('web.inviteStep.fullAccessMembersSettingsAnd2')}
             </p>
           </div>
 
           <div>
             <label className="block text-gray-700 text-sm xl:text-base font-medium mb-2">
-              Cor do Perfil
+              {t('web.shared.profileColor')}
             </label>
             <div className="flex flex-wrap gap-2">
               {colors.map((c) => (
@@ -272,12 +274,12 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
                       : 'hover:scale-105'
                   }`}
                   style={{ backgroundColor: c }}
-                  title={`Cor ${c}`}
+                  title={t('web.inviteStep.color', { c })}
                 />
               ))}
             </div>
             <p className="text-gray-500 text-xs xl:text-sm mt-2">
-              Esta cor será usada para identificar este membro em gráficos e análises
+              {t('web.inviteStep.thisColorMarksThemIn')}
             </p>
           </div>
 
@@ -295,12 +297,12 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
           {loading ? (
             <>
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Enviando...</span>
+              <span>{t('web.shared.sending')}</span>
             </>
           ) : (
             <>
               <UserPlus className="w-5 h-5 xl:w-6 xl:h-6" />
-              <span>Enviar Convite</span>
+              <span>{t('web.shared.sendInvite')}</span>
             </>
           )}
         </button>
@@ -309,12 +311,12 @@ export default function InviteStep({ organization, user, onComplete, onDataChang
           onClick={handleComplete}
           className="px-8 py-4 xl:px-10 xl:py-5 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 rounded-full font-bold text-lg xl:text-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
         >
-          Pular esta Etapa
+          {t('web.inviteStep.skipThisStep')}
         </button>
       </div>
       
       <p className="text-center text-gray-500 text-sm xl:text-base">
-        Você poderá convidar mais pessoas depois em <span className="font-medium">Configurações → Membros</span>
+        {t('web.inviteStep.youCanInviteMorePeople')} <span className="font-medium">{t('web.inviteStep.settingsMembers')}</span>
       </p>
       </div>
     </>

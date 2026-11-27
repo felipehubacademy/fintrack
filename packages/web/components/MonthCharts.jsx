@@ -2,8 +2,12 @@ import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { buildOwnerColorMap, buildCategoryColorMap, paymentMethodColor, normalizeKey, resolveColor } from '../lib/colors';
 import { useResponsiveChart } from '../hooks/useResponsiveChart';
+import { useI18n } from '../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { categoryName } from '../lib/categoryName';
 
 export default function MonthCharts({ expenses, costCenters = [], categories = [], organization = null, user = null, isSoloUser = false }) {
+  const { t } = useI18n();
   const [hoverCategory, setHoverCategory] = useState(null);
   // Sempre mostrar todos (não há mais filtro de privacidade)
   const viewMode = 'all';
@@ -30,9 +34,13 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
   const userCostCenter = costCenters.find(cc => cc.user_id === user?.id);
 
   // Pizza 1: Divisão por Categorias (com breakdown Individual vs Org apenas para Family)
+  const rawCategoryByName = {};
   const categoryData = (expenses || []).reduce((acc, expense) => {
     if (!expense) return acc;
-    const category = expense.category || 'Outros';
+    const rawCategory = expense.category || 'Outros';
+    // Group PT/EN/ES rows of the same default category under one name
+    const category = categoryName(rawCategory);
+    if (!rawCategoryByName[category]) rawCategoryByName[category] = rawCategory;
     
     if (!acc[category]) {
       acc[category] = { individual: 0, org: 0, total: 0 };
@@ -73,7 +81,7 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
       } else {
         value = data.total;
       }
-      return { name, value, individual: data.individual, org: data.org };
+      return { name, rawName: rawCategoryByName[name] || name, value, individual: data.individual, org: data.org };
     })
     .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
@@ -110,11 +118,11 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
 
   const methodLabel = (code) => {
     switch (code) {
-      case 'credit_card': return 'Crédito';
-      case 'debit_card': return 'Débito';
+      case 'credit_card': return t('web.shared.credit');
+      case 'debit_card': return t('web.shared.debit');
       case 'pix': return 'PIX';
       case 'cash': return 'Dinheiro';
-      case 'bank_transfer': return 'Transferência';
+      case 'bank_transfer': return t('web.shared.transfer');
       case 'boleto': return 'Boleto';
       default: return 'Outros';
     }
@@ -310,11 +318,11 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
               {chartData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
-                  fill={title === 'Despesas por Responsável'
+                  fill={title === t('web.monthCharts.expensesByPerson')
                     ? resolveColor(entry.name, ownerColorMap)
-                    : title === 'Despesas por Formas de Pagamento'
+                    : title === t('web.monthCharts.expensesByPaymentMethod')
                       ? paymentMethodColor(entry.key || entry.name)
-                      : resolveColor(entry.name, categoryColorMap)
+                      : resolveColor(entry.rawName || entry.name, categoryColorMap)
                   }
                   style={{ opacity: 1, cursor: isMobile ? 'pointer' : 'default' }}
                 />
@@ -328,8 +336,8 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
             <div className={`text-center px-2 ${isMobile ? 'max-w-[120px]' : 'max-w-[140px]'} mx-auto`}>
               <p className={`text-[11px] font-semibold text-gray-900 truncate`}>{hovered.name}</p>
-              <p className={`text-sm font-bold text-gray-900`}>{`- R$ ${Number(hovered.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</p>
-              <p className={`text-[10px] text-gray-500 font-medium`}>{total > 0 ? `${((hovered.value / total) * 100).toFixed(1)}% do total` : ''}</p>
+              <p className={`text-sm font-bold text-gray-900`}>{`- ${formatMoney(Number(hovered.value || 0))}`}</p>
+              <p className={`text-[10px] text-gray-500 font-medium`}>{total > 0 ? t('web.monthCharts.ofTotal', { p0: ((hovered.value / total) * 100).toFixed(1) }) : ''}</p>
             </div>
           </div>
         )}
@@ -345,8 +353,8 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
         <div className="p-6 bg-flight-blue/5 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Análise do Mês</h2>
-              <p className="text-sm text-gray-600 mt-1">Insights e tendências das suas transações</p>
+              <h2 className="text-xl font-bold text-gray-900">{t('web.monthCharts.thisMonth')}</h2>
+              <p className="text-sm text-gray-600 mt-1">{t('web.monthCharts.whatYourSpendingLooksLike')}</p>
             </div>
           </div>
         </div>
@@ -356,8 +364,8 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhuma despesa encontrada</h3>
-          <p className="text-gray-500 max-w-md mx-auto">Adicione despesas para visualizar análises detalhadas e insights sobre seus gastos.</p>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('web.monthCharts.noExpensesYet')}</h3>
+          <p className="text-gray-500 max-w-md mx-auto">{t('web.monthCharts.textZulSomethingLikeCoffee')}</p>
         </div>
       </div>
     );
@@ -370,8 +378,8 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
         <div className="p-6 bg-flight-blue/5 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Análise do Mês</h2>
-              <p className="text-sm text-gray-600 mt-1">Insights e tendências das suas transações</p>
+              <h2 className="text-xl font-bold text-gray-900">{t('web.monthCharts.thisMonth')}</h2>
+              <p className="text-sm text-gray-600 mt-1">{t('web.monthCharts.whatYourSpendingLooksLike')}</p>
             </div>
           </div>
           
@@ -381,13 +389,13 @@ export default function MonthCharts({ expenses, costCenters = [], categories = [
           {/* Grid dos 3 gráficos pizza */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Pizza 1: Por Categorias */}
-        <ProfessionalPieChart data={categoryChartData} title="Despesas por Categorias" />
+        <ProfessionalPieChart data={categoryChartData} title={t('web.monthCharts.expensesByCategory')} />
         
         {/* Pizza 2: Por Formas de Pagamento */}
-        <ProfessionalPieChart data={paymentChartData} title="Despesas por Formas de Pagamento" />
+        <ProfessionalPieChart data={paymentChartData} title={t('web.monthCharts.expensesByPaymentMethod')} />
         
         {/* Pizza 3: Por Responsável */}
-        <ProfessionalPieChart data={ownerData} title="Despesas por Responsável" />
+        <ProfessionalPieChart data={ownerData} title={t('web.monthCharts.expensesByPerson')} />
       </div>
     </div>
   );

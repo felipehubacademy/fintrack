@@ -3,43 +3,39 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text } from '../ui/Text';
-import { formatBrazilMonthYear } from '../../utils/date';
+import { useI18n } from '../../contexts/I18nContext';
 
 /**
  * MonthSelector - Seletor de mês minimalista
  */
-export const MonthSelector = React.memo(function MonthSelector({ selectedMonth, onMonthChange }) {
+export const MonthSelector = React.memo(function MonthSelector({ selectedMonth, onMonthChange, allowFuture = false }) {
+  const { t, formatDate, language } = useI18n();
   // Parse correto da data - memoizado
   const monthInfo = useMemo(() => {
     const [year, month] = selectedMonth.split('-');
     const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
     
-    const monthLabel = formatBrazilMonthYear(selectedMonth);
+    const monthLabel = formatDate(`${selectedMonth}-01`, 'monthYear');
     const capitalizedMonth = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
-    const currentMonth = new Date().toISOString().slice(0, 7);
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const isCurrentMonth = selectedMonth === currentMonth;
     const isFutureMonth = selectedMonth > currentMonth;
 
     return { monthDate, capitalizedMonth, isCurrentMonth, isFutureMonth };
-  }, [selectedMonth]);
+  }, [selectedMonth, formatDate, language]);
 
-  const goToPreviousMonth = useCallback(() => {
-    const [year, month] = selectedMonth.split('-');
-    const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const date = new Date(monthDate);
-    date.setMonth(date.getMonth() - 1);
-    const newMonth = date.toISOString().slice(0, 7);
-    onMonthChange(newMonth);
+  // Month keys are built from local dates (toISOString() would shift to UTC
+  // and skip or repeat a month east of Greenwich).
+  const shiftMonth = useCallback((delta) => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const date = new Date(year, month - 1 + delta, 1);
+    onMonthChange(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
   }, [selectedMonth, onMonthChange]);
 
-  const goToNextMonth = useCallback(() => {
-    const [year, month] = selectedMonth.split('-');
-    const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const date = new Date(monthDate);
-    date.setMonth(date.getMonth() + 1);
-    const newMonth = date.toISOString().slice(0, 7);
-    onMonthChange(newMonth);
-  }, [selectedMonth, onMonthChange]);
+  const goToPreviousMonth = useCallback(() => shiftMonth(-1), [shiftMonth]);
+  const goToNextMonth = useCallback(() => shiftMonth(1), [shiftMonth]);
+  const nextDisabled = !allowFuture && monthInfo.isFutureMonth;
 
   return (
     <View style={styles.container}>
@@ -48,8 +44,7 @@ export const MonthSelector = React.memo(function MonthSelector({ selectedMonth, 
         onPress={goToPreviousMonth}
         activeOpacity={0.6}
         accessibilityRole="button"
-        accessibilityLabel="Mês anterior"
-        accessibilityHint="Navegar para o mês anterior"
+        accessibilityLabel={t('finances.month.previous')}
       >
         <ChevronLeft size={24} color={colors.text.primary} />
       </TouchableOpacity>
@@ -61,7 +56,7 @@ export const MonthSelector = React.memo(function MonthSelector({ selectedMonth, 
         {monthInfo.isCurrentMonth && (
           <View style={styles.currentIndicator}>
             <Text variant="caption1" color="inverse" weight="medium">
-              Atual
+              {t('finances.month.current')}
             </Text>
           </View>
         )}
@@ -71,15 +66,14 @@ export const MonthSelector = React.memo(function MonthSelector({ selectedMonth, 
         style={styles.arrow}
         onPress={goToNextMonth}
         activeOpacity={0.6}
-        disabled={monthInfo.isFutureMonth}
+        disabled={nextDisabled}
         accessibilityRole="button"
-        accessibilityLabel={monthInfo.isFutureMonth ? "Mês futuro não disponível" : "Próximo mês"}
-        accessibilityHint={monthInfo.isFutureMonth ? undefined : "Navegar para o próximo mês"}
-        accessibilityState={{ disabled: monthInfo.isFutureMonth }}
+        accessibilityLabel={t('finances.month.next')}
+        accessibilityState={{ disabled: nextDisabled }}
       >
         <ChevronRight 
           size={24} 
-          color={monthInfo.isFutureMonth ? colors.text.tertiary : colors.text.primary} 
+          color={nextDisabled ? colors.text.tertiary : colors.text.primary} 
         />
       </TouchableOpacity>
     </View>

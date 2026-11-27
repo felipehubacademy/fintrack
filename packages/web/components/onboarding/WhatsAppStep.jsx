@@ -5,8 +5,11 @@ import { supabase } from '../../lib/supabaseClient';
 import ZulFloatingButton from '../ZulFloatingButton';
 import { Button } from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
+import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 export default function WhatsAppStep({ user, onComplete, onDataChange }) {
+  const { t } = useI18n();
   const [showZulCard, setShowZulCard] = useState(false);
   
   // Mostrar card com delay para sincronizar com ZulFloatingButton
@@ -85,7 +88,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
 
   const verifyCode = async (code = verificationCode) => {
     if (!code || code.length !== 6) {
-      setError('Digite o código de 6 dígitos');
+      setError(t('web.whatsAppStep.enterThe6DigitCode'));
       return;
     }
 
@@ -105,7 +108,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Código inválido');
+        throw new Error(data.error || t('web.shared.invalidCode'));
       }
 
       setIsVerified(true);
@@ -125,7 +128,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
     
     // Verificar se o número é diferente do cadastrado
     if (registeredPhone && formatted.replace(/\D/g, '') !== registeredPhone.replace(/\D/g, '') && formatted.replace(/\D/g, '').length === 11) {
-      setWarning('Este número é diferente do seu cadastro. Ao enviar o código, seu número será atualizado automaticamente.');
+      setWarning(t('web.whatsAppStep.thisNumberIsDifferentFrom'));
     } else {
       setWarning(null);
     }
@@ -133,7 +136,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
 
   const handleSendCode = async () => {
     if (!phone || phone.replace(/\D/g, '').length < 11) {
-      setError('Digite um telefone válido');
+      setError(t('web.whatsAppStep.enterAValidPhoneNumber'));
       return;
     }
 
@@ -166,7 +169,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
 
         if (updateError) {
           console.error('❌ Erro ao atualizar telefone:', updateError);
-          throw new Error('Erro ao atualizar telefone');
+          throw new Error(t('web.whatsAppStep.couldnTUpdateYourPhone'));
         }
         
         console.log('✅ Telefone atualizado no banco');
@@ -197,17 +200,17 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
           
           if (minutes >= 60) {
             const hours = Math.ceil(minutes / 60);
-            setError(`⏰ Muitas tentativas. Aguarde ${hours} hora${hours > 1 ? 's' : ''} para tentar novamente.`);
+            setError(t('web.whatsAppStep.tooManyTriesWaitH', { hours, p1: hours > 1 ? 's' : '' }));
           } else if (minutes > 1) {
-            setError(`⏰ Muitas tentativas. Aguarde ${minutes} minutos para tentar novamente.`);
+            setError(t('web.whatsAppStep.tooManyTriesWaitMinutes', { minutes }));
           } else {
-            setError(`⏰ Aguarde ${retryAfter} segundos para tentar novamente.`);
+            setError(t('web.whatsAppStep.waitSecondsAndTryAgain', { retryAfter }));
           }
           
           // Setar countdown automático baseado no retryAfter
           setCountdown(retryAfter);
         } else {
-          setError(data.error || `Erro ao enviar código (${response.status})`);
+          setError(data.error || t('web.whatsAppStep.couldnTSendTheCode', { status: response.status }));
         }
         return;
       }
@@ -217,7 +220,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
       setVerificationCode(''); // Limpar código anterior ao reenviar
     } catch (err) {
       console.error('❌ Erro na requisição:', err);
-      setError(err.message || 'Erro ao enviar código. Verifique sua conexão.');
+      setError(err.message || t('web.whatsAppStep.couldnTSendTheCode2'));
     } finally {
       setLoading(false);
     }
@@ -248,8 +251,8 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
                   <MessageCircle className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900 text-base">Sou o Zul! 👋</h4>
-                  <p className="text-xs text-gray-600">Seu assistente financeiro</p>
+                  <h4 className="font-bold text-gray-900 text-base">{t('web.whatsAppStep.iMZul')}</h4>
+                  <p className="text-xs text-gray-600">{t('web.whatsAppStep.yourMoneyAssistant')}</p>
                 </div>
               </div>
               
@@ -258,7 +261,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
                   <div className="flex items-start space-x-2">
                     <Lightbulb className="h-4 w-4 text-[#207DFF] mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-blue-800 font-medium leading-relaxed">
-                      Envie suas despesas por WhatsApp! Eu registro tudo automaticamente.
+                      {t('web.whatsAppStep.textMeYourExpensesOn')}
                     </p>
                   </div>
                 </div>
@@ -266,19 +269,19 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
                 <div className="space-y-2 text-xs text-gray-600">
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="h-3 w-3 text-[#207DFF] flex-shrink-0" />
-                    <span>Registro automático de transações</span>
+                    <span>{t('web.whatsAppStep.expensesLoggedForYou')}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="h-3 w-3 text-[#207DFF] flex-shrink-0" />
-                    <span>Gráficos e análises inteligentes</span>
+                    <span>{t('web.whatsAppStep.clearCharts')}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="h-3 w-3 text-[#207DFF] flex-shrink-0" />
-                    <span>Lembretes de vencimentos</span>
+                    <span>{t('web.whatsAppStep.billReminders')}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="h-3 w-3 text-[#207DFF] flex-shrink-0" />
-                    <span>E muito mais...</span>
+                    <span>{t('web.whatsAppStep.andMore')}</span>
                   </div>
                 </div>
               </div>
@@ -291,10 +294,10 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
         {/* Header */}
         <div className="text-center">
           <h2 className="text-3xl md:text-4xl xl:text-5xl font-bold text-gray-900 mb-3">
-            Conheça o Zul
+            {t('web.whatsAppStep.meetZul')}
           </h2>
           <p className="text-gray-600 text-lg xl:text-xl">
-            Seu assistente financeiro pessoal via WhatsApp
+            {t('web.whatsAppStep.yourMoneyAssistantOnWhatsapp')}
           </p>
         </div>
 
@@ -314,8 +317,8 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
               />
             </div>
             <div>
-              <h3 className="text-white font-bold text-base xl:text-lg">Zul - MeuAzulão</h3>
-              <p className="text-green-100 text-xs xl:text-sm">online</p>
+              <h3 className="text-white font-bold text-base xl:text-lg">{t('web.whatsAppStep.zulMeuazulao')}</h3>
+              <p className="text-green-100 text-xs xl:text-sm">{t('web.whatsAppStep.online')}</p>
             </div>
           </div>
 
@@ -323,20 +326,20 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
           <div className="p-4 space-y-3 flex-1 bg-[#ECE5DD]">
             <div className="flex justify-start">
               <div className="max-w-[85%] px-3 py-2 rounded-2xl text-sm shadow-md bg-white text-gray-800 rounded-bl-none">
-                Olá! 👋 Sou o Zul, seu assistente financeiro. Pode me enviar suas despesas por aqui!
+                {t('web.whatsAppStep.hiIMZulYour')}
               </div>
             </div>
             
             <div className="flex justify-end">
               <div className="max-w-[85%] px-3 py-2 rounded-2xl text-sm shadow-md bg-gradient-to-br from-[#DCF8C6] to-[#D1F4CC] text-gray-800 rounded-br-none">
-                Gastei R$ 45 no mercado hoje
+                {t('web.whatsAppStep.groceries45')}
               </div>
             </div>
 
             <div className="flex justify-start">
               <div className="max-w-[85%] px-3 py-2 rounded-2xl text-sm shadow-md bg-white text-gray-800 rounded-bl-none">
-                ✅ Registrado! <strong>R$ 45,00</strong> em <strong>Mercado</strong><br/>
-                Deseja adicionar mais detalhes?
+                {t('web.whatsAppStep.logged')} <strong>{formatMoney(45)}</strong> {t('web.shared.at')} <strong>{t('web.whatsAppStep.groceries')}</strong><br/>
+                {t('web.whatsAppStep.wantToAddMoreDetails')}
               </div>
             </div>
           </div>
@@ -351,10 +354,10 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900 text-lg">
-                  Verificar WhatsApp
+                  {t('web.shared.verifyWhatsapp')}
                 </h3>
                 <p className="text-gray-600 text-sm">
-                  Conecte seu número
+                  {t('web.whatsAppStep.connectYourNumber')}
                 </p>
               </div>
             </div>
@@ -378,7 +381,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
               <div className="space-y-3">
                 <div>
                   <label className="block text-gray-700 text-sm font-medium mb-2">
-                    Número do WhatsApp
+                    {t('web.whatsAppStep.whatsappNumber')}
                   </label>
                   <input
                     type="tel"
@@ -390,7 +393,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
                   />
                   {registeredPhone && phone.replace(/\D/g, '') === registeredPhone.replace(/\D/g, '') && (
                     <p className="text-xs text-green-600 mt-1">
-                      ✓ Este é o número cadastrado na sua conta
+                      {t('web.whatsAppStep.thisIsTheNumberOn')}
                     </p>
                   )}
                 </div>
@@ -401,12 +404,12 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
                   className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                 >
                   <Send className="w-4 h-4" />
-                  <span>{loading ? 'Enviando...' : 'Enviar Código'}</span>
+                  <span>{loading ? t('web.shared.sending') : t('web.whatsAppStep.sendCode')}</span>
                 </button>
 
                 {!registeredPhone && (
                   <p className="text-gray-600 text-xs text-center">
-                    💡 Digite apenas DDD + número. Ex: (11) 97822-9898
+                    {t('web.whatsAppStep.includeYourCountryCodeE')}
                   </p>
                 )}
               </div>
@@ -414,7 +417,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
               <div className="space-y-3">
                 <div>
                   <label className="block text-gray-700 text-sm font-medium mb-2">
-                    Código de Verificação
+                    {t('web.shared.verificationCode')}
                   </label>
                   <input
                     type="text"
@@ -433,7 +436,7 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
                   className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 bg-[#207DFF] hover:bg-[#207DFF]/90 text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  <span>{loading ? 'Verificando...' : 'Verificar'}</span>
+                  <span>{loading ? t('web.shared.checking') : t('web.whatsAppStep.verify')}</span>
                 </button>
 
                 <button
@@ -442,8 +445,8 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
                   className="w-full text-xs text-gray-600 hover:text-gray-900 disabled:text-gray-400 transition-colors"
                 >
                   {countdown > 0 
-                    ? `Reenviar em ${countdown}s` 
-                    : 'Reenviar código'
+                    ? t('web.shared.resendInS', { countdown }) 
+                    : t('web.whatsAppStep.resendCode')
                   }
                 </button>
               </div>
@@ -455,10 +458,10 @@ export default function WhatsAppStep({ user, onComplete, onDataChange }) {
               <CheckCircle className="w-8 h-8 text-white" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              WhatsApp Verificado! 🎉
+              {t('web.whatsAppStep.whatsappVerified')}
             </h3>
             <p className="text-gray-600 text-sm">
-              Agora você pode conversar com o Zul pelo número{' '}
+              {t('web.whatsAppStep.youCanNowChatWith')}
               <span className="font-semibold text-[#25D366] block mt-1">{phone}</span>
             </p>
           </div>

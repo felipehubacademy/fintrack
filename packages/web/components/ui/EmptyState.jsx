@@ -1,4 +1,5 @@
 import { Button } from './Button';
+import ZulHint from '../ZulHint';
 
 /**
  * EmptyState - Componente para estados vazios com instruções claras
@@ -14,6 +15,7 @@ export default function EmptyState({
   secondaryActionLabel,
   onSecondaryAction,
   illustration,
+  zulText,
   className = ''
 }) {
   return (
@@ -40,6 +42,8 @@ export default function EmptyState({
           {description}
         </p>
       )}
+
+      {zulText && <ZulHint text={zulText} className="mb-6" />}
 
       {/* Ações */}
       {(actionLabel || secondaryActionLabel) && (

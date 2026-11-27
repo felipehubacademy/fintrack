@@ -3,6 +3,7 @@ import { HelpCircle, X, Send, CheckCircle } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function SupportModal({ 
   isOpen, 
@@ -10,6 +11,7 @@ export default function SupportModal({
   userEmail = '',
   userName = ''
 }) {
+  const { t } = useI18n();
   const { success: showSuccess, error: showError } = useNotificationContext();
   const [formData, setFormData] = useState({
     name: userName || '',
@@ -31,7 +33,7 @@ export default function SupportModal({
     e.preventDefault();
     
     if (!formData.name || !formData.email || !formData.subject || !formData.message) {
-      showError('Por favor, preencha todos os campos');
+      showError(t('web.supportModal.pleaseFillInEveryField'));
       return;
     }
 
@@ -57,11 +59,11 @@ export default function SupportModal({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao enviar mensagem');
+        throw new Error(data.error || t('web.supportModal.couldnTSendTheMessage'));
       }
 
       setSubmitted(true);
-      showSuccess('Mensagem enviada com sucesso! Entraremos em contato em breve.');
+      showSuccess(t('web.supportModal.messageSentWeLlGet'));
       
       // Reset form
       setFormData({
@@ -79,7 +81,7 @@ export default function SupportModal({
 
     } catch (error) {
       console.error('Erro ao enviar mensagem de suporte:', error);
-      showError(error.message || 'Erro ao enviar mensagem. Tente novamente.');
+      showError(error.message || t('web.supportModal.couldnTSendTheMessage2'));
     } finally {
       setIsSubmitting(false);
     }
@@ -110,7 +112,7 @@ export default function SupportModal({
               <HelpCircle className="w-8 h-8 text-[#207DFF]" />
             </div>
             <h2 className="text-lg md:text-xl font-semibold text-gray-900 truncate">
-              Enviar Solicitação de Suporte
+              {t('web.supportModal.contactSupport')}
             </h2>
           </div>
           <button
@@ -130,17 +132,17 @@ export default function SupportModal({
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Mensagem enviada!
+                {t('web.supportModal.messageSent')}
               </h3>
               <p className="text-gray-600">
-                Entraremos em contato em breve.
+                {t('web.supportModal.weLlGetBackTo')}
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="support-name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome completo
+                  {t('web.supportModal.fullName')}
                 </label>
                 <input
                   id="support-name"
@@ -151,13 +153,13 @@ export default function SupportModal({
                   required
                   disabled={isSubmitting}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#207DFF] focus:border-[#207DFF] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="Seu nome"
+                  placeholder={t('web.supportModal.yourName')}
                 />
               </div>
 
               <div>
                 <label htmlFor="support-email" className="block text-sm font-medium text-gray-700 mb-2">
-                  E-mail
+                  {t('web.supportModal.email')}
                 </label>
                 <input
                   id="support-email"
@@ -168,13 +170,13 @@ export default function SupportModal({
                   required
                   disabled={isSubmitting}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#207DFF] focus:border-[#207DFF] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="seu@email.com"
+                  placeholder={t('web.shared.youEmailCom')}
                 />
               </div>
 
               <div>
                 <label htmlFor="support-subject" className="block text-sm font-medium text-gray-700 mb-2">
-                  Assunto
+                  {t('web.supportModal.subject')}
                 </label>
                 <input
                   id="support-subject"
@@ -185,13 +187,13 @@ export default function SupportModal({
                   required
                   disabled={isSubmitting}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#207DFF] focus:border-[#207DFF] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="Qual o motivo do contato?"
+                  placeholder={t('web.supportModal.whatSItAbout')}
                 />
               </div>
 
               <div>
                 <label htmlFor="support-message" className="block text-sm font-medium text-gray-700 mb-2">
-                  Mensagem
+                  {t('web.supportModal.message')}
                 </label>
                 <textarea
                   id="support-message"
@@ -202,7 +204,7 @@ export default function SupportModal({
                   rows={6}
                   disabled={isSubmitting}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#207DFF] focus:border-[#207DFF] transition-all resize-none disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="Descreva sua dúvida, sugestão ou problema..."
+                  placeholder={t('web.supportModal.tellUsYourQuestionIdea')}
                 />
               </div>
 
@@ -214,7 +216,7 @@ export default function SupportModal({
                   disabled={isSubmitting}
                   className="w-full md:w-auto px-6 py-2 min-h-[44px]"
                 >
-                  Cancelar
+                  {t('web.shared.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -222,11 +224,11 @@ export default function SupportModal({
                   className="w-full md:w-auto px-6 py-2 min-h-[44px] inline-flex items-center justify-center"
                 >
                   {isSubmitting ? (
-                    'Enviando...'
+                    t('web.shared.sending')
                   ) : (
                     <>
                       <Send className="w-4 h-4 mr-2" />
-                      Enviar Mensagem
+                      {t('web.supportModal.sendMessage')}
                     </>
                   )}
                 </Button>

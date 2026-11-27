@@ -123,7 +123,7 @@ export function useMonthlyFinancials(organization, selectedMonth) {
         categoryMap,
       });
     } catch (err) {
-      console.warn('⚠️ useMonthlyFinancials error:', err);
+      console.warn('useMonthlyFinancials error:', err);
       setError(err);
     } finally {
       setLoading(false);

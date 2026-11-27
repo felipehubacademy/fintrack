@@ -26,8 +26,12 @@ import NotificationModal from '../../components/NotificationModal';
 import DeleteAccountModal from '../../components/DeleteAccountModal';
 
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import { useI18n } from '../../contexts/I18nContext';
+import LanguageCurrencySettings from '../../components/LanguageCurrencySettings';
+import PlanCard from '../../components/billing/PlanCard';
 
 export default function ConfigPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, isSoloUser, loading: orgLoading, error: orgError } = useOrganization();
   const { success, error: showError } = useNotificationContext();
@@ -53,7 +57,7 @@ export default function ConfigPage() {
       router.push('/');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
-      showError('Erro ao fazer logout');
+      showError(t('web.config.couldnTSignOut'));
     }
   };
 
@@ -69,14 +73,14 @@ export default function ConfigPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Erro ao excluir conta');
+        throw new Error(result?.error || t('web.config.couldnTDeleteTheAccount'));
       }
 
       await supabase.auth.signOut();
       router.push('/');
     } catch (error) {
       console.error('Erro ao excluir conta:', error);
-      showError(error.message || 'Erro ao excluir conta');
+      showError(t('web.config.couldnTDelete') + (error.message || t('web.shared.unknownError')));
     } finally {
       setIsDeletingAccount(false);
       setShowDeleteAccountModal(false);
@@ -96,9 +100,9 @@ export default function ConfigPage() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa ser convidado para uma organização.</p>
+          <p className="text-gray-600 mb-4">{t('web.shared.youNeedAnInviteTo')}</p>
           <Button onClick={() => router.push('/')}>
-            Voltar ao início
+            {t('web.shared.backToHome2')}
           </Button>
         </div>
       </div>
@@ -110,7 +114,7 @@ export default function ConfigPage() {
       <Header 
         organization={organization}
         user={orgUser}
-        pageTitle="Configurações"
+        pageTitle={t('web.config.settings')}
         showNotificationModal={showNotificationModal}
         setShowNotificationModal={setShowNotificationModal}
       >
@@ -121,21 +125,27 @@ export default function ConfigPage() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Informações da Organização</h2>
-                <p className="text-sm text-gray-500 mt-1">Gerencie suas configurações</p>
+                <h2 className="text-lg font-semibold text-gray-900">{t('web.config.household')}</h2>
+                <p className="text-sm text-gray-500 mt-1">{t('web.config.yourSettings')}</p>
               </div>
               <div className="text-left">
-                <p className="text-sm font-medium text-gray-600">Nome</p>
+                <p className="text-sm font-medium text-gray-600">{t('web.config.name')}</p>
                 <p className="text-lg font-semibold text-gray-900">{organization?.name || 'N/A'}</p>
               </div>
             </div>
           </CardHeader>
         </Card>
 
+        {/* Plan (trial / Plus) */}
+        <PlanCard
+          className="border-0 bg-white"
+          style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}
+        />
+
         {/* Configurações - Layout simples e limpo */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">Configurações</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900">{t('web.config.settings')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -145,8 +155,8 @@ export default function ConfigPage() {
                   <div className="flex items-center space-x-3">
                     <Users className="h-5 w-5 text-gray-400" />
                     <div>
-                      <p className="font-medium text-gray-900">Gerenciar Membros</p>
-                      <p className="text-sm text-gray-500">Adicionar, remover e gerenciar membros da organização</p>
+                      <p className="font-medium text-gray-900">{t('web.config.members')}</p>
+                      <p className="text-sm text-gray-500">{t('web.config.addRemoveAndManagePeople')}</p>
                     </div>
                   </div>
                   <Button
@@ -154,7 +164,7 @@ export default function ConfigPage() {
                     className="bg-flight-blue hover:bg-flight-blue/90 text-white min-w-[120px]"
                   >
                     <UserCheck className="h-4 w-4 mr-2" />
-                    Gerenciar
+                    {t('web.config.manage')}
                   </Button>
                 </div>
               )}
@@ -164,8 +174,8 @@ export default function ConfigPage() {
                 <div className="flex items-center space-x-3">
                   <Bell className="h-5 w-5 text-gray-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Notificações</p>
-                    <p className="text-sm text-gray-500">Configurar alertas, lembretes e relatórios</p>
+                    <p className="font-medium text-gray-900">{t('web.shared.notifications')}</p>
+                    <p className="text-sm text-gray-500">{t('web.config.alertsRemindersAndReports')}</p>
                   </div>
                 </div>
                 <Button
@@ -173,7 +183,7 @@ export default function ConfigPage() {
                   className="bg-flight-blue hover:bg-flight-blue/90 text-white min-w-[120px]"
                 >
                   <Bell className="h-4 w-4 mr-2" />
-                  Gerenciar
+                  {t('web.config.manage')}
                 </Button>
               </div>
 
@@ -182,8 +192,8 @@ export default function ConfigPage() {
                 <div className="flex items-center space-x-3">
                   <Tag className="h-5 w-5 text-gray-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Categorias</p>
-                    <p className="text-sm text-gray-500">Personalizar categorias de despesas e receitas</p>
+                    <p className="font-medium text-gray-900">{t('web.config.categories')}</p>
+                    <p className="text-sm text-gray-500">{t('web.config.customizeExpenseAndIncomeCategories')}</p>
                   </div>
                 </div>
                 <Button
@@ -191,7 +201,7 @@ export default function ConfigPage() {
                   className="bg-flight-blue hover:bg-flight-blue/90 text-white min-w-[120px]"
                 >
                   <Tag className="h-4 w-4 mr-2" />
-                  Gerenciar
+                  {t('web.config.manage')}
                 </Button>
               </div>
 
@@ -199,10 +209,16 @@ export default function ConfigPage() {
           </CardContent>
         </Card>
 
+        {/* Language and currency */}
+        <LanguageCurrencySettings
+          className="border-0 bg-white"
+          style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}
+        />
+
         {/* Legal e Suporte */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">Legal e Suporte</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900">{t('web.config.legalAndSupport')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -215,8 +231,8 @@ export default function ConfigPage() {
                 <div className="flex items-center space-x-3">
                   <FileText className="h-5 w-5 text-gray-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Política de Privacidade</p>
-                    <p className="text-sm text-gray-500">Como tratamos seus dados</p>
+                    <p className="font-medium text-gray-900">{t('web.shared.privacyPolicy')}</p>
+                    <p className="text-sm text-gray-500">{t('web.config.howWeHandleYourData')}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-gray-400" />
@@ -231,8 +247,8 @@ export default function ConfigPage() {
                 <div className="flex items-center space-x-3">
                   <FileText className="h-5 w-5 text-gray-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Termos de Uso</p>
-                    <p className="text-sm text-gray-500">Condições de utilização</p>
+                    <p className="font-medium text-gray-900">{t('web.config.termsOfUse')}</p>
+                    <p className="text-sm text-gray-500">{t('web.config.termsOfUse2')}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-gray-400" />
@@ -247,8 +263,8 @@ export default function ConfigPage() {
                 <div className="flex items-center space-x-3">
                   <MessageCircle className="h-5 w-5 text-gray-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Suporte</p>
-                    <p className="text-sm text-gray-500">Entre em contato conosco</p>
+                    <p className="font-medium text-gray-900">{t('web.shared.support')}</p>
+                    <p className="text-sm text-gray-500">{t('web.config.getInTouch')}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-gray-400" />
@@ -260,15 +276,15 @@ export default function ConfigPage() {
         {/* Conta e Sessão */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">Conta e Sessão</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900">{t('web.config.accountAndSession')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {/* Encerrar Sessão */}
               <div className="flex items-center justify-between py-3 border-b border-gray-100">
                 <div>
-                  <p className="font-medium text-gray-900">Encerrar Sessão</p>
-                  <p className="text-sm text-gray-500">Fazer logout da sua conta</p>
+                  <p className="font-medium text-gray-900">{t('web.config.signOut')}</p>
+                  <p className="text-sm text-gray-500">{t('web.config.signOutOfYourAccount')}</p>
                 </div>
                 <Button
                   variant="outline"
@@ -276,15 +292,15 @@ export default function ConfigPage() {
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Sair
+                  {t('web.config.signOut2')}
                 </Button>
               </div>
 
               {/* Excluir Conta */}
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="font-medium text-gray-900">Excluir Conta</p>
-                <p className="text-sm text-gray-500">Remover permanentemente sua conta e todos os dados</p>
+                <p className="font-medium text-gray-900">{t('web.config.deleteAccount')}</p>
+                <p className="text-sm text-gray-500">{t('web.config.permanentlyDeleteYourAccountAnd')}</p>
               </div>
               <Button
                 variant="outline"
@@ -292,7 +308,7 @@ export default function ConfigPage() {
                 className="border-red-300 text-red-600 hover:bg-red-50"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Excluir
+                {t('web.shared.delete')}
               </Button>
               </div>
             </div>

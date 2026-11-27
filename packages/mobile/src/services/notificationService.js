@@ -20,6 +20,8 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
+import { t, formatMoney, formatPercent } from '@fintrack/shared/i18n';
+import { categoryLabel } from '../utils/categoryLabel';
 
 // Configurar como as notificações devem ser exibidas
 Notifications.setNotificationHandler({
@@ -204,15 +206,22 @@ class NotificationService {
    * HELPER: Agenda notificação de vencimento de conta
    */
   async scheduleBillDueNotification(bill, daysBefore = 3) {
-    const dueDate = new Date(bill.due_date);
+    // Parse YYYY-MM-DD as a local date so the reminder lands on the right day.
+    const [year, month, day] = String(bill.due_date).split('-').map(Number);
+    const dueDate = new Date(year, month - 1, day, 9, 0, 0);
     const notificationDate = new Date(dueDate);
     notificationDate.setDate(notificationDate.getDate() - daysBefore);
 
     const now = new Date();
     if (notificationDate > now) {
       return await this.scheduleLocalNotification({
-        title: 'Conta a vencer',
-        body: `${bill.description} vence em ${daysBefore} dias (${formatCurrency(bill.amount)})`,
+        // Texts use the language and currency the app is set to when scheduling.
+        title: t('notifications.billDue.title'),
+        body: t('notifications.billDue.body', {
+          name: bill.description,
+          count: daysBefore,
+          amount: formatMoney(bill.amount),
+        }),
         data: { type: 'bill_due', billId: bill.id },
         trigger: { date: notificationDate },
       });
@@ -229,8 +238,11 @@ class NotificationService {
 
     if (percentage >= 80) {
       return await this.scheduleLocalNotification({
-        title: 'Alerta de Orçamento',
-        body: `Você já gastou ${percentage.toFixed(0)}% do orçamento de ${category}`,
+        title: t('notifications.budgetAlert.title'),
+        body: t('notifications.budgetAlert.body', {
+          percent: formatPercent(percentage / 100),
+          category: categoryLabel(category),
+        }),
         data: { type: 'budget_alert', category },
         trigger: null, // Enviar imediatamente
       });
@@ -243,11 +255,4 @@ class NotificationService {
 // Exportar instância única
 export const notificationService = new NotificationService();
 
-// Helper para formatar moeda
-function formatCurrency(value) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-}
 

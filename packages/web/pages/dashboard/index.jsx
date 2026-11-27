@@ -28,8 +28,15 @@ import {
   DollarSign
 } from 'lucide-react';
 import Header from '../../components/Header';
+import DailyAllowanceCard from '../../components/dashboard/DailyAllowanceCard';
+import ZulHint from '../../components/ZulHint';
+import { isWhatsAppCreatedUser } from '../../lib/contact';
+import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
+import { appLocale } from '../../lib/utils';
 
 export default function DashboardHome() {
+  const { t } = useI18n();
   const router = useRouter();
   const { organization, user: orgUser, costCenters, budgetCategories, incomeCategories, loading: orgLoading, error: orgError, isSoloUser } = useOrganization();
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -106,7 +113,11 @@ export default function DashboardHome() {
     if (!organization || !orgUser) {
       return;
     }
-
+    // Users Zul created on WhatsApp already set things up in the chat:
+    // let them straight into the dashboard.
+    if (isWhatsAppCreatedUser(orgUser)) {
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -503,7 +514,7 @@ export default function DashboardHome() {
           const incomeTotal = confirmedIncomes.reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
 
           months.push({
-            month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+            month: date.toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' }),
             cartoes: cardTotal,
             despesas: cashTotal,
             entradas: incomeTotal
@@ -518,7 +529,7 @@ export default function DashboardHome() {
       const previousMonthStr = previousMonth.toISOString().slice(0, 7);
       
       const previousMonthData = months.find(month => 
-        month.month === previousMonth.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+        month.month === previousMonth.toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' })
       );
       
       if (previousMonthData) {
@@ -627,7 +638,7 @@ export default function DashboardHome() {
     
     const [year, month] = selectedMonth.split('-').map(Number);
     const previousDate = new Date(year, month - 2, 1); // month - 2 porque month está 1-indexed
-    const previousMonthStr = previousDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    const previousMonthStr = previousDate.toLocaleDateString(appLocale(), { month: 'short', year: '2-digit' });
     
     const previousData = monthlyData.find(m => m.month === previousMonthStr);
     
@@ -700,12 +711,12 @@ export default function DashboardHome() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">❌ {orgError}</div>
-          <p className="text-gray-600 mb-4">Você precisa criar uma conta ou ser convidado para uma organização.</p>
+          <p className="text-gray-600 mb-4">{t('web.home.createAnAccountOrGet')}</p>
           <button
             onClick={() => router.push('/')}
             className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"
           >
-            Voltar ao início
+            {t('web.shared.backToHome2')}
           </button>
         </div>
       </div>
@@ -716,17 +727,34 @@ export default function DashboardHome() {
     <Header 
       organization={organization}
       user={orgUser}
-      pageTitle="Painel Principal"
+      pageTitle={t('web.home.home')}
     >
       <main className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-16 2xl:px-24 py-4 md:py-8 space-y-4 md:space-y-8">
+        {/* Signature number: how much can be spent per day until month end */}
+        <DailyAllowanceCard
+          organizationId={organization?.id}
+          selectedMonth={selectedMonth}
+          income={totalIncomes}
+          spentOutsideCards={cashTotal + unknownMethodTotal}
+          cardDue={cardTotal}
+        />
+
+        {monthExpenses.length === 0 && monthIncomes.length === 0 && (
+          <section className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center">
+            <h3 className="text-lg font-semibold text-ink-900">{t('web.homeEmpty.title')}</h3>
+            <p className="mx-auto mt-1 mb-4 max-w-md text-sm text-ink-500">{t('web.homeEmpty.body')}</p>
+            <ZulHint text={t('web.zul.exampleExpense')} />
+          </section>
+        )}
+
         {/* Header Actions */}
         <Card className="border-0 bg-white" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-              <h2 className="text-lg font-semibold text-gray-900">Painel Principal</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('web.home.home')}</h2>
               <div className="flex items-center space-x-2 sm:space-x-3">
                 <div className="flex items-center space-x-2">
-                  <label className="text-sm font-medium text-gray-700 hidden sm:block">Mês:</label>
+                  <label className="text-sm font-medium text-gray-700 hidden sm:block">{t('web.shared.month')}</label>
                   <input
                     type="month"
                     value={selectedMonth}
@@ -740,7 +768,7 @@ export default function DashboardHome() {
                   className="bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''} sm:mr-2`} />
-                  <span className="hidden sm:inline">{isRefreshing ? 'Atualizando...' : 'Atualizar Dados'}</span>
+                  <span className="hidden sm:inline">{isRefreshing ? t('web.home.updating') : t('web.home.refresh')}</span>
                 </Button>
               </div>
             </div>
@@ -760,7 +788,7 @@ export default function DashboardHome() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Total de Entradas
+                  {t('web.shared.totalIncome')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-flight-blue/10">
                   <TrendingUp className="h-4 w-4 text-flight-blue" />
@@ -769,7 +797,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(totalIncomes).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(Number(totalIncomes))}
                 </div>
                 <div className="flex items-center space-x-2 text-xs">
                   {incomesGrowth > 0 && (
@@ -789,15 +817,15 @@ export default function DashboardHome() {
                       <span className="text-gray-500">0%</span>
                     </>
                   )}
-                  <span className="text-gray-500">vs mês anterior</span>
+                  <span className="text-gray-500">{t('web.shared.vsLastMonth')}</span>
                 </div>
               </CardContent>
             </Card>
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'entradas' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-2">{isSoloUser ? 'Suas Entradas' : 'Divisão por Responsável'}</p>
-              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? 'Suas entradas do mês' : 'Divisão completa da família por responsável'}</p>
+              <p className="text-sm font-semibold text-gray-900 mb-2">{isSoloUser ? t('web.home.yourIncome') : t('web.shared.byPerson')}</p>
+              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? t('web.home.yourIncomeThisMonth') : t('web.home.theWholeHouseholdPersonBy')}</p>
               <div className="space-y-2">
                 {costCenters
                   .filter(cc => cc && cc.is_active !== false && !cc.is_shared)
@@ -843,21 +871,21 @@ export default function DashboardHome() {
                           <span className="text-gray-700 font-medium">{cc.name}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">R$ {Number(total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">{formatMoney(Number(total))}</span>
                           <span className="text-gray-500 ml-2">{percentage}%</span>
                         </div>
                       </div>
                       {(individualTotal > 0 || sharedTotal > 0) && (
                         <div className="text-xs text-gray-500 ml-5">
-                          {individualTotal > 0 && `Individual: R$ ${individualTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                          {individualTotal > 0 && t('web.home.individual', { p0: individualTotal.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                           {individualTotal > 0 && sharedTotal > 0 && ' • '}
-                          {sharedTotal > 0 && `Compartilhada: R$ ${sharedTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                          {sharedTotal > 0 && t('web.home.shared', { p0: sharedTotal.toLocaleString(appLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                         </div>
                       )}
                     </div>
                   ))}
                 {costCenters.filter(cc => cc && cc.is_active !== false && !cc.is_shared).length === 0 && (
-                  <p className="text-sm text-gray-500">Nenhum dado disponível</p>
+                  <p className="text-sm text-gray-500">{t('web.home.nothingHereYet')}</p>
                 )}
               </div>
             </div>
@@ -874,7 +902,7 @@ export default function DashboardHome() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Total de Despesas
+                  {t('web.shared.totalExpenses')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <TrendingDown className="h-4 w-4 text-gray-600" />
@@ -883,7 +911,7 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  - R$ {Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  -{formatMoney(Number(grandTotal))}
                 </div>
                 <div className="flex items-center space-x-2 text-xs">
                   {expensesGrowth > 0 && (
@@ -903,15 +931,15 @@ export default function DashboardHome() {
                       <span className="text-gray-500">0%</span>
                     </>
                   )}
-                  <span className="text-gray-500">vs mês anterior</span>
+                  <span className="text-gray-500">{t('web.shared.vsLastMonth')}</span>
                 </div>
               </CardContent>
             </Card>
             
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[320px] max-w-[450px] md:invisible md:group-hover:visible ${openTooltip === 'despesas' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-2">Divisão por Forma de Pagamento</p>
-              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? 'Suas despesas do mês' : 'Divisão completa da família'}</p>
+              <p className="text-sm font-semibold text-gray-900 mb-2">{t('web.home.byPaymentMethod')}</p>
+              <p className="text-xs text-gray-500 mb-3">{isSoloUser ? t('web.home.yourExpensesThisMonth') : t('web.home.theWholeHousehold')}</p>
               <div className="space-y-3">
                 {(() => {
                   // Calcular total à vista (total da organização)
@@ -940,20 +968,20 @@ export default function DashboardHome() {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2">
                           <div className="w-3 h-3 rounded-full bg-gray-600"></div>
-                          <span className="text-gray-700 font-medium">À Vista</span>
+                          <span className="text-gray-700 font-medium">{t('web.shared.paidNow')}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalAVista).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">-{formatMoney(Number(totalAVista))}</span>
                           <span className="text-gray-500 ml-2">{porcentagemAVista}%</span>
                         </div>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2">
                           <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                          <span className="text-gray-700 font-medium">Crédito</span>
+                          <span className="text-gray-700 font-medium">{t('web.shared.credit')}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-900 font-semibold">- R$ {Number(totalCredito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">-{formatMoney(Number(totalCredito))}</span>
                           <span className="text-gray-500 ml-2">{porcentagemCredito}%</span>
                         </div>
                       </div>
@@ -974,7 +1002,7 @@ export default function DashboardHome() {
               <CardTitle className={`text-sm font-medium ${
                 balance >= 0 ? 'text-gray-600' : 'text-gray-600'
               }`}>
-                Saldo do Mês
+                {t('web.home.monthBalance')}
               </CardTitle>
               <div className={`p-2 rounded-lg ${
                 balance >= 0 ? 'bg-green-100' : 'bg-red-100'
@@ -988,7 +1016,7 @@ export default function DashboardHome() {
               <div className={`text-2xl font-bold mb-1 ${
                 balance >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {balance >= 0 ? '' : '-'} R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {balance >= 0 ? '' : '-'} {formatMoney(Number(Math.abs(balance)))}
               </div>
               <div className="flex items-center space-x-2 text-xs">
                 {balanceGrowth > 0 && (
@@ -1008,7 +1036,7 @@ export default function DashboardHome() {
                     <span className="text-gray-500">0%</span>
                   </>
                 )}
-                <span className="text-gray-500">vs mês anterior</span>
+                <span className="text-gray-500">{t('web.shared.vsLastMonth')}</span>
               </div>
             </CardContent>
           </Card>
@@ -1021,7 +1049,7 @@ export default function DashboardHome() {
               }}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Total de Crédito Usado
+                  {t('web.home.totalCreditUsed')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <CreditCard className="h-4 w-4 text-gray-600" />
@@ -1030,20 +1058,20 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(totalCreditUsed).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(Number(totalCreditUsed))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Em todos os cartões
+                  {t('web.home.acrossAllCards')}
                 </p>
               </CardContent>
             </Card>
 
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[280px] max-w-[400px] md:invisible md:group-hover:visible ${openTooltip === 'credit-used' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-3">Uso por Cartão</p>
+              <p className="text-sm font-semibold text-gray-900 mb-3">{t('web.home.useByCard')}</p>
               <div className="space-y-2">
                 {creditCards.length === 0 ? (
-                  <p className="text-sm text-gray-500">Nenhum cartão de crédito cadastrado</p>
+                  <p className="text-sm text-gray-500">{t('web.home.noCreditCardsYet')}</p>
                 ) : (
                   creditCards.map(card => {
                     const usage = cardsUsage[card.id] || { used: 0, limit: card.credit_limit || 0 };
@@ -1061,10 +1089,10 @@ export default function DashboardHome() {
                             className={`w-3 h-3 rounded-full flex-shrink-0 ${cardColorClass}`}
                             style={cardColorStyle}
                           ></div>
-                          <span className="text-gray-700 font-medium truncate">{card.name || 'Sem nome'}</span>
+                          <span className="text-gray-700 font-medium truncate">{card.name || t('web.home.noName')}</span>
                         </div>
                         <div className="text-right ml-2">
-                          <span className="text-gray-900 font-semibold">R$ {Number(usage.used).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">{formatMoney(Number(usage.used))}</span>
                           <span className="text-gray-500 ml-2 text-xs">({percentage}%)</span>
                         </div>
                       </div>
@@ -1083,7 +1111,7 @@ export default function DashboardHome() {
               }}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Total de Crédito Disponível
+                  {t('web.home.totalCreditAvailable')}
                 </CardTitle>
                 <div className="p-2 rounded-lg bg-gray-100">
                   <Wallet className="h-4 w-4 text-gray-600" />
@@ -1092,20 +1120,20 @@ export default function DashboardHome() {
               <CardContent className="p-3 pt-0 relative">
                 <HelpCircle className="absolute bottom-2 right-2 h-3 w-3 text-gray-400 opacity-50 group-hover:opacity-70 transition-opacity" />
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  R$ {Number(totalCreditAvailable).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatMoney(Number(totalCreditAvailable))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Limite disponível
+                  {t('web.home.availableLimit')}
                 </p>
               </CardContent>
             </Card>
 
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[280px] max-w-[400px] md:invisible md:group-hover:visible ${openTooltip === 'credit-available' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-3">Disponível por Cartão</p>
+              <p className="text-sm font-semibold text-gray-900 mb-3">{t('web.home.availableByCard')}</p>
               <div className="space-y-2">
                 {creditCards.length === 0 ? (
-                  <p className="text-sm text-gray-500">Nenhum cartão de crédito cadastrado</p>
+                  <p className="text-sm text-gray-500">{t('web.home.noCreditCardsYet')}</p>
                 ) : (
                   creditCards.map(card => {
                     const usage = cardsUsage[card.id] || { used: 0, limit: card.credit_limit || 0 };
@@ -1123,10 +1151,10 @@ export default function DashboardHome() {
                             className={`w-3 h-3 rounded-full flex-shrink-0 ${cardColorClass}`}
                             style={cardColorStyle}
                           ></div>
-                          <span className="text-gray-700 font-medium truncate">{card.name || 'Sem nome'}</span>
+                          <span className="text-gray-700 font-medium truncate">{card.name || t('web.home.noName')}</span>
                         </div>
                         <div className="text-right ml-2">
-                          <span className="text-gray-900 font-semibold">R$ {Number(available).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900 font-semibold">{formatMoney(Number(available))}</span>
                         </div>
                       </div>
                     );
@@ -1150,7 +1178,7 @@ export default function DashboardHome() {
                 <CardTitle className={`text-sm font-medium ${
                   totalBankBalance < 0 ? 'text-red-700' : 'text-gray-600'
                 }`}>
-                  Total Consolidado das Contas Bancárias
+                  {t('web.home.allBankAccounts')}
                 </CardTitle>
                 <div className={`p-2 rounded-lg ${
                   totalBankBalance < 0 ? 'bg-red-100' : 'bg-gray-100'
@@ -1167,22 +1195,22 @@ export default function DashboardHome() {
                 <div className={`text-2xl font-bold mb-1 ${
                   totalBankBalance < 0 ? 'text-red-600' : 'text-gray-900'
                 }`}>
-                  {totalBankBalance < 0 ? '-' : ''} R$ {Number(Math.abs(totalBankBalance)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {totalBankBalance < 0 ? '-' : ''} {formatMoney(Number(Math.abs(totalBankBalance)))}
                 </div>
                 <p className={`text-xs mt-1 ${
                   totalBankBalance < 0 ? 'text-red-600' : 'text-gray-500'
                 }`}>
-                  Saldo total das contas
+                  {t('web.home.totalBalance')}
                 </p>
               </CardContent>
             </Card>
 
             {/* Tooltip */}
             <div className={`absolute z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 left-0 top-full mt-2 min-w-[280px] max-w-[400px] md:invisible md:group-hover:visible ${openTooltip === 'bank-balance' ? 'visible' : 'invisible'}`}>
-              <p className="text-sm font-semibold text-gray-900 mb-3">Saldo por Conta</p>
+              <p className="text-sm font-semibold text-gray-900 mb-3">{t('web.home.balanceByAccount')}</p>
               <div className="space-y-2">
                 {bankAccounts.length === 0 ? (
-                  <p className="text-sm text-gray-500">Nenhuma conta bancária cadastrada</p>
+                  <p className="text-sm text-gray-500">{t('web.home.noBankAccountsYet')}</p>
                 ) : (
                   bankAccounts.map(account => {
                     const balance = parseFloat(account.current_balance || 0);
@@ -1192,13 +1220,13 @@ export default function DashboardHome() {
                           <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
                             balance < 0 ? 'bg-red-500' : 'bg-green-500'
                           }`}></div>
-                          <span className="text-gray-700 font-medium truncate">{account.name || 'Sem nome'}</span>
+                          <span className="text-gray-700 font-medium truncate">{account.name || t('web.home.noName')}</span>
                         </div>
                         <div className="text-right ml-2">
                           <span className={`font-semibold ${
                             balance < 0 ? 'text-red-600' : 'text-gray-900'
                           }`}>
-                            R$ {Number(Math.abs(balance)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatMoney(Number(Math.abs(balance)))}
                             {balance < 0 && <span className="ml-1">-</span>}
                           </span>
                         </div>

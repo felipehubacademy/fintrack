@@ -1,44 +1,47 @@
 import { Award, TrendingUp, Target, Calendar, Zap } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
+import { t } from '@fintrack/shared/i18n';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 // Sistema de badges profissional e elegante
 const BADGE_DEFINITIONS = {
   // Disciplina e Consistência
   first_goal: {
     id: 'first_goal',
-    name: 'Planejador',
-    description: 'Primeira meta financeira criada',
+    get name() { return t('web.goalBadges.names.planner'); },
+    get description() { return t('web.goalBadges.firstGoalCreated'); },
     icon: Target,
     color: '#3B82F6',
     tier: 'bronze'
   },
   first_contribution: {
     id: 'first_contribution',
-    name: 'Comprometido',
-    description: 'Primeira contribuição realizada',
+    get name() { return t('web.goalBadges.names.committed'); },
+    get description() { return t('web.goalBadges.firstDepositMade'); },
     icon: TrendingUp,
     color: '#3B82F6',
     tier: 'bronze'
   },
   streak_3: {
     id: 'streak_3',
-    name: 'Consistente',
-    description: '3 meses consecutivos contribuindo',
+    get name() { return t('web.goalBadges.names.consistent'); },
+    get description() { return t('web.goalBadges.n3MonthsInARow'); },
     icon: Calendar,
     color: '#8B5CF6',
     tier: 'silver'
   },
   streak_6: {
     id: 'streak_6',
-    name: 'Disciplinado',
-    description: '6 meses consecutivos contribuindo',
+    get name() { return t('web.goalBadges.names.disciplined'); },
+    get description() { return t('web.goalBadges.n6MonthsInARow'); },
     icon: Calendar,
     color: '#8B5CF6',
     tier: 'silver'
   },
   streak_12: {
     id: 'streak_12',
-    name: 'Inabalável',
-    description: '1 ano consecutivo contribuindo',
+    get name() { return t('web.goalBadges.names.unshakable'); },
+    get description() { return t('web.goalBadges.n1YearInARow'); },
     icon: Zap,
     color: '#F59E0B',
     tier: 'gold'
@@ -47,24 +50,24 @@ const BADGE_DEFINITIONS = {
   // Conquistas de Valor
   saved_10k: {
     id: 'saved_10k',
-    name: 'Poupador',
-    description: 'Economizou R$ 10.000',
+    get name() { return t('web.goalBadges.names.saver'); },
+    get description() { return t('web.goalBadges.saved', { amount: formatMoney(10000, { maximumFractionDigits: 0 }) }); },
     icon: Award,
     color: '#3B82F6',
     tier: 'bronze'
   },
   saved_50k: {
     id: 'saved_50k',
-    name: 'Investidor',
-    description: 'Economizou R$ 50.000',
+    get name() { return t('web.goalBadges.names.investor'); },
+    get description() { return t('web.goalBadges.saved', { amount: formatMoney(50000, { maximumFractionDigits: 0 }) }); },
     icon: Award,
     color: '#8B5CF6',
     tier: 'silver'
   },
   saved_100k: {
     id: 'saved_100k',
-    name: 'Patrimônio Sólido',
-    description: 'Economizou R$ 100.000',
+    get name() { return t('web.goalBadges.names.solidWealth'); },
+    get description() { return t('web.goalBadges.saved', { amount: formatMoney(100000, { maximumFractionDigits: 0 }) }); },
     icon: Award,
     color: '#F59E0B',
     tier: 'gold'
@@ -73,24 +76,24 @@ const BADGE_DEFINITIONS = {
   // Metas Atingidas
   goal_completed_1: {
     id: 'goal_completed_1',
-    name: 'Realizador',
-    description: 'Atingiu sua primeira meta',
+    get name() { return t('web.goalBadges.names.achiever'); },
+    get description() { return t('web.goalBadges.reachedYourFirstGoal'); },
     icon: Target,
     color: '#10B981',
     tier: 'bronze'
   },
   goal_completed_3: {
     id: 'goal_completed_3',
-    name: 'Determinado',
-    description: 'Atingiu 3 metas',
+    get name() { return t('web.goalBadges.names.determined'); },
+    get description() { return t('web.goalBadges.reached3Goals'); },
     icon: Target,
     color: '#10B981',
     tier: 'silver'
   },
   goal_completed_10: {
     id: 'goal_completed_10',
-    name: 'Mestre Financeiro',
-    description: 'Atingiu 10 metas',
+    get name() { return t('web.goalBadges.names.moneyMaster'); },
+    get description() { return t('web.goalBadges.reached10Goals'); },
     icon: Target,
     color: '#10B981',
     tier: 'gold'
@@ -99,8 +102,8 @@ const BADGE_DEFINITIONS = {
   // Velocidade
   goal_early: {
     id: 'goal_early',
-    name: 'Acelerado',
-    description: 'Atingiu meta antes do prazo',
+    get name() { return t('web.goalBadges.names.fastTrack'); },
+    get description() { return t('web.goalBadges.reachedAGoalEarly'); },
     icon: Zap,
     color: '#F59E0B',
     tier: 'silver'
@@ -132,6 +135,7 @@ const TIER_STYLES = {
 };
 
 export default function GoalBadges({ badges = [], size = 'md', showLocked = false }) {
+  const { t } = useI18n();
   const sizeClasses = {
     sm: 'w-12 h-12',
     md: 'w-16 h-16',
@@ -225,7 +229,7 @@ export default function GoalBadges({ badges = [], size = 'md', showLocked = fals
                     </p>
                     {!isEarned && (
                       <p className="text-xs text-gray-500 mt-2 italic">
-                        Bloqueado
+                        {t('web.goalBadges.locked')}
                       </p>
                     )}
                   </div>

@@ -4,8 +4,10 @@ import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader } from './ui/Card';
 import { X, AlertCircle } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function BankAccountModal({ isOpen, onClose, account, costCenters = [], organizationId, onSuccess, organization = null, user = null }) {
+  const { t } = useI18n();
   const { success, error: showError, warning } = useNotificationContext();
   const [formData, setFormData] = useState({
     name: '',
@@ -118,22 +120,22 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
     e.preventDefault();
     
     if (!formData.name || !formData.bank) {
-      warning('Preencha todos os campos obrigatórios');
+      warning(t('web.shared.fillInAllRequiredFields'));
       return;
     }
     
     if (!account && !formData.initial_balance) {
-      warning('Preencha o saldo inicial');
+      warning(t('web.bankAccountModal.enterTheStartingBalance'));
       return;
     }
 
     if (ownerType === 'individual' && !resolvedCostCenterId) {
-      warning('Selecione um responsável para conta individual');
+      warning(t('web.bankAccountModal.pickAnOwnerForAn'));
       return;
     }
 
     if (ownerType === 'shared' && totalPercentage !== 100) {
-      warning(`A soma das porcentagens deve ser 100%. Atual: ${totalPercentage}%`);
+      warning(t('web.bankAccountModal.percentagesMustAddUpTo', { totalPercentage }));
       return;
     }
 
@@ -141,9 +143,9 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+      if (!user) throw new Error(t('web.shared.youReNotSignedIn'));
 
-      if (!organizationId) throw new Error('Organização não encontrada');
+      if (!organizationId) throw new Error(t('web.shared.householdNotFound'));
 
       let accountData;
       let accountId;
@@ -216,12 +218,12 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
       }
 
       resetForm();
-      success(account ? 'Conta bancária atualizada com sucesso!' : 'Conta bancária criada com sucesso!');
+      success(account ? t('web.bankAccountModal.bankAccountUpdated') : t('web.bankAccountModal.bankAccountCreated'));
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('Erro ao salvar conta bancária:', error);
-      showError('Erro ao salvar conta bancária: ' + (error.message || 'Erro desconhecido'));
+      showError(t('web.bankAccountModal.couldnTSaveTheBank') + (error.message || t('web.shared.unknownError')));
     } finally {
       setSaving(false);
     }
@@ -235,7 +237,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
         {/* Header fixo */}
         <div className="flex flex-row items-center justify-between p-4 sm:p-5 md:p-6 pb-3 sm:pb-4 md:pb-4 bg-flight-blue/5 rounded-t-xl flex-shrink-0">
           <h2 className="text-gray-900 font-semibold text-base sm:text-lg md:text-xl pr-2">
-            {account ? 'Editar Conta Bancária' : 'Nova Conta Bancária'}
+            {account ? t('web.bankAccountModal.editBankAccount') : t('web.bankAccountModal.newBankAccount')}
           </h2>
           <Button 
             variant="ghost" 
@@ -255,13 +257,13 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
               {/* Nome da Conta */}
               <div className="md:col-span-2 lg:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome da Conta *
+                  {t('web.bankAccountModal.accountName')}
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
-                  placeholder="Ex: Nubank Corrente"
+                  placeholder={t('web.bankAccountModal.eGChaseChecking')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 />
@@ -270,13 +272,13 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
               {/* Banco */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Banco *
+                  {t('web.bankAccountModal.bank')}
                 </label>
                 <input
                   type="text"
                   value={formData.bank}
                   onChange={(e) => handleChange('bank', e.target.value)}
-                  placeholder="Ex: Nubank, Itaú, Bradesco"
+                  placeholder={t('web.bankAccountModal.eGChaseWellsFargo')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 />
@@ -285,7 +287,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
               {/* Tipo de Conta */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo de Conta *
+                  {t('web.bankAccountModal.accountType')}
                 </label>
                 <select
                   value={formData.account_type}
@@ -293,21 +295,21 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 >
-                  <option value="checking">Conta Corrente</option>
-                  <option value="savings">Poupança</option>
+                  <option value="checking">{t('web.bankAccountModal.checking')}</option>
+                  <option value="savings">{t('web.bankAccountModal.savings')}</option>
                 </select>
               </div>
 
               {/* Número da Conta */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Número da Conta (opcional)
+                  {t('web.bankAccountModal.accountNumberOptional')}
                 </label>
                 <input
                   type="text"
                   value={formData.account_number}
                   onChange={(e) => handleChange('account_number', e.target.value)}
-                  placeholder="Últimos dígitos (opcional)"
+                  placeholder={t('web.bankAccountModal.lastDigitsOptional')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                 />
               </div>
@@ -316,7 +318,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
               {!account && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Saldo Inicial (R$) *
+                    {t('web.fixes.startingBalance')}
                   </label>
                   <input
                     type="number"
@@ -335,7 +337,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
             {!isSoloUser && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Propriedade *
+                  {t('web.bankAccountModal.ownership')}
                 </label>
                 <select
                   value={formData.owner_type}
@@ -343,8 +345,8 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 >
-                  <option value="individual">Individual</option>
-                  <option value="shared">Compartilhada</option>
+                  <option value="individual">{t('web.shared.individual')}</option>
+                  <option value="shared">{t('web.shared.shared')}</option>
                 </select>
               </div>
             )}
@@ -353,7 +355,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
             {ownerType === 'individual' && !isSoloUser && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Responsável *
+                  {t('web.shared.owner')}
                 </label>
                 <select
                   value={formData.cost_center_id}
@@ -361,7 +363,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-flight-blue focus:border-flight-blue"
                   required
                 >
-                  <option value="">Selecione...</option>
+                  <option value="">{t('web.shared.select')}</option>
                   {activeCenters.map(cc => (
                     <option key={cc.id} value={cc.id}>{cc.name}</option>
                   ))}
@@ -374,10 +376,10 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
               <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">
-                    Participação por Responsável *
+                    {t('web.bankAccountModal.sharePerPerson')}
                   </label>
                   <span className={`text-sm font-medium ${totalPercentage === 100 ? 'text-green-600' : 'text-red-600'}`}>
-                    Total: {totalPercentage.toFixed(2)}%
+                    {t('web.bankAccountModal.total', { p0: totalPercentage.toFixed(2) })}
                   </span>
                 </div>
                 <div className="space-y-2">
@@ -398,7 +400,7 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
                 {totalPercentage !== 100 && (
                   <div className="mt-3 flex items-center space-x-2 text-red-600 text-sm">
                     <AlertCircle className="h-4 w-4" />
-                    <span>A soma deve ser exatamente 100%</span>
+                    <span>{t('web.bankAccountModal.itMustAddUpTo')}</span>
                   </div>
                 )}
               </div>
@@ -414,14 +416,14 @@ export default function BankAccountModal({ isOpen, onClose, account, costCenters
             disabled={saving}
             className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 min-h-[44px]"
           >
-            Cancelar
+            {t('web.shared.cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={saving || (totalPercentage !== 100 && isSharedOwner)}
             className="w-full sm:w-auto bg-flight-blue hover:bg-flight-blue/90 border-2 border-flight-blue text-white shadow-sm hover:shadow-md min-h-[44px]"
           >
-            {saving ? 'Salvando...' : (account ? 'Salvar Alterações' : 'Salvar')}
+            {saving ? t('web.shared.saving') : (account ? t('web.shared.saveChanges') : t('web.shared.save'))}
           </Button>
         </div>
       </div>

@@ -11,7 +11,7 @@ import { X, AlertCircle, ChevronDown, Check } from 'lucide-react-native';
 import { colors, spacing, radius } from '../../theme';
 import { Text, Title2, Callout, Caption } from '../ui/Text';
 import { Button } from '../ui/Button';
-import { formatCurrency } from '@fintrack/shared/utils';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { height } = Dimensions.get('window');
 
@@ -40,6 +40,7 @@ const SelectField = ({ label, value, placeholder, onPress, disabled }) => (
 
 // Componente OptionSheet
 const OptionSheet = ({ visible, onClose, title, options = [], selectedValue, onSelect }) => {
+  const { t } = useI18n();
   if (!visible) return null;
 
   return (
@@ -52,7 +53,7 @@ const OptionSheet = ({ visible, onClose, title, options = [], selectedValue, onS
         >
           <View style={selectStyles.sheetHeader}>
             <Title2 weight="semiBold">{title}</Title2>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -73,6 +74,8 @@ const OptionSheet = ({ visible, onClose, title, options = [], selectedValue, onS
                 onPress={() => {
                   onSelect(option.value);
                 }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectedValue === option.value }}
               >
                 <Text variant="callout">{option.label}</Text>
                 {selectedValue === option.value && (
@@ -95,6 +98,7 @@ export function MarkBillAsPaidModal({
   costCenters = [],
   organization = null,
 }) {
+  const { t, formatMoney } = useI18n();
   const [selectedOwner, setSelectedOwner] = useState('');
   const [isShared, setIsShared] = useState(false);
   const [showOwnerSheet, setShowOwnerSheet] = useState(false);
@@ -142,9 +146,9 @@ export function MarkBillAsPaidModal({
           <View style={styles.header}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
               <AlertCircle size={24} color={colors.warning.main} />
-              <Title2 weight="bold">Confirmar pagamento</Title2>
+              <Title2 weight="bold">{t('bills.markPaidModal.title')}</Title2>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <X size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
@@ -159,16 +163,17 @@ export function MarkBillAsPaidModal({
             nestedScrollEnabled={true}
           >
             <Callout style={{ marginBottom: spacing[2] }}>
-              Marcar <Callout weight="bold">{bill.description}</Callout> ({formatCurrency(bill.amount)}) como paga?
+              {t('bills.markPaidModal.question', { name: bill.description || t('finances.invoices.noDescription') })}
             </Callout>
+            <Title2 weight="bold" style={{ marginBottom: spacing[1] }}>{formatMoney(bill.amount)}</Title2>
             <Caption color="secondary" style={{ marginBottom: spacing[4] }}>
-              Isso criará uma despesa automaticamente.
+              {t('bills.markPaidModal.createsExpense')}
             </Caption>
 
             {/* Quem pagou? */}
             <View style={styles.section}>
               <Caption weight="semiBold" style={{ marginBottom: spacing[2] }}>
-                Quem pagou? *
+                {t('bills.markPaidModal.whoPaid')}
               </Caption>
 
               {/* Opção Compartilhado */}
@@ -178,11 +183,13 @@ export function MarkBillAsPaidModal({
                   setIsShared(true);
                   setSelectedOwner('');
                 }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isShared }}
               >
                 <View style={[styles.radio, isShared && styles.radioSelected]}>
                   {isShared && <View style={styles.radioInner} />}
                 </View>
-                <Callout>{organization?.name || 'Família'}</Callout>
+                <Callout>{organization?.name || t('bills.family')}</Callout>
               </TouchableOpacity>
 
               {/* Opção Individual */}
@@ -194,21 +201,23 @@ export function MarkBillAsPaidModal({
                     setSelectedOwner(ownerOptions[0].value);
                   }
                 }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: !isShared }}
               >
                 <View style={[styles.radio, !isShared && styles.radioSelected]}>
                   {!isShared && <View style={styles.radioInner} />}
                 </View>
-                <Callout>Individual</Callout>
+                <Callout>{t('bills.markPaidModal.individual')}</Callout>
               </TouchableOpacity>
 
               {/* Select de responsável (se individual) */}
               {!isShared && (
                 <View style={styles.ownerSelect}>
                   <SelectField
-                    label="Responsável"
-                    value={selectedOwnerLabel || 'Selecione o responsável...'}
+                    label={t('bills.markPaidModal.owner')}
+                    value={selectedOwnerLabel}
                     onPress={() => setShowOwnerSheet(true)}
-                    placeholder="Selecione o responsável..."
+                    placeholder={t('bills.markPaidModal.ownerPlaceholder')}
                   />
                 </View>
               )}
@@ -218,13 +227,13 @@ export function MarkBillAsPaidModal({
           {/* Footer */}
           <View style={styles.footer}>
             <Button
-              title="Cancelar"
+              title={t('common.cancel')}
               variant="outline"
               onPress={onClose}
               style={{ flex: 1, marginRight: spacing[2] }}
             />
             <Button
-              title="Marcar como Paga"
+              title={t('bills.markPaid')}
               onPress={handleConfirm}
               disabled={!isShared && !selectedOwner}
               style={{ flex: 1 }}
@@ -235,7 +244,7 @@ export function MarkBillAsPaidModal({
           <OptionSheet
             visible={showOwnerSheet}
             onClose={() => setShowOwnerSheet(false)}
-            title="Selecione o responsável"
+            title={t('bills.markPaidModal.ownerSheetTitle')}
             options={ownerOptions}
             selectedValue={selectedOwner}
             onSelect={(value) => {

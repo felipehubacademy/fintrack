@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Target, Plus, Copy, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react-native';
+import { getLocaleSettings } from '@fintrack/shared/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import { Text } from '../components/ui/Text';
@@ -20,11 +21,14 @@ import { useConfirmation } from '../components/ui/ConfirmationProvider';
 import { useAlert } from '../components/ui/AlertProvider';
 import { useToast } from '../components/ui/Toast';
 import { supabase } from '../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
+import EmptyState from '../components/ui/EmptyState';
+import { useI18n } from '../contexts/I18nContext';
+import { categoryLabel } from '../utils/categoryLabel';
+import { formatMonthYear } from '../utils/date';
+import { typography } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MACRO_ORDER = ['needs', 'wants', 'investments'];
-const MACRO_LABELS = { needs: 'Necessidades', wants: 'Desejos', investments: 'Investimentos' };
 const MACRO_COLORS = { needs: '#1A6AFF', wants: '#A855F7', investments: '#10B981' };
 
 const inferMacroFromName = (name = '') => {
@@ -35,7 +39,8 @@ const inferMacroFromName = (name = '') => {
 };
 
 export default function BudgetsScreen({ route }) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const { t, formatMoney } = useI18n();
   const insets = useSafeAreaInsets();
   const { organization, user, budgetCategories, loading: orgLoading, isSoloUser } = useOrganization();
   const { confirm } = useConfirmation();
@@ -91,13 +96,13 @@ export default function BudgetsScreen({ route }) {
           const isDismissedVal = await AsyncStorage.getItem(dismissedKey);
           if (!isDismissedVal) {
             alert({
-              title: 'Novo Mês Detectado!',
-              message: 'Deseja copiar o planejamento do mês anterior ou criar um novo?',
+              title: t('budgets.newMonth.title'),
+              message: t('budgets.newMonth.message'),
               type: 'info',
               buttons: [
-                { text: 'Copiar anterior', onPress: async () => { await handleCopyPreviousMonth(); await AsyncStorage.setItem(dismissedKey, 'true'); } },
-                { text: 'Criar novo', onPress: () => { setShowBudgetWizard(true); AsyncStorage.setItem(dismissedKey, 'true'); } },
-                { text: 'Depois', onPress: () => { AsyncStorage.setItem(dismissedKey, 'true'); } },
+                { text: t('budgets.newMonth.copy'), onPress: async () => { await handleCopyPreviousMonth(); await AsyncStorage.setItem(dismissedKey, 'true'); } },
+                { text: t('budgets.newMonth.createNew'), onPress: () => { setShowBudgetWizard(true); AsyncStorage.setItem(dismissedKey, 'true'); } },
+                { text: t('budgets.newMonth.later'), onPress: () => { AsyncStorage.setItem(dismissedKey, 'true'); } },
               ],
             });
           }
@@ -136,7 +141,7 @@ export default function BudgetsScreen({ route }) {
         const limit = Math.round(parseFloat(budget.limit_amount || 0) * 100) / 100;
         const category = categoryMap.get(budget.category_id);
         return {
-          id: budget.id, category: category?.name || 'Sem categoria',
+          id: budget.id, category: category?.name || '',
           category_id: budget.category_id, amount: limit, spent,
           month: selectedMonth, status: getBudgetStatus(spent, limit),
           color: category?.color || colors.brand.primary,
@@ -146,7 +151,7 @@ export default function BudgetsScreen({ route }) {
       setBudgets(budgetsWithSpent);
       setIsDataLoaded(true);
     } catch (error) {
-      showToast('Erro ao carregar orçamentos', 'error');
+      showToast(t('budgets.loadError'), 'error');
       setIsDataLoaded(true);
     } finally { setLoading(false); setRefreshing(false); }
   };
@@ -180,7 +185,7 @@ export default function BudgetsScreen({ route }) {
 
   const macroSummary = useMemo(() => {
     const groups = MACRO_ORDER.reduce((acc, key) => {
-      acc[key] = { key, label: MACRO_LABELS[key], color: MACRO_COLORS[key], totalBudget: 0, totalSpent: 0, categories: [] };
+      acc[key] = { key, label: t(`budgets.macro.${key}`), color: MACRO_COLORS[key], totalBudget: 0, totalSpent: 0, categories: [] };
       return acc;
     }, {});
     budgets.forEach(budget => {
@@ -192,7 +197,7 @@ export default function BudgetsScreen({ route }) {
       targetGroup.totalBudget += amount;
       targetGroup.totalSpent += spent;
       targetGroup.categories.push({
-        id: budget.id, name: budget.category, category_id: budget.category_id,
+        id: budget.id, name: categoryLabel(budget.category, t), category_id: budget.category_id,
         amount, spent, remaining: amount - spent,
         percentageUsed: amount > 0 ? (spent / amount) * 100 : 0,
         status: getBudgetStatus(spent, amount), color,
@@ -202,10 +207,10 @@ export default function BudgetsScreen({ route }) {
       const g = groups[key];
       const totalBudget = Math.round(g.totalBudget * 100) / 100;
       const totalSpent = Math.round(g.totalSpent * 100) / 100;
-      g.categories.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      g.categories.sort((a, b) => a.name.localeCompare(b.name, getLocaleSettings().locale));
       return { ...g, totalBudget, totalSpent, remaining: Math.round((totalBudget - totalSpent) * 100) / 100, progress: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0, status: getBudgetStatus(totalSpent, totalBudget) };
     });
-  }, [budgets, categoryMap]);
+  }, [budgets, categoryMap, t]);
 
   const totalBudgetValue = useMemo(() => Math.round(macroSummary.reduce((s, m) => s + m.totalBudget, 0) * 100) / 100, [macroSummary]);
   const totalSpentValue = useMemo(() => Math.round(macroSummary.reduce((s, m) => s + m.totalSpent, 0) * 100) / 100, [macroSummary]);
@@ -222,15 +227,15 @@ export default function BudgetsScreen({ route }) {
         .from('budgets').select('*').eq('organization_id', organization.id).eq('month_year', previousMonthYear);
       if (fetchError) throw fetchError;
       if (!previousBudgets || previousBudgets.length === 0) {
-        alert({ title: 'Atenção', message: 'Não há orçamentos no mês anterior para copiar.', type: 'warning' });
+        alert({ title: t('budgets.copy.heads'), message: t('budgets.copy.nothing'), type: 'warning' });
         return;
       }
-      const fmt = (y, m) => `${m.toString().padStart(2, '0')}/${y}`;
-      const confirmed = await confirm({ title: 'Copiar orçamentos', message: `Copiar orçamentos de ${fmt(prevYear, prevMonth)} para ${fmt(currentYear, currentMonth)}?`, type: 'info' });
+      const fmt = (y, m) => formatMonthYear(`${y}-${String(m).padStart(2, '0')}-01`);
+      const confirmed = await confirm({ title: t('budgets.copy.title'), message: t('budgets.copy.message', { from: fmt(prevYear, prevMonth), to: fmt(currentYear, currentMonth) }), confirmText: t('common.confirm'), type: 'info' });
       if (!confirmed) return;
       const { data: currentBudgets } = await supabase.from('budgets').select('id').eq('organization_id', organization.id).eq('month_year', currentMonthYear);
       if (currentBudgets?.length > 0) {
-        const ow = await confirm({ title: 'Sobrescrever orçamentos', message: 'Já existem orçamentos para este mês. Deseja sobrescrever?', type: 'warning' });
+        const ow = await confirm({ title: t('budgets.copy.overwriteTitle'), message: t('budgets.copy.overwriteMessage'), confirmText: t('common.confirm'), type: 'warning' });
         if (!ow) return;
         await supabase.from('budgets').delete().eq('organization_id', organization.id).eq('month_year', currentMonthYear);
       }
@@ -238,16 +243,16 @@ export default function BudgetsScreen({ route }) {
       const catIds = new Set(cats.map(c => c.id));
       const validBudgets = previousBudgets.filter(b => b.category_id && catIds.has(b.category_id));
       if (validBudgets.length === 0) {
-        alert({ title: 'Atenção', message: 'Nenhum orçamento válido encontrado.', type: 'warning' });
+        alert({ title: t('budgets.copy.heads'), message: t('budgets.copy.noneValid'), type: 'warning' });
         return;
       }
       const toInsert = validBudgets.map(b => ({ organization_id: organization.id, category_id: b.category_id, limit_amount: b.limit_amount, month_year: currentMonthYear, is_shared: b.is_shared || false }));
       const { error: insertError } = await supabase.from('budgets').insert(toInsert);
       if (insertError) throw insertError;
       await fetchBudgets();
-      showToast(`${validBudgets.length} orçamentos copiados!`, 'success');
+      showToast(t('budgets.copy.done', { count: validBudgets.length }), 'success');
     } catch (error) {
-      showToast('Erro ao copiar orçamentos', 'error');
+      showToast(t('budgets.copy.error'), 'error');
     }
   };
 
@@ -258,50 +263,52 @@ export default function BudgetsScreen({ route }) {
       if (budgetData.id) {
         const { error } = await supabase.from('budgets').update({ limit_amount: budgetData.limit_amount }).eq('id', budgetData.id);
         if (error) throw error;
-        showToast('Orçamento atualizado!', 'success');
+        showToast(t('budgets.saved'), 'success');
       } else {
         const { error } = await supabase.from('budgets').insert({ organization_id: organization.id, category_id: budgetData.category_id, limit_amount: budgetData.limit_amount, month_year: monthYear });
         if (error) throw error;
-        showToast('Orçamento criado!', 'success');
+        showToast(t('budgets.created'), 'success');
       }
       await fetchBudgets();
       setShowBudgetModal(false);
       setEditingBudget(null);
     } catch (error) {
-      showToast('Erro ao salvar orçamento', 'error');
+      showToast(t('budgets.saveError'), 'error');
       throw error;
     }
   };
 
   const handleDeleteBudget = async (budget) => {
-    const ok = await confirm({ title: 'Excluir orçamento', message: `Excluir orçamento de "${budget.category}"?`, type: 'danger' });
+    const ok = await confirm({ title: t('budgets.delete.title'), message: t('budgets.delete.message', { category: categoryLabel(budget.category, t) }), confirmText: t('common.delete'), type: 'danger' });
     if (!ok) return;
     try {
       const { error } = await supabase.from('budgets').delete().eq('id', budget.id);
       if (error) throw error;
       await fetchBudgets();
-      showToast('Orçamento excluído!', 'success');
+      showToast(t('budgets.delete.done'), 'success');
     } catch (error) {
-      showToast('Erro ao excluir orçamento', 'error');
+      showToast(t('budgets.delete.error'), 'error');
     }
   };
 
   const onRefresh = () => { setRefreshing(true); fetchBudgets(); };
 
   const getStatusColor = (status) => {
-    if (status === 'danger') return '#FF3B30';
-    if (status === 'warning') return '#FF9500';
-    return '#34C759';
+    if (status === 'danger') return colors.error.main;
+    if (status === 'warning') return colors.warning.main;
+    return colors.success.main;
   };
 
-  const bg = isDark ? '#0A0A0A' : '#F2F2F7';
-  const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
-  const borderColor = isDark ? '#38383A' : '#E5E5EA';
-  const textPrimary = isDark ? '#FFFFFF' : '#000000';
-  const textSecondary = isDark ? '#8E8E93' : '#6B7280';
+  const bg = colors.background.primary;
+  const cardBg = colors.background.secondary;
+  const borderColor = colors.border.light;
+  const trackColor = colors.background.tertiary || colors.border.light;
+  const textPrimary = colors.text.primary;
+  const textSecondary = colors.text.secondary;
+  const num = typography.tabularNums;
 
   if (orgLoading || loading) {
-    return <LoadingLogo fullScreen message="Carregando orçamentos..." />;
+    return <LoadingLogo fullScreen message={t('budgets.loading')} />;
   }
 
   return (
@@ -313,13 +320,13 @@ export default function BudgetsScreen({ route }) {
       >
         {/* Header */}
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: textPrimary }]}>Orçamento</Text>
+          <Text style={[styles.title, { color: textPrimary }]} accessibilityRole="header">{t('budgets.title')}</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={handleCopyPreviousMonth} style={styles.headerBtn} activeOpacity={0.6}>
+            <TouchableOpacity onPress={handleCopyPreviousMonth} style={styles.headerBtn} activeOpacity={0.6} accessibilityRole="button" accessibilityLabel={t('budgets.copyPrevious')}>
               <Copy size={20} color={textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowBudgetWizard(true)} style={styles.headerBtn} activeOpacity={0.6}>
-              <Plus size={22} color="#1A6AFF" />
+            <TouchableOpacity onPress={() => setShowBudgetWizard(true)} style={styles.headerBtn} activeOpacity={0.6} accessibilityRole="button" accessibilityLabel={t('budgets.addBudget')}>
+              <Plus size={22} color={colors.brand.primary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -333,31 +340,31 @@ export default function BudgetsScreen({ route }) {
         <View style={[styles.summaryCard, { backgroundColor: cardBg }]}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryLabel, { color: textSecondary }]}>Orçado</Text>
-              <Text style={[styles.summaryValue, { color: textPrimary }]}>{formatCurrency(totalBudgetValue)}</Text>
+              <Text style={[styles.summaryLabel, { color: textSecondary }]}>{t('budgets.planned')}</Text>
+              <Text style={[styles.summaryValue, num, { color: textPrimary }]}>{formatMoney(totalBudgetValue)}</Text>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: borderColor }]} />
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryLabel, { color: textSecondary }]}>Gasto</Text>
-              <Text style={[styles.summaryValue, { color: totalSpentValue > totalBudgetValue ? '#FF3B30' : textPrimary }]}>
-                {formatCurrency(totalSpentValue)}
+              <Text style={[styles.summaryLabel, { color: textSecondary }]}>{t('budgets.spent')}</Text>
+              <Text style={[styles.summaryValue, num, { color: totalSpentValue > totalBudgetValue ? colors.error.main : textPrimary }]}>
+                {formatMoney(totalSpentValue)}
               </Text>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: borderColor }]} />
             <View style={styles.summaryItem}>
-              <Text style={[styles.summaryLabel, { color: textSecondary }]}>Restante</Text>
-              <Text style={[styles.summaryValue, { color: totalRemainingValue >= 0 ? '#34C759' : '#FF3B30' }]}>
-                {formatCurrency(totalRemainingValue)}
+              <Text style={[styles.summaryLabel, { color: textSecondary }]}>{t('budgets.left')}</Text>
+              <Text style={[styles.summaryValue, num, { color: totalRemainingValue >= 0 ? colors.success.main : colors.error.main }]}>
+                {formatMoney(totalRemainingValue)}
               </Text>
             </View>
           </View>
           {/* Total Progress */}
           {totalBudgetValue > 0 && (
             <View style={styles.totalProgress}>
-              <View style={[styles.progressTrack, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
+              <View style={[styles.progressTrack, { backgroundColor: trackColor }]}>
                 <View style={[styles.progressFill, {
                   width: `${Math.min((totalSpentValue / totalBudgetValue) * 100, 100)}%`,
-                  backgroundColor: totalRemainingValue >= 0 ? '#1A6AFF' : '#FF3B30',
+                  backgroundColor: totalRemainingValue >= 0 ? colors.brand.primary : colors.error.main,
                 }]} />
               </View>
             </View>
@@ -378,25 +385,27 @@ export default function BudgetsScreen({ route }) {
                   style={[styles.macroCard, { backgroundColor: cardBg }]}
                   onPress={() => setExpandedMacro(isExpanded ? null : macro.key)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: isExpanded }}
                 >
                   <View style={styles.macroHeader}>
                     <View style={[styles.macroDot, { backgroundColor: macro.color }]} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.macroName, { color: textPrimary }]}>{macro.label}</Text>
-                      <Text style={[styles.macroSub, { color: textSecondary }]}>
-                        {formatCurrency(macro.totalSpent)} de {formatCurrency(macro.totalBudget)}
+                      <Text style={[styles.macroSub, num, { color: textSecondary }]}>
+                        {t('budgets.ofTotal', { spent: formatMoney(macro.totalSpent), total: formatMoney(macro.totalBudget) })}
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end', marginRight: 8 }}>
-                      <Text style={[styles.macroRemaining, { color: statusColor }]}>
-                        {formatCurrency(macro.remaining)}
+                      <Text style={[styles.macroRemaining, num, { color: statusColor }]}>
+                        {formatMoney(macro.remaining)}
                       </Text>
                       <Text style={[styles.macroPct, { color: textSecondary }]}>{pct.toFixed(0)}%</Text>
                     </View>
                     {isExpanded ? <ChevronUp size={18} color={textSecondary} /> : <ChevronDown size={18} color={textSecondary} />}
                   </View>
                   {/* Progress */}
-                  <View style={[styles.progressTrack, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', marginTop: 10 }]}>
+                  <View style={[styles.progressTrack, { backgroundColor: trackColor, marginTop: 12 }]}>
                     <View style={[styles.progressFill, { width: `${Math.min(pct, 100)}%`, backgroundColor: statusColor }]} />
                   </View>
                 </TouchableOpacity>
@@ -412,14 +421,16 @@ export default function BudgetsScreen({ route }) {
                         {cat.status !== 'success' && <AlertTriangle size={14} color={catColor} />}
                       </View>
                       <View style={styles.catAmounts}>
-                        <Text style={[styles.catSpent, { color: catColor }]}>{formatCurrency(cat.spent)}</Text>
-                        <Text style={[styles.catLimit, { color: textSecondary }]}>/ {formatCurrency(cat.amount)}</Text>
+                        <Text style={[styles.catSpent, num, { color: catColor }]}>{formatMoney(cat.spent)}</Text>
+                        <Text style={[styles.catLimit, num, { color: textSecondary }]}>/ {formatMoney(cat.amount)}</Text>
                       </View>
-                      <View style={[styles.progressTrack, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
+                      <View style={[styles.progressTrack, { backgroundColor: trackColor }]}>
                         <View style={[styles.progressFill, { width: `${Math.min(catPct, 100)}%`, backgroundColor: catColor }]} />
                       </View>
                       <Text style={[styles.catFooter, { color: textSecondary }]}>
-                        {cat.remaining >= 0 ? `Disponível: ${formatCurrency(cat.remaining)}` : `Excedido: ${formatCurrency(Math.abs(cat.remaining))}`}
+                        {cat.remaining >= 0
+                          ? t('budgets.available', { amount: formatMoney(cat.remaining) })
+                          : t('budgets.over', { amount: formatMoney(Math.abs(cat.remaining)) })}
                       </Text>
                     </View>
                   );
@@ -428,17 +439,14 @@ export default function BudgetsScreen({ route }) {
             );
           })
         ) : (
-          <View style={styles.emptyState}>
-            <Target size={48} color={isDark ? '#48484A' : '#C7C7CC'} />
-            <Text style={[styles.emptyTitle, { color: textPrimary }]}>Nenhum orçamento</Text>
-            <Text style={[styles.emptyDesc, { color: textSecondary }]}>
-              Configure orçamentos por categoria para controlar seus gastos.
-            </Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => setShowBudgetWizard(true)} activeOpacity={0.7}>
-              <Plus size={18} color="#FFFFFF" />
-              <Text style={styles.emptyBtnText}>Criar Orçamento</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon={<Target size={48} color={colors.text.tertiary} />}
+            title={t('budgets.empty.title')}
+            description={t('budgets.empty.body', { example: t('budgets.empty.example') })}
+            zulText={t('budgets.empty.example')}
+            actionLabel={t('budgets.empty.create')}
+            onAction={() => setShowBudgetWizard(true)}
+          />
         )}
       </ScrollView>
 
@@ -486,10 +494,10 @@ const styles = StyleSheet.create({
 
   monthRow: { marginBottom: 20 },
 
-  summaryCard: { borderRadius: 16, padding: 16, marginBottom: 24 },
+  summaryCard: { borderRadius: 12, padding: 16, marginBottom: 24 },
   summaryRow: { flexDirection: 'row', alignItems: 'center' },
   summaryItem: { flex: 1, alignItems: 'center' },
-  summaryLabel: { fontSize: 11, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  summaryLabel: { fontSize: 12, fontWeight: '500', marginBottom: 4 },
   summaryValue: { fontSize: 16, fontWeight: '700' },
   summaryDivider: { width: 1, height: 32 },
   totalProgress: { marginTop: 14 },
@@ -498,7 +506,7 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', borderRadius: 3 },
 
   macroSection: { marginBottom: 16 },
-  macroCard: { borderRadius: 14, padding: 16 },
+  macroCard: { borderRadius: 12, padding: 16 },
   macroHeader: { flexDirection: 'row', alignItems: 'center' },
   macroDot: { width: 12, height: 12, borderRadius: 6, marginRight: 10 },
   macroName: { fontSize: 15, fontWeight: '600' },
@@ -514,13 +522,4 @@ const styles = StyleSheet.create({
   catLimit: { fontSize: 13 },
   catFooter: { fontSize: 11, marginTop: 8 },
 
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', marginTop: 16 },
-  emptyDesc: { fontSize: 14, textAlign: 'center', marginTop: 8, paddingHorizontal: 32 },
-  emptyBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#1A6AFF', paddingHorizontal: 20, paddingVertical: 12,
-    borderRadius: 12, marginTop: 24,
-  },
-  emptyBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
 });

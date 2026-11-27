@@ -10,6 +10,7 @@ import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react-native'
 import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Callout } from './Text';
 import { TouchableOpacity } from 'react-native';
+import { useI18n } from '../../contexts/I18nContext';
 
 const { width } = Dimensions.get('window');
 
@@ -44,6 +45,7 @@ const TOAST_TYPES = {
  * showToast('Mensagem de sucesso', 'success');
  */
 export function Toast({ visible, message, type = 'info', duration = 3000, onHide }) {
+  const { t } = useI18n();
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -119,7 +121,7 @@ export function Toast({ visible, message, type = 'info', duration = 3000, onHide
           onPress={hideToast} 
           style={styles.closeButton}
           accessibilityRole="button"
-          accessibilityLabel="Fechar notificação"
+          accessibilityLabel={t('dashboard.ui.closeNotification')}
         >
           <X size={16} color={toastConfig.iconColor} />
         </TouchableOpacity>

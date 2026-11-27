@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
+import { useI18n } from '../contexts/I18nContext';
 
 export function useDuplicateCheck() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -20,7 +22,7 @@ export function useDuplicateCheck() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao verificar duplicatas');
+        throw new Error(data.error || t('web.useDuplicateCheck.couldnTCheckForDuplicates'));
       }
 
       return data;

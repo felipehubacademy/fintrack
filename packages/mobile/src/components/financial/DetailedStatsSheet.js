@@ -14,6 +14,7 @@ import { X } from 'lucide-react-native';
 import { colors, spacing, radius, shadows } from '../../theme';
 import { Text, Title2, Headline, Callout, Caption, Subheadline } from '../ui/Text';
 import { formatCurrency } from '@fintrack/shared/utils';
+import { useI18n } from '../../contexts/I18nContext';
 
 // Usar ScrollView nativo no Android para melhor detecção de scroll
 const ScrollView = Platform.OS === 'android' ? RNScrollView : GHScrollView;
@@ -35,6 +36,7 @@ export function DetailedStatsSheet({
   responsibleData = [], // [{ label, value, color, percentage, individual, shared }]
   totalAmount = 0,
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   // Safe area apenas no Android
   const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, spacing[2]) : 0;
@@ -86,12 +88,12 @@ export function DetailedStatsSheet({
             {type === 'expense' && paymentBreakdown && (
               <View style={styles.section}>
                 <Subheadline weight="semiBold" style={styles.sectionTitle}>
-                  Formas de Pagamento
+                  {t('finances.charts.paymentMethods')}
                 </Subheadline>
                 <View style={styles.card}>
                   <View style={styles.row}>
                     <View style={[styles.dot, { backgroundColor: colors.success.main }]} />
-                    <Text variant="callout" style={styles.label}>À Vista</Text>
+                    <Text variant="callout" style={styles.label}>{t('finances.charts.paidNow')}</Text>
                     <View style={styles.spacer} />
                     <Callout weight="semiBold">
                       {formatCurrency(paymentBreakdown.cash)}
@@ -103,7 +105,7 @@ export function DetailedStatsSheet({
                   
                   <View style={[styles.row, styles.rowDivider]}>
                     <View style={[styles.dot, { backgroundColor: colors.warning.main }]} />
-                    <Text variant="callout" style={styles.label}>Crédito</Text>
+                    <Text variant="callout" style={styles.label}>{t('finances.charts.credit')}</Text>
                     <View style={styles.spacer} />
                     <Callout weight="semiBold">
                       {formatCurrency(paymentBreakdown.credit)}
@@ -120,7 +122,7 @@ export function DetailedStatsSheet({
             {responsibleData.length > 0 && (
               <View style={styles.section}>
                 <Subheadline weight="semiBold" style={styles.sectionTitle}>
-                  Por Responsável
+                  {t('finances.charts.byPerson')}
                 </Subheadline>
                 <View style={styles.card}>
                   {responsibleData.map((item, index) => (
@@ -144,9 +146,9 @@ export function DetailedStatsSheet({
                       {(item.individual > 0 || item.shared > 0) && (
                         <View style={styles.breakdown}>
                           <Caption color="tertiary" style={{ fontSize: 11 }}>
-                            {item.individual > 0 && `Individual: ${formatCurrency(item.individual)}`}
+                            {item.individual > 0 && t('finances.charts.individualAmount', { amount: formatCurrency(item.individual) })}
                             {item.individual > 0 && item.shared > 0 && ' • '}
-                            {item.shared > 0 && `Compartilhada: ${formatCurrency(item.shared)}`}
+                            {item.shared > 0 && t('finances.charts.sharedAmount', { amount: formatCurrency(item.shared) })}
                           </Caption>
                         </View>
                       )}
@@ -159,7 +161,7 @@ export function DetailedStatsSheet({
             {responsibleData.length === 0 && !paymentBreakdown && (
               <View style={styles.emptyState}>
                 <Caption color="secondary" align="center">
-                  Nenhum dado disponível
+                  {t('finances.charts.nothingYet')}
                 </Caption>
               </View>
             )}

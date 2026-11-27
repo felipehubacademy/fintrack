@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
+import { useI18n } from '../contexts/I18nContext';
 
 let toastId = 0;
 
 export function useToast() {
+  const { t } = useI18n();
   const [toasts, setToasts] = useState([]);
 
   const addToast = useCallback((toast) => {
@@ -26,19 +28,19 @@ export function useToast() {
   }, []);
 
   // Métodos de conveniência
-  const success = useCallback((message, title = 'Sucesso') => {
+  const success = useCallback((message, title = t('web.useToast.success')) => {
     return addToast({ type: 'success', title, message });
   }, [addToast]);
 
-  const error = useCallback((message, title = 'Erro') => {
+  const error = useCallback((message, title = t('web.useToast.error')) => {
     return addToast({ type: 'error', title, message });
   }, [addToast]);
 
-  const warning = useCallback((message, title = 'Atenção') => {
+  const warning = useCallback((message, title = t('web.useToast.headsUp')) => {
     return addToast({ type: 'warning', title, message });
   }, [addToast]);
 
-  const info = useCallback((message, title = 'Informação') => {
+  const info = useCallback((message, title = t('web.useToast.info')) => {
     return addToast({ type: 'info', title, message });
   }, [addToast]);
 

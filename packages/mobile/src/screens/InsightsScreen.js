@@ -21,10 +21,14 @@ import { MacroAreaChart } from '../components/financial/MacroAreaChart';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useOrganization } from '../hooks/useOrganization';
 import { supabase } from '../services/supabase';
-import { formatCurrency } from '@fintrack/shared/utils';
+import { useI18n } from '../contexts/I18nContext';
+import { formatNumber } from '@fintrack/shared/i18n';
+import { categoryLabel } from '../utils/categoryLabel';
+import { formatMonthName } from '../utils/date';
 
 export default function InsightsScreen() {
   const { colors } = useTheme();
+  const { t, formatMoney } = useI18n();
   const { organization, user, loading: orgLoading } = useOrganization();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -57,7 +61,7 @@ export default function InsightsScreen() {
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
 
-      // Buscar últimos 3 meses de despesas
+      // Last 3 months of expenses
       const threeMonthsAgo = new Date(now.setMonth(now.getMonth() - 3));
       const startDate = `${threeMonthsAgo.getFullYear()}-${String(threeMonthsAgo.getMonth() + 1).padStart(2, '0')}-01`;
 
@@ -79,25 +83,27 @@ export default function InsightsScreen() {
 
       if (incomesError) throw incomesError;
 
-      // Calcular médias
+      // Monthly averages
       const totalExpenses = expenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
       const totalIncomes = incomes?.reduce((sum, i) => sum + (i.amount || 0), 0) || 0;
       const averageMonthlyExpenses = totalExpenses / 3;
       const averageMonthlyIncome = totalIncomes / 3;
 
-      // Categoria mais gastada
+      // Category with the most spending (raw DB name; translated at render)
       const expensesByCategory = {};
       expenses?.forEach(e => {
-        const cat = e.budget_category_name || e.category || 'Outros';
+        const cat = e.budget_category_name || e.category || '';
         expensesByCategory[cat] = (expensesByCategory[cat] || 0) + (e.amount || 0);
       });
 
       const topCategory = Object.entries(expensesByCategory)
         .sort(([, a], [, b]) => b - a)[0];
 
-      // Comparar com mês anterior
-      const lastMonthStart = `${currentYear}-${String(currentMonth - 1).padStart(2, '0')}-01`;
-      const lastMonthEnd = `${currentYear}-${String(currentMonth - 1).padStart(2, '0')}-31`;
+      // Compare with last month (handles January -> December of last year)
+      const prev = new Date(currentYear, currentMonth - 2, 1);
+      const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+      const lastMonthStart = `${prevKey}-01`;
+      const lastMonthEnd = `${prevKey}-31`;
       const currentMonthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
 
       const lastMonthExpenses = expenses
@@ -138,7 +144,7 @@ export default function InsightsScreen() {
       const wantsData = [];
       const investmentsData = [];
 
-      // Buscar últimos 6 meses
+      // Last 6 months
       for (let i = 5; i >= 0; i--) {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const year = date.getFullYear();
@@ -148,11 +154,10 @@ export default function InsightsScreen() {
         const lastDay = new Date(year, month, 0).getDate();
         const endDate = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
 
-        // Nome do mês
-        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        trendLabels.push(monthNames[month - 1]);
+        // Short month name in the user's language
+        trendLabels.push(formatMonthName(startDate, { short: true }));
 
-        // Buscar despesas por macrocategoria
+        // Expenses per macro group
         const { data: expenses } = await supabase
           .from('expenses')
           .select('amount, macro_category')
@@ -173,9 +178,9 @@ export default function InsightsScreen() {
       setTrendData({
         labels: trendLabels,
         datasets: [
-          { data: needsData, label: 'Necessidades' },
-          { data: wantsData, label: 'Desejos' },
-          { data: investmentsData, label: 'Investimentos' },
+          { data: needsData, label: t('budgets.macro.needs') },
+          { data: wantsData, label: t('budgets.macro.wants') },
+          { data: investmentsData, label: t('budgets.macro.investments') },
         ],
       });
     } catch (error) {}
@@ -195,23 +200,28 @@ export default function InsightsScreen() {
       const labels = [];
       const spendingData = [];
 
-      // Gastos diários do mês
+      // Daily spending this month: one query, summed per day
+      const { data: monthExpenses } = await supabase
+        .from('expenses')
+        .select('amount, date')
+        .eq('organization_id', organization.id)
+        .eq('status', 'confirmed')
+        .gte('date', startDate)
+        .lte('date', `${monthStr}-${String(lastDay).padStart(2, '0')}`);
+      const byDate = {};
+      (monthExpenses || []).forEach(e => {
+        const key = String(e.date || '').slice(0, 10);
+        byDate[key] = (byDate[key] || 0) + (e.amount || 0);
+      });
+
       for (let day = 1; day <= lastDay; day++) {
         const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
-        
-        const { data: expenses } = await supabase
-          .from('expenses')
-          .select('amount')
-          .eq('organization_id', organization.id)
-          .eq('status', 'confirmed')
-          .eq('date', dateStr);
+        const total = byDate[dateStr] || 0;
 
-        const total = (expenses || []).reduce((sum, e) => sum + (e.amount || 0), 0);
-        
         if (day % 5 === 0 || day === 1 || day === lastDay) {
           labels.push(String(day));
         }
-        
+
         spendingData.push(total);
       }
 
@@ -226,15 +236,14 @@ export default function InsightsScreen() {
     try {
       if (!organization) return;
 
-      // Lógica simplificada de score
-      // Baseado em: orçamento vs gastos, poupança, dívidas
+      // Simple score based on spending vs income this month
       const now = new Date();
       const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const startDate = `${monthStr}-01`;
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const endDate = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
 
-      // Buscar despesas e receitas do mês
+      // This month's expenses and income
       const { data: expenses } = await supabase
         .from('expenses')
         .select('amount')
@@ -254,7 +263,7 @@ export default function InsightsScreen() {
       const totalExpenses = (expenses || []).reduce((sum, e) => sum + (e.amount || 0), 0);
       const totalIncome = (incomes || []).reduce((sum, i) => sum + (i.amount || 0), 0);
 
-      // Score baseado em % de gastos vs receitas
+      // Score from the spending / income ratio
       let score = 100;
       if (totalIncome > 0) {
         const spendingRatio = totalExpenses / totalIncome;
@@ -282,14 +291,38 @@ export default function InsightsScreen() {
   };
 
   if (orgLoading || loading) {
-    return <LoadingLogo fullScreen message="Carregando análises..." />;
+    return <LoadingLogo fullScreen message={t('insights.loading')} />;
+  }
+
+  const scoreLabel = financialScore >= 80 ? 'excellent' : financialScore >= 60 ? 'good' : financialScore >= 40 ? 'attention' : 'critical';
+  const trendColor = insights.trend === 'up' ? colors.error.main : insights.trend === 'down' ? colors.success.main : colors.text.secondary;
+  const comparison = `${insights.lastMonthComparison > 0 ? '+' : ''}${formatNumber(insights.lastMonthComparison, { numberOptions: { minimumFractionDigits: 1, maximumFractionDigits: 1 } })}%`;
+
+  // Nothing logged yet: show only the empty state with the Zul example.
+  if (!insights.topCategory) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <ScreenHeader user={user} title={t('insights.title')} showLogo={true} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          <EmptyState
+            icon={<PieChart size={48} color={colors.text.tertiary} />}
+            title={t('insights.empty.title')}
+            description={t('insights.empty.body', { example: t('insights.empty.example') })}
+            zulText={t('insights.empty.example')}
+          />
+        </ScrollView>
+      </View>
+    );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <ScreenHeader
         user={user}
-        title="Análises"
+        title={t('insights.title')}
         showLogo={true}
       />
 
@@ -313,12 +346,12 @@ export default function InsightsScreen() {
         >
           <View style={styles.heroRow}>
             <View style={{ flex: 1 }}>
-              <Caption style={{ color: 'rgba(255,255,255,0.7)' }}>Saúde Financeira</Caption>
+              <Caption style={{ color: 'rgba(255,255,255,0.8)' }}>{t('insights.health')}</Caption>
               <Title1 style={{ color: '#FFFFFF', marginTop: spacing[0.5] }}>
-                {financialScore >= 80 ? 'Excelente' : financialScore >= 60 ? 'Bom' : financialScore >= 40 ? 'Atenção' : 'Crítico'}
+                {t(`insights.score.${scoreLabel}`)}
               </Title1>
-              <Footnote style={{ color: 'rgba(255,255,255,0.7)', marginTop: spacing[0.5] }}>
-                {insights.trend === 'down' ? 'Gastos em queda' : insights.trend === 'up' ? 'Gastos em alta' : 'Gastos estáveis'}
+              <Footnote style={{ color: 'rgba(255,255,255,0.8)', marginTop: spacing[0.5] }}>
+                {t(`insights.trendShort.${insights.trend}`)}
               </Footnote>
             </View>
             <ProgressRing
@@ -336,16 +369,16 @@ export default function InsightsScreen() {
         <Card style={styles.trendCard}>
           <View style={styles.trendHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[1] }}>
-              <Subheadline weight="semiBold">Tendência de Gastos</Subheadline>
+              <Subheadline weight="semiBold" accessibilityRole="header">{t('insights.trendTitle')}</Subheadline>
               <Tooltip
-                title="Tendência de Gastos"
-                content="Comparação dos seus gastos do mês atual com o mês anterior. Uma tendência de alta indica que você está gastando mais, enquanto uma tendência de baixa indica economia."
+                title={t('insights.trendTitle')}
+                content={t('insights.trendTooltip')}
               />
             </View>
             <View style={[
               styles.trendBadge,
               {
-                backgroundColor: insights.trend === 'up' ? colors.error.bg : insights.trend === 'down' ? colors.success.bg : colors.neutral[100]
+                backgroundColor: insights.trend === 'up' ? colors.error.bg : insights.trend === 'down' ? colors.success.bg : colors.background.tertiary
               }
             ]}>
               {insights.trend === 'up' ? (
@@ -355,34 +388,27 @@ export default function InsightsScreen() {
               ) : (
                 <DollarSign size={16} color={colors.text.secondary} />
               )}
-              <Footnote
-                style={{
-                  marginLeft: spacing[0.5],
-                  color: insights.trend === 'up' ? colors.error.main : insights.trend === 'down' ? colors.success.main : colors.text.secondary
-                }}
-              >
-                {insights.lastMonthComparison > 0 ? '+' : ''}{insights.lastMonthComparison.toFixed(1)}%
+              <Footnote tabular style={{ marginLeft: spacing[0.5], color: trendColor }}>
+                {comparison}
               </Footnote>
             </View>
           </View>
           <Caption color="secondary" style={{ marginTop: spacing[1] }}>
-            {insights.trend === 'up' && 'Seus gastos aumentaram em relação ao mês passado'}
-            {insights.trend === 'down' && 'Seus gastos diminuíram em relação ao mês passado'}
-            {insights.trend === 'stable' && 'Seus gastos estão estáveis em relação ao mês passado'}
+            {t(`insights.trendBody.${insights.trend}`)}
           </Caption>
         </Card>
 
         {/* Averages */}
         <View style={styles.section}>
-          <Subheadline weight="semiBold" style={styles.sectionTitle}>
-            Médias (últimos 3 meses)
+          <Subheadline weight="semiBold" style={styles.sectionTitle} accessibilityRole="header">
+            {t('insights.averages')}
           </Subheadline>
           <Card style={styles.averageCard}>
             <View style={styles.averageRow}>
               <View style={{ flex: 1 }}>
-                <Footnote color="secondary">Despesas Mensais</Footnote>
-                <Headline weight="bold" style={{ marginTop: spacing[0.5] }}>
-                  {formatCurrency(insights.averageMonthlyExpenses)}
+                <Footnote color="secondary">{t('insights.avgExpenses')}</Footnote>
+                <Headline weight="bold" tabular style={{ marginTop: spacing[0.5] }}>
+                  {formatMoney(insights.averageMonthlyExpenses)}
                 </Headline>
               </View>
               <View style={[styles.iconBadge, { backgroundColor: colors.error.bg }]}>
@@ -394,9 +420,9 @@ export default function InsightsScreen() {
           <Card style={styles.averageCard}>
             <View style={styles.averageRow}>
               <View style={{ flex: 1 }}>
-                <Footnote color="secondary">Receitas Mensais</Footnote>
-                <Headline weight="bold" style={{ marginTop: spacing[0.5] }}>
-                  {formatCurrency(insights.averageMonthlyIncome)}
+                <Footnote color="secondary">{t('insights.avgIncome')}</Footnote>
+                <Headline weight="bold" tabular style={{ marginTop: spacing[0.5] }}>
+                  {formatMoney(insights.averageMonthlyIncome)}
                 </Headline>
               </View>
               <View style={[styles.iconBadge, { backgroundColor: colors.success.bg }]}>
@@ -409,16 +435,16 @@ export default function InsightsScreen() {
         {/* Top Category */}
         {insights.topCategory && (
           <View style={styles.section}>
-            <Subheadline weight="semiBold" style={styles.sectionTitle}>
-              Categoria Mais Gasta
+            <Subheadline weight="semiBold" style={styles.sectionTitle} accessibilityRole="header">
+              {t('insights.topCategory')}
             </Subheadline>
             <Card>
-              <Callout weight="semiBold">{insights.topCategory.name}</Callout>
-              <Headline weight="bold" style={{ marginTop: spacing[1] }}>
-                {formatCurrency(insights.topCategory.value)}
+              <Callout weight="semiBold">{categoryLabel(insights.topCategory.name, t)}</Callout>
+              <Headline weight="bold" tabular style={{ marginTop: spacing[1] }}>
+                {formatMoney(insights.topCategory.value)}
               </Headline>
               <Caption color="secondary" style={{ marginTop: spacing[0.5] }}>
-                nos últimos 3 meses
+                {t('insights.last3Months')}
               </Caption>
             </Card>
           </View>
@@ -432,8 +458,8 @@ export default function InsightsScreen() {
         {/* Trend Line Chart */}
         {trendData && trendData.datasets.length > 0 && (
           <View style={styles.section}>
-            <Subheadline weight="semiBold" style={styles.sectionTitle}>
-              Tendências por Macrocategoria
+            <Subheadline weight="semiBold" style={styles.sectionTitle} accessibilityRole="header">
+              {t('insights.byGroup')}
             </Subheadline>
             <TrendLineChart data={trendData} />
           </View>
@@ -442,19 +468,11 @@ export default function InsightsScreen() {
         {/* Macro Spending Waves */}
         {macroSpendingData && (
           <View style={styles.section}>
-            <Subheadline weight="semiBold" style={styles.sectionTitle}>
-              Padrão de Gastos do Mês
+            <Subheadline weight="semiBold" style={styles.sectionTitle} accessibilityRole="header">
+              {t('insights.monthPattern')}
             </Subheadline>
             <MacroAreaChart data={macroSpendingData} />
           </View>
-        )}
-
-        {!insights.topCategory && (
-          <EmptyState
-            icon={<PieChart size={48} color="#AEAEB2" />}
-            title="Nenhuma análise disponível"
-            description="Adicione transações para visualizar insights financeiros."
-          />
         )}
 
         {/* Spacing for FAB */}
@@ -467,7 +485,6 @@ export default function InsightsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
   },
 
   scrollView: {
@@ -479,7 +496,7 @@ const styles = StyleSheet.create({
   },
 
   heroCard: {
-    borderRadius: radius.xl,
+    borderRadius: 12,
     padding: spacing[3],
     marginBottom: spacing[3],
     overflow: 'hidden',

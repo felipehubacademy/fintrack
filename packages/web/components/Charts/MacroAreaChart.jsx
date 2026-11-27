@@ -1,4 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useI18n } from '../../contexts/I18nContext';
+import { formatMoney } from '@fintrack/shared/i18n';
 
 const COLORS = {
   needs: '#2563EB',
@@ -7,8 +9,9 @@ const COLORS = {
 };
 
 export default function MacroAreaChart({ data }) {
+  const { t } = useI18n();
   const formatCurrency = (value) => {
-    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `${formatMoney(value)}`;
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -18,7 +21,7 @@ export default function MacroAreaChart({ data }) {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-        <p className="font-semibold text-gray-900 mb-2">Dia {label}</p>
+        <p className="font-semibold text-gray-900 mb-2">{t('web.macroAreaChart.day', { label })}</p>
         {payload.reverse().map((entry, index) => (
           <div key={index} className="flex items-center justify-between space-x-4">
             <div className="flex items-center space-x-2">
@@ -32,7 +35,7 @@ export default function MacroAreaChart({ data }) {
         ))}
         <div className="border-t border-gray-200 mt-2 pt-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-900">Total:</span>
+            <span className="text-sm font-semibold text-gray-900">{t('web.shared.total')}</span>
             <span className="text-sm font-bold text-gray-900">
               {formatCurrency(total)}
             </span>
@@ -77,7 +80,7 @@ export default function MacroAreaChart({ data }) {
           stackId="1"
           stroke={COLORS.needs} 
           fill="url(#colorNeeds)"
-          name="Necessidades"
+          name={t('web.shared.needs')}
         />
         <Area 
           type="monotone" 
@@ -85,7 +88,7 @@ export default function MacroAreaChart({ data }) {
           stackId="1"
           stroke={COLORS.wants} 
           fill="url(#colorWants)"
-          name="Desejos"
+          name={t('web.shared.wants')}
         />
         <Area 
           type="monotone" 
@@ -93,7 +96,7 @@ export default function MacroAreaChart({ data }) {
           stackId="1"
           stroke={COLORS.investments} 
           fill="url(#colorInvestments)"
-          name="Investimentos"
+          name={t('web.shared.investments')}
         />
       </AreaChart>
     </ResponsiveContainer>
